@@ -77,6 +77,9 @@ unless you know which storage target is configured.
 
 `main` is the deploy branch. Do not work directly on `main`.
 
+Detailed collaboration rules live in
+[`docs/collaboration-workflow.md`](docs/collaboration-workflow.md).
+
 Start every task from current `main`:
 
 ```bash
