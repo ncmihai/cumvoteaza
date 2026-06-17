@@ -3,168 +3,197 @@
 This is the working agreement for two contributors building `cumvoteaza`
 together.
 
-## Goal
+## Branch Model
 
-Both contributors can work independently, deploy their own preview branch, test
-it, review each other, and merge safely into `main`.
+Use only two active shared branches:
 
-`main` is production. Do not code directly on `main`.
+```text
+dev  = shared active work / Vercel preview
+main = production
+```
 
-## Daily Start
+Both contributors may push directly to `dev`.
 
-At the beginning of a work session:
+Nobody commits directly to `main`. `main` is updated only by merging reviewed
+and verified `dev`.
+
+## One-Time Setup
+
+Create `dev` from current `main`:
 
 ```bash
 git checkout main
 git pull origin main
+git checkout -b dev
+git push -u origin dev
+```
+
+After this, both contributors should fetch and track `dev`:
+
+```bash
+git fetch origin
+git checkout dev
+git pull origin dev
+```
+
+## Daily Start
+
+At the beginning of every work session:
+
+```bash
+git checkout dev
+git pull origin dev
 npm install
 npm run typecheck
 ```
 
-Create a branch for your task:
+If `git pull` shows conflicts or unexpected changes, stop and resolve them
+together before coding.
+
+## Working On Dev
+
+Make changes on `dev`.
+
+Before pushing:
 
 ```bash
-git checkout -b feature/short-description
+npm run typecheck
+git status
+git add .
+git commit -m "Describe the change"
+git push origin dev
 ```
 
-Good branch names:
+For larger or risky changes, also run:
+
+```bash
+npm run test -- --runInBand
+npm run build
+```
+
+After every push to `dev`, notify the other contributor:
 
 ```text
-feature/bill-parser-v2
-feature/data-health-review-mode
-feature/vote-repair-commands
-fix/ocr-short-text-quality
-ui/data-health-density
-docs/contributor-workflow
+Pushed dev: <short summary>. Please pull before continuing.
 ```
 
-Avoid vague branch names like `new-stuff`, `changes`, or `mihai-work`.
+Example:
 
-## Working Locally
-
-Run the app:
-
-```bash
-npm run dev
+```text
+Pushed dev: updated data-health review copy and repair command docs. Please pull before continuing.
 ```
 
-Run checks before pushing:
+## Vercel Preview
+
+Vercel should create or update a preview deployment for every `dev` push.
+
+Use that `dev` preview for shared testing. Production remains `main`.
+
+Before merging `dev` to `main`, both contributors should check the relevant
+pages in the `dev` deployment.
+
+## Release Dev To Main
+
+When `dev` is ready:
 
 ```bash
+git checkout dev
+git pull origin dev
 npm run typecheck
 npm run test -- --runInBand
 npm run build
 ```
 
-If the change touches only docs, `npm run typecheck` is enough.
-
-## Push And Preview
-
-Push your branch:
-
-```bash
-git push -u origin feature/short-description
-```
-
-Open a pull request into `main`.
-
-Vercel should create a preview deployment for the branch or PR. Add the preview
-URL to the PR description.
-
-Each contributor tests their own preview before asking for review.
-
-## Pull Request Template
-
-Every PR description should include:
-
-```md
-## What changed
-
-- ...
-
-## How I tested
-
-- [ ] npm run typecheck
-- [ ] npm run test -- --runInBand
-- [ ] npm run build
-- [ ] checked Vercel preview
-
-## Data / DB impact
-
-- Migration: yes/no
-- Uses production DB: yes/no
-- Repair command needed: yes/no
-- Import command needed: yes/no
-
-## Screenshots or preview links
-
-- Preview:
-- Important pages:
-
-## Risks / rollback
-
-- ...
-```
-
-## Review Rules
-
-The reviewer checks:
-
-- no secrets or `.env` files
-- no official PDFs committed or stored
-- migrations are intentional
-- repair commands remain dry-run by default
-- import commands are capped and polite
-- UI works on mobile and desktop if UI changed
-- `tasks.md` / `docs/progress.md` updated for meaningful workflow changes
-- preview URL works
-
-Do not merge your own PR unless it is an urgent fix and the other contributor
-is unavailable.
-
-## Merge Order
-
-If two PRs are open:
-
-1. Merge the smaller or lower-risk PR first.
-2. The second contributor updates their branch:
-
-```bash
-git checkout feature/other-work
-git fetch origin
-git rebase origin/main
-git push --force-with-lease
-```
-
-3. Re-test the second preview.
-4. Merge the second PR.
-
-Use `--force-with-lease`, never plain `--force`.
-
-## Database Rules
-
-The database is the main risk.
-
-Production Vercel uses the production Neon database.
-
-Preview branches should ideally use a staging Neon database or Neon branch. If
-previews are still pointed at production, be conservative:
-
-- review actions are okay because they only update `data_health_reviews`
-- repair commands must be dry-run first
-- do not run broad imports from a preview branch
-- do not run migrations against shared Neon without telling the other person
-- do not mutate canonical bills, votes, documents, or chunks from the web UI
-
-Before running a migration:
+Then merge:
 
 ```bash
 git checkout main
 git pull origin main
+git merge dev
+git push origin main
+```
+
+After `main` is pushed, Vercel production deploys.
+
+Both contributors then return to `dev` and sync it:
+
+```bash
+git checkout dev
+git pull origin dev
+git merge main
+git push origin dev
+```
+
+If `dev` already contains everything from `main`, Git will report that it is up
+to date.
+
+## Review Checklist Before Main
+
+Before merging `dev` into `main`, check:
+
+- no secrets or `.env` files
+- no official PDFs committed or stored
+- migrations are intentional and coordinated
+- repair commands remain dry-run by default
+- import commands are capped and polite
+- UI works on the `dev` Vercel preview if UI changed
+- `tasks.md` and `docs/progress.md` updated for meaningful workflow changes
+- `npm run typecheck` passes
+- `npm run test -- --runInBand` passes
+- `npm run build` passes
+
+## Conflict Rules
+
+If both contributors edited the same file and Git reports conflicts:
+
+1. Stop coding.
+2. Resolve the conflict together.
+3. Run `npm run typecheck`.
+4. Commit the conflict resolution.
+5. Push `dev`.
+6. Notify the other contributor to pull.
+
+Do not use `git reset --hard`, `git push --force`, or force-push `dev` unless
+both contributors explicitly agree.
+
+## GitHub Branch Settings
+
+Recommended GitHub settings:
+
+- Protect `main`.
+- Block force pushes to `main`.
+- Block deletion of `main`.
+- Allow direct pushes to `dev`.
+- Do not force-push `dev` unless both contributors agree.
+
+CI should run on pushes to both `dev` and `main`.
+
+## Database Rules
+
+For now, `dev` uses the production Neon database.
+
+That keeps setup simple, but it means `dev` testing can affect shared data.
+Use these rules:
+
+- data-health review actions are allowed
+- repair commands must be dry-run first
+- `--persist` repair commands require both contributors to agree
+- migrations require coordination before running
+- broad imports require coordination before running
+- no destructive manual SQL from `dev`
+- no web UI mutations that directly repair canonical bills, votes, documents,
+  or chunks
+
+Before a shared migration:
+
+```bash
+git checkout dev
+git pull origin dev
+npm run typecheck
 npm run db:migrate
 ```
 
-Coordinate in chat before running migrations on shared Neon.
+Tell the other contributor before and after the migration.
 
 ## Data Health Workflow
 
@@ -174,7 +203,7 @@ Use:
 /ro/data-health
 ```
 
-Enter the value of `DATA_HEALTH_REVIEW_TOKEN` in the page's review token field.
+Enter the value of `DATA_HEALTH_REVIEW_TOKEN` in the review token field.
 
 Recommended queue order:
 
@@ -191,7 +220,8 @@ For each row:
 2. Open official source.
 3. Decide whether it is valid, ignored, accepted, or needs repair.
 4. Use the suggested command as dry-run first.
-5. Add `--persist` only after evidence is solid.
+5. Add `--persist` only after evidence is solid and both contributors agree
+   when the repair changes canonical data.
 
 ## Repair Commands
 
@@ -231,35 +261,29 @@ npm run ingest:bill-text:batch -- --year=2026 --limit=25 --summary-only
 Do not start broad 2025 extraction until the 2026 OCR/parser review queues are
 under control.
 
-## Recommended Tomorrow Plan
+## Tomorrow Work Session
 
-1. Both pull latest `main`.
-2. Confirm `npm run typecheck` passes locally for both.
-3. Choose two separate tasks:
-   - Contributor A: review/fix OCR and text-structure rows.
-   - Contributor B: inspect unlinked votes and duplicate plans.
-4. Create two branches.
-5. Push both branches and get Vercel previews.
-6. Work for a fixed block of time.
-7. Meet and compare:
-   - preview URLs
-   - PR diffs
-   - data-health counts
-   - any migration/import/repair commands used
-8. Merge one PR.
-9. Rebase the other PR.
-10. Re-test and merge the second PR.
+Recommended agenda:
 
-## Future Improvement
+1. Both pull `dev`.
+2. Confirm `npm run typecheck` passes locally.
+3. Agree who owns which queue or UI area for the session.
+4. Work in short blocks.
+5. Push small commits to `dev`.
+6. Notify after every push.
+7. Test the `dev` Vercel preview together.
+8. If stable, run full checks and merge `dev` to `main`.
 
-The best future setup is one Neon branch per feature branch:
+## Future Upgrade
+
+Later, create a staging Neon database for `dev`:
 
 ```text
-Git branch: feature/parser-v2
-Neon branch: feature-parser-v2
-Vercel preview DATABASE_URL: Neon feature branch URL
+main DATABASE_URL = production Neon
+dev DATABASE_URL  = staging Neon
 ```
 
-That would let both contributors test database changes without touching the
-production database. Until that exists, treat preview deployments as potentially
-connected to shared data.
+Then point the Vercel `dev` preview to the staging `DATABASE_URL`.
+
+That will let both contributors test imports, repairs, and migrations without
+touching production data.

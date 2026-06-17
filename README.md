@@ -75,40 +75,53 @@ unless you know which storage target is configured.
 
 ## Two-Person Git Workflow
 
-`main` is the deploy branch. Do not work directly on `main`.
+Use a simple shared `dev -> main` workflow:
+
+```text
+dev  = shared active work / Vercel preview
+main = production
+```
+
+Both contributors push directly to `dev`. Do not work directly on `main`.
 
 Detailed collaboration rules live in
 [`docs/collaboration-workflow.md`](docs/collaboration-workflow.md).
 
-Start every task from current `main`:
+First-time `dev` branch setup:
 
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/short-description
+git checkout -b dev
+git push -u origin dev
 ```
 
-Use focused branch names:
+Daily start:
 
-```text
-feature/ocr-review-flow
-feature/vote-repair-command
-fix/bill-parser-headings
-ui/data-health-density
+```bash
+git checkout dev
+git pull origin dev
+npm install
+npm run typecheck
 ```
 
-Commit and push your branch:
+Commit to `dev`:
 
 ```bash
 git status
-git add <files>
+git add .
 git commit -m "Describe the change"
-git push -u origin feature/short-description
+git push origin dev
 ```
 
-Open a pull request into `main`. The other contributor reviews it before merge.
+After pushing, notify the other contributor:
 
-Before opening a PR, run:
+```text
+Pushed dev: <short summary>. Please pull before continuing.
+```
+
+Before merging `dev` to `main`, both contributors review the Vercel `dev`
+preview and run:
 
 ```bash
 npm run typecheck
@@ -116,26 +129,24 @@ npm run test -- --runInBand
 npm run build
 ```
 
-After a PR is merged, update your local copy:
+Release `dev` to production:
 
 ```bash
+git checkout dev
+git pull origin dev
+npm run typecheck
+npm run test -- --runInBand
+npm run build
+
 git checkout main
 git pull origin main
+git merge dev
+git push origin main
 ```
 
-If you already have another branch open, rebase it:
+## Dev Review Checklist
 
-```bash
-git checkout feature/other-work
-git rebase main
-git push --force-with-lease
-```
-
-Use `--force-with-lease`, never plain `--force`.
-
-## Pull Request Review Checklist
-
-Check every PR for:
+Before merging `dev` into `main`, check:
 
 - no secrets or `.env` files committed
 - no official PDFs stored in the repo or Digi
@@ -143,6 +154,7 @@ Check every PR for:
 - repair commands are dry-run by default
 - CDEP import commands are capped and polite
 - `tasks.md` and `docs/progress.md` updated for meaningful workflow changes
+- Vercel `dev` preview works
 - `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
   pass
 
@@ -234,12 +246,17 @@ git@github.com:ncmihai/cumvoteaza.git
 Normal deploy flow:
 
 ```bash
+git checkout dev
+git pull origin dev
+# review and verify dev
 git checkout main
 git pull origin main
+git merge dev
 git push origin main
 ```
 
-Vercel builds from the monorepo root using `vercel.json`.
+Vercel builds from the monorepo root using `vercel.json`. `main` is
+production. `dev` is the shared preview/staging branch.
 
 ## Data Principles
 
