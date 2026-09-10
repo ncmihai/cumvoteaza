@@ -26,10 +26,10 @@ export default async function BillsPage({
     <main className="mx-auto max-w-7xl px-4 py-8">
       <EditorialSections page="bills" locale={locale} />
       <SearchEngagementTracker entityType="bill" query={filters.q} locale={locale} />
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-300 pb-6">
         <div>
           <div className="text-sm font-semibold uppercase text-blue-800">{messages.nav.bills}</div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">{labels.title}</h1>
+          <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{labels.title}</h1>
           <p className="mt-2 max-w-3xl text-slate-600">{labels.subtitle}</p>
         </div>
       </div>

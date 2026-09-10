@@ -26,7 +26,7 @@ export default async function CompositionsPage({
         <p className="text-sm font-semibold uppercase tracking-normal text-slate-500">{labels.eyebrow}</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-semibold tracking-normal text-slate-950">{messages.nav.compositions}</h1>
+            <h1 className="font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{messages.nav.compositions}</h1>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-700">{labels.subtitle}</p>
           </div>
           <div className="flex rounded-md border border-slate-300 bg-white p-1 text-sm">

@@ -33,10 +33,10 @@ export default async function MembersPage({
     <main className="mx-auto max-w-7xl px-4 py-8">
       <EditorialSections page="members" locale={locale} />
       <SearchEngagementTracker entityType="member" query={filters.q} locale={locale} />
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-300 pb-6">
         <div>
           <div className="text-sm font-semibold uppercase text-blue-800">{messages.home.eyebrow}</div>
-          <h1 className="mt-2 text-4xl font-semibold text-slate-950">{messages.nav.members}</h1>
+          <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{messages.nav.members}</h1>
         </div>
       </div>
 

@@ -76,7 +76,7 @@ export default async function MemberPage({
             <PartyTextMaybeLink partySlug={party?.slug} locale={locale} className="text-sm font-semibold uppercase text-blue-800 hover:text-[#309898] hover:underline">
               {group?.shortName ?? party?.shortName ?? "unknown"}
             </PartyTextMaybeLink>
-            <h1 className="mt-2 text-4xl font-semibold text-slate-950">{member.displayName}</h1>
+            <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{member.displayName}</h1>
             <p className="mt-3 text-slate-600">
               {mandate ? chamberLabels[locale][mandate.chamber] : "unknown"} · {mandate?.status ?? "unknown"}
             </p>

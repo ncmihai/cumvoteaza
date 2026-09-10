@@ -30,7 +30,7 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
             <span className="h-4 w-4 rounded-full" style={{ backgroundColor: party.color }} />
             <div className="text-sm font-semibold uppercase text-[#309898]">{party.shortName}</div>
           </div>
-          <h1 className="mt-2 text-4xl font-semibold text-slate-950">{party.name}</h1>
+          <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{party.name}</h1>
         </div>
         <div className="grid min-w-56 gap-2 text-sm text-slate-700">
           <div className="border border-slate-200 px-3 py-2">
