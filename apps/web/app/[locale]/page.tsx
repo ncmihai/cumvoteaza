@@ -1,6 +1,6 @@
 import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
-import { BarChart3, FileText, Search, TrendingUp, UserRound } from "lucide-react";
+import { BarChart3, FileText, Search, UserRound } from "lucide-react";
 import { formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import { getCompositionTimelineData } from "@/lib/composition-data";
 import { getHomeDashboardData, type DashboardItem } from "@/lib/explorer-data";
@@ -56,15 +56,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
       {currentStop ? <CurrentComposition locale={locale} labels={labels} stop={currentStop} /> : null}
 
-      <section className="mt-8 grid gap-4 lg:grid-cols-2">
-        <Panel title={labels.trendingVotes} icon={<TrendingUp size={18} aria-hidden="true" />}>
-          <MetricList items={dashboard.trendingVotes} empty={labels.noActivity} />
-        </Panel>
-        <Panel title={labels.trendingProjects} icon={<TrendingUp size={18} aria-hidden="true" />}>
-          <MetricList items={dashboard.trendingBills} empty={labels.noActivity} />
-        </Panel>
-      </section>
-
       <section className="mt-4 grid gap-4 lg:grid-cols-2">
         <Panel title={labels.latestVotes} icon={<BarChart3 size={18} aria-hidden="true" />}>
           <div className="divide-y divide-slate-200">
@@ -92,12 +83,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </Panel>
       </section>
 
-      <section className="mt-4 grid gap-4 lg:grid-cols-3">
+      <section className="mt-10 grid gap-6 lg:grid-cols-2">
         <Panel title={labels.searches} icon={<UserRound size={18} aria-hidden="true" />}>
           <MetricList items={dashboard.mostSearchedMembers} empty={labels.noActivity} />
         </Panel>
         <Explainer title={labels.committees} body={labels.committeeCopy} />
-        <Explainer title={labels.groups} body={labels.groupCopy} href={`/${locale}/members`} cta={labels.groupCta} />
       </section>
     </main>
   );
