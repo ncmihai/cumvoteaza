@@ -23,12 +23,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <EditorialSections page="home" locale={locale} />
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
-          <div className="text-sm font-semibold uppercase text-blue-800">{messages.home.eyebrow}</div>
-          <h1 className="mt-3 max-w-4xl text-4xl font-semibold tracking-normal text-slate-950 md:text-5xl">
-            {messages.home.title}
+          <div className="text-sm font-semibold uppercase tracking-wide text-[#0c6464]">{new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</div>
+          <h1 className="mt-3 max-w-4xl font-serif text-6xl font-semibold leading-[0.98] tracking-tight text-[#071a3a] md:text-7xl">
+            {locale === "ro" ? "Astăzi în Parlament" : "Today in Parliament"}
           </h1>
-          <p className="mt-4 max-w-3xl text-lg leading-7 text-slate-600">{messages.home.subtitle}</p>
-          <form action={`/${locale}/members`} className="mt-6 flex max-w-2xl items-center gap-3 border border-slate-300 bg-white px-4 py-3">
+          <p className="mt-4 max-w-3xl font-serif text-2xl leading-tight text-[#34527a]">{locale === "ro" ? "Ce s-a decis și de ce contează" : "What was decided and why it matters"}</p>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{messages.home.subtitle}</p>
+          <form action={`/${locale}/members`} className="mt-6 flex max-w-2xl items-center gap-3 border border-slate-300 bg-white px-4 py-3 shadow-sm">
             <Search size={20} className="text-slate-500" aria-hidden="true" />
             <input
               className="w-full border-0 bg-transparent text-slate-900 outline-none"
