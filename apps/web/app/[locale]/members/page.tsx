@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { chamberLabels } from "@cumsevoteaza/parliament-model";
 import { getMemberDirectoryData } from "@/lib/data";
@@ -30,6 +31,7 @@ export default async function MembersPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="members" locale={locale} />
       <SearchEngagementTracker entityType="member" query={filters.q} locale={locale} />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

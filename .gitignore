@@ -17,3 +17,9 @@ data/imports/*.json
 data/snapshots/*.html
 data/cdep-history/
 data/parliament-pipeline/
+data/parliament-workbench/
+tools/parliament-workbench/.venv/
+
+.next-cockpit/
+output/playwright/
+.vercel

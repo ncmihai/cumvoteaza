@@ -3,11 +3,5 @@
   "framework": "nextjs",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
-  "outputDirectory": "apps/web/.next",
-  "crons": [
-    {
-      "path": "/api/cron/daily-import",
-      "schedule": "15 19 * * *"
-    }
-  ]
+  "outputDirectory": "apps/web/.next"
 }

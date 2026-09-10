@@ -99,7 +99,8 @@ export async function importBillText(options: BillTextImportOptions) {
     });
     const assetId = `asset-bill-text-${document.id}`;
 
-    await session.db
+    await session.db.transaction(async (db) => {
+    await db
       .insert(schema.storedAssets)
       .values({
         id: assetId,
@@ -134,11 +135,12 @@ export async function importBillText(options: BillTextImportOptions) {
         }
       });
 
-    await session.db.delete(schema.billDocumentTextChunks).where(eq(schema.billDocumentTextChunks.documentId, document.id));
+    await db.delete(schema.billDocumentTextChunks).where(eq(schema.billDocumentTextChunks.documentId, document.id));
     if (chunks.length > 0) {
-      await session.db.insert(schema.billDocumentTextChunks).values(chunks);
+      await db.insert(schema.billDocumentTextChunks).values(chunks);
     }
-    await updateDocumentTextStatus(session.db, document.id, "stored", assetId, text.slice(0, 800), now);
+    await updateDocumentTextStatus(db, document.id, "stored", assetId, text.slice(0, 800), now);
+    });
 
     return {
       status: "stored" as const,
@@ -195,13 +197,17 @@ export async function importBillTextBatch(options: BillTextBatchOptions) {
   };
 }
 
-async function selectDocument(db: ReturnType<typeof createDbSession>["db"], options: BillTextImportOptions) {
+async function selectDocument(db: Omit<ReturnType<typeof createDbSession>["db"], "$client">, options: BillTextImportOptions) {
   if (options.documentId) {
     return db.query.documents.findFirst({ where: eq(schema.documents.id, options.documentId) });
   }
   const rows = await db.select().from(schema.documents).where(eq(schema.documents.billId, options.billId!));
   const wantedKind = options.documentKind ?? "proposal";
-  return rows.find((row) => row.documentKind === wantedKind) ?? rows[0];
+  // Never silently extract the first arbitrary document. Senate dossiers
+  // commonly list an explanatory memorandum before the operative proposal;
+  // using that fallback makes analysis appear complete while feeding it the
+  // wrong legal text. A missing requested kind is an explicit missing result.
+  return rows.find((row) => row.documentKind === wantedKind);
 }
 
 async function selectBatchCandidates(options: BillTextBatchOptions): Promise<BillTextCandidate[]> {
@@ -370,7 +376,7 @@ function sleep(ms: number) {
 }
 
 async function updateDocumentTextStatus(
-  db: ReturnType<typeof createDbSession>["db"],
+  db: Omit<ReturnType<typeof createDbSession>["db"], "$client">,
   documentId: string,
   status: DocumentTextStatus,
   textAssetId: string | undefined,

@@ -2,6 +2,23 @@
 
 Append-only implementation history.
 
+## 2026-06-06 — Local Parliament Workbench V1
+
+- Started `tools/parliament-workbench`, a local browser-first review tool for
+  wiki generation, model-assisted bill audits, and visual inspection of data
+  work.
+- Added a Python FastAPI/CLI backend with read-only database access, local job
+  records, generated wiki JSONL/Markdown artifacts, data-health summary reads,
+  and Ollama-backed bill audit suggestions.
+- Added a React/Vite UI with dashboard, wiki search, bill audit, data-health
+  summary, historical import command previews, and generated dataset browsing.
+- Added background app manager commands:
+  - `npm run workbench:start`
+  - `npm run workbench:app-status`
+  - `npm run workbench:stop`
+- Kept v1 safety boundary explicit: no canonical DB repairs; model output is
+  stored only as local suggestions under ignored `data/parliament-workbench/`.
+
 ## 2026-05-16 — Kickoff Implementation
 
 - Cloned private repo `https://github.com/ncmihai/cumsevoteaza`.
@@ -2779,3 +2796,397 @@ Verification:
   `npm run repair:link-vote-bill -- --vote-id=vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37014 --bill-id=bill-l129-2026`
   correctly returned `blocked_weak_match` because the presence-check vote has
   no official identifier evidence tying it to `L129/2026`.
+
+## 2026-06-06 — Workbench Digi Storage Visibility
+
+- Added read-only Digi Storage visibility to the local parliament workbench:
+  connector status, sanitized Digi/FTP configuration state, Digi path checks,
+  local-only previews through FastAPI, and asset inventory APIs backed by
+  Neon `stored_assets`.
+- Added the workbench Assets screen with provider/type/status filters,
+  asset metadata, entity context, public gateway routes, per-row Digi
+  verification, and local audit report generation under
+  `data/parliament-workbench/`.
+- Kept the public app contract unchanged: Vercel still reads Neon and serves
+  Digi assets through `/api/assets/[id]` or bill text through
+  `/api/bill-documents/[id]/text`. Added server-side logging for gateway
+  failures without exposing storage credentials.
+- Verification passed:
+  `npm run workbench:test`, workbench UI build, `npm run typecheck`,
+  `npm run test -- --runInBand`, and `npm run build`. Local browser smoke
+  checks loaded the Connectors and Assets tabs; the current DB returned
+  `9462` assets, `9453` stored in Digi Storage.
+
+## 2026-06-06 — Workbench Wiki Search Rebuild
+
+- Diagnosed the local Digi red light as missing local workbench credentials:
+  neither root `.env` nor `tools/parliament-workbench/.env` contains
+  `DIGI_STORAGE_EMAIL` / `DIGI_STORAGE_PASSWORD`.
+- Rebuilt the local workbench wiki from Neon with `31596` records instead of
+  the stale `35`-record test snapshot.
+- Tightened wiki search ranking so canonical entities beat long bill/document
+  text matches. Searches for `psd` and `partidul social democrat` now rank
+  `party-psd` first instead of OCR/document body hits, and API results no
+  longer return the internal `searchText` payload.
+- Added regression coverage for party acronym/title ranking. Verification:
+  `npm run workbench:test`.
+- After local Digi credentials were added, restarted the workbench API and
+  confirmed `/api/digi/status` reports `configured`, `authenticated`, and
+  `mountFound`. Verified one sample each for `photo`, `party_logo`, and
+  `bill_text`; all returned `status: exists` with a Digi download link
+  available.
+
+## 2026-06-06 — Workbench Wiki Filters And Entity References
+
+- Added a SQLite FTS index beside the generated workbench wiki JSONL files:
+  `data/parliament-workbench/wiki/wiki.sqlite`. Wiki builds now write both
+  JSONL/Markdown artifacts and the local search index.
+- Added entity-type filters to the workbench wiki search API, CLI, and React
+  UI. Searches can now be scoped to bills, documents, votes, members, parties,
+  groups, governments, or data-health review records.
+- Expanded wiki records with deterministic local references:
+  - bills link to their documents and votes;
+  - documents/votes link back to bills;
+  - parties link to parliamentary groups;
+  - groups link back to parties.
+- Reworked the Wiki Search UI into a two-pane browser: filtered results on the
+  left, selected entity detail on the right, with clickable reference chips.
+- Rebuilt the local wiki from Neon after the index change:
+  `31596` records (`2254` bills, `21373` documents, `6983` members,
+  `221` parties, `621` votes, `108` groups, `36` governments).
+- Verification passed:
+  `npm run workbench:test`, workbench UI build, `npm run typecheck`,
+  `npm run test -- --runInBand`, and `npm run build`. Browser smoke check
+  confirmed filtered `party` search for `psd`, PSD entity details, and
+  navigation to the related Senate PSD group, with no console errors.
+
+## 2026-06-06 — Workbench Standalone Entity Pages And Proposals
+
+- Converted the normal workbench launcher to standalone mode:
+  `npm run workbench:start` now builds the React UI and serves it from FastAPI
+  at `http://127.0.0.1:8787`. Vite remains available only through
+  `npm run workbench:dev`.
+- Added workbench commands and scripts:
+  `workbench:build-ui`, `workbench:restart`, and `workbench:doctor`.
+  The doctor checks Python deps, UI build output, DB, Ollama, Digi, wiki
+  index, and local ports.
+- Added SPA fallback serving from FastAPI so direct routes like
+  `/entities/party/party-psd` load without Vite.
+- Added normalized entity APIs and routed React pages for bills, members,
+  parties, votes, documents, groups, and governments. Bill pages show dossier
+  documents, procedure steps, votes, sponsors, health, assets, suggestions,
+  and proposals. Member and party pages show their core historical context
+  and related references.
+- Added local-only proposal storage under
+  `data/parliament-workbench/proposals/`, with proposal creation, update,
+  review, reject, acceptance via patch, and command preview APIs. Factual
+  proposal review/acceptance requires evidence. Guarded apply/fail endpoints
+  require `WORKBENCH_ENABLE_WRITES=1` and `WORKBENCH_WRITE_TOKEN`; they do
+  not expose arbitrary SQL.
+- Expanded the wiki SQLite index into graph tables while keeping JSONL and
+  FTS search: `entities`, `aliases`, `relations`, `sources`, `assets`,
+  `health_issues`, and `proposals`. Rebuilt the full local wiki graph:
+  `31596` entities, `143111` aliases, `51004` relations, and `43366`
+  sources.
+- Verification passed:
+  `npm run workbench:test`, workbench UI build, `npm run typecheck`,
+  `npm run test -- --runInBand`, and `npm run build` (the first build hit the
+  known sandboxed Turbopack port-binding panic, then passed with escalation).
+  Standalone smoke checks confirmed `/`, `/entities/party/party-psd`,
+  `/api/entities/{bill,member,party}/...`, filtered wiki search, and local
+  proposal visibility.
+
+## 2026-06-07 — Workbench Wiki Result Navigation
+
+- Fixed the Wiki Search result UX so every result card shows a real title link
+  and an explicit `Open page` action next to the preview action. Narrow
+  layouts no longer hide the only path to a party/member/bill page below the
+  fold.
+- Added URL-addressable wiki searches, e.g. `/?tab=wiki&type=party&q=psd`,
+  with automatic search on load. This makes filtered workbench searches
+  shareable and easier to verify.
+- Browser verification confirmed the filtered `psd` party search renders
+  `/entities/party/party-psd` on both the title and open action, and clicking
+  it opens the full PSD party page with facts, groups, members, government
+  participation, references, and local proposals.
+
+## 2026-06-17 — Workbench Clickable Entity Mentions
+
+- Expanded workbench entity pages so section row titles and name-like fields
+  become local entity links whenever the row has a deterministic target ID.
+  Examples: party group names, party member names, government participation
+  names, vote titles, bill titles, document titles, member party/group
+  periods, member votes, and sponsored bills.
+- Converted entity reference chips in both full entity pages and wiki preview
+  panels from button-only controls into real local links under `/entities/...`.
+- Asset entity labels now link to the relevant local entity when the asset row
+  identifies a member, party, bill, vote, group, government, document, or
+  linked bill/document.
+- Verification passed: workbench UI build and `npm run workbench:test`.
+
+## 2026-07-05 — Workbench Backbone, Import Cockpit, And Institution Atlas
+
+- Added a persistent local workbench SQLite database at
+  `data/parliament-workbench/workbench.sqlite3` for operational state:
+  source claims/conflicts, patches/events, model runs, taxonomy labels,
+  institution graph records, and publish batches. Added CLI scripts
+  `workbench:state` and `workbench:atlas`.
+- Added the first Institution Atlas seed for Parliament, Camera Deputatilor,
+  Senate, committees, Government, ministries, President, CCR, Monitorul
+  Oficial, and Consiliul Legislativ, with official-source citations,
+  procedure nodes, transitions, and guarded grounded Q&A.
+- Added a current Import Cockpit API/UI that previews the guarded pipeline:
+  discover bills/votes, import pending discoveries, extract derived text,
+  audit health, and refresh read models. Historical imports now also have a
+  year-batch preview that keeps legislature/government/member-switch context
+  requirements explicit.
+- Added a local Publish Gate preview that groups accepted proposals, checks
+  strict blockers, and can save a local batch draft without mutating canonical
+  Neon facts.
+- Added Backbone, Import Cockpit, Institution Atlas, and Publish Gate tabs to
+  the standalone workbench UI.
+- Tightened `workbench:app-status` so it falls back to probing the configured
+  local port when PID checks are unreliable in sandboxed shells.
+- Verification passed:
+  `npm run workbench:test`, `npm run workbench:build-ui`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  (build required escalation because Turbopack needs to bind a local helper
+  port in this sandbox). Restarted the standalone workbench at
+  `http://127.0.0.1:8787`; API smoke checks passed for `/api/status`,
+  `/api/institutions/status`, `/api/institutions/ask`, and
+  `/api/imports/current/preview`. Playwright browser smoke checks confirmed
+  the Institution Atlas and Import Cockpit tabs render.
+
+## 2026-07-05 — Workbench Batch 1-3 Follow-Up
+
+- Expanded the local SQLite backbone to schema version 2 with durable
+  `workflow_jobs`, `workflow_job_steps`, and `workflow_job_logs` tables.
+  Existing JSON job files are migrated into SQLite while JSON mirrors remain
+  for compatibility.
+- Added a local Source Ledger API/UI for source claims and conflict detection.
+  Claims and conflicts are local-only; rows link back to deterministic
+  `/entities/...` pages when rendered.
+- Import Cockpit preview jobs now record every stage as a step and expose job
+  logs in the UI. The UI can execute a dry-run current sync explicitly; persist
+  execution remains disabled/token-gated. Persist command previews can be
+  stored without a write token because they do not mutate Neon.
+- Expanded the Institution Atlas seed with temporal president/cabinet holder
+  rows, procedure rule events, ministry entities, and observed bill examples
+  synced from existing procedure steps when Neon is available.
+- Updated the standalone UI with a Source Ledger tab, richer Backbone counts,
+  Import Cockpit step/log rendering, and Atlas term/event/example panels.
+- Verification passed:
+  `npm run workbench:test`, `npm run workbench:build-ui`,
+  `npm run typecheck`, `npm run test -- --runInBand`, `npm run build`
+  (outside the sandbox for Turbopack's local port bind), and
+  `npm run workbench:doctor` outside the sandbox. Browser smoke checks passed
+  for Source Ledger, Institution Atlas temporal panels, and Import Cockpit
+  local preview job step/log rendering.
+
+## 2026-07-05 — Workbench Batch 4A UI Shell Revamp
+
+- Reworked the standalone workbench shell from a flat tab list into grouped
+  navigation: Operate, Review, Explore, and Publish.
+- Added a sticky top command bar with current workspace context, connector
+  status chips, quick actions, and local wiki jump search.
+- Added prioritized command-search behavior for unfiltered queries, so
+  canonical entities like parties and members rank ahead of long bill/document
+  body matches. Verified `psd` now surfaces `party-psd` first.
+- Added a dedicated Activity screen for local jobs with master-detail job
+  browsing, step/log inspection, retry scaffolding, and local cancel marking.
+- Tightened UI density with smaller panel spacing, compact tables, grouped
+  sidebar sections, and responsive behavior for the new shell.
+- Verification passed:
+  `npm run workbench:build-ui`, `npm run workbench:test`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  outside the sandbox. Browser smoke checks confirmed grouped nav, Activity
+  job detail rendering, command-search ranking, and opening PSD from the
+  command bar.
+
+## 2026-07-05 — Workbench Batch 4 Entity Inspector
+
+- Refactored workbench entity pages into a clearer workspace layout: factual
+  entity content and section rows stay in the main column, while operational
+  review surfaces live in a sticky right-side inspector.
+- Added entity overview metrics for sections, rows, sources, assets, health
+  issues, and local proposals.
+- Added inspector tabs for Proposals, Health, Sources, References, Assets, and
+  Model suggestions. Empty states are explicit instead of hiding whole panels.
+- Kept all proposal actions local-only: review, accept, reject, and command
+  preview still operate on local proposal state and do not mutate Neon.
+- Verification passed:
+  `npm run workbench:build-ui`, `npm run workbench:test`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  outside the sandbox. Browser smoke checks confirmed the PSD party page,
+  inspector tab switching, source links, and a member page with linked assets.
+
+## 2026-07-05 — Workbench Batch 4B Structured Inspector Inputs
+
+- Added structured local proposal inputs inside the entity inspector:
+  review notes, field corrections, relation links, text annotations, procedure
+  events, and duplicate merge plans now use type-specific labels,
+  placeholders, and validation hints.
+- Factual proposal types now require an evidence quote before saving. Review
+  notes remain local-only notes and can be saved without evidence.
+- Added an entity-scoped source-claim form to the Sources inspector tab. It
+  writes only to the local source ledger and keeps existing official source
+  links visible beside local claims.
+- Added an asset issue form to the Assets inspector tab, so broken/missing
+  photos, logos, text artifacts, or asset metadata can become local proposals
+  directly from the entity page.
+- Hardened `workbench:app-status` for constrained local shells: stale PID
+  checks now fall back to the API health route, and permission-denied PID
+  probes are treated as an alive process instead of a false stopped state.
+- Verification passed:
+  `npm run workbench:build-ui`, `npm run workbench:test`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  outside the sandbox. Browser smoke checks confirmed PSD proposal/source
+  inspector controls, the Acsinte Gaspar member asset issue form, linked asset
+  gateway labels, disabled empty-state save buttons, and no console errors.
+
+## 2026-07-06 — Workbench Batch 4C Source Review And Inspector Filters
+
+- Upgraded the local workbench SQLite state to schema version 3 with
+  `source_claims.evidence_quote`, so source claims can carry exact supporting
+  text instead of relying on URLs as evidence.
+- Added local source-claim and source-conflict review endpoints:
+  `PATCH /api/source-claims/{id}` and `PATCH /api/source-conflicts/{id}`.
+  Supported claim states are local-only (`open`, `reviewed`, `accepted`,
+  `ignored`, `rejected`), and conflict rows can be reviewed, resolved, or
+  ignored without touching Neon.
+- Tightened source conflict detection: ignored/rejected claims no longer keep
+  a conflict active, and open conflicts are marked resolved when only one
+  active value remains.
+- Made the entity Sources inspector conflict-aware:
+  local conflicts show grouped values, current canonical fact value, status
+  controls, and local review actions. Accepted claims require an evidence
+  quote and are mirrored into accepted local field-correction proposals, so
+  they can appear in the Publish Gate without direct DB writes.
+- Added inspector filters for proposals, source claims/conflicts/source URLs,
+  references, and assets. The global Source Ledger form now also accepts
+  evidence quotes.
+- Verification passed:
+  `npm run workbench:test`, `npm run workbench:build-ui`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  outside the sandbox. Browser smoke checks confirmed the PSD Sources
+  inspector filter/evidence controls, member Assets/References filters, live
+  workbench status, and no console errors.
+
+## 2026-07-06 — Workbench Batch 4 Closure And Local Batches 5-8
+
+- Upgraded the local SQLite workbench state to schema version 4 with local
+  tables for document parses, text corrections, extracted citations, model
+  evaluations, agent task packs, analytics snapshots, and export batches.
+- Closed the remaining Batch 4 workbench gaps:
+  document entity pages now show document text intelligence, raw stored text,
+  parser warnings, parsed sections, citations, and local evidence-gated
+  correction proposals; Activity rows open shareable `/jobs/:id` detail
+  routes with steps, logs, parent/retry chain, cancel, retry, and step retry
+  previews; large entity sections now have per-section filters and pagination.
+- Added deterministic document intelligence for Batch 5: legal section parsing,
+  citation extraction for laws/OUG/OG/articles/CCR/Monitorul Oficial/amended
+  acts, immutable raw text with local correction versions, and bill-level
+  document diffs across proposal/report/adopted/promulgation document kinds.
+- Upgraded Bill Audit into a broader Model Lab for Batch 6: prompt presets,
+  compact/expanded context controls, local model-run storage with prompt/schema
+  versions, preview mode, gold-set evaluation, suggestion-to-proposal
+  conversion, and agent task-pack exports.
+- Added Batch 7 internal taxonomy and analytics surfaces: CAP/RO taxonomy seed,
+  evidence-gated topic/stance labels, local evidence profiles, vote bucket
+  context where available, and explicit `insufficient_reviewed_data` states.
+- Added Batch 8 historical year-batch runner scaffolding: capped historical
+  previews/dry-runs, context checks for legislature/government/mandates/
+  party switches/committees, and OCR quarantine metadata. The runner never
+  adds `--persist` in this local batch.
+- Added a local Migrate / Export panel that previews accepted local proposals,
+  source claims, text corrections, citations, taxonomy labels, and blockers,
+  then writes JSON/JSONL/SQL-preview/report files under ignored workbench data.
+  It does not write to Neon.
+- Added institution references from bill procedure signals to Atlas-backed
+  institution entity pages for President/promulgation, CCR, and Monitorul
+  Oficial when deterministic text signals are present.
+- Verification passed:
+  `npm run workbench:test`, `npm run workbench:build-ui`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  outside the sandbox for Turbopack's local port bind. Browser smoke checks
+  confirmed Model Lab, Analytics Lab, Migrate / Export, `/jobs/:id`, bill
+  document diff, document text intelligence/correction UI, and section
+  filter/pagination rendering.
+
+## 2026-07-06 — Workbench Review Queues And Stronger Gold Sets
+
+- Upgraded the local SQLite workbench state to schema version 5 with reviewer
+  metadata for extracted citations, text corrections, and taxonomy labels:
+  reviewer, reviewer note, reviewed timestamp, decision reason, and proposal
+  linkage where needed.
+- Added a unified local Review Center with read/transition APIs:
+  `GET /api/review-queues`, `GET /api/review-queues/summary`,
+  `POST /api/review-queues/{queue}/{id}/transition`,
+  `POST /api/review-queues/{queue}/{id}/proposal-preview`, and
+  `POST /api/review-queues/{queue}/{id}/convert-to-proposal`.
+- Supported review queues for citation candidates, OCR/text corrections,
+  taxonomy labels, model suggestions, and export blockers. Accepted/reviewed
+  factual items require evidence plus a source ID/official URL, and
+  rejected/ignored items require a note. `applied`/`failed` remain reserved
+  for a later guarded write/apply phase.
+- Updated Migrate / Export preview so blockers now name the exact local review
+  queue and status, such as `review_queue_citations_candidate` and
+  `review_queue_text_corrections_draft`, instead of reporting coarse
+  candidate counts.
+- Added tracked Model Lab gold-set seeds for OCR quality, citation review,
+  taxonomy labeling, procedure gaps, and bill diffs. Evaluation now reports
+  schema validity, required evidence presence, evidence quote matching,
+  expected/forbidden suggestion checks, reviewer acceptance rate, and
+  false-positive/false-negative counts.
+- Added the React Review Center screen under the Review navigation group, plus
+  filtered queue links from document intelligence and taxonomy/analytics
+  surfaces. Batch 9 public promotion is still intentionally not implemented:
+  the public app should later read reviewed Neon snapshot/read-model tables,
+  not local workbench state.
+- Verification passed:
+  `npm run workbench:test`, `npm run workbench:build-ui`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  outside the sandbox for Turbopack's local port bind.
+
+## 2026-07-06 — Workbench Audit Fixes And Import Dry-Run Hardening
+
+- Added a real ingest dry-run path for source discovery and pending imports:
+  `--dry-run` now fetches/parses and reports candidate/would-import counters
+  without upserting source snapshots, source discoveries, canonical bill/vote
+  facts, nested discoveries, discovery marks, or read-model refreshes.
+- Fixed Import Cockpit command generation so current and historical plans use
+  the actual ingest flags: `--years`, `--discovery-limit`, and
+  `--max-imports`. Workbench dry-run plans now include `--dry-run` for
+  discovery/import-pending stages, omit read-model refreshes, and are rejected
+  before execution if any dry-run stage is unsafe.
+- Reworked import stage metadata from a vague mutation flag into
+  `readOnly`, `requiresWriteToken`, and `writes` (`none`, `neon`, `digi`,
+  `neon_and_digi`). Historical imports now reuse the same command builder as
+  current imports.
+- Merged local `source_claims` into the unified Review Center with reviewer
+  metadata, evidence/source validation, conflict-aware acceptance, proposal
+  preview/conversion, and filtered entity-page links back to Review Center.
+  The old Source Ledger review screen and entity-page accept-as-proposal path
+  were removed.
+- Tightened factual proposal rules: review/accept/apply now requires both an
+  evidence quote and either a source document ID or official URL. Migrate /
+  Export now blocks weak accepted historical records with exact keys such as
+  `accepted_proposals_missing_evidence`,
+  `accepted_proposals_missing_source`,
+  `accepted_source_claims_missing_evidence`, and
+  `accepted_source_claims_missing_source`.
+- Fixed Review Center summary counting so totals are not capped by the public
+  500-row listing limit, and added `failed` filtering for model suggestions.
+- Strengthened Model Lab evaluation with `matchedExampleCount`,
+  `matchedComparisonCount`, and `evaluationStatus`, including
+  `no_matched_examples` when metrics would otherwise be misleading. Expanded
+  tracked gold-set seeds to at least five examples each for OCR quality,
+  citation review, taxonomy labeling, procedure gaps, and bill diffs.
+- Reduced workbench UI duplication: Historical Imports is now part of Import
+  Cockpit, Source Ledger is folded into Review Center, the dead Bill Audit
+  component is removed, and the sidebar is reorganized into Operate, Review,
+  Knowledge, and Publish groups.
+- Verification passed:
+  `npm run workbench:test`, `npm run workbench:build-ui`,
+  `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+  with elevated permissions for Turbopack's local port bind.

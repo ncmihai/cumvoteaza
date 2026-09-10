@@ -1,6 +1,5 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
-import { runDailySync } from "@cumsevoteaza/ingest";
 import { CACHE_TAGS } from "@/lib/server-db";
 
 export const runtime = "nodejs";
@@ -24,31 +23,13 @@ export async function GET(request: Request) {
     });
   }
 
-  const maxImports = numberParam(request, "maxImports") ?? 5;
-  const summary = await runDailySync({ maxImports });
-  const status = summary.failed > 0 || summary.errors.length > 0 ? 207 : 200;
-  revalidatePublicReadTags();
-
-  return NextResponse.json(
-    {
-      ok: status === 200,
-      summary
-    },
-    { status }
-  );
+  return NextResponse.json({ error: "Direct production imports are retired. Use the local cockpit and a reviewed release." }, { status: 410 });
 }
 
 function revalidatePublicReadTags() {
   for (const tag of Object.values(CACHE_TAGS)) {
     revalidateTag(tag, "max");
   }
-}
-
-function numberParam(request: Request, name: string): number | undefined {
-  const value = requestParam(request, name);
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function requestParam(request: Request, name: string): string | null {

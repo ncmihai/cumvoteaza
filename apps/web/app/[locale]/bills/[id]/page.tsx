@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDate } from "@cumsevoteaza/parliament-model";
@@ -34,6 +35,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="bill" locale={locale} entityId={bill.id} billId={bill.id} />
       <EngagementTracker entityType="bill" entityId={bill.id} locale={locale} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>

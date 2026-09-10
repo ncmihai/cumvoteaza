@@ -1,0 +1,111 @@
+{
+  "jobId": "run-2fc4fd0c605a4fc1",
+  "date": "2026-09-09",
+  "ranges": [
+    {
+      "range": "2024 \u00b7 deputies bills discovery",
+      "discovered": 684,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "expected": 684,
+      "verifiedDiscovery": true
+    },
+    {
+      "range": "2024 \u00b7 senate bills discovery",
+      "discovered": 745,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "expected": 745,
+      "verifiedDiscovery": true,
+      "adapter": "official Senate year-search form -> nr_cls dossier URL"
+    },
+    {
+      "range": "2024 \u00b7 Vote discovery",
+      "discovered": 1316,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "verifiedDiscovery": true
+    },
+    {
+      "range": "2025 \u00b7 deputies bills discovery",
+      "discovered": 592,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "expected": 592,
+      "verifiedDiscovery": true
+    },
+    {
+      "range": "2025 \u00b7 senate bills discovery",
+      "discovered": 683,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "expected": 683,
+      "verifiedDiscovery": true,
+      "adapter": "official Senate year-search form -> nr_cls dossier URL"
+    },
+    {
+      "range": "2025 \u00b7 Vote discovery",
+      "discovered": 1416,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "verifiedDiscovery": true
+    },
+    {
+      "range": "2026 \u00b7 deputies bills discovery",
+      "discovered": 564,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "expected": 564,
+      "verifiedDiscovery": true
+    },
+    {
+      "range": "2026 \u00b7 senate bills discovery",
+      "discovered": 605,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "expected": 605,
+      "verifiedDiscovery": true,
+      "adapter": "official Senate year-search form -> nr_cls dossier URL"
+    },
+    {
+      "range": "2026 \u00b7 Vote discovery",
+      "discovered": 1099,
+      "imported": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [],
+      "verifiedDiscovery": true
+    }
+  ],
+  "scope": "Supported source discovery only; not completed dossier import or analysis. The unresolved list preserves the original zero-link attempts; the verified replacement counts above use the official form adapter.",
+  "unresolved": [
+    "2026 \u00b7 senate bills discovery",
+    "2025 \u00b7 senate bills discovery",
+    "2024 \u00b7 senate bills discovery"
+  ]
+}

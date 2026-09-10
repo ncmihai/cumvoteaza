@@ -1,3 +1,5 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
+import { VoteExplanation } from "@/app/[locale]/_components/VoteExplanation";
 import { notFound } from "next/navigation";
 import { formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import { getVotePageData } from "@/lib/data";
@@ -45,11 +47,13 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="vote" locale={locale} entityId={id} />
       <EngagementTracker entityType="vote" entityId={vote.id} locale={locale} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-sm font-semibold uppercase text-blue-800">{formatDate(vote.heldOn, locale)}</div>
           <h1 className="mt-2 max-w-4xl text-3xl font-semibold text-slate-950">{vote.title}</h1>
+          {process.env.GEMINI_EXPLANATIONS_ENABLED === "1" && <VoteExplanation id={vote.id} locale={locale} />}
           {bill ? (
             <VoteBillDossierPanel
               locale={locale}
@@ -87,6 +91,7 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
           locale={locale}
           chamber={vote.chamber}
           groups={groups}
+          groupLogoUrls={data.groupLogoUrls}
           members={members}
           seatVotes={seatVotes}
           nominalVotes={individualVotes}

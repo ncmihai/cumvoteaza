@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverOfficialLinks, parseDeputiesYearlyList } from "../sync";
+import { discoverOfficialLinks, parseDeputiesYearlyList, parseSenateYearlyList } from "../sync";
 
 describe("official source discovery", () => {
   it("detects Senate bill and vote links from official-style pages", () => {
@@ -39,6 +39,30 @@ describe("official source discovery", () => {
         expect.objectContaining({ chamber: "senate", kind: "bill", officialId: "B286/2026" }),
         expect.objectContaining({ chamber: "senate", kind: "bill", officialId: "BP12/2025" }),
         expect.objectContaining({ chamber: "senate", kind: "bill", officialId: "PL-x 6/2025" })
+      ])
+    );
+  });
+
+  it("turns the Senate year search rows into verified dossier URLs", () => {
+    const html = `
+      <table id="ctl00_B_Center_Lista_grdLista">
+        <tr><th>Număr</th><th>Titlu</th></tr>
+        <tr><td>1</td><td><a href="javascript:__doPostBack('row','')">L316/2025</a> Pentru servicii publice</td></tr>
+        <tr><td>2</td><td><a href="javascript:__doPostBack('row2','')">B12/2025</a> Propunere legislativă</td></tr>
+      </table>
+    `;
+
+    const parsed = parseSenateYearlyList(html, "https://www.senat.ro/Legis/Lista.aspx?an_cls=2025", "snapshot-test");
+
+    expect(parsed.expectedCount).toBe(2);
+    expect(parsed.discoveries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          officialId: "L316/2025",
+          sourceUrl: "https://www.senat.ro/Legis/Lista.aspx?an_cls=2025&nr_cls=L316",
+          sourceSnapshotId: "snapshot-test"
+        }),
+        expect.objectContaining({ officialId: "B12/2025" })
       ])
     );
   });

@@ -49,6 +49,7 @@ import { wikipediaRosterToParsedRoster } from "./wikipedia-roster-import";
 import {
   discoverDeputiesSources,
   discoverDeputiesVoteSources,
+  discoverSenateVoteSources,
   discoverSenateSources,
   importPendingDiscoveries,
   runBackfill2024,
@@ -141,6 +142,7 @@ async function main() {
       insecure: hasFlag("insecure"),
       persist: hasFlag("persist")
     });
+    if (process.env.COCKPIT_DATABASE_ROLE && hasFlag("persist") && result.status !== "stored") process.exitCode = 1;
     await writeImport("bill-text", result, JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("persist")) {
@@ -483,32 +485,36 @@ async function main() {
   }
 
   if (command === "discover:senate") {
-    console.log(JSON.stringify(await discoverSenateSources(syncOptions()), null, 2));
+    logSyncResult(await discoverSenateSources(syncOptions()));
     return;
   }
 
   if (command === "discover:deputies") {
-    console.log(JSON.stringify(await discoverDeputiesSources(syncOptions()), null, 2));
+    logSyncResult(await discoverDeputiesSources(syncOptions()));
     return;
   }
 
   if (command === "discover:deputies-votes") {
-    console.log(JSON.stringify(await discoverDeputiesVoteSources(syncOptions()), null, 2));
+    logSyncResult(await discoverDeputiesVoteSources(syncOptions()));
+    return;
+  }
+  if (command === "discover:senate-votes") {
+    logSyncResult(await discoverSenateVoteSources(syncOptions()));
     return;
   }
 
   if (command === "backfill:2024") {
-    console.log(JSON.stringify(await runBackfill2024(syncOptions()), null, 2));
+    logSyncResult(await runBackfill2024(syncOptions()));
     return;
   }
 
   if (command === "sync:daily") {
-    console.log(JSON.stringify(await runDailySync(syncOptions()), null, 2));
+    logSyncResult(await runDailySync(syncOptions()));
     return;
   }
 
   if (command === "import:pending") {
-    console.log(JSON.stringify(await importPendingDiscoveries(syncOptions()), null, 2));
+    logSyncResult(await importPendingDiscoveries(syncOptions()));
     return;
   }
 
@@ -915,6 +921,7 @@ async function importSenateRoster(): Promise<ParsedRoster> {
     profiles.push(
       ...(await mapLimit(membersToFetch, concurrency, async (memberRef) => {
         const profileHtml = await fetchOptional(memberRef.profileUrl, "senate-member-profile");
+        if (!profileHtml && hasFlag("persist")) throw new Error(`Incomplete roster: ${memberRef.profileUrl}. Existing histories were not replaced.`);
         return profileHtml ? parseSenateMemberProfile(profileHtml, memberRef.profileUrl, { legislature }) : undefined;
       }))
     );
@@ -1005,6 +1012,7 @@ async function importDeputiesRoster(): Promise<ParsedRoster> {
     profiles.push(
       ...(await mapLimit(membersToFetch, concurrency, async (memberRef) => {
         const profileHtml = await fetchOptional(memberRef.profileUrl, "deputies-member-profile");
+        if (!profileHtml && hasFlag("persist")) throw new Error(`Incomplete roster: ${memberRef.profileUrl}. Existing histories were not replaced.`);
         return profileHtml ? parseDeputiesMemberProfile(profileHtml, memberRef.profileUrl, { legislature }) : undefined;
       }))
     );
@@ -1498,6 +1506,11 @@ function csvCell(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
+function logSyncResult(result: { failed: number; partial: number; errors: string[] }) {
+  console.log(JSON.stringify(result, null, 2));
+  if (process.env.COCKPIT_DATABASE_ROLE && (result.failed > 0 || result.partial > 0 || result.errors.length > 0)) process.exitCode = 1;
+}
+
 function syncOptions() {
   const years = flag("years")
     ?.split(",")
@@ -1507,11 +1520,15 @@ function syncOptions() {
     years: years && years.length > 0 ? years : undefined,
     maxImports: numberFlag("max-imports"),
     maxRetries: numberFlag("max-retries"),
+    refreshExisting: hasFlag("refresh-existing"),
     discoveryLimit: numberFlag("discovery-limit"),
+    dryRun: hasFlag("dry-run"),
     chamber: chamberFlag(),
     kind: kindFlag(),
     deputiesVoteDates: listFlag("deputies-vote-dates"),
     deputiesVoteMonths: numberListFlag("deputies-vote-months"),
+    dateFrom: flag("date-from"),
+    dateTo: flag("date-to"),
     senateFrom: numberFlag("senate-from"),
     senateTo: numberFlag("senate-to"),
     senatePrefixes: senatePrefixesFlag(),
@@ -1649,6 +1666,7 @@ function resolveRepoPath(value: string): string {
 }
 
 function loadLocalEnv() {
+  if (process.env.COCKPIT_DATABASE_ROLE) return;
   for (const file of [path.join(repoRoot, ".env"), path.join(repoRoot, ".env.local"), path.join(repoRoot, "apps/web/.env.local")]) {
     if (!existsSync(file)) continue;
     for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {

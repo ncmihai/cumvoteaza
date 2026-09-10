@@ -10,6 +10,10 @@ implementation steps.
 - Deployment layer in progress for Vercel repo `https://github.com/ncmihai/cumvoteaza`.
 - Scope is private-first, bilingual, data-first, and factual only.
 - Architecture decision: keep Next.js as the public web/API layer; use Python as a local-first, file-first data pipeline for crawling, parsing, auditing, and backfill preparation. TypeScript remains the canonical DB persistence layer.
+- Local Parliament Workbench v1 is being added under `tools/parliament-workbench`:
+  browser-first FastAPI + React/Vite, local generated wiki, Ollama suggestions,
+  and read-only visualization of data work. V1 writes only ignored artifacts
+  under `data/parliament-workbench/`.
 
 ## Active Milestone — Data Proof + First UI
 
@@ -1273,5 +1277,154 @@ implementation steps.
   read-only `repair:duplicate-bill-plan`. Vote linking is dry-run by default,
   blocks weak matches unless explicitly reviewed, and marks the data-health
   issue fixed only when persisted.
+- [x] Add read-only Digi Storage visibility to the local workbench: connector
+  status, sanitized Digi/FTP config, asset inventory, local previews, per-row
+  verification, and generated asset audit reports.
+- [x] Add local `DIGI_STORAGE_EMAIL` / `DIGI_STORAGE_PASSWORD` to the
+  workbench or root env before using preview/verification on this machine.
+- [x] Run a real Digi preview/verification pass for sample member photos,
+  party logos, and bill text artifacts once local Digi credentials are set.
+- [x] Rebuild the local workbench wiki from Neon after credentials were added:
+  current local wiki has `31596` records.
+- [x] Add a SQLite FTS index for the generated workbench wiki, keeping JSONL
+  files as rebuildable artifacts and fallback search input.
+- [x] Add wiki search filters for party, member, bill, vote, document, group,
+  government, and data-health records in the API, CLI, and React UI.
+- [x] Add clickable local wiki references between bills/documents/votes and
+  parties/groups, with a two-pane entity-detail browser in the workbench UI.
+- [x] Convert normal workbench startup to standalone mode: FastAPI serves the
+  built React UI at `http://127.0.0.1:8787`; Vite is dev-only.
+- [x] Add `workbench:build-ui`, `workbench:restart`, and
+  `workbench:doctor`.
+- [x] Add routed local entity pages for bills, members, parties, votes,
+  documents, groups, and governments.
+- [x] Add richer workbench entity pages for bills/members/parties: bill
+  dossier sections, member mandate/history sections, party group/member/
+  government/formation sections, assets, health, suggestions, and references.
+- [x] Add local-only proposal/note creation and review controls. Proposals are
+  stored under ignored `data/parliament-workbench/proposals/`, not Neon.
+- [x] Add guarded command-preview/apply scaffolding. Write mode is disabled by
+  default and requires `WORKBENCH_ENABLE_WRITES=1` plus
+  `WORKBENCH_WRITE_TOKEN`; no free-form SQL is exposed.
+- [x] Expand the local wiki SQLite index into graph tables for entities,
+  aliases, relations, sources, assets, health issues, and proposals.
+- [x] Make wiki search result cards directly navigable with title links,
+  visible `Open page` actions, and URL-addressable filtered searches such as
+  `/?tab=wiki&type=party&q=psd`.
+- [x] Make deterministic entity mentions clickable across the local workbench:
+  section row titles, name-like fields with paired IDs, reference chips, and
+  asset entity labels now route to `/entities/...`.
+- [x] Add a persistent local SQLite workbench backbone for operational state:
+  source claims/conflicts, patches/events, model runs, taxonomy labels,
+  Institution Atlas records, and publish batches.
+- [x] Expand the workbench SQLite backbone with durable workflow jobs, job
+  steps, job logs, local proposal mirrors, and source-ledger conflict storage.
+- [x] Add an Institution Atlas module with official-source seeded entities,
+  procedure nodes/transitions, citations, and grounded Q&A for Parliament,
+  Government/ministries, President, CCR, Monitorul Oficial, and advisory
+  actors.
+- [x] Add first temporal Institution Atlas records for presidential/cabinet
+  holder rows, procedure rule events, and observed bill examples sourced from
+  existing procedure steps.
+- [x] Add a current Import Cockpit that previews the guarded latest-data
+  pipeline and stores preview jobs without executing canonical writes.
+- [x] Add Import Cockpit step/log storage and UI rendering, plus explicit
+  dry-run current-sync execution from the standalone workbench.
+- [x] Add the first local Source Ledger surface for source claims, conflict
+  detection, and clickable entity references. Superseded in the current UI by
+  the unified Review Center.
+- [x] Add a local Publish Gate preview for accepted proposals, strict health
+  blockers, and local batch drafts.
+- [x] Revamp the standalone workbench shell into grouped navigation:
+  Operate, Review, Explore, and Publish.
+- [x] Add a global command/search bar with current workspace context, quick
+  actions, status chips, and prioritized local entity jump search.
+- [x] Add a dedicated Activity screen for jobs, recorded steps, logs, retry
+  scaffolding, and local cancel marking.
+- [x] Reduce first-pass UI bloat with denser panels, compact tables, sticky
+  shell controls, and responsive layout behavior.
+- [x] Refactor entity pages into a main workspace plus right-side inspector
+  tabs for proposals, health, sources, references, assets, and model output.
+- [x] Add entity overview metrics for section count, row count, source count,
+  asset count, health issue count, and local proposal count.
+- [x] Expand entity references further to include presidents, CCR decisions,
+  reexamination/promulgation signals, amendment links, and committee-level
+  bill relationships. First pass links deterministic procedure signals to
+  Atlas institution pages for President/promulgation, CCR, and Monitorul
+  Oficial; committee-level bill relationships still need canonical committee
+  entities before they can be fully routable.
+- [x] Continue the entity-page revamp with editable inspector forms for
+  structured patches, source claims, text annotations, and asset issues.
+- [x] Add conflict-aware source-claim review on entity pages: show conflicting
+  local claims beside canonical values and let accepted claims become publish
+  batch candidates.
+- [x] Add entity-page text correction surfaces for documents/OCR excerpts with
+  side-by-side raw text, corrected text, evidence quote, and command preview.
+- [x] Add inspector filtering/search inside large local proposal, source,
+  reference, and asset lists so the right review item stays easy to find.
+- [x] Add a real Jobs detail route with shareable URLs and stage-level retry
+  controls.
+- [ ] Promote Institution Atlas temporal records beyond the first seed:
+  reviewed cabinets, ministries by date, CCR decisions, Monitorul Oficial
+  publication records, and richer source citations.
+- [ ] Finish guarded import execution from the Import Cockpit: running-process
+  cancellation, retry-from-failed-step, persisted mode with write token, and
+  durable run reports before enabling canonical writes.
+- [x] Harden Import Cockpit dry-runs so discovery/import-pending commands use
+  corrected flags (`--years`, `--discovery-limit`, `--max-imports`), include
+  `--dry-run` where needed, skip read-model refreshes, and are rejected before
+  execution if any dry-run stage can write canonical data.
+- [ ] Design the reviewed Neon schema for Batch 9 public promotion:
+  reviewed bill/document citation snapshots, reviewed text-correction
+  metadata, reviewed dossier completeness/source-confidence snapshots,
+  reviewed article diffs, and later public evidence-profile snapshots.
+- [x] Add better per-section pagination/filtering on very large party/member
+  pages instead of only showing the first 40 records.
+- [x] Add local Batch 5 document intelligence in the workbench: parser-backed
+  document sections, citation candidates, local text correction versions, and
+  bill document diffs without storing official PDFs.
+- [x] Add local Batch 6 Model Lab: prompt presets, advanced controls,
+  model-run storage, gold-set evaluation, agent task packs, and
+  suggestion-to-proposal conversion guarded by evidence.
+- [x] Add local Batch 7 taxonomy and analytics: CAP/RO taxonomy seed,
+  evidence-gated topic/stance labels, local evidence profiles, and explicit
+  insufficient-reviewed-data states.
+- [x] Add local Batch 8 historical year-batch runner scaffolding with capped
+  previews/dry-runs, context checks, and OCR quarantine metadata. No persisted
+  historical imports are enabled from this runner.
+- [x] Add preview-only Migrate / Export bridge for accepted local proposals,
+  text corrections, source claims, citations, taxonomy labels, blockers, and
+  JSONL/SQL-preview/report files under ignored workbench data.
+- [ ] Create canonical committee entities before making committee names fully
+  navigable in workbench entity references.
+- [x] Add reviewed local citation/label/correction status transitions beyond
+  create-only forms, so accepted export batches can be curated fully inside
+  the workbench.
+- [x] Add a unified local Review Center for citations, text corrections,
+  taxonomy labels, model suggestions, and export blockers with filters,
+  evidence/source validation, proposal preview/conversion, and exact Migrate /
+  Export blocker reporting.
+- [x] Merge source claims into the unified Review Center and remove the old
+  Source Ledger review path from the top-level UI/entity inspector acceptance
+  flow.
+- [x] Tighten factual proposal/source-claim evidence rules so reviewed,
+  accepted, and applied factual records require both an evidence quote and a
+  source reference.
+- [x] Add stronger tracked Model Lab gold-set seeds for OCR quality, citation
+  review, taxonomy labeling, procedure gaps, and bill diffs, plus richer local
+  evaluation metrics for schema validity, evidence matching, expected/forbidden
+  suggestions, and false-positive/false-negative counts.
+- [x] Add Model Lab matched-example metrics and `no_matched_examples` status so
+  gold-set evaluations do not display misleading zero-quality results when no
+  seed matches a run.
+- [x] Fold Historical Imports into Import Cockpit, remove the dead Bill Audit
+  component, and reorganize the workbench sidebar around Operate, Review,
+  Knowledge, and Publish.
+- [ ] Add explicit guarded execution for accepted repair proposals by calling
+  the existing repair commands and storing command run reports locally.
+- [ ] Keep Batch 9 public promotion separate until local review queues are
+  reliable: public app should later read reviewed Neon snapshots only, starting
+  with bill/document citations, text-correction metadata, source confidence,
+  reviewed diffs, and dossier completeness.
 - [ ] Use the completed 2026 text set as the guideline for UI/relevance tuning,
   then continue selected 2025/2024 bills linked to visible vote pages.

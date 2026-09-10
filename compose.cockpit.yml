@@ -1,0 +1,18 @@
+services:
+  cockpit-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cockpit
+      POSTGRES_PASSWORD: cockpit-local
+      POSTGRES_DB: cockpit_working
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - cockpit-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cockpit -d cockpit_working"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  cockpit-postgres-data:

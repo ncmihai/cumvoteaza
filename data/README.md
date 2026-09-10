@@ -23,6 +23,8 @@ The rest of the `data/` tree is local, rebuildable, and ignored by git:
 - `data/cdep-history/parsed/` stores generated JSON/JSONL parser output.
 - `data/cdep-history/reports/` stores generated audit/review reports.
 - `data/parliament-pipeline/` stores Python pipeline downloads and reports.
+- `data/parliament-workbench/` stores the generated local wiki, model
+  suggestions, local proposals/notes, workbench jobs, and review reports.
 
 These files are useful for debugging and audit work, but the public app should
 not depend on them at request time. Neon stores queryable facts. Digi Storage

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -77,9 +77,9 @@ export type AssetDeleteSummary = {
   failures: Array<{ id: string; blobUrl: string | null; error: string }>;
 };
 
-type AssetStorageProviderName = "vercel_blob" | "ftp" | "digi_storage";
+type AssetStorageProviderName = "vercel_blob" | "ftp" | "digi_storage" | "local";
 type AssetStorageProviderResult = {
-  storageProvider: "digi_storage" | "vercel_blob" | "external";
+  storageProvider: "digi_storage" | "vercel_blob" | "external" | "local";
   storagePath: string;
   publicUrl?: string;
   blobUrl?: string;
@@ -306,7 +306,7 @@ export function selectAssetInventoryItemsForImport(
 
 type StoredAssetResult = {
   status: StoredAssetStatus;
-  storageProvider?: "digi_storage" | "vercel_blob" | "external";
+  storageProvider?: "digi_storage" | "vercel_blob" | "external" | "local";
   storagePath?: string;
   publicUrl?: string;
   blobUrl?: string;
@@ -382,6 +382,22 @@ async function fetchAndStoreAsset(item: AssetInventoryItem, storage: AssetStorag
 }
 
 function createAssetStorageProvider(): AssetStorageProvider {
+  if (process.env.COCKPIT_DATABASE_ROLE) {
+    const root = process.env.COCKPIT_ASSET_DIR;
+    if (process.env.COCKPIT_DATABASE_ROLE !== "working" || !root) {
+      throw new Error("Only the local working importer can prepare assets.");
+    }
+    return {
+      name: "local",
+      async upload(input) {
+        const destination = path.resolve(root, input.objectPath);
+        if (!destination.startsWith(path.resolve(root) + path.sep)) throw new Error("Invalid asset path");
+        await mkdir(path.dirname(destination), { recursive: true });
+        await writeFile(destination, input.bytes);
+        return { storageProvider: "local", storagePath: input.objectPath };
+      }
+    };
+  }
   const provider = (process.env.ASSET_STORAGE_PROVIDER || "vercel_blob").trim().toLowerCase();
   if (provider === "digi_storage") return createDigiStorageAssetProvider();
   if (provider === "ftp") return createFtpAssetStorageProvider();

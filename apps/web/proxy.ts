@@ -3,7 +3,19 @@ import { NextRequest, NextResponse } from "next/server";
 const cookieName = "cumsevoteaza_access";
 
 export function proxy(request: NextRequest) {
+  if (process.env.COCKPIT_DATABASE_ROLE === "release") {
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(request.nextUrl.hostname)) {
+      return new NextResponse("Release previews are local only.", { status: 403 });
+    }
+    if (!["GET", "HEAD"].includes(request.method) || request.nextUrl.pathname.startsWith("/api/cron/")) {
+      return NextResponse.json({ error: "Release previews are read-only." }, { status: 405, headers: { Allow: "GET, HEAD" } });
+    }
+    const requested = request.nextUrl.searchParams.get("cockpitRelease");
+    if (requested && requested !== process.env.COCKPIT_PREVIEW_RELEASE_ID) return new NextResponse("This preview has been superseded. Open the current selected release from the cockpit.", {status:409});
+    return NextResponse.next();
+  }
   const password = process.env.CUMSEVOTEAZA_SITE_PASSWORD;
+  if (request.nextUrl.pathname === "/api/cron/daily-import" && process.env.CRON_SECRET && request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`) return NextResponse.next();
 
   if (!password || isPublicAsset(request.nextUrl.pathname)) {
     return NextResponse.next();

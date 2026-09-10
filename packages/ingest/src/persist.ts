@@ -1,5 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { createDbSession } from "@cumsevoteaza/db";
+import { createDbSession, type DbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import type {
   Bill,
@@ -29,7 +29,7 @@ import type {
 } from "@cumsevoteaza/parliament-model";
 import type { ParsedSenateBill } from "./parsers/senate-bill";
 import type { ParsedSenateVote } from "./parsers/senate-vote";
-import type { ParsedRoster } from "./parsers/roster";
+import { legislatureCatalog, type ParsedRoster } from "./parsers/roster";
 import type { ParsedDeputiesBill } from "./parsers/deputies-bill";
 import type { ParsedChamberVote } from "./parsers/chamber-vote";
 
@@ -40,16 +40,17 @@ const defaultLegislature = {
   endsOn: "2028-12-01"
 };
 
-type Db = ReturnType<typeof createDbSession>["db"];
+type Db = Omit<ReturnType<typeof createDbSession>["db"], "$client">;
 
-export async function persistSenateBill(parsed: ParsedSenateBill) {
-  const session = createDbSession();
+export async function persistSenateBill(parsed: ParsedSenateBill, suppliedSession?: DbSession) {
+  const session = suppliedSession ?? createDbSession();
   try {
-    await upsertSourceSnapshot(session.db, parsed.sourceSnapshot);
-    await upsertBill(session.db, parsed.bill);
-    await Promise.all(parsed.events.map((event) => upsertBillEvent(session.db, event)));
-    await Promise.all(parsed.sponsors.map((sponsor) => upsertBillSponsor(session.db, sponsor)));
-    await Promise.all(parsed.documents.map((document) => upsertDocument(session.db, document)));
+    return await session.db.transaction(async (db) => {
+    await upsertSourceSnapshot(db, parsed.sourceSnapshot);
+    await upsertBill(db, parsed.bill);
+    await Promise.all(parsed.events.map((event) => upsertBillEvent(db, event)));
+    await Promise.all(parsed.sponsors.map((sponsor) => upsertBillSponsor(db, sponsor)));
+    await Promise.all(parsed.documents.map((document) => upsertDocument(db, document)));
 
     return {
       billId: parsed.bill.id,
@@ -57,19 +58,21 @@ export async function persistSenateBill(parsed: ParsedSenateBill) {
       events: parsed.events.length,
       documents: parsed.documents.length
     };
+    });
   } finally {
-    await session.close();
+    if (!suppliedSession) await session.close();
   }
 }
 
-export async function persistSenateVote(parsed: ParsedSenateVote) {
-  const session = createDbSession();
+export async function persistSenateVote(parsed: ParsedSenateVote, suppliedSession?: DbSession) {
+  const session = suppliedSession ?? createDbSession();
   try {
-    await upsertDefaultLegislature(session.db);
-    await upsertSourceSnapshot(session.db, parsed.sourceSnapshot);
+    return await session.db.transaction(async (db) => {
+    await db.insert(schema.legislatures).values(legislatureForDate(parsed.vote.heldOn)).onConflictDoNothing();
+    await upsertSourceSnapshot(db, parsed.sourceSnapshot);
 
     if (parsed.vote.billId) {
-      await ensurePlaceholderBill(session.db, {
+      await ensurePlaceholderBill(db, {
         id: parsed.vote.billId,
         slug: parsed.vote.billId.replace(/^bill-/, ""),
         title: parsed.vote.title,
@@ -80,12 +83,12 @@ export async function persistSenateVote(parsed: ParsedSenateVote) {
       });
     }
 
-    await Promise.all(parsed.groups.map((group) => upsertGroup(session.db, group)));
-    await Promise.all(parsed.members.map((member) => upsertMember(session.db, member)));
-    await Promise.all(parsed.individualVotes.map((vote) => upsertDerivedMandateAndMembership(session.db, vote, parsed)));
-    await upsertVote(session.db, parsed.vote);
-    await Promise.all(parsed.groupVoteTotals.map((total) => upsertGroupVoteTotal(session.db, total)));
-    await Promise.all(parsed.individualVotes.map((vote) => upsertIndividualVote(session.db, vote)));
+    await Promise.all(parsed.groups.map((group) => upsertGroup(db, group)));
+    await Promise.all(parsed.members.map((member) => upsertMember(db, member)));
+    await Promise.all(parsed.individualVotes.map((vote) => upsertDerivedMandateAndMembership(db, vote, parsed)));
+    await upsertVote(db, parsed.vote);
+    await Promise.all(parsed.groupVoteTotals.map((total) => upsertGroupVoteTotal(db, total)));
+    await Promise.all(parsed.individualVotes.map((vote) => upsertIndividualVote(db, vote)));
 
     return {
       voteId: parsed.vote.id,
@@ -94,20 +97,22 @@ export async function persistSenateVote(parsed: ParsedSenateVote) {
       groups: parsed.groups.length,
       individualVotes: parsed.individualVotes.length
     };
+    });
   } finally {
-    await session.close();
+    if (!suppliedSession) await session.close();
   }
 }
 
-export async function persistDeputiesBill(parsed: ParsedDeputiesBill) {
-  const session = createDbSession();
+export async function persistDeputiesBill(parsed: ParsedDeputiesBill, suppliedSession?: DbSession) {
+  const session = suppliedSession ?? createDbSession();
   try {
-    await upsertSourceSnapshot(session.db, parsed.sourceSnapshot);
-    await upsertBill(session.db, parsed.bill);
-    await Promise.all(parsed.events.map((event) => upsertBillEvent(session.db, event)));
-    await Promise.all(parsed.sponsors.map((sponsor) => upsertBillSponsor(session.db, sponsor)));
-    await Promise.all(parsed.documents.map((document) => upsertDocument(session.db, document)));
-    await upsertBillProcedureSteps(session.db, parsed.procedureSteps);
+    return await session.db.transaction(async (db) => {
+    await upsertSourceSnapshot(db, parsed.sourceSnapshot);
+    await upsertBill(db, parsed.bill);
+    await Promise.all(parsed.events.map((event) => upsertBillEvent(db, event)));
+    await Promise.all(parsed.sponsors.map((sponsor) => upsertBillSponsor(db, sponsor)));
+    await Promise.all(parsed.documents.map((document) => upsertDocument(db, document)));
+    await upsertBillProcedureSteps(db, parsed.procedureSteps);
 
     return {
       billId: parsed.bill.id,
@@ -116,26 +121,28 @@ export async function persistDeputiesBill(parsed: ParsedDeputiesBill) {
       procedureSteps: parsed.procedureSteps.length,
       documents: parsed.documents.length
     };
+    });
   } finally {
-    await session.close();
+    if (!suppliedSession) await session.close();
   }
 }
 
-export async function persistChamberVote(parsed: ParsedChamberVote) {
-  const session = createDbSession();
+export async function persistChamberVote(parsed: ParsedChamberVote, suppliedSession?: DbSession) {
+  const session = suppliedSession ?? createDbSession();
   try {
-    await upsertDefaultLegislature(session.db);
-    await upsertSourceSnapshot(session.db, parsed.sourceSnapshot);
+    return await session.db.transaction(async (db) => {
+    await db.insert(schema.legislatures).values(legislatureForDate(parsed.vote.heldOn)).onConflictDoNothing();
+    await upsertSourceSnapshot(db, parsed.sourceSnapshot);
     if (parsed.bill) {
-      await ensurePlaceholderBill(session.db, {
+      await ensurePlaceholderBill(db, {
         ...parsed.bill,
         sourceSnapshotIds: [parsed.sourceSnapshot.id]
       });
     }
-    await insertMissingMembers(session.db, parsed.members);
-    await upsertDerivedDeputiesMandates(session.db, parsed.members.map((member) => member.id));
-    await upsertVote(session.db, parsed.vote);
-    await upsertIndividualVotes(session.db, parsed.individualVotes);
+    await insertMissingMembers(db, parsed.members);
+    await upsertDerivedDeputiesMandates(db, parsed.members.map((member) => member.id), parsed.vote.heldOn);
+    await upsertVote(db, parsed.vote);
+    await upsertIndividualVotes(db, parsed.individualVotes);
 
     return {
       voteId: parsed.vote.id,
@@ -144,34 +151,38 @@ export async function persistChamberVote(parsed: ParsedChamberVote) {
       individualVotes: parsed.individualVotes.length,
       warnings: parsed.warnings
     };
+    });
   } finally {
-    await session.close();
+    if (!suppliedSession) await session.close();
   }
 }
 
-export async function persistRoster(parsed: ParsedRoster) {
-  const session = createDbSession();
+export async function persistRoster(parsed: ParsedRoster, suppliedSession?: DbSession) {
+  const failures = parsed.sourceSnapshots.filter((source) => source.status === "failed");
+  if (failures.length) throw new Error(`Roster contains ${failures.length} failed sources; refusing to replace existing member histories`);
+  const session = suppliedSession ?? createDbSession();
   try {
-    await upsertLegislature(session.db, parsed.legislature);
-    await upsertSourceSnapshots(session.db, parsed.sourceSnapshots);
-    await upsertParties(session.db, parsed.parties);
-    await upsertGroups(session.db, parsed.groups);
-    await upsertMembers(session.db, parsed.members);
-    await upsertMemberMandates(session.db, parsed.mandates);
+    return await session.db.transaction(async (db) => {
+    await upsertLegislature(db, parsed.legislature);
+    await upsertSourceSnapshots(db, parsed.sourceSnapshots);
+    await upsertParties(db, parsed.parties);
+    await upsertGroups(db, parsed.groups);
+    await upsertMembers(db, parsed.members);
+    await upsertMemberMandates(db, parsed.mandates);
     await deleteRosterMandateRelations(
-      session.db,
+      db,
       parsed.mandates.map((mandate) => mandate.id)
     );
-    await upsertMemberMandateRelations(session.db, parsed.mandateRelations ?? []);
-    await applyReplacementEndDates(session.db, parsed);
+    await upsertMemberMandateRelations(db, parsed.mandateRelations ?? []);
+    await applyReplacementEndDates(db, parsed);
     await deleteRosterMemberDetails(
-      session.db,
+      db,
       parsed.members.map((member) => member.id)
     );
-    await upsertMemberGroupMemberships(session.db, parsed.groupMemberships);
-    await upsertMemberPartyAffiliations(session.db, parsed.partyAffiliations);
-    await upsertMemberCommitteeMemberships(session.db, parsed.committeeMemberships);
-    await upsertMemberRoles(session.db, parsed.roles);
+    await upsertMemberGroupMemberships(db, parsed.groupMemberships);
+    await upsertMemberPartyAffiliations(db, parsed.partyAffiliations);
+    await upsertMemberCommitteeMemberships(db, parsed.committeeMemberships);
+    await upsertMemberRoles(db, parsed.roles);
 
     return {
       chamber: parsed.chamber,
@@ -187,8 +198,9 @@ export async function persistRoster(parsed: ParsedRoster) {
       roles: parsed.roles.length,
       groupCounts: parsed.groupCounts
     };
+    });
   } finally {
-    await session.close();
+    if (!suppliedSession) await session.close();
   }
 }
 
@@ -219,8 +231,10 @@ async function deleteRosterMandateRelations(db: Db, mandateIds: string[]) {
   await db.delete(schema.memberMandateRelations).where(inArray(schema.memberMandateRelations.mandateId, mandateIds));
 }
 
-async function upsertDefaultLegislature(db: Db) {
-  await upsertLegislature(db, defaultLegislature);
+function legislatureForDate(date: string) {
+  const match = Object.values(legislatureCatalog).find((term) => date >= term.startsOn && (!term.endsOn || date < term.endsOn));
+  if (!match) throw new Error(`No legislature covers vote date ${date}; import its context before persisting.`);
+  return { ...match, endsOn: match.endsOn ?? "9999-12-31" };
 }
 
 async function upsertLegislature(db: Db, legislature: typeof defaultLegislature) {
@@ -403,6 +417,16 @@ function isMemberSlugUniqueViolation(error: unknown): boolean {
 
 async function upsertMembers(db: Db, members: Member[]) {
   if (members.length === 0) return;
+  // A roster refresh is not an identity migration. Preserve enriched identity,
+  // stable public slugs and source keys for existing members.
+  const known = await db.select().from(schema.members).where(inArray(schema.members.id, members.map((member) => member.id)));
+  const byId = new Map(known.map((member) => [member.id, member]));
+  members = members.map((member) => {
+    const previous = byId.get(member.id);
+    return previous ? { ...member, personId: previous.personId ?? member.personId,
+      slug: previous.slug, firstName: previous.firstName, lastName: previous.lastName,
+      displayName: previous.displayName, sourceIds: { ...member.sourceIds, ...previous.sourceIds } } : member;
+  });
   const slugs = uniqueStrings(members.map((member) => member.slug));
   const existingRows =
     slugs.length > 0
@@ -1267,26 +1291,18 @@ async function upsertIndividualVotes(db: Db, votes: IndividualVote[]) {
 async function upsertDerivedMandateAndMembership(db: Db, vote: IndividualVote, parsed: ParsedSenateVote) {
   if (!vote.groupId) return;
   const startsOn = parsed.vote.heldOn;
+  const legislature = legislatureForDate(startsOn);
   await db
     .insert(schema.memberMandates)
     .values({
-      id: `mandate-${vote.memberId}-2024-2028-senate`,
+      id: `mandate-${vote.memberId}-${legislature.label}-senate`,
       memberId: vote.memberId,
-      legislatureId: defaultLegislature.id,
+      legislatureId: legislature.id,
       chamber: "senate",
-      startsOn: defaultLegislature.startsOn,
+      startsOn: legislature.startsOn,
       status: "active"
     })
-    .onConflictDoUpdate({
-      target: schema.memberMandates.id,
-      set: {
-        memberId: vote.memberId,
-        legislatureId: defaultLegislature.id,
-        chamber: "senate",
-        startsOn: defaultLegislature.startsOn,
-        status: "active"
-      }
-    });
+    .onConflictDoNothing();
 
   const membershipId = `group-membership-${vote.memberId}-${vote.groupId}`;
   const existing = await db
@@ -1305,29 +1321,21 @@ async function upsertDerivedMandateAndMembership(db: Db, vote: IndividualVote, p
   });
 }
 
-async function upsertDerivedDeputiesMandates(db: Db, memberIds: string[]) {
+async function upsertDerivedDeputiesMandates(db: Db, memberIds: string[], heldOn: string) {
+  const legislature = legislatureForDate(heldOn);
   const uniqueMemberIds = [...new Set(memberIds)];
   if (uniqueMemberIds.length === 0) return;
   await db
     .insert(schema.memberMandates)
     .values(
       uniqueMemberIds.map((memberId) => ({
-        id: `mandate-${memberId}-2024-2028-deputies`,
+        id: `mandate-${memberId}-${legislature.label}-deputies`,
         memberId,
-        legislatureId: defaultLegislature.id,
+        legislatureId: legislature.id,
         chamber: "deputies" as const,
-        startsOn: defaultLegislature.startsOn,
+        startsOn: legislature.startsOn,
         status: "active" as const
       }))
     )
-    .onConflictDoUpdate({
-      target: schema.memberMandates.id,
-      set: {
-        memberId: sql`excluded.member_id`,
-        legislatureId: sql`excluded.legislature_id`,
-        chamber: sql`excluded.chamber`,
-        startsOn: sql`excluded.starts_on`,
-        status: sql`excluded.status`
-      }
-    });
+    .onConflictDoNothing();
 }

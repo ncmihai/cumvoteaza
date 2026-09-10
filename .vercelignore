@@ -5,6 +5,11 @@
 
 node_modules
 apps/web/.next
-data/*
-!data/curated/
-!data/curated/*.json
+data/imports
+data/snapshots
+data/cdep-history
+data/parliament-pipeline
+data/parliament-workbench
+tools/parliament-workbench
+output
+.git

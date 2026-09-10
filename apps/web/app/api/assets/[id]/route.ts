@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import * as schema from "@cumsevoteaza/db";
@@ -28,11 +30,22 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       });
     }
 
+    if (asset.storageProvider === "local") {
+      const root = process.env.COCKPIT_ASSET_DIR;
+      if (process.env.COCKPIT_DATABASE_ROLE !== "release" || !root || !asset.storagePath) return new NextResponse("Not found", {status:404});
+      const file = path.resolve(root, asset.storagePath);
+      if (!file.startsWith(path.resolve(root)+path.sep)) return new NextResponse("Not found", {status:404});
+      return new Response(new Uint8Array(await readFile(file)), {headers: responseHeadersForAsset(asset)});
+    }
+
     if (asset.storageProvider === "digi_storage") {
       if (!asset.storagePath) return new NextResponse("Not found", { status: 404 });
       const downloadLink = await getDigiStorageDownloadLink(asset.storagePath);
       const download = await fetch(downloadLink);
-      if (!download.ok || !download.body) return new NextResponse("Not found", { status: 404 });
+      if (!download.ok || !download.body) {
+        console.error("Asset gateway Digi download failed", { assetId: asset.id, status: download.status });
+        return new NextResponse("Not found", { status: 404 });
+      }
       const headers = responseHeadersForAsset(asset, download.headers);
       return new Response(download.body, {
         status: 200,
@@ -49,7 +62,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
 
     return new NextResponse("Not found", { status: 404 });
-  } catch {
+  } catch (error) {
+    console.error("Asset gateway failed", { assetId: id, error: error instanceof Error ? error.message : String(error) });
     return new NextResponse("Not found", { status: 404 });
   } finally {
     await session.close();

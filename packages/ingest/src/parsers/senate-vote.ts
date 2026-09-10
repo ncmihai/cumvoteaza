@@ -154,7 +154,7 @@ function normalizeVoteKind(voteType: string): string {
 }
 
 function countFromLabel(lines: string[], label: string): number {
-  const line = lines.find((item) => normalizeKey(item).startsWith(label));
+  const line = lines.find((item) => normalizeKey(item).startsWith(normalizeKey(label)));
   return parseCount(line);
 }
 

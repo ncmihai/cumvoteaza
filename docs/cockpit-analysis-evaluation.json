@@ -1,0 +1,15 @@
+{
+  "runId": "run-a291c553ae514cb3",
+  "profileId": "profile-3da292d1115742fa",
+  "completed": 50,
+  "drafts": 27,
+  "incomplete": 23,
+  "humanApproved": 0,
+  "evaluation": {
+    "heldOut": 0,
+    "compared": 0,
+    "validated": false,
+    "reason": "Reference examples require human labels and evidence before held-out metrics are meaningful."
+  },
+  "scope": "Local experimental analysis only; no political scores or public labels were published."
+}

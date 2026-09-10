@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import { getBillExplorerData, getDirectoryFilterOptions, parseExplorerFilters } from "@/lib/explorer-data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
@@ -23,6 +24,7 @@ export default async function BillsPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="bills" locale={locale} />
       <SearchEngagementTracker entityType="bill" query={filters.q} locale={locale} />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

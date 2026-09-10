@@ -1,0 +1,449 @@
+{
+  "date": "2026-09-09",
+  "jobId": "run-b1161e8f8f034b6b",
+  "status": "failed",
+  "sample": [
+    {
+      "billId": "bill-l187-2025",
+      "familyId": "bill-l187-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l112-2025",
+      "familyId": "bill-l112-2025",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-l20-2025",
+      "familyId": "bill-l20-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l379-2025",
+      "familyId": "bill-l379-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l213-2025",
+      "familyId": "bill-l213-2025",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-l530-2025",
+      "familyId": "bill-l530-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l8-2025",
+      "familyId": "bill-l8-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-365-2025",
+      "familyId": "bill-l217-2025",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-l119-2026",
+      "familyId": "bill-l119-2026",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l25-2026",
+      "familyId": "bill-l25-2026",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l81-2025",
+      "familyId": "bill-l81-2025",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-l53-2026",
+      "familyId": "bill-l53-2026",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-98-2026",
+      "familyId": "bill-pl-x-98-2026",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-352-2026",
+      "familyId": "bill-l169-2026",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-l144-2025",
+      "familyId": "bill-l144-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-180-2025",
+      "familyId": "bill-l131-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-42-2026",
+      "familyId": "bill-pl-x-42-2026",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-pl-x-106-2026",
+      "familyId": "bill-pl-x-106-2026",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l200-2025",
+      "familyId": "bill-l200-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l370-2025",
+      "familyId": "bill-l370-2025",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-pl-x-2-2026",
+      "familyId": "bill-pl-x-2-2026",
+      "split": "development"
+    },
+    {
+      "billId": "bill-l615-2025",
+      "familyId": "bill-l615-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-297-2025",
+      "familyId": "bill-l554-2025",
+      "split": "holdout"
+    },
+    {
+      "billId": "bill-l367-2025",
+      "familyId": "bill-l367-2025",
+      "split": "development"
+    },
+    {
+      "billId": "bill-pl-x-329-2026",
+      "familyId": "bill-l178-2026",
+      "split": "development"
+    }
+  ],
+  "result": {
+    "counts": {
+      "added": 445,
+      "changed": 77,
+      "conflicting": 0,
+      "removed": 0,
+      "unchanged": 260018
+    },
+    "plan": {
+      "categories": [
+        "text"
+      ],
+      "coverage": "Discovery traverses supported sources; parsing is bounded by the selected per-year limit.",
+      "dependencies": [
+        "bills",
+        "documents"
+      ],
+      "limit": 25,
+      "stages": [
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l187-2025",
+            "--persist"
+          ],
+          "label": "bill-l187-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l112-2025",
+            "--persist"
+          ],
+          "label": "bill-l112-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l20-2025",
+            "--persist"
+          ],
+          "label": "bill-l20-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l379-2025",
+            "--persist"
+          ],
+          "label": "bill-l379-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l213-2025",
+            "--persist"
+          ],
+          "label": "bill-l213-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l530-2025",
+            "--persist"
+          ],
+          "label": "bill-l530-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l8-2025",
+            "--persist"
+          ],
+          "label": "bill-l8-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l217-2025",
+            "--persist"
+          ],
+          "label": "bill-pl-x-365-2025 \u00b7 Extract proposal text \u00b7 source alias bill-l217-2025"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l119-2026",
+            "--persist"
+          ],
+          "label": "bill-l119-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l25-2026",
+            "--persist"
+          ],
+          "label": "bill-l25-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l81-2025",
+            "--persist"
+          ],
+          "label": "bill-l81-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l53-2026",
+            "--persist"
+          ],
+          "label": "bill-l53-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-pl-x-98-2026",
+            "--persist"
+          ],
+          "label": "bill-pl-x-98-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-pl-x-352-2026",
+            "--persist"
+          ],
+          "label": "bill-pl-x-352-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l144-2025",
+            "--persist"
+          ],
+          "label": "bill-l144-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l131-2025",
+            "--persist"
+          ],
+          "label": "bill-pl-x-180-2025 \u00b7 Extract proposal text \u00b7 source alias bill-l131-2025"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-pl-x-42-2026",
+            "--persist"
+          ],
+          "label": "bill-pl-x-42-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-pl-x-106-2026",
+            "--persist"
+          ],
+          "label": "bill-pl-x-106-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l200-2025",
+            "--persist"
+          ],
+          "label": "bill-l200-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l370-2025",
+            "--persist"
+          ],
+          "label": "bill-l370-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-pl-x-2-2026",
+            "--persist"
+          ],
+          "label": "bill-pl-x-2-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l615-2025",
+            "--persist"
+          ],
+          "label": "bill-l615-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l554-2025",
+            "--persist"
+          ],
+          "label": "bill-pl-x-297-2025 \u00b7 Extract proposal text \u00b7 source alias bill-l554-2025"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-l367-2025",
+            "--persist"
+          ],
+          "label": "bill-l367-2025 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:bill-text",
+            "--",
+            "--bill=bill-pl-x-329-2026",
+            "--persist"
+          ],
+          "label": "bill-pl-x-329-2026 \u00b7 Extract proposal text"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "ingest:refresh-read-models",
+            "--"
+          ],
+          "label": "Refresh local read models"
+        }
+      ],
+      "target": "local",
+      "yearFrom": 2024,
+      "yearTo": 2026
+    },
+    "sourceFailures": [
+      {
+        "error": "Stage exited with code 1: \n> cumsevoteaza@0.1.0 ingest:bill-text\n> npm --workspace @cumsevoteaza/ingest run bill-text -- --bill=bill-l81-2025 --persist\n\n\n> @cumsevoteaza/ingest@0.1.0 bill-text\n> tsx src/cli.ts bill-text --bill=bill-l81-2025 --persist\n\nWrote bill-text import at 2026-09-09T05-11-00-532Z\n{\n  \"status\": \"missing\",\n  \"documentId\": \"doc-bill-l81-2025-1\",\n  \"billId\": \"bill-l81-2025\",\n  \"error\": \"Official PDF returned 404.\"\n}\nnpm error Lifecycle script `bill-text` failed with error:\nnpm error code 1\nnpm error path /Users/ncmihai/Desktop/SITE CWN/cumsevoteaza/packages/ingest\nnpm error workspace @cumsevoteaza/ingest@0.1.0\nnpm error location /Users/ncmihai/Desktop/SITE CWN/cumsevoteaza/packages/ingest\nnpm error command failed\nnpm error command sh -c tsx src/cli.ts bill-text --bill=bill-l81-2025 --persist\n",
+        "jobId": "run-b1161e8f8f034b6b",
+        "label": "bill-l81-2025 \u00b7 Extract proposal text",
+        "status": "failed"
+      }
+    ]
+  }
+}

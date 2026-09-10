@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
 import { getCompositionTimelineData, type CompositionMode } from "@/lib/composition-data";
@@ -20,6 +21,7 @@ export default async function CompositionsPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="composition" locale={locale} />
       <section className="border-b border-slate-300 pb-6">
         <p className="text-sm font-semibold uppercase tracking-normal text-slate-500">{labels.eyebrow}</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">

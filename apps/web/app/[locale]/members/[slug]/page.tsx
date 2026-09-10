@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -44,6 +45,7 @@ export default async function MemberPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="member" locale={locale} entityId={slug} />
       <EngagementTracker entityType="member" entityId={member.id} locale={locale} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">

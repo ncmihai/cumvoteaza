@@ -84,6 +84,7 @@ export const storedAssetStatusEnum = pgEnum("stored_asset_status", [
   "official_timeout"
 ]);
 export const storedAssetStorageProviderEnum = pgEnum("stored_asset_storage_provider", [
+  "local",
   "digi_storage",
   "vercel_blob",
   "external"
@@ -731,3 +732,18 @@ export const contentReactions = pgTable("content_reactions", {
   ),
   aggregateIdx: index("content_reactions_aggregate_idx").on(table.entityType, table.entityId, table.reaction, table.createdAt)
 }));
+
+// Only reviewed public content belongs here; experimental political scores remain local.
+export const cockpitEditorial = pgTable("cockpit_editorial", {
+  id: text("id").primaryKey(), page: text("page").notNull(), entityId: text("entity_id"),
+  content: jsonb("content").notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+});
+export const cockpitTopicLabels = pgTable("cockpit_topic_labels", {
+  id: text("id").primaryKey(), billId: text("bill_id").notNull().references(() => bills.id),
+  label: text("label").notNull(), relevance: text("relevance").notNull(), evidence: jsonb("evidence").notNull(),
+  methodVersion: text("method_version").notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+});
+export const cockpitReleaseReceipts = pgTable("cockpit_release_receipts", {
+  id: text("id").primaryKey(), manifestHash: text("manifest_hash").notNull(), manifest: jsonb("manifest").notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow()
+});

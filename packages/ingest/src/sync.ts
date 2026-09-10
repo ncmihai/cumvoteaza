@@ -33,10 +33,14 @@ interface DeputiesYearlyList {
 }
 
 export interface SyncOptions {
+  dateFrom?: string;
+  dateTo?: string;
   years?: number[];
   maxImports?: number;
   maxRetries?: number;
+  refreshExisting?: boolean;
   discoveryLimit?: number;
+  dryRun?: boolean;
   chamber?: ChamberId;
   kind?: DiscoveryKind;
   deputiesVoteDates?: string[];
@@ -48,14 +52,27 @@ export interface SyncOptions {
   sourceUrl?: string;
 }
 
+interface SenateYearlyList {
+  expectedCount: number;
+  discoveries: SourceDiscoveryInput[];
+}
+
 export interface SyncSummary {
   runId?: string;
+  dryRun?: boolean;
   discovered: number;
   imported: number;
   partial: number;
   failed: number;
   skipped: number;
   expected?: number;
+  newDiscoveries?: number;
+  knownByUrl?: number;
+  knownByOfficialId?: number;
+  wouldImport?: number;
+  wouldPartial?: number;
+  wouldFail?: number;
+  wouldSkip?: number;
   readModels?: {
     billVoteSummaries: number;
     voteCoverageSummaries: number;
@@ -68,7 +85,7 @@ export interface SyncSummary {
 const defaultYears = yearsSince2024();
 
 export async function discoverSenateSources(options: SyncOptions = {}): Promise<SyncSummary> {
-  const summary = await discoverSources("senate", senateSeedUrls(options.years ?? defaultYears), options);
+  const summary = await discoverSenateYearlyLists(options.years ?? defaultYears, options);
   if (options.senateFrom && options.senateTo) {
     addSummary(
       summary,
@@ -76,7 +93,8 @@ export async function discoverSenateSources(options: SyncOptions = {}): Promise<
         options.years ?? defaultYears,
         options.senateFrom,
         options.senateTo,
-        options.senatePrefixes ?? ["L"]
+        options.senatePrefixes ?? ["L"],
+        options
       )
     );
   }
@@ -93,9 +111,86 @@ export async function discoverDeputiesVoteSources(options: SyncOptions = {}): Pr
   return discoverSources("deputies", deputiesVoteListUrls(dates), options);
 }
 
+export async function discoverSenateVoteSources(options: SyncOptions): Promise<SyncSummary> {
+  validateDateRange(options);
+  if (!options.dateFrom || !options.dateTo) throw new Error("Senate calendar requires explicit date bounds");
+  if (Date.parse(options.dateTo) - Date.parse(options.dateFrom) > 366 * 86400000) throw new Error("Scan at most one year at a time");
+  const url = "https://www.senat.ro/voturiplen.aspx";
+  let html = await fetchOfficialSource(url, 3);
+  const target = "ctl00$B_Center$VoturiPlen1$calVOT";
+  async function select(argument: string) {
+    const $ = cheerio.load(html);
+    if (!$("table.myCalendar").length) throw new Error("Senate voting calendar missing");
+    const form = new URLSearchParams();
+    $("input[type=hidden][name]").each((_, element) => { form.set($(element).attr("name")!, $(element).attr("value") ?? ""); });
+    $("select[name]").each((_, element) => { form.set($(element).attr("name")!, String($(element).val() ?? "")); });
+    form.set("__EVENTTARGET", target);
+    form.set("__EVENTARGUMENT", argument);
+    const response = await fetch(url, { method: "POST", body: form, signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error(`Senate calendar HTTP ${response.status}`);
+    html = await response.text();
+    return cheerio.load(html);
+  }
+  const session = createDbSession();
+  const summary = syncSummary(Boolean(options.dryRun));
+  try {
+    // ASP.NET calendar day arguments are observed from each returned month,
+    // not guessed vote IDs. Visit every in-range calendar date, including empty days.
+    const months = new Set<string>();
+    for (let date = options.dateFrom; date <= options.dateTo; date = nextDay(date)) months.add(date.slice(0, 7));
+    for (const month of months) {
+      try {
+        const offset = Math.round((Date.parse(`${month}-01`) - Date.parse("2000-01-01")) / 86400000);
+        const $ = await select(`V${offset}`);
+        const days = new Map<string, string>();
+        $("table.myCalendar a[href]").each((_, element) => {
+          const match = $(element).attr("href")?.match(/calVOT','(\d+)'/);
+          if (!match) return;
+          const date = new Date(Date.parse("2000-01-01") + Number(match[1]) * 86400000).toISOString().slice(0, 10);
+          if (date.startsWith(month) && date >= options.dateFrom! && date <= options.dateTo!) days.set(date, match[1]!);
+        });
+        if (!days.size) throw new Error("Calendar returned no matching dates");
+        for (const [date, argument] of days) {
+          try {
+            const page = await select(argument);
+            const expected = date.split("-").reverse().join(".");
+            if (!page(".voturi-plen-current-date").text().includes(expected)) throw new Error("Calendar did not select the requested date");
+            const snapshot = snapshotFor("senate-vote-calendar", `${url}?selectedDate=${date}`, html, "parsed");
+            const discoveries = discoverOfficialLinks(html, url, "senate", snapshot.id).filter((item) => item.kind === "vote");
+            if (!options.dryRun) {
+              await upsertSourceSnapshot(session.db, snapshot);
+              for (const discovery of discoveries) await upsertSourceDiscovery(session.db, { ...discovery, discoveredOn: date });
+            }
+            summary.discovered += discoveries.length;
+            console.log(`Senate calendar ${date}: ${discoveries.length} vote links`);
+          } catch (error) { summary.failed++; summary.errors.push(`${date}: ${errorMessage(error)}`); }
+        }
+      } catch (error) { summary.failed++; summary.errors.push(`${month}: ${errorMessage(error)}`); }
+    }
+    return summary;
+  } finally { await session.close(); }
+}
+
 export async function runDailySync(options: SyncOptions = {}): Promise<SyncSummary> {
+  if (options.dryRun) {
+    const summary = syncSummary(true);
+    const years = options.years ?? [new Date().getUTCFullYear()];
+    addSummary(summary, await discoverSenateSources({ ...options, years }));
+    addSummary(summary, await discoverDeputiesSources({ ...options, years }));
+    addSummary(
+      summary,
+      await discoverDeputiesVoteSources({
+        ...options,
+        years,
+        deputiesVoteMonths: options.deputiesVoteMonths ?? [new Date().getUTCMonth() + 1]
+      })
+    );
+    addSummary(summary, await importPendingDiscoveries({ ...options, years, maxImports: options.maxImports ?? 10, maxRetries: options.maxRetries ?? 4 }));
+    return summary;
+  }
+
   const run = await startIngestionRun("daily-sync");
-  const summary: SyncSummary = { runId: run.id, discovered: 0, imported: 0, partial: 0, failed: 0, skipped: 0, errors: [] };
+  const summary: SyncSummary = { ...syncSummary(false), runId: run.id };
   try {
     const years = options.years ?? [new Date().getUTCFullYear()];
     const senate = await discoverSenateSources({ ...options, years });
@@ -120,8 +215,17 @@ export async function runDailySync(options: SyncOptions = {}): Promise<SyncSumma
 }
 
 export async function runBackfill2024(options: SyncOptions = {}): Promise<SyncSummary> {
+  if (options.dryRun) {
+    const summary = syncSummary(true);
+    const years = options.years ?? defaultYears;
+    addSummary(summary, await discoverSenateSources({ ...options, years }));
+    addSummary(summary, await discoverDeputiesSources({ ...options, years }));
+    addSummary(summary, await importPendingDiscoveries({ ...options, maxImports: options.maxImports ?? 100, maxRetries: options.maxRetries ?? 4 }));
+    return summary;
+  }
+
   const run = await startIngestionRun("backfill-2024-present");
-  const summary: SyncSummary = { runId: run.id, discovered: 0, imported: 0, partial: 0, failed: 0, skipped: 0, errors: [] };
+  const summary: SyncSummary = { ...syncSummary(false), runId: run.id };
   try {
     const years = options.years ?? defaultYears;
     addSummary(summary, await discoverSenateSources({ ...options, years }));
@@ -138,37 +242,40 @@ export async function runBackfill2024(options: SyncOptions = {}): Promise<SyncSu
 }
 
 export async function importPendingDiscoveries(options: SyncOptions = {}): Promise<SyncSummary> {
+  validateDateRange(options);
   const session = createDbSession();
-  const summary: SyncSummary = { discovered: 0, imported: 0, partial: 0, failed: 0, skipped: 0, errors: [] };
+  const summary = syncSummary(Boolean(options.dryRun));
   try {
     const maxImports = options.maxImports ?? 30;
     const maxRetries = options.maxRetries ?? 4;
     const filters = [
-      inArray(schema.sourceDiscoveries.status, ["pending", "partial", "failed"]),
+      inArray(schema.sourceDiscoveries.status, options.refreshExisting ? ["imported"] : ["pending", "partial", "failed"]),
       options.chamber ? eq(schema.sourceDiscoveries.chamber, options.chamber) : undefined,
       options.kind ? eq(schema.sourceDiscoveries.kind, options.kind) : undefined,
       options.officialId ? eq(schema.sourceDiscoveries.officialId, options.officialId) : undefined,
       options.sourceUrl ? eq(schema.sourceDiscoveries.sourceUrl, canonicalizeOfficialUrl(options.sourceUrl)) : undefined,
-      discoveryYearFilter(options.years)
+      discoveryYearFilter(options.years),
+      options.dateFrom ? gte(schema.sourceDiscoveries.discoveredOn, options.dateFrom) : undefined,
+      options.dateTo ? lt(schema.sourceDiscoveries.discoveredOn, nextDay(options.dateTo)) : undefined
     ].filter((filter): filter is Exclude<typeof filter, undefined> => Boolean(filter));
     const rows = await session.db
       .select()
       .from(schema.sourceDiscoveries)
       .where(and(...filters))
-      .orderBy(asc(schema.sourceDiscoveries.failureCount), desc(schema.sourceDiscoveries.lastSeenAt))
+      .orderBy(asc(schema.sourceDiscoveries.failureCount), options.refreshExisting ? asc(schema.sourceDiscoveries.lastAttemptAt) : desc(schema.sourceDiscoveries.lastSeenAt))
       .limit(maxImports);
 
     const importableRows = rows.filter((item) => item.failureCount < maxRetries);
     for (const [index, row] of importableRows.entries()) {
-      const result = await importDiscovery(row);
-      summary[result] += 1;
+      const result = await importDiscovery(row, { dryRun: Boolean(options.dryRun) });
+      addImportResult(summary, result);
       console.log(
         `import:pending progress ${index + 1}/${importableRows.length} ${row.chamber}/${row.kind} ` +
           `${row.officialId ?? row.sourceUrl}: ${result}`
       );
     }
     summary.skipped += rows.filter((item) => item.failureCount >= maxRetries).length;
-    if (summary.imported > 0 || summary.partial > 0) {
+    if (!options.dryRun && (summary.imported > 0 || summary.partial > 0)) {
       summary.readModels = await refreshReadModels();
     }
     return summary;
@@ -192,17 +299,28 @@ function discoveryYearFilter(years?: number[]) {
 
 async function discoverSources(chamber: ChamberId, seedUrls: string[], options: SyncOptions): Promise<SyncSummary> {
   const session = createDbSession();
-  const summary: SyncSummary = { discovered: 0, imported: 0, partial: 0, failed: 0, skipped: 0, errors: [] };
+  const summary = syncSummary(Boolean(options.dryRun));
   try {
     const limit = options.discoveryLimit ?? seedUrls.length;
     for (const url of seedUrls.slice(0, limit)) {
       try {
         const html = await fetchOfficialSource(url, 3);
         const snapshot = snapshotFor(`${chamber}-discovery`, url, html, "parsed");
-        await upsertSourceSnapshot(session.db, snapshot);
-        const discoveries = discoverOfficialLinks(html, url, chamber, snapshot.id);
-        for (const discovery of discoveries) {
-          await upsertSourceDiscovery(session.db, discovery);
+        const discoveries = discoverOfficialLinks(html, url, chamber, options.dryRun ? undefined : snapshot.id);
+        if (chamber === "senate" && discoveries.length === 0) {
+          const message = `${url}: No Senate dossier links detected; source coverage remains unverified.`;
+          summary.failed += 1;
+          summary.errors.push(message);
+          if (!options.dryRun) await upsertSourceSnapshot(session.db, snapshotFor(`${chamber}-discovery`, url, html, "failed", message));
+          continue;
+        }
+        if (options.dryRun) {
+          addDiscoveryClassification(summary, await classifyDiscoveryCandidates(session.db, discoveries));
+        } else {
+          await upsertSourceSnapshot(session.db, snapshot);
+          for (const discovery of discoveries) {
+            await upsertSourceDiscovery(session.db, discovery);
+          }
         }
         summary.discovered += discoveries.length;
       } catch (error) {
@@ -217,9 +335,148 @@ async function discoverSources(chamber: ChamberId, seedUrls: string[], options: 
   }
 }
 
+/**
+ * The Senate list is an ASP.NET form. A GET of Lista.aspx only returns the
+ * search form, so treating it like a link page silently produced zero
+ * discoveries. Submit the official year search and turn each returned
+ * identifier into the documented number-search URL. Those URLs resolve to
+ * the same official dossier page used by the importer.
+ */
+async function discoverSenateYearlyLists(years: number[], options: SyncOptions): Promise<SyncSummary> {
+  const session = createDbSession();
+  const summary: SyncSummary = { ...syncSummary(Boolean(options.dryRun)), expected: 0 };
+  try {
+    const limit = options.discoveryLimit;
+    for (const year of years) {
+      const searchUrl = `https://www.senat.ro/Legis/Lista.aspx?an_cls=${year}`;
+      try {
+        const html = await fetchSenateYearSearch(searchUrl, year);
+        const parsed = parseSenateYearlyList(html, searchUrl);
+        summary.expected = (summary.expected ?? 0) + parsed.expectedCount;
+        if (parsed.discoveries.length === 0) {
+          const message = `${searchUrl}: Senate search returned no dossier rows; source coverage remains unverified.`;
+          summary.failed += 1;
+          summary.errors.push(message);
+          if (!options.dryRun) {
+            await upsertSourceSnapshot(session.db, snapshotFor("senate-yearly-list", searchUrl, html, "failed", message));
+          }
+          continue;
+        }
+        const snapshot = snapshotFor("senate-yearly-list", searchUrl, html, "parsed");
+        const discoveries = limit === undefined ? parsed.discoveries : parsed.discoveries.slice(0, Math.max(0, limit));
+        if (options.dryRun) {
+          addDiscoveryClassification(summary, await classifyDiscoveryCandidates(session.db, discoveries));
+        } else {
+          await upsertSourceSnapshot(session.db, snapshot);
+          for (const discovery of discoveries) {
+            await upsertSourceDiscovery(session.db, { ...discovery, sourceSnapshotId: snapshot.id });
+          }
+        }
+        summary.discovered += discoveries.length;
+      } catch (error) {
+        const message = errorMessage(error);
+        summary.failed += 1;
+        summary.errors.push(`${searchUrl}: ${message}; coverage remains unverified.`);
+      }
+    }
+    return summary;
+  } finally {
+    await session.close();
+  }
+}
+
+export function parseSenateYearlyList(html: string, sourceUrl: string, sourceSnapshotId?: string): SenateYearlyList {
+  const $ = cheerio.load(html);
+  const year = Number(new URL(sourceUrl).searchParams.get("an_cls"));
+  const rows = $("table[id*='grdLista'] tr").toArray().slice(1);
+  const discoveries: SourceDiscoveryInput[] = [];
+  for (const row of rows) {
+    // Cheerio concatenates adjacent cells ("1L316/2025"), which prevents
+    // the identifier parser from seeing the row number and bill number as
+    // separate tokens. Join cells explicitly to preserve that boundary.
+    const rowText = cleanText(
+      $(row)
+        .find("td")
+        .toArray()
+        .map((cell) => cleanText($(cell).text()))
+        .join(" ")
+    );
+    const identifier = findOfficialIdentifiers(rowText, year).find((item) => item.kind === "senate");
+    if (!identifier) continue;
+    const detailUrl = new URL(
+      `/Legis/Lista.aspx?an_cls=${identifier.year}&nr_cls=${identifier.prefix}${identifier.number}`,
+      sourceUrl
+    ).toString();
+    discoveries.push({
+      chamber: "senate",
+      kind: "bill",
+      sourceUrl: detailUrl,
+      officialId: identifier.value,
+      title: titleFromRow(rowText, identifier.value),
+      discoveredOn: `${identifier.year}-01-01`,
+      sourceSnapshotId
+    });
+  }
+  return {
+    expectedCount: discoveries.length,
+    discoveries: uniqueBy(discoveries, (discovery) => discovery.officialId ?? discovery.sourceUrl)
+  };
+}
+
+async function fetchSenateYearSearch(searchUrl: string, year: number): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const first = await fetch(searchUrl, {
+      signal: controller.signal,
+      headers: { "user-agent": "cumsevoteaza-ingest/0.1 (+private research)" }
+    });
+    if (!first.ok) throw new Error(`HTTP ${first.status} ${first.statusText}`);
+    const firstHtml = await first.text();
+    const $ = cheerio.load(firstHtml);
+    const form = $("form").first();
+    if (form.length === 0) throw new Error("Senate search form missing");
+    const body = new URLSearchParams();
+    form.find("input,select,textarea").each((_, element) => {
+      const field = $(element);
+      const name = field.attr("name");
+      if (!name) return;
+      if (element.tagName === "select") {
+        const selected = field.find("option[selected]").first();
+        if (selected.length) body.set(name, selected.attr("value") ?? selected.text());
+      } else if (field.attr("type") === "checkbox") {
+        if (field.attr("checked") !== undefined) body.set(name, field.attr("value") ?? "on");
+      } else if (!['submit', 'button'].includes(field.attr("type") ?? "")) {
+        body.set(name, field.attr("value") ?? "");
+      }
+    });
+    body.set("ctl00$B_Center$Lista$ddAni", String(year));
+    body.set("ctl00$B_Center$Lista$chkFaraPaginare", "on");
+    body.set("__EVENTTARGET", "ctl00$B_Center$Lista$btnCauta2");
+    body.set("__EVENTARGUMENT", "");
+    const action = new URL(form.attr("action") || searchUrl, searchUrl).toString();
+    const cookies = first.headers.getSetCookie?.().map((cookie) => cookie.split(";", 1)[0]).join("; ");
+    const response = await fetch(action, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "user-agent": "cumsevoteaza-ingest/0.1 (+private research)",
+        ...(cookies ? { cookie: cookies } : {}),
+        referer: searchUrl
+      },
+      body
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function discoverDeputiesYearlyLists(years: number[], options: SyncOptions): Promise<SyncSummary> {
   const session = createDbSession();
-  const summary: SyncSummary = { discovered: 0, imported: 0, partial: 0, failed: 0, skipped: 0, expected: 0, errors: [] };
+  const summary: SyncSummary = { ...syncSummary(Boolean(options.dryRun)), expected: 0 };
   try {
     const seedUrls = deputiesSeedUrls(years);
     const limit = options.discoveryLimit ?? seedUrls.length;
@@ -230,10 +487,14 @@ async function discoverDeputiesYearlyLists(years: number[], options: SyncOptions
         const status = parsed.expectedCount || parsed.discoveries.length > 0 ? "parsed" : "failed";
         const notes = status === "failed" ? "No Deputies yearly-list rows detected; official endpoint may be unavailable from this runtime." : undefined;
         const snapshot = snapshotFor("deputies-yearly-list", url, html, status, notes);
-        await upsertSourceSnapshot(session.db, snapshot);
-        const discoveries = parsed.discoveries.map((discovery) => ({ ...discovery, sourceSnapshotId: snapshot.id }));
-        for (const discovery of parsed.discoveries) {
-          await upsertSourceDiscovery(session.db, { ...discovery, sourceSnapshotId: snapshot.id });
+        const discoveries = parsed.discoveries.map((discovery) => ({ ...discovery, sourceSnapshotId: options.dryRun ? undefined : snapshot.id }));
+        if (options.dryRun) {
+          addDiscoveryClassification(summary, await classifyDiscoveryCandidates(session.db, discoveries));
+        } else {
+          await upsertSourceSnapshot(session.db, snapshot);
+          for (const discovery of parsed.discoveries) {
+            await upsertSourceDiscovery(session.db, { ...discovery, sourceSnapshotId: snapshot.id });
+          }
         }
         summary.discovered += discoveries.length;
         summary.expected = (summary.expected ?? 0) + (parsed.expectedCount ?? 0);
@@ -250,16 +511,20 @@ async function discoverDeputiesYearlyLists(years: number[], options: SyncOptions
   }
 }
 
-async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect): Promise<"imported" | "partial" | "failed" | "skipped"> {
-  const session = createDbSession();
-  const attemptedAt = new Date();
-  try {
-    await session.db
-      .update(schema.sourceDiscoveries)
-      .set({ lastAttemptAt: attemptedAt })
-      .where(eq(schema.sourceDiscoveries.id, row.id));
-  } finally {
-    await session.close();
+type ImportDiscoveryResult = "imported" | "partial" | "failed" | "skipped" | "would_import" | "would_partial" | "would_fail" | "would_skip";
+
+async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect, options: { dryRun?: boolean } = {}): Promise<ImportDiscoveryResult> {
+  if (!options.dryRun) {
+    const session = createDbSession();
+    const attemptedAt = new Date();
+    try {
+      await session.db
+        .update(schema.sourceDiscoveries)
+        .set({ lastAttemptAt: attemptedAt })
+        .where(eq(schema.sourceDiscoveries.id, row.id));
+    } finally {
+      await session.close();
+    }
   }
 
   try {
@@ -269,6 +534,7 @@ async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect
 
     if (row.kind === "bill" && row.chamber === "senate") {
       const parsed = parseSenateBill(html, importUrl);
+      if (options.dryRun) return dryRunStatusFromSourceStatus(parsed.sourceSnapshot.status);
       await persistSenateBill(parsed);
       await saveNestedDiscoveries(nested, parsed.sourceSnapshot.id);
       await saveNestedDiscoveries(parsed.discoveredSources, parsed.sourceSnapshot.id);
@@ -278,6 +544,7 @@ async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect
 
     if (row.kind === "bill" && row.chamber === "deputies") {
       const parsed = parseDeputiesBill(html, importUrl);
+      if (options.dryRun) return dryRunStatusFromSourceStatus(parsed.sourceSnapshot.status);
       await persistDeputiesBill(parsed);
       await saveNestedDiscoveries(nested, parsed.sourceSnapshot.id);
       await markDiscovery(row.id, "imported", parsed.sourceSnapshot.id);
@@ -286,6 +553,7 @@ async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect
 
     if (row.kind === "vote" && row.chamber === "senate") {
       const parsed = parseSenateVote(html, importUrl);
+      if (options.dryRun) return dryRunStatusFromSourceStatus(parsed.sourceSnapshot.status);
       await persistSenateVote(parsed);
       await markDiscovery(row.id, parsed.sourceSnapshot.status === "parsed" ? "imported" : "partial", parsed.sourceSnapshot.id);
       return parsed.sourceSnapshot.status === "parsed" ? "imported" : "partial";
@@ -294,20 +562,26 @@ async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect
     if (row.kind === "vote" && row.chamber === "deputies") {
       const parsed = parseChamberNominalVote(html, importUrl);
       if (parsed.sourceSnapshot.status === "failed") {
+        if (options.dryRun) {
+          return parsed.warnings.some((warning) => /Joint Chamber\/Senate vote/i.test(warning)) ? "would_skip" : "would_fail";
+        }
         await saveSourceSnapshot(parsed.sourceSnapshot);
         const status = parsed.warnings.some((warning) => /Joint Chamber\/Senate vote/i.test(warning)) ? "skipped" : "failed";
         await markDiscovery(row.id, status, parsed.sourceSnapshot.id, parsed.sourceSnapshot.notes);
         return status;
       }
+      if (options.dryRun) return dryRunStatusFromSourceStatus(parsed.sourceSnapshot.status);
       await persistChamberVote(parsed);
       const status = parsed.sourceSnapshot.status === "parsed" ? "imported" : parsed.sourceSnapshot.status;
       await markDiscovery(row.id, status, parsed.sourceSnapshot.id);
       return status;
     }
 
+    if (options.dryRun) return "would_skip";
     await markDiscovery(row.id, "skipped");
     return "skipped";
   } catch (error) {
+    if (options.dryRun) return "would_fail";
     await markDiscovery(row.id, "failed", undefined, errorMessage(error));
     return "failed";
   }
@@ -421,10 +695,11 @@ async function discoverGeneratedSenateBills(
   years: number[],
   from: number,
   to: number,
-  prefixes: Array<"B" | "BP" | "L" | "PLX">
+  prefixes: Array<"B" | "BP" | "L" | "PLX">,
+  options: SyncOptions
 ): Promise<SyncSummary> {
   const session = createDbSession();
-  const summary: SyncSummary = { discovered: 0, imported: 0, partial: 0, failed: 0, skipped: 0, errors: [] };
+  const summary = syncSummary(Boolean(options.dryRun));
   const start = Math.max(1, Math.min(from, to));
   const end = Math.max(from, to);
   try {
@@ -432,14 +707,19 @@ async function discoverGeneratedSenateBills(
       for (const prefix of prefixes) {
         for (let number = start; number <= end; number += 1) {
           const displayPrefix = prefix === "PLX" ? "PLX" : prefix;
-          await upsertSourceDiscovery(session.db, {
+          const discovery = {
             chamber: "senate",
             kind: "bill",
             sourceUrl: `https://www.senat.ro/legis/lista.aspx?an_cls=${year}&nr_cls=${displayPrefix}${number}`,
             officialId: `${displayPrefix}${number}/${year}`,
             title: `Senate bill candidate ${displayPrefix}${number}/${year}`,
             discoveredOn: `${year}-01-01`
-          });
+          } satisfies SourceDiscoveryInput;
+          if (options.dryRun) {
+            addDiscoveryClassification(summary, await classifyDiscoveryCandidates(session.db, [discovery]));
+          } else {
+            await upsertSourceDiscovery(session.db, discovery);
+          }
           summary.discovered += 1;
         }
       }
@@ -455,17 +735,31 @@ function deputiesSeedUrls(years: number[]): string[] {
 }
 
 async function discoverDeputiesVoteDates(years: number[], options: SyncOptions): Promise<string[]> {
+  validateDateRange(options);
   const dates = new Set<string>();
   const months = options.deputiesVoteMonths ?? Array.from({ length: 12 }, (_, index) => index + 1);
   for (const year of years) {
     for (const month of months) {
       const html = await fetchOfficialSource(`https://www.cdep.ro/ords/pls/steno/evot2015.zile_vot?lu=${month}&an=${year}`, 3);
       for (const match of html.matchAll(/\b(20\d{6})\b/g)) {
-        dates.add(match[1]!);
+        const value = match[1]!;
+        const iso = `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+        if ((!options.dateFrom || iso >= options.dateFrom) && iso <= (options.dateTo ?? new Date().toISOString().slice(0, 10))) dates.add(value);
       }
     }
   }
   return [...dates].sort();
+}
+
+function nextDay(value: string): string {
+  return new Date(Date.parse(value) + 86400000).toISOString().slice(0, 10);
+}
+
+export function validateDateRange(options: Pick<SyncOptions, "dateFrom" | "dateTo">): void {
+  for (const value of [options.dateFrom, options.dateTo]) {
+    if (value !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)) throw new Error("Dates must be valid YYYY-MM-DD values");
+  }
+  if (options.dateFrom && options.dateTo && options.dateFrom > options.dateTo) throw new Error("date-from must precede date-to");
 }
 
 function deputiesVoteListUrls(dates: string[]): string[] {
@@ -708,13 +1002,104 @@ async function upsertSourceSnapshot(db: ReturnType<typeof createDbSession>["db"]
     });
 }
 
+function syncSummary(dryRun: boolean): SyncSummary {
+  return {
+    dryRun: dryRun || undefined,
+    discovered: 0,
+    imported: 0,
+    partial: 0,
+    failed: 0,
+    skipped: 0,
+    errors: []
+  };
+}
+
+interface DiscoveryClassification {
+  newDiscoveries: number;
+  knownByUrl: number;
+  knownByOfficialId: number;
+}
+
+async function classifyDiscoveryCandidates(
+  db: ReturnType<typeof createDbSession>["db"],
+  discoveries: SourceDiscoveryInput[]
+): Promise<DiscoveryClassification> {
+  const classification: DiscoveryClassification = { newDiscoveries: 0, knownByUrl: 0, knownByOfficialId: 0 };
+  for (const discovery of discoveries) {
+    const sourceUrl = canonicalizeOfficialUrl(discovery.sourceUrl);
+    const [existingByUrl] = await db
+      .select({ id: schema.sourceDiscoveries.id })
+      .from(schema.sourceDiscoveries)
+      .where(eq(schema.sourceDiscoveries.sourceUrl, sourceUrl))
+      .limit(1);
+    if (existingByUrl) {
+      classification.knownByUrl += 1;
+      continue;
+    }
+
+    const officialId = discovery.officialId?.trim();
+    const [existingByOfficialId] = officialId
+      ? await db
+          .select({ id: schema.sourceDiscoveries.id })
+          .from(schema.sourceDiscoveries)
+          .where(
+            and(
+              eq(schema.sourceDiscoveries.chamber, discovery.chamber),
+              eq(schema.sourceDiscoveries.kind, discovery.kind),
+              eq(schema.sourceDiscoveries.officialId, officialId)
+            )
+          )
+          .limit(1)
+      : [];
+    if (existingByOfficialId) {
+      classification.knownByOfficialId += 1;
+      continue;
+    }
+
+    classification.newDiscoveries += 1;
+  }
+  return classification;
+}
+
+function addDiscoveryClassification(summary: SyncSummary, classification: DiscoveryClassification) {
+  summary.newDiscoveries = (summary.newDiscoveries ?? 0) + classification.newDiscoveries;
+  summary.knownByUrl = (summary.knownByUrl ?? 0) + classification.knownByUrl;
+  summary.knownByOfficialId = (summary.knownByOfficialId ?? 0) + classification.knownByOfficialId;
+}
+
+function dryRunStatusFromSourceStatus(status: SourceStatus): ImportDiscoveryResult {
+  if (status === "parsed") return "would_import";
+  if (status === "partial") return "would_partial";
+  if (status === "failed") return "would_fail";
+  return "would_partial";
+}
+
+function addImportResult(summary: SyncSummary, result: ImportDiscoveryResult) {
+  if (result === "imported") summary.imported += 1;
+  else if (result === "partial") summary.partial += 1;
+  else if (result === "failed") summary.failed += 1;
+  else if (result === "skipped") summary.skipped += 1;
+  else if (result === "would_import") summary.wouldImport = (summary.wouldImport ?? 0) + 1;
+  else if (result === "would_partial") summary.wouldPartial = (summary.wouldPartial ?? 0) + 1;
+  else if (result === "would_fail") summary.wouldFail = (summary.wouldFail ?? 0) + 1;
+  else if (result === "would_skip") summary.wouldSkip = (summary.wouldSkip ?? 0) + 1;
+}
+
 function addSummary(target: SyncSummary, next: SyncSummary) {
+  target.dryRun = target.dryRun || next.dryRun || undefined;
   target.discovered += next.discovered;
   target.imported += next.imported;
   target.partial += next.partial;
   target.failed += next.failed;
   target.skipped += next.skipped;
   target.expected = (target.expected ?? 0) + (next.expected ?? 0);
+  target.newDiscoveries = (target.newDiscoveries ?? 0) + (next.newDiscoveries ?? 0);
+  target.knownByUrl = (target.knownByUrl ?? 0) + (next.knownByUrl ?? 0);
+  target.knownByOfficialId = (target.knownByOfficialId ?? 0) + (next.knownByOfficialId ?? 0);
+  target.wouldImport = (target.wouldImport ?? 0) + (next.wouldImport ?? 0);
+  target.wouldPartial = (target.wouldPartial ?? 0) + (next.wouldPartial ?? 0);
+  target.wouldFail = (target.wouldFail ?? 0) + (next.wouldFail ?? 0);
+  target.wouldSkip = (target.wouldSkip ?? 0) + (next.wouldSkip ?? 0);
   target.readModels = next.readModels ?? target.readModels;
   target.errors.push(...next.errors);
 }

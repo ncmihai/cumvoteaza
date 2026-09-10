@@ -36,6 +36,7 @@ import { getBillExplorerData, getVoteExplorerData } from "./explorer-data";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
 
 export interface VotePageData {
+  groupLogoUrls?: Record<string, string>;
   vote: Vote;
   bill?: Bill;
   billProcedureSteps: BillProcedureStep[];
@@ -257,7 +258,7 @@ const getCachedBillDirectoryData = unstable_cache(
 
 const getCachedVotePageData = unstable_cache(
   async (id: string) => timed(`data.vote.${id}`, () => getVotePageDataUncached(id)),
-  ["vote-page-data"],
+  ["vote-page-data-with-group-logos-v1"],
   { revalidate: 900, tags: [CACHE_TAGS.votes] }
 );
 
@@ -591,6 +592,26 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
     const parties = partyRows.map(mapParty);
     const mandates = rosterRows.map(mapVoteRosterMandate);
     const memberships = rosterRows.flatMap((row) => row.membership_id ? [mapVoteRosterMembership(row)] : []);
+    // Party assets from the official Senate vote page (2026-09-08).
+    // A member's election-list logo may represent a previous party, so it must
+    // not be used as the group's logo.
+    const officialPartyLogos: Record<string, string> = voteRow.heldOn >= "2024-12-01" ? {
+      AUR: "https://www.senat.ro/Poze/Partide/2020/aur.png",
+      PNL: "https://www.senat.ro/Poze/Partide/2020/pnl.png",
+      PSD: "https://www.senat.ro/Poze/Partide/2020/psd.png",
+      UDMR: "https://www.senat.ro/POZE/Partide/2020/udmr_.png",
+      USR: "https://www.senat.ro/Poze/Partide/2020/USR_RGB_patrat_alb.png"
+    } : {};
+    const logoUrls = Object.values(officialPartyLogos);
+    const logoAssets = logoUrls.length
+      ? await session.db.select().from(schema.storedAssets).where(inArray(schema.storedAssets.officialUrl, logoUrls))
+      : [];
+    const groupLogoUrls: Record<string, string> = {};
+    for (const group of groups) {
+      const party = parties.find((party) => party.id === group.partyId);
+      const officialUrl = officialPartyLogos[party?.shortName ?? group.shortName];
+      if (officialUrl) groupLogoUrls[group.id] = storedAssetUrlByOfficialUrl(logoAssets, officialUrl) ?? officialUrl;
+    }
     const legislatures = uniqueBy(rosterRows.map(mapVoteRosterLegislature), (legislature) => legislature.id);
     const governmentContext = await loadGovernmentContextForDate(session.db, voteRow.heldOn, partyIds);
     const groupTotals = groupTotalRows.map(mapGroupVoteTotal);
@@ -609,6 +630,7 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
       source: sourceRow ? mapSource(sourceRow) : undefined,
       governmentContext,
       groupContexts: buildVoteGroupContexts(contextGroupTotals, groups, parties, governmentContext),
+      groupLogoUrls,
       groups,
       members: memberRows.map(mapMember),
       groupTotals,

@@ -35,14 +35,18 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       if (!asset.storagePath) return new NextResponse("Not found", { status: 404 });
       const downloadLink = await getDigiStorageDownloadLink(asset.storagePath);
       const download = await fetch(downloadLink);
-      if (!download.ok || !download.body) return new NextResponse("Not found", { status: 404 });
+      if (!download.ok || !download.body) {
+        console.error("Bill text gateway Digi download failed", { documentId: document.id, assetId: asset.id, status: download.status });
+        return new NextResponse("Not found", { status: 404 });
+      }
       return new Response(download.body, { status: 200, headers: headersForText(asset, download.headers) });
     }
 
     const legacyUrl = asset.publicUrl || asset.blobUrl;
     if (legacyUrl) return NextResponse.redirect(legacyUrl, { status: 302, headers: headersForText(asset) });
     return new NextResponse("Not found", { status: 404 });
-  } catch {
+  } catch (error) {
+    console.error("Bill text gateway failed", { documentId: id, error: error instanceof Error ? error.message : String(error) });
     return new NextResponse("Not found", { status: 404 });
   } finally {
     await session.close();

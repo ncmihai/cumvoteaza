@@ -10,6 +10,7 @@ import {
   yearFromUrl
 } from "./identifiers";
 import { canonicalizeOfficialUrl } from "../official-urls";
+import { classifyDeputiesDocumentKind } from "./deputies-bill";
 
 export interface ParsedSenateBill {
   sourceSnapshot: SourceSnapshot;
@@ -56,7 +57,13 @@ export function parseSenateBill(html: string, sourceUrl: string): ParsedSenateBi
         id: `doc-${billId}-${index + 1}`,
         billId,
         label: cleanText($(node).text()) || `Document ${index + 1}`,
-        url: new URL(href.replace(/\\/g, "/"), sourceUrl).toString()
+        url: new URL(href.replace(/\\/g, "/"), sourceUrl).toString(),
+        // The Senate exposes the same document vocabulary as the Chamber in
+        // its link labels ("forma inițiatorului", "raport", "aviz", ...).
+        // Preserve that signal so text extraction never falls back to an
+        // arbitrary explanatory memo when a proposal is requested.
+        documentKind: classifyDeputiesDocumentKind(`${cleanText($(node).text())} ${href}`),
+        sourceChamber: "senate"
       };
     });
 

@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { BarChart3, FileText, Search, TrendingUp, UserRound } from "lucide-react";
 import { formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
@@ -18,6 +19,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="home" locale={locale} />
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
           <div className="text-sm font-semibold uppercase text-blue-800">{messages.home.eyebrow}</div>

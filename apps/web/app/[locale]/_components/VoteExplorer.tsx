@@ -18,6 +18,7 @@ interface VoteExplorerProps {
   locale: Locale;
   chamber: ChamberId;
   groups: ParliamentaryGroup[];
+  groupLogoUrls?: Record<string, string>;
   members: Member[];
   seatVotes: IndividualVote[];
   nominalVotes: IndividualVote[];
@@ -41,7 +42,8 @@ interface SeatSlot {
   rowIndex: number;
 }
 
-export function VoteExplorer({ locale, chamber, groups, members, seatVotes, nominalVotes, groupTotals }: VoteExplorerProps) {
+export function VoteExplorer({ locale, chamber, groups, groupLogoUrls = {}, members, seatVotes, nominalVotes, groupTotals }: VoteExplorerProps) {
+  const [failedLogos, setFailedLogos] = useState<string[]>([]);
   const [activeGroups, setActiveGroups] = useState<string[]>([]);
   const [activeChoices, setActiveChoices] = useState<VoteChoice[]>([]);
   const [pinnedSeatId, setPinnedSeatId] = useState<string | undefined>();
@@ -94,11 +96,16 @@ export function VoteExplorer({ locale, chamber, groups, members, seatVotes, nomi
             <button
               type="button"
               key={group.id}
+              title={group.name}
+              aria-label={`${group.name}: ${groupCounts[group.id] ?? 0}`}
+              aria-pressed={activeGroups.includes(group.id)}
               onClick={() => setActiveGroups((current) => toggleValue(current, group.id))}
               className={buttonClass(activeGroups.includes(group.id))}
             >
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
-              {group.shortName}
+              {groupLogoUrls[group.id] && !failedLogos.includes(group.id) ? (
+                <img src={groupLogoUrls[group.id]} alt="" className="h-7 w-9 rounded-sm bg-white object-contain p-0.5"
+                  onError={() => setFailedLogos((current) => [...current, group.id])} />
+              ) : <span className="text-xs">{group.shortName}</span>}
               <span className="text-xs opacity-70">{groupCounts[group.id] ?? 0}</span>
             </button>
           ))}

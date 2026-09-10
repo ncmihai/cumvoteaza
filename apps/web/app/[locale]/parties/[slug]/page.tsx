@@ -1,3 +1,4 @@
+import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { chamberLabels } from "@cumsevoteaza/parliament-model";
@@ -21,6 +22,7 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <EditorialSections page="party" locale={locale} entityId={slug} />
       <EngagementTracker entityType="party" entityId={party.id} locale={locale} />
       <div className="flex flex-wrap items-start justify-between gap-4 border border-slate-300 bg-white p-5">
         <div>
