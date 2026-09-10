@@ -6,6 +6,7 @@ import { getCompositionTimelineData } from "@/lib/composition-data";
 import { getHomeDashboardData, type DashboardItem } from "@/lib/explorer-data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { CompositionSeatMapPreview } from "./_components/CompositionSeatMap";
+import { HotVoteCarousel } from "./_components/HotVoteCarousel";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
           <MetricList items={dashboard.mostViewed} empty={labels.noActivity} />
         </aside>
+      </section>
+
+      <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <HotVoteCarousel locale={locale} items={dashboard.trendingVotes.flatMap((item) => dashboard.latestVotes.filter((vote) => vote.vote.id === item.entityId))} fallback={dashboard.latestVotes} />
+        <aside className="border border-slate-300 bg-[#f3f7fa] p-5"><h2 className="font-serif text-2xl font-semibold text-[#071a3a]">{locale === "ro" ? "Ce s-a decis și de ce contează" : "What was decided and why it matters"}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{locale === "ro" ? "Urmărește voturile recente, verifică rezultatul și citește documentele oficiale." : "Follow recent votes, check the result and read the official documents."}</p></aside>
       </section>
 
       <section className="mt-8 grid gap-4 lg:grid-cols-2">

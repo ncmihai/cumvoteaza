@@ -383,7 +383,7 @@ async function getHomeDashboardDataUncached(locale: string): Promise<HomeDashboa
       session.db.execute<AggregateRow>(sql`
         select 'vote' as entity_type, entity_id, count(*)::int as count
         from content_reactions
-        where entity_type = 'vote' and reaction = 'hot' and created_at >= date_trunc('month', now())
+        where entity_type = 'vote' and reaction = 'hot' and created_at >= now() - interval '30 days'
         group by entity_id
         order by count(*) desc
         limit 5
@@ -391,7 +391,7 @@ async function getHomeDashboardDataUncached(locale: string): Promise<HomeDashboa
       session.db.execute<AggregateRow>(sql`
         select 'bill' as entity_type, entity_id, count(*)::int as count
         from content_reactions
-        where entity_type = 'bill' and reaction = 'hot' and created_at >= date_trunc('month', now())
+        where entity_type = 'bill' and reaction = 'hot' and created_at >= now() - interval '30 days'
         group by entity_id
         order by count(*) desc
         limit 5
