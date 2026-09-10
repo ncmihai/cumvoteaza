@@ -19,10 +19,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const currentStop = composition.stops[0];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1380px] px-5 pb-16 pt-7 lg:px-10">
       <EditorialSections page="home" locale={locale} />
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div>
+      <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
           <div className="text-sm font-semibold uppercase tracking-wide text-[#0c6464]">{new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</div>
           <h1 className="mt-3 max-w-4xl font-serif text-6xl font-semibold leading-[0.98] tracking-tight text-[#071a3a] md:text-7xl">
             {locale === "ro" ? "Astăzi în Parlament" : "Today in Parliament"}
@@ -39,21 +39,22 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               aria-label={messages.home.searchPlaceholder}
             />
           </form>
-          {currentStop ? <CurrentComposition locale={locale} labels={labels} stop={currentStop} /> : null}
         </div>
 
         <aside className="border border-slate-300 bg-white p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-slate-950">{labels.thisMonth}</div>
+          <div className="font-serif text-xl font-semibold text-[#071a3a]">{labels.thisMonth}</div>
           </div>
           <MetricList items={dashboard.mostViewed} empty={labels.noActivity} />
         </aside>
       </section>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <HotVoteCarousel locale={locale} items={dashboard.trendingVotes.flatMap((item) => dashboard.latestVotes.filter((vote) => vote.vote.id === item.entityId))} fallback={dashboard.latestVotes} />
         <aside className="border border-slate-300 bg-[#f3f7fa] p-5"><h2 className="font-serif text-2xl font-semibold text-[#071a3a]">{locale === "ro" ? "Ce s-a decis și de ce contează" : "What was decided and why it matters"}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{locale === "ro" ? "Urmărește voturile recente, verifică rezultatul și citește documentele oficiale." : "Follow recent votes, check the result and read the official documents."}</p></aside>
       </section>
+
+      {currentStop ? <CurrentComposition locale={locale} labels={labels} stop={currentStop} /> : null}
 
       <section className="mt-8 grid gap-4 lg:grid-cols-2">
         <Panel title={labels.trendingVotes} icon={<TrendingUp size={18} aria-hidden="true" />}>
