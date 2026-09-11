@@ -173,6 +173,25 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(change["status"],"pending")
         self.assertEqual(len(change["evidence"]),2)
 
+    def test_release_preview_state_machine_and_disabled_publish_gate(self):
+        from parliament_workbench.cockpit_publish import publish
+        worker=Worker(self.config,None)
+        ready=self.store.put("release",{"title":"Drill","status":"building","manifest":[],"manifestHash":digest([])})
+        job=self.store.enqueue("preview",{"changes":[],"title":"Drill"})
+        with patch("parliament_workbench.cockpit_runtime.workspace.preview_release",return_value=ready), \
+             patch.object(worker,"command"), patch("parliament_workbench.cockpit_runtime.start_preview"):
+            result=worker.execute(job)
+        self.assertEqual(result["status"],"preview_ready")
+        failed=self.store.put("release",{"title":"Failed drill","status":"building","manifest":[],"manifestHash":digest([])})
+        failed_job=self.store.enqueue("preview",{"changes":[],"title":"Failed drill"})
+        with patch("parliament_workbench.cockpit_runtime.workspace.preview_release",return_value=failed), \
+             patch.object(worker,"command",side_effect=RuntimeError("read model failure")):
+            with self.assertRaisesRegex(RuntimeError,"read model failure"):
+                worker.execute(failed_job)
+        self.assertEqual(self.store.get(failed["id"])["status"],"preview_failed")
+        with patch.dict("os.environ",{"WORKBENCH_ENABLE_PUBLISH":"0"},clear=True):
+            with self.assertRaises(PermissionError): publish(self.store,"postgresql://unused",ready["id"],"wrong")
+
     def test_stale_ai_evidence_blocks_release_validation(self):
         from parliament_workbench.cockpit_publish import validate_manifest
         result=self.store.put("result",{"billId":"bill-a","status":"accepted","inputHash":digest({"version":1})})
@@ -299,6 +318,17 @@ class CockpitTest(unittest.TestCase):
         self.assertEqual(comparison["families"],1)
         self.assertEqual(comparison["pairwise"][0]["relevanceAgreement"],1)
         self.assertEqual(comparison["methods"][1]["version"],2)
+
+    def test_political_method_contract_is_explicit_and_cannot_emit_combined_score(self):
+        seed_profiles(self.store)
+        profile = next(item for item in self.store.objects("profile") if item["task"] == "political")
+        self.assertEqual(profile["eligibleMotions"], ["adopt", "reject"])
+        self.assertEqual(profile["duplicatePolicy"], "latest_vote_per_member_chamber_family_indicator")
+        self.assertFalse(profile["aggregation"]["combinedScore"])
+        with self.assertRaises(ValueError):
+            save_profile(self.store, {"parentId":profile["id"], "aggregation":{**profile["aggregation"], "combinedScore":True}})
+        with self.assertRaises(ValueError):
+            save_profile(self.store, {"parentId":profile["id"], "evidenceMinimums":{**profile["evidenceMinimums"], "baselineCharacters":0}})
 
     def test_unverified_quotations_fail_and_unknown_baseline_is_unscored(self):
         context={"documents":[{"id":"d","url":"https://www.cdep.ro/a","text_excerpt":"Exact official passage with substantive evidence."}],"votes":[{"id":"v"}]}

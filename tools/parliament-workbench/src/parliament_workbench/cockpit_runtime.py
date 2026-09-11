@@ -344,6 +344,7 @@ class Worker:
             release = workspace.preview_release(self.store, payload["changes"], payload.get("title", "Reviewed release"))
             try:
                 self.command(key, ["npm", "run", "ingest:refresh-read-models"], child_environment(self.config, "release"))
+                self.command(key, ["npm", "run", "build"], child_environment(self.config, "release"))
                 start_preview(self.config, release["id"], check=lambda: self.check(key))
             except BaseException:
                 self.store.put("release", {**release, "status":"preview_failed"}, release["id"])
@@ -426,7 +427,10 @@ def start_preview(config, release_id, check=lambda: None):
     env["COCKPIT_PREVIEW_RELEASE_ID"] = release_id
     env["NEXT_TELEMETRY_DISABLED"] = "1"
     log = (config.data_dir/"preview-server.log").open("ab")
-    process = subprocess.Popen(["node", next_bin, "dev", "--port", "3001", "--hostname", "127.0.0.1"],
+    # A release preview verifies reviewed data against the already validated
+    # production build. Dev mode creates a large cache and its adapter can crash
+    # before the identity endpoint in nested workspaces.
+    process = subprocess.Popen(["node", next_bin, "start", "--port", "3001", "--hostname", "127.0.0.1"],
                               cwd=repo_root()/"apps/web", env=env, stdout=log, stderr=log, start_new_session=True)
     log.close()
     pidfile.write_text(encode({"pid": process.pid, "releaseId": release_id}))

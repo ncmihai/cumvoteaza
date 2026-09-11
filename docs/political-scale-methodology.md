@@ -1,6 +1,6 @@
 # CumVoteaza political scale — methodology proposal
 
-Date: 2026-09-08. Status: proposed for discussion, not implemented or validated.
+Date: 2026-09-11. Status: implemented as an internal experimental method; human validation and public release remain pending.
 
 ## Recommendation
 
@@ -119,6 +119,8 @@ Expose named method versions containing the codebook, teaching set, context poli
 Users should be able to test, compare, edit, approve a new method, run it on a selected corpus, inspect changed classifications, and see which results became stale. Every visible score should open its contributing bills, votes, source passages, exclusions, coverage and method version.
 
 Public publication remains a reviewed release. Changing an experimental slider should not silently rewrite the public methodology or scores.
+
+Implementation note: saved political methods now carry explicit eligible motions, evidence thresholds, duplicate policy, member/party aggregation rules, declared indicator weights and a hard prohibition on a combined score. Outputs retain proposal strength separately, expose contributing decisions and exclusions, and return `disabled` or `insufficient_coverage` instead of an inferred axis value when the saved threshold is not met.
 
 ## Sources and their limits
 

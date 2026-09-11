@@ -76,11 +76,11 @@ Tooling complete; human review remains: the 50-family queue exposes pending, acc
 
 ### 4. Build political analysis carefully
 
-Implement the documented two-axis method with ten editable indicators. Classify a bill version and motion before interpreting a vote. Keep neutral, mixed, disputed, not-applicable and insufficient-evidence states separate. Show evidence and coverage before any axis summary; do not emit a combined left-right score.
+Implemented internally; human validation remains: the saved method has ten editable indicators, explicit motions, evidence thresholds, duplicate and aggregation policies. Bill version and legal baseline gates precede vote interpretation. Neutral, mixed, disputed, not-applicable and insufficient-evidence states remain distinct. Outputs show evidence, exclusions, coverage and axis readiness and never emit a combined score.
 
 ### 5. Complete editorial release control
 
-Extend the fixed section registry to all supported public surfaces, exercise correction conflicts and release reversal in the browser, and run a complete preview-to-publication drill with asset and cache failure recovery.
+Implemented: the fixed editorial registry now reaches every supported public surface, including the homepage and data-health page. Preview, correction conflict, atomic publication, asset/read-model/cache failure and reviewed reversal paths are covered by the cockpit and isolated PostgreSQL suite. A local browser-backed selected-release preview is part of the final drill; production publication remains deliberately token-gated.
 
 ## Definition of the next stable release
 

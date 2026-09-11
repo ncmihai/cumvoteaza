@@ -41,8 +41,12 @@ Release validation: workspace TypeScript checks and Vercel production build pass
 
 - Senate form discovery has been rerun locally: 745 rows for 2024, 683 for 2025 and 605 for 2026. The old zero-link attempts remain historical failures; generated candidate numbers are not used as verified discoveries.
 - Review the completed 50-family model results, resolve source404 where possible, and approve development/held-out reference examples. Human reference-label review remains required; no calibrated accuracy claim is justified yet.
-- Complete political profile UX, explicit motion/baseline review, party splits and method comparisons. Refine evaluation metrics and evidence controls before trusting scores.
-- Extend the website section registry to control existing public sections/charts, beyond current editorial sections. Verify editing/reloading across all supported page types.
-- Exercise the new correction/conflict/release controls end to end in the browser; complete source-change/rebase and publication fault-path audits, including assets and local receipt recovery.
+- Review enough political examples to exercise non-empty member/party profiles and method comparisons; the controls and empty/insufficient-coverage contracts are implemented, but the corpus is deliberately unapproved.
+
+## Phases 8–10 completion
+
+- Political method outputs now expose the complete saved method contract, exact contributing decisions, strength separate from direction, coverage, exclusion reasons and axis readiness. Combined economic/social scoring is prohibited.
+- The editorial registry covers all ten supported public surfaces; homepage and data-health editorial sections use the same reviewed bilingual release path as directories and detail pages.
+- The release state machine is tested from preview readiness through preview failure, disabled publication, atomic PostgreSQL commit/rollback, durable receipt replay, cache/read-model recovery and reviewed reversal. The local drill caught and fixed a Next.js dev-adapter crash by building and running the production preview server. Release identity was confirmed; final full-page inspection was interrupted when the host volume reached 100% and PostgreSQL stopped accepting connections. Production remains unchanged unless its explicit enable flag and token are supplied.
 - Recheck migration backup details, restore-content equivalence, roster/date filters, and repeat-import idempotency on the same real source records.
 - Final automated tests, type checks and cockpit UI build pass. Human reference-label review, website editor review, release preview inspection and explicit production approval remain before deployment.

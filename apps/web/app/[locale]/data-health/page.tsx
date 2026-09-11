@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDataHealthData } from "@/lib/data-health";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { DataHealthQueues, type DataHealthLabels } from "../_components/DataHealthQueues";
+import { EditorialSections } from "../_components/EditorialSections";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function DataHealthPage({ params }: { params: Promise<{ loc
 
   return (
     <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-8 md:px-8 lg:px-10">
+      <EditorialSections page="data-health" locale={locale} />
       <div>
         <div className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{labels.eyebrow}</div>
         <h1 className="mt-2 font-serif text-5xl font-semibold leading-[.96] tracking-[-.045em] text-[#050e2c] md:text-6xl">{labels.title}</h1>

@@ -17,7 +17,7 @@ from .cockpit_runtime import Worker, backup, recipe, seed_routine_recipes
 from . import cockpit_workspace as ws
 from . import cockpit_analysis as analysis
 
-PAGES = ["home", "bills", "bill", "votes", "vote", "members", "member", "party", "composition"]
+PAGES = ["home", "bills", "bill", "votes", "vote", "members", "member", "party", "composition", "data-health"]
 SECTIONS = ["introduction", "methodology", "reviewed_topics", "editorial_note"]
 EDITABLE = {"bills", "votes", "members", "parties", "parliamentary_groups", "documents",
             "member_party_affiliations", "member_group_memberships", "member_mandates",
