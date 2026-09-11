@@ -4,6 +4,7 @@ import { chamberLabels } from "@cumsevoteaza/parliament-model";
 import { getMemberDirectoryData } from "@/lib/data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
+import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
 
 export default async function MembersPage({
   params,
@@ -30,15 +31,10 @@ export default async function MembersPage({
   const activeGroupFilters = parseGroupParam(filters.group).filter((group) => validGroupValues.has(group));
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum găsești parlamentarul tău?" : "How to find your representative"} body={locale === "ro" ? "Introdu numele, partidul sau județul și folosește filtrele pentru camera și legislatura potrivită." : "Enter a name, party or county and use filters for the right chamber and legislature."} items={locale === "ro" ? ["Caută după nume, partid sau județ.", "Alege camera și legislatura.", "Intră în profil pentru voturi și inițiative."] : ["Search by name, party or county.", "Choose chamber and legislature.", "Open a profile for votes and initiatives."]} />}>
       <EditorialSections page="members" locale={locale} />
       <SearchEngagementTracker entityType="member" query={filters.q} locale={locale} />
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-300 pb-6">
-        <div>
-          <div className="text-sm font-semibold uppercase text-blue-800">{messages.home.eyebrow}</div>
-          <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{messages.nav.members}</h1>
-        </div>
-      </div>
+      <EditorialPageHeader eyebrow={messages.home.eyebrow} title={messages.nav.members} subtitle={locale === "ro" ? "Află cine te reprezintă și cum votează." : "See who represents you and how they vote."} />
 
       <form action={`/${locale}/members`} className="mt-6 grid gap-3 border border-slate-300 bg-white p-4 shadow-sm md:grid-cols-[minmax(220px,1fr)_auto]">
         {filters.chamber ? <input type="hidden" name="chamber" value={filters.chamber} /> : null}
@@ -166,7 +162,7 @@ export default async function MembersPage({
           </tbody>
         </table>
       </section>
-    </main>
+    </EditorialPage>
   );
 }
 

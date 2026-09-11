@@ -3,6 +3,7 @@ import { getBillExplorerData, getDirectoryFilterOptions, parseExplorerFilters } 
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { BillDirectoryExplorer, type DirectoryLabels } from "../_components/ExplorerDirectories";
+import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
 
 export default async function BillsPage({
   params,
@@ -23,19 +24,13 @@ export default async function BillsPage({
   const labels = pageLabels[locale];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum găsești un proiect?" : "How to find a bill"} body={locale === "ro" ? "Caută după număr sau subiect, apoi restrânge rezultatele după legislatură și cameră." : "Search by number or subject, then narrow results by legislature and chamber."} items={locale === "ro" ? ["Caută după identificator sau cuvinte din titlu.", "Folosește filtrele pentru rezultate precise.", "Deschide proiectul pentru traseu, documente și voturi."] : ["Search by identifier or title words.", "Use filters for precise results.", "Open a bill for its timeline, documents and votes."]} />}>
       <EditorialSections page="bills" locale={locale} />
       <SearchEngagementTracker entityType="bill" query={filters.q} locale={locale} />
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-300 pb-6">
-        <div>
-          <div className="text-sm font-semibold uppercase text-blue-800">{messages.nav.bills}</div>
-          <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{labels.title}</h1>
-          <p className="mt-2 max-w-3xl text-slate-600">{labels.subtitle}</p>
-        </div>
-      </div>
+      <EditorialPageHeader eyebrow={messages.nav.bills} title={labels.title} subtitle={labels.subtitle} />
 
       <BillDirectoryExplorer locale={locale} initialData={data} filterOptions={filterOptions} initialFilters={filters} labels={labels} />
-    </main>
+    </EditorialPage>
   );
 }
 

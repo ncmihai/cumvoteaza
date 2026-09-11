@@ -8,6 +8,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const { locale: rawLocale } = await params;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const [dashboard, voteFeed] = await Promise.all([getHomeDashboardData(locale), getVoteExplorerData({ limit: 8 })]);
-  const votes = [...dashboard.latestVotes, ...voteFeed.items].filter((item, index, items) => items.findIndex((candidate) => candidate.vote.id === item.vote.id) === index);
+  const votes = [...dashboard.latestVotes, ...voteFeed.items]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.vote.id === item.vote.id) === index)
+    .sort((left, right) => right.hotCount - left.hotCount || right.vote.heldOn.localeCompare(left.vote.heldOn));
   return <HomepageExperience locale={locale} votes={votes} />;
 }

@@ -35,7 +35,7 @@ export async function EditorialSections({ page, locale, entityId, billId }: { pa
   } catch (error) {
     // Allow rolling out the app before applying the reviewed content migration.
     const code = (error as {code?:string;cause?:{code?:string}}).code ?? (error as {cause?:{code?:string}}).cause?.code;
-    if (code === "42P01") return null;
+    if (code === "42P01" || code === "ECONNREFUSED") return null;
     throw error;
   } finally { await session.close(); }
 }

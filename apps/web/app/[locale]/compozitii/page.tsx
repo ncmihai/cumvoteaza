@@ -4,6 +4,7 @@ import { type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
 import { getCompositionTimelineData, type CompositionMode } from "@/lib/composition-data";
 import { messagesFor, type AppLocale } from "@/lib/i18n";
 import { CompositionTimeline } from "../_components/CompositionTimeline";
+import { EditorialGuide, EditorialPage } from "../_components/EditorialPage";
 
 export default async function CompositionsPage({
   params,
@@ -20,7 +21,7 @@ export default async function CompositionsPage({
   const labels = compositionPageLabels[locale];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum citim această pagină?" : "How to read this page"} body={locale === "ro" ? "Vezi componența celor două camere, distribuția mandatelor și relația grupurilor cu Guvernul." : "See both chambers, seat distribution and how groups relate to government."} items={locale === "ro" ? ["Alege situația oficială sau susținerea calculată.", "Compară Camera Deputaților și Senatul.", "Folosește istoricul pentru schimbările legislaturii."] : ["Choose official or computed support.", "Compare the Chamber and Senate.", "Use history for changes during the term."]} />}>
       <EditorialSections page="composition" locale={locale} />
       <section className="border-b border-slate-300 pb-6">
         <p className="text-sm font-semibold uppercase tracking-normal text-slate-500">{labels.eyebrow}</p>
@@ -51,7 +52,7 @@ export default async function CompositionsPage({
       <div className="mt-6">
         <CompositionTimeline locale={locale} mode={mode} stops={data.stops} />
       </div>
-    </main>
+    </EditorialPage>
   );
 }
 

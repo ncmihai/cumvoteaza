@@ -38,6 +38,9 @@ The implementation uses current local parliamentary records. The selected local 
 - Earlier P1: the right side was a small generic rail rather than the vote-detail canvas. Fixed with a full detail panel containing toolbar, metadata, explanation, totals and official link.
 - Earlier P2: mobile navigation overflowed horizontally. Fixed by collapsing the desktop navigation below the medium breakpoint.
 - Earlier P2: search, featured-card and result-count proportions diverged from the source. Fixed by porting the supplied grid tracks, padding, type scales and breakpoints.
+- Annotation iteration: removed the tagline beneath CumVoteaza and added a labeled hamburger menu below 1024 px. Verified open and closed at 653 × 808; every primary route is present and keyboard reachable.
+- Interaction iteration: homepage candidates are ordered by their real Hot count, the feature displays the 30-day Hot context, and the existing reaction endpoint is exposed through the Hot button.
+- System iteration: extracted the approved frame, heading and guidance patterns into `EditorialPage.tsx` and applied them to Projects, Members and Composition.
 
 ## Interaction checks
 
