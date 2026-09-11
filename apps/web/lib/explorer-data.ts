@@ -38,6 +38,18 @@ export interface VoteExplorerItem {
   bill?: Bill;
   source?: SourceSnapshot;
   hotCount: number;
+  groupBreakdown: VotePreviewGroup[];
+}
+
+export interface VotePreviewGroup {
+  groupId: string;
+  shortName: string;
+  name: string;
+  color: string;
+  for: number;
+  against: number;
+  abstention: number;
+  presentNotVoting: number;
 }
 
 export interface BillExplorerItem {
@@ -225,7 +237,45 @@ async function getVoteExplorerDataUncached(query: ExplorerQuery = {}): Promise<E
         ss.parser_version as source_parser_version,
         ss.status as source_status,
         ss.notes as source_notes,
-        coalesce(h.hot_count, 0)::int as hot_count
+        coalesce(h.hot_count, 0)::int as hot_count,
+        coalesce((
+          select json_agg(json_build_object(
+            'groupId', pg.id,
+            'shortName', pg.short_name,
+            'name', pg.name,
+            'color', pg.color,
+            'for', grouped.for_count,
+            'against', grouped.against,
+            'abstention', grouped.abstention,
+            'presentNotVoting', grouped.present_not_voting
+          ) order by (grouped.for_count + grouped.against + grouped.abstention + grouped.present_not_voting) desc)
+          from (
+            select gvt.group_id, gvt.for_count, gvt.against, gvt.abstention, gvt.present_not_voting
+            from group_vote_totals gvt
+            where gvt.vote_id = v.id
+            union all
+            select coalesce(iv.group_id, membership.group_id) as group_id,
+              count(*) filter (where iv.choice = 'for')::int,
+              count(*) filter (where iv.choice = 'against')::int,
+              count(*) filter (where iv.choice = 'abstention')::int,
+              count(*) filter (where iv.choice = 'present_not_voting')::int
+            from individual_votes iv
+            left join lateral (
+              select mgm.group_id
+              from member_group_memberships mgm
+              where mgm.member_id = iv.member_id
+                and mgm.starts_on <= v.held_on
+                and (mgm.ends_on is null or mgm.ends_on >= v.held_on)
+              order by mgm.starts_on desc
+              limit 1
+            ) membership on true
+            where iv.vote_id = v.id
+              and coalesce(iv.group_id, membership.group_id) is not null
+              and not exists (select 1 from group_vote_totals existing where existing.vote_id = v.id)
+            group by coalesce(iv.group_id, membership.group_id)
+          ) grouped
+          join parliamentary_groups pg on pg.id = grouped.group_id
+        ), '[]'::json) as group_breakdown
       from votes v
       left join bills b on b.id = v.bill_id
       left join source_snapshots ss on ss.id = v.source_snapshot_id
@@ -551,7 +601,22 @@ function demoVoteExplorerData(limit: number, cursor?: string): ExplorerPageData<
     vote,
     bill: demoDataset.bills.find((bill) => bill.id === vote.billId),
     source: demoDataset.sourceSnapshots.find((source) => source.id === vote.sourceSnapshotId),
-    hotCount: 0
+    hotCount: 0,
+    groupBreakdown: demoDataset.groupVoteTotals
+      .filter((total) => total.voteId === vote.id)
+      .map((total) => {
+        const group = demoDataset.groups.find((candidate) => candidate.id === total.groupId);
+        return {
+          groupId: total.groupId,
+          shortName: group?.shortName ?? total.groupId,
+          name: group?.name ?? total.groupId,
+          color: group?.color ?? "#64748b",
+          for: total.for,
+          against: total.against,
+          abstention: total.abstention,
+          presentNotVoting: total.presentNotVoting
+        };
+      })
   }));
   const last = visible.at(-1);
   return {
@@ -618,8 +683,34 @@ function mapVoteDirectoryRow(row: VoteDirectoryRow): VoteExplorerItem {
     vote,
     bill: row.bill_id ? mapBillFromRow(row) : undefined,
     source: row.source_id ? mapSourceFromRow(row) : undefined,
-    hotCount: Number(row.hot_count ?? 0)
+    hotCount: Number(row.hot_count ?? 0),
+    groupBreakdown: mapVotePreviewGroups(row.group_breakdown)
   };
+}
+
+function mapVotePreviewGroups(value: unknown): VotePreviewGroup[] {
+  let rows = value;
+  if (typeof value === "string") {
+    try {
+      rows = JSON.parse(value) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    const item = row as Record<string, unknown>;
+    return {
+      groupId: String(item.groupId ?? ""),
+      shortName: String(item.shortName ?? item.groupId ?? "—"),
+      name: String(item.name ?? item.shortName ?? item.groupId ?? "—"),
+      color: String(item.color ?? "#64748b"),
+      for: Number(item.for ?? 0),
+      against: Number(item.against ?? 0),
+      abstention: Number(item.abstention ?? 0),
+      presentNotVoting: Number(item.presentNotVoting ?? 0)
+    };
+  });
 }
 
 function mapBillDirectoryRow(row: BillDirectoryRow): BillExplorerItem {
@@ -841,6 +932,7 @@ interface VoteDirectoryRow extends SourceColumns {
   bill_status: string | null;
   bill_source_snapshot_ids: unknown;
   hot_count: number;
+  group_breakdown: unknown;
 }
 
 interface BillDirectoryRow extends SourceColumns {

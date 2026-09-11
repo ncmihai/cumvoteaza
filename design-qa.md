@@ -73,3 +73,51 @@ The vote directory now uses the full available desktop canvas. Vote identity, su
 - Tighten unknown/partial-state badges once all state labels are known.
 
 final result: passed
+
+---
+
+# Phase 1 repair QA — unified vote journey (12 September 2026)
+
+## Comparison target
+
+- Source visual truth path: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-14ec6aba-b3f7-4f63-a9d4-c256e6784867.png` plus browser-comment captures 1–6 supplied by the user.
+- Implementation screenshot path: Codex in-app browser capture, local production URL `http://localhost:3004/ro` and `/ro/votes`, tab 16 (captured in the Phase 1 task; the browser provider does not expose a filesystem path).
+- Source pixels: 1280 × 911. Implementation capture: 1280 × 720 CSS pixels, device scale 1.
+- Density normalization: both inspected at scale 1; only shared above-the-fold regions were compared because the viewport heights differ.
+- State: Romanian desktop homepage, hot slide 1 and slide 2, recent-vote selection, vote-directory default selection and second-row selection.
+
+## Full-view comparison evidence
+
+The editorial navy/cream visual language, serif hierarchy, square bordered surfaces and two-column desktop proportions remain aligned with the supplied mockup. The formerly static “Hot” feature now has clearly attached controls and progress dots without weakening the primary story. The right rail no longer repeats the feature/list card: it prioritizes vote balance, grouped-party behavior, attendance only when a valid denominator exists, and one unambiguous route to the complete vote.
+
+The vote directory preserves the scan-friendly list while the selected card uses the same preview contract as the homepage. Selection is visible through the yellow rail/background and updates the URL. At widths below the desktop split breakpoint, list activation navigates directly and exposes a busy/loading state during the transition.
+
+## Focused comparison evidence
+
+- Typography: Georgia/editorial headings and compact sans-serif metadata match the established system; long bill titles wrap rather than collide.
+- Spacing/layout: the carousel control strip is structurally attached to the feature card; preview sections use consistent 16–24px rhythm and remain within the 400px rail.
+- Colors/tokens: existing navy, blue, yellow and semantic green/red/amber tokens are reused; no new decorative palette was introduced.
+- Image quality: no target raster assets are involved in this flow; all icons use the existing Lucide library and party identity uses database colors.
+- Copy/content: Romanian and English labels were added for carousel navigation, group voting, attendance, empty group data and loading feedback.
+- Interaction/accessibility: previous/next, dots, arrow keys and horizontal swipe change the hot slide; URL-backed desktop selection and browser history work; selected/busy states are announced; CTAs remain semantic links.
+
+## Findings and comparison history
+
+- [P1, fixed] The first implementation only showed party data when `group_vote_totals` existed. Browser evidence showed a truthful empty state for a nominal vote despite individual records being present. Fixed by aggregating individual votes and resolving group membership at the vote date; the revised browser capture shows PSD, AUR, PNL, USR, UDMR and UPR distributions.
+- [P2, fixed] Attendance initially displayed 100% when the absent denominator was unavailable. Fixed by hiding the percentage unless `absent` is supplied.
+- [P2, fixed] Cached pre-change directory payloads could omit `groupBreakdown` and crash the preview. Fixed with a cache-safe empty fallback; `/ro/votes` then rendered successfully.
+- Post-fix evidence: production build, homepage carousel activation, homepage recent-vote selection, directory render and directory second-row selection all completed in the in-app browser. No runtime error appeared after the cache-safe fix.
+
+## Implementation checklist
+
+1. Hot carousel: complete.
+2. Shared non-duplicative vote preview: complete.
+3. Party breakdown with nominal-vote fallback: complete.
+4. Desktop URL selection and narrow-screen direct navigation/loading feedback: complete.
+5. Typecheck, unit tests and production build: complete.
+
+## Follow-up polish
+
+- A future source-backed “notable split” label can be added once party cohesion semantics are agreed; the current preview intentionally exposes the raw group distribution without editorial inference.
+
+final result: passed

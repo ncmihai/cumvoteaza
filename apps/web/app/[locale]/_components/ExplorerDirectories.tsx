@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowRight, BarChart3, CalendarDays, FileText, Filter, Search } from "lucide-react";
+import { ArrowRight, BarChart3, FileText, Filter, LoaderCircle, Search } from "lucide-react";
 import { chamberLabels, formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { AppLocale } from "@/lib/i18n";
 import { presentBill, presentVote } from "@/lib/public-presentation";
 import type { BillExplorerItem, DirectoryFilterOptions, ExplorerFilters, ExplorerPageData, VoteExplorerItem } from "@/lib/explorer-data";
 import { HotButton } from "./HotButton";
-import { ShareButton } from "./ShareButton";
+import { VotePreview } from "./VotePreview";
 
 export function VoteDirectoryExplorer({
   locale,
@@ -29,6 +29,8 @@ export function VoteDirectoryExplorer({
   const [hasMore, setHasMore] = useState(initialData.hasMore);
   const [isPending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState(initialData.items[0]?.vote.id);
+  const [navigatingId, setNavigatingId] = useState<string>();
+  const router = useRouter();
   const selected = items.find((item) => item.vote.id === selectedId) ?? items[0];
 
   useEffect(() => {
@@ -49,6 +51,11 @@ export function VoteDirectoryExplorer({
   }, [items]);
 
   function selectVote(id: string) {
+    if (window.matchMedia("(max-width: 1279px)").matches) {
+      setNavigatingId(id);
+      router.push(`/${locale}/votes/${id}`);
+      return;
+    }
     setSelectedId(id);
     const url = new URL(window.location.href);
     url.searchParams.set("selected", id);
@@ -74,7 +81,8 @@ export function VoteDirectoryExplorer({
           {items.map(({ vote, bill, source, hotCount }) => {
             const presentation = presentVote(vote, { locale, bill, source });
             return (
-            <div key={vote.id} role="button" tabIndex={0} aria-pressed={selected?.vote.id === vote.id} onClick={() => selectVote(vote.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectVote(vote.id); } }} className={`group w-full cursor-pointer border-l-4 px-5 py-5 text-left transition ${selected?.vote.id === vote.id ? "border-[#f7b500] bg-[#fffdf6]" : "border-transparent hover:border-[#f7b500] hover:bg-[#fbfcfd]"}`}>
+            <div key={vote.id} role="button" tabIndex={0} aria-pressed={selected?.vote.id === vote.id} aria-busy={navigatingId === vote.id} onClick={() => selectVote(vote.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectVote(vote.id); } }} className={`group relative w-full cursor-pointer border-l-4 px-5 py-5 text-left transition ${selected?.vote.id === vote.id ? "border-[#f7b500] bg-[#fffdf6]" : "border-transparent hover:border-[#f7b500] hover:bg-[#fbfcfd]"} ${navigatingId === vote.id ? "pointer-events-none opacity-60" : ""}`}>
+              {navigatingId === vote.id ? <span className="absolute right-4 top-4 inline-flex items-center gap-2 bg-white px-2 py-1 text-xs font-bold text-[#075fc6]"><LoaderCircle className="animate-spin" size={15}/>{locale === "ro" ? "Se deschide…" : "Opening…"}</span> : null}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 text-sm font-semibold uppercase text-blue-800">
                   <BarChart3 size={16} aria-hidden="true" />
@@ -97,14 +105,7 @@ export function VoteDirectoryExplorer({
           );})}
           {isPending ? <DirectorySkeleton /> : null}
         </div>
-        {selected ? <aside className="self-start border border-slate-300 bg-white p-5 xl:sticky xl:top-24">
-          <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#075fc6]"><span>{chamberLabels[locale][selected.vote.chamber]}</span><ShareButton href={`/${locale}/votes/${selected.vote.id}`} title={presentVote(selected.vote, { locale, bill: selected.bill, source: selected.source }).heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="bg-transparent text-[#4b608a]" /></div>
-          <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-[#061a47]">{presentVote(selected.vote, { locale, bill: selected.bill, source: selected.source }).heading}</h2>
-          {selected.bill ? <p className="mt-3 text-sm leading-6 text-[#4b608a]">{selected.bill.title}</p> : null}
-          <div className="mt-4 flex items-center gap-2 border-y border-slate-200 py-3 text-sm text-[#4b608a]"><CalendarDays size={17} />{formatDate(selected.vote.heldOn, locale)} · {selected.vote.voteType}</div>
-          <div className="mt-5 grid grid-cols-2 gap-3"><StatLine label={voteChoiceLabels[locale].for} value={selected.vote.totals.for} tone="text-emerald-700" /><StatLine label={voteChoiceLabels[locale].against} value={selected.vote.totals.against} tone="text-red-700" /><StatLine label={voteChoiceLabels[locale].abstention} value={selected.vote.totals.abstention} tone="text-amber-700" /><StatLine label={labels.present} value={selected.vote.totals.present} tone="text-[#061a47]" /></div>
-          <Link href={`/${locale}/votes/${selected.vote.id}`} className="mt-5 flex items-center justify-center gap-2 bg-[#061a47] px-4 py-3 text-sm font-bold !text-white hover:bg-[#102d5b]">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={17} /></Link>
-        </aside> : null}
+        {selected ? <VotePreview locale={locale} item={selected} /> : null}
       </section>
       <LoadMoreButton hasMore={hasMore} isPending={isPending} labels={labels} onClick={loadMore} />
     </>

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Building2, CalendarDays, Check, ChevronDown, FileText, Filter, Search, Users, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, LoaderCircle, Search, Users, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { VoteExplorerItem } from "@/lib/explorer-data";
 import { presentVote, type VoteOutcome } from "@/lib/public-presentation";
 import { HotButton } from "./HotButton";
-import { ShareButton } from "./ShareButton";
+import { VotePreview } from "./VotePreview";
 import styles from "./HomepageExperience.module.css";
 
 type Locale = "ro" | "en";
@@ -15,9 +16,15 @@ type Locale = "ro" | "en";
 export function HomepageExperience({ locale, votes }: { locale: Locale; votes: VoteExplorerItem[] }) {
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState(votes[0]?.vote.id ?? "");
-  const selected = votes.find((item) => item.vote.id === selectedId) ?? votes[0];
-  const filtered = useMemo(() => votes.slice(1).filter(({ vote }) => `${vote.title} ${vote.voteType}`.toLowerCase().includes(query.toLowerCase())), [query, votes]);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState(votes[1]?.vote.id ?? votes[0]?.vote.id ?? "");
+  const [navigatingId, setNavigatingId] = useState<string>();
+  const touchStartX = useRef<number | undefined>(undefined);
+  const router = useRouter();
+  const featuredVotes = useMemo(() => votes.slice(0, Math.min(5, votes.length)), [votes]);
+  const featured = featuredVotes[Math.min(featuredIndex, featuredVotes.length - 1)] ?? votes[0];
+  const selected = votes.find((item) => item.vote.id === selectedId) ?? votes[1] ?? votes[0];
+  const filtered = useMemo(() => votes.filter((item) => item.vote.id !== featured?.vote.id).filter(({ vote }) => `${vote.title} ${vote.voteType}`.toLowerCase().includes(query.toLowerCase())), [featured?.vote.id, query, votes]);
   const copy = labels[locale];
 
   useEffect(() => {
@@ -31,13 +38,22 @@ export function HomepageExperience({ locale, votes }: { locale: Locale; votes: V
   }, [votes]);
 
   function selectVote(id: string) {
+    if (window.matchMedia("(max-width: 1099px)").matches) {
+      setNavigatingId(id);
+      router.push(`/${locale}/votes/${id}`);
+      return;
+    }
     setSelectedId(id);
     const url = new URL(window.location.href);
     url.searchParams.set("vote", id);
     window.history.pushState({}, "", url);
   }
 
-  if (!selected) return <main className={styles.empty}>{copy.noVotes}</main>;
+  function moveFeatured(delta: number) {
+    setFeaturedIndex((current) => (current + delta + featuredVotes.length) % featuredVotes.length);
+  }
+
+  if (!selected || !featured) return <main className={styles.empty}>{copy.noVotes}</main>;
 
   return <main className={styles.layout}>
     <div className={styles.contentColumn}>
@@ -59,20 +75,28 @@ export function HomepageExperience({ locale, votes }: { locale: Locale; votes: V
         {filtersOpen ? <div className={styles.filterPopover}><strong>{copy.quickFilters}</strong><div className={styles.quickFilters}><Link href={`/${locale}/votes?chamber=deputies`}>{copy.deputies}</Link><Link href={`/${locale}/votes?chamber=senate`}>{copy.senate}</Link><Link href={`/${locale}/votes`}>{copy.allVotes} <ArrowRight size={15} /></Link></div></div> : null}
       </div>
 
-      <FeaturedVote locale={locale} item={selected} />
+      <div onKeyDown={(event) => { if (event.key === "ArrowLeft") moveFeatured(-1); if (event.key === "ArrowRight") moveFeatured(1); }} onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX; }} onTouchEnd={(event) => { const start = touchStartX.current; const end = event.changedTouches[0]?.clientX; if (start !== undefined && end !== undefined && Math.abs(end - start) > 45) moveFeatured(end < start ? 1 : -1); touchStartX.current = undefined; }} tabIndex={0} aria-roledescription="carousel" aria-label={copy.hotWindow}>
+        <FeaturedVote locale={locale} item={featured} />
+        {featuredVotes.length > 1 ? <div className={styles.carouselControls}>
+          <button type="button" onClick={() => moveFeatured(-1)} aria-label={copy.previous}><ChevronLeft/></button>
+          <div>{featuredVotes.map((item, index) => <button key={item.vote.id} type="button" onClick={() => setFeaturedIndex(index)} aria-label={`${copy.slide} ${index + 1}`} aria-current={index === featuredIndex ? "true" : undefined} className={index === featuredIndex ? styles.activeDot : ""}/>)}</div>
+          <span>{featuredIndex + 1} / {featuredVotes.length}</span>
+          <button type="button" onClick={() => moveFeatured(1)} aria-label={copy.next}><ChevronRight/></button>
+        </div> : null}
+      </div>
 
       <section className={styles.otherVotes}>
         <div className={styles.sectionHeading}><h2>{copy.recent}</h2><Link href={`/${locale}/votes`}>{copy.allVotes} <ArrowRight size={16} /></Link></div>
-        <div className={styles.voteList}>{filtered.slice(0, 5).map((item) => <button type="button" className={styles.voteRow} key={item.vote.id} onClick={() => selectVote(item.vote.id)} aria-pressed={item.vote.id === selected.vote.id}>
+        <div className={styles.voteList}>{filtered.slice(0, 5).map((item) => <button type="button" className={`${styles.voteRow} ${navigatingId === item.vote.id ? styles.navigating : ""}`} key={item.vote.id} onClick={() => selectVote(item.vote.id)} aria-pressed={item.vote.id === selected.vote.id} disabled={Boolean(navigatingId)}>
           <time>{formatDate(item.vote.heldOn, locale)}</time>
           <strong>{shortTitle(item.vote.title)}</strong>
           <span>{item.vote.title}</span>
           <Outcome outcome={presentVote(item.vote, { locale, bill: item.bill, source: item.source }).outcome} label={presentVote(item.vote, { locale, bill: item.bill, source: item.source }).outcomeLabel} compact />
-          <ArrowRight size={17} />
+          {navigatingId === item.vote.id ? <LoaderCircle className={styles.spinner} size={17}/> : <ArrowRight size={17} />}
         </button>)}</div>
       </section>
     </div>
-    <DetailPanel locale={locale} item={selected} />
+    <VotePreview locale={locale} item={selected} />
   </main>;
 }
 
@@ -95,21 +119,6 @@ function FeaturedVote({ locale, item }: { locale: Locale; item: VoteExplorerItem
   </article>;
 }
 
-function DetailPanel({ locale, item }: { locale: Locale; item: VoteExplorerItem }) {
-  const { vote } = item;
-  const presentation = presentVote(vote, { locale, bill: item.bill, source: item.source });
-  const copy = labels[locale];
-  return <aside className={styles.detailPanel}>
-    <div className={styles.detailToolbar}><Link href={`/${locale}/votes`}><ArrowLeft size={17} />{copy.back}</Link><ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={copy.share} copiedLabel={copy.copied} errorLabel={copy.copyError} /></div>
-    <div className={styles.detailTitle}><h2>{presentation.heading}</h2><Outcome outcome={presentation.outcome} label={presentation.outcomeLabel} /></div>
-    <p className={styles.detailDescription}>{presentation.subject ?? presentation.officialTitle}</p>
-    <div className={styles.metadata}><span><CalendarDays />{formatDate(vote.heldOn, locale)}</span><span><Building2 />{chamberLabel(vote.chamber, locale)}</span><span><FileText />{vote.voteType}</span></div>
-    <section className={styles.summaryBox}><div><FileText /><h3>{copy.brief}</h3></div><p>{copy.briefCopy}</p><div><Users /><h3>{copy.why}</h3></div><p>{copy.whyCopy}</p></section>
-    <section className={styles.resultSection}><h3>{copy.result}</h3><div className={styles.resultGrid}><Result value={vote.totals.for} label={voteChoiceLabels[locale].for} tone="for" /><Result value={vote.totals.against} label={voteChoiceLabels[locale].against} tone="against" /><Result value={vote.totals.abstention} label={voteChoiceLabels[locale].abstention} tone="abstain" /><Result value={vote.totals.present} label={copy.present} tone="present" /></div></section>
-    {item.source?.sourceUrl ? <a className={styles.officialButton} href={item.source.sourceUrl} target="_blank" rel="noreferrer"><FileText /><span>{copy.official}<small>{copy.officialCopy}</small></span><ArrowRight /></a> : <Link className={styles.officialButton} href={`/${locale}/votes/${vote.id}`}><FileText /><span>{copy.details}<small>{copy.internalCopy}</small></span><ArrowRight /></Link>}
-  </aside>;
-}
-
 function Outcome({ outcome, label, compact = false }: { outcome: VoteOutcome; label: string; compact?: boolean }) {
   const rejected = outcome === "rejected";
   const established = outcome === "adopted" || rejected;
@@ -117,11 +126,10 @@ function Outcome({ outcome, label, compact = false }: { outcome: VoteOutcome; la
 }
 
 function Count({ number, label, tone }: { number: number; label: string; tone: string }) { return <div className={`${styles.count} ${styles[tone]}`}><strong>{number}</strong><span>{label}</span></div>; }
-function Result({ value, label, tone }: { value: number; label: string; tone: string }) { return <div className={styles.resultItem}><i className={styles[tone]} /><strong>{value}</strong><span>{label}</span></div>; }
 function shortTitle(title: string) { return title.split(" - ").slice(0, 2).join(" — "); }
 function chamberLabel(chamber: string, locale: Locale) { return chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies"); }
 
 const labels = {
-  ro: { title: "Astăzi în Parlament", deck: "Ce s-a decis și de ce contează", intro: "Urmărim voturile finale, pe înțelesul tuturor. Află rapid ce s-a decis, de ce contează pentru tine și cum au votat parlamentarii.", search: "Caută voturi și proiecte...", searchButton: "Caută", filters: "Filtre", quickFilters: "Filtre rapide", deputies: "Camera Deputaților", senate: "Senat", allVotes: "Vezi toate voturile", noVotes: "Nu există voturi disponibile.", recent: "Alte voturi recente", why: "De ce contează?", whyCopy: "Votul arată decizia plenului asupra măsurii și poziția exprimată de fiecare parlamentar prezent.", readBrief: "Vezi contextul complet", present: "prezenți", details: "Vezi detalii", official: "Sursa oficială", back: "Înapoi la voturi", share: "Distribuie", copied: "Link copiat", copyError: "Copiază manual", brief: "Pe scurt", briefCopy: "Această pagină folosește datele nominale publicate de Parlament și păstrează legătura către sursa oficială.", result: "Rezultatul votului", officialCopy: "Deschide pagina publicată de Parlament", internalCopy: "Context, documente și voturi nominale", hot: "Hot", hotWindow: "Hot în ultimele 30 de zile" },
-  en: { title: "Today in Parliament", deck: "What was decided and why it matters", intro: "We follow final votes in plain language. See what was decided, why it matters and how members voted.", search: "Search votes and bills...", searchButton: "Search", filters: "Filters", quickFilters: "Quick filters", deputies: "Chamber of Deputies", senate: "Senate", allVotes: "View all votes", noVotes: "No votes are available.", recent: "Other recent votes", why: "Why does it matter?", whyCopy: "The vote records the plenary decision and the position expressed by every member present.", readBrief: "View full context", present: "present", details: "View details", official: "Official source", back: "Back to votes", share: "Share", copied: "Link copied", copyError: "Copy manually", brief: "In brief", briefCopy: "This page uses nominal data published by Parliament and retains the link to the official source.", result: "Vote result", officialCopy: "Open Parliament's published page", internalCopy: "Context, documents and nominal votes", hot: "Hot", hotWindow: "Hot in the last 30 days" }
+  ro: { title: "Astăzi în Parlament", deck: "Ce s-a decis și de ce contează", intro: "Urmărim voturile finale, pe înțelesul tuturor. Află rapid ce s-a decis, de ce contează pentru tine și cum au votat parlamentarii.", search: "Caută voturi și proiecte...", searchButton: "Caută", filters: "Filtre", quickFilters: "Filtre rapide", deputies: "Camera Deputaților", senate: "Senat", allVotes: "Vezi toate voturile", noVotes: "Nu există voturi disponibile.", recent: "Alte voturi recente", why: "De ce contează?", whyCopy: "Votul arată decizia plenului asupra măsurii și poziția exprimată de fiecare parlamentar prezent.", readBrief: "Vezi contextul complet", present: "prezenți", details: "Vezi detalii", official: "Sursa oficială", hot: "Hot", hotWindow: "Hot în ultimele 30 de zile", previous: "Votul anterior", next: "Votul următor", slide: "Vot" },
+  en: { title: "Today in Parliament", deck: "What was decided and why it matters", intro: "We follow final votes in plain language. See what was decided, why it matters and how members voted.", search: "Search votes and bills...", searchButton: "Search", filters: "Filters", quickFilters: "Quick filters", deputies: "Chamber of Deputies", senate: "Senate", allVotes: "View all votes", noVotes: "No votes are available.", recent: "Other recent votes", why: "Why does it matter?", whyCopy: "The vote records the plenary decision and the position expressed by every member present.", readBrief: "View full context", present: "present", details: "View details", official: "Official source", hot: "Hot", hotWindow: "Hot in the last 30 days", previous: "Previous vote", next: "Next vote", slide: "Vote" }
 };
