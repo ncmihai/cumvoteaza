@@ -34,13 +34,13 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
   const committees = [...new Set(procedureSteps.map((step) => step.committeeName).filter(Boolean))] as string[];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
       <EditorialSections page="bill" locale={locale} entityId={bill.id} billId={bill.id} />
       <EngagementTracker entityType="bill" entityId={bill.id} locale={locale} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-sm font-semibold uppercase text-blue-800">{bill.identifiers.senate}</div>
-          <h1 className="mt-2 max-w-5xl text-3xl font-semibold text-slate-950">{bill.title}</h1>
+          <h1 className="mt-2 max-w-5xl font-serif text-4xl font-semibold leading-tight tracking-[-.035em] text-[#050e2c] md:text-5xl">{bill.title}</h1>
           <p className="mt-3 text-slate-600">{bill.status}</p>
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-700">
             {bill.identifiers.deputies ? <span className="border border-slate-300 px-2 py-1">PL-x: {bill.identifiers.deputies}</span> : null}

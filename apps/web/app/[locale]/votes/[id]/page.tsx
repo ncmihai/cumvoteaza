@@ -46,13 +46,13 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
   ).slice(0, 4);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
       <EditorialSections page="vote" locale={locale} entityId={id} />
       <EngagementTracker entityType="vote" entityId={vote.id} locale={locale} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-sm font-semibold uppercase text-blue-800">{formatDate(vote.heldOn, locale)}</div>
-          <h1 className="mt-2 max-w-4xl text-3xl font-semibold text-slate-950">{vote.title}</h1>
+          <h1 className="mt-2 max-w-4xl font-serif text-4xl font-semibold leading-tight tracking-[-.035em] text-[#050e2c] md:text-5xl">{vote.title}</h1>
           {process.env.GEMINI_EXPLANATIONS_ENABLED === "1" && <VoteExplanation id={vote.id} locale={locale} />}
           {bill ? (
             <VoteBillDossierPanel

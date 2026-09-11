@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { BarChart3, FileText, Search } from "lucide-react";
+import { ArrowRight, BarChart3, CalendarDays, FileText, Search, Share2 } from "lucide-react";
 import { chamberLabels, formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { AppLocale } from "@/lib/i18n";
 import type { BillExplorerItem, DirectoryFilterOptions, ExplorerFilters, ExplorerPageData, VoteExplorerItem } from "@/lib/explorer-data";
@@ -26,6 +26,8 @@ export function VoteDirectoryExplorer({
   const [nextCursor, setNextCursor] = useState(initialData.nextCursor);
   const [hasMore, setHasMore] = useState(initialData.hasMore);
   const [isPending, startTransition] = useTransition();
+  const [selectedId, setSelectedId] = useState(initialData.items[0]?.vote.id);
+  const selected = items.find((item) => item.vote.id === selectedId) ?? items[0];
 
   useEffect(() => {
     setItems(initialData.items);
@@ -48,10 +50,10 @@ export function VoteDirectoryExplorer({
     <>
       <DirectoryFilters locale={locale} kind="votes" filters={initialFilters} filterOptions={filterOptions} labels={labels} />
       <AutoLoadTrigger enabled={hasMore && !isPending} onVisible={loadMore} />
-      <section className="mt-6 border border-slate-300 bg-white">
-        <div className="divide-y divide-slate-200">
+      <section className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="divide-y divide-slate-200 border border-slate-300 bg-white">
           {items.map(({ vote, bill, hotCount }) => (
-            <Link key={vote.id} href={`/${locale}/votes/${vote.id}`} className="group grid gap-4 border-l-4 border-transparent px-5 py-5 transition hover:border-[#ffb703] hover:bg-[#fbfcfd] md:grid-cols-[1fr_420px]">
+            <div key={vote.id} role="button" tabIndex={0} onClick={() => setSelectedId(vote.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(vote.id); } }} className={`group grid w-full cursor-pointer gap-4 border-l-4 px-5 py-5 text-left transition md:grid-cols-[1fr_310px] ${selected?.vote.id === vote.id ? "border-[#f7b500] bg-[#fffdf6]" : "border-transparent hover:border-[#f7b500] hover:bg-[#fbfcfd]"}`}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 text-sm font-semibold uppercase text-blue-800">
                   <BarChart3 size={16} aria-hidden="true" />
@@ -59,7 +61,7 @@ export function VoteDirectoryExplorer({
                 </div>
                 <div className="mt-2 flex flex-wrap items-start justify-between gap-3"><h2 className="font-serif text-2xl font-semibold leading-tight text-[#071a3a]">{vote.title}</h2><span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{vote.voteType}</span></div>
                 {bill ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{bill.title}</p> : null}
-                <div className="mt-3" onClick={(event) => event.preventDefault()}>
+                <div className="mt-3" onClick={(event) => event.stopPropagation()}>
                   <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.hot} />
                 </div>
               </div>
@@ -69,10 +71,18 @@ export function VoteDirectoryExplorer({
                 <StatLine label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-amber-700" />
                 <StatLine label={labels.present} value={vote.totals.present} tone="text-slate-700" />
               </div>
-            </Link>
+            </div>
           ))}
           {isPending ? <DirectorySkeleton /> : null}
         </div>
+        {selected ? <aside className="self-start border border-slate-300 bg-white p-5 xl:sticky xl:top-24">
+          <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#075fc6]"><span>{chamberLabels[locale][selected.vote.chamber]}</span><Share2 size={17} aria-hidden="true" /></div>
+          <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-[#061a47]">{selected.vote.title}</h2>
+          {selected.bill ? <p className="mt-3 text-sm leading-6 text-[#4b608a]">{selected.bill.title}</p> : null}
+          <div className="mt-4 flex items-center gap-2 border-y border-slate-200 py-3 text-sm text-[#4b608a]"><CalendarDays size={17} />{formatDate(selected.vote.heldOn, locale)} · {selected.vote.voteType}</div>
+          <div className="mt-5 grid grid-cols-2 gap-3"><StatLine label={voteChoiceLabels[locale].for} value={selected.vote.totals.for} tone="text-emerald-700" /><StatLine label={voteChoiceLabels[locale].against} value={selected.vote.totals.against} tone="text-red-700" /><StatLine label={voteChoiceLabels[locale].abstention} value={selected.vote.totals.abstention} tone="text-amber-700" /><StatLine label={labels.present} value={selected.vote.totals.present} tone="text-[#061a47]" /></div>
+          <Link href={`/${locale}/votes/${selected.vote.id}`} className="mt-5 flex items-center justify-center gap-2 bg-[#061a47] px-4 py-3 text-sm font-bold text-white hover:bg-[#102d5b]">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={17} /></Link>
+        </aside> : null}
       </section>
       <LoadMoreButton hasMore={hasMore} isPending={isPending} labels={labels} onClick={loadMore} />
     </>

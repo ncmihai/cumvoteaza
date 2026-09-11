@@ -16,23 +16,30 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
   const legislatureSummaries = data.legislatureSummaries ?? [];
   const labels = partyPageLabels[locale];
   const latestGovernment = governmentParticipations[0];
+  const logoUrl = legislatureSummaries.flatMap((summary) => summary.logoUrls)[0];
+  const latestSummary = legislatureSummaries[0];
   const identityEvents = formationEvents.filter((event) =>
     event.eventType === "party_founded" || event.eventType === "party_reestablished" || event.eventType === "party_renamed"
   );
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
       <EditorialSections page="party" locale={locale} entityId={slug} />
       <EngagementTracker entityType="party" entityId={party.id} locale={locale} />
-      <div className="flex flex-wrap items-start justify-between gap-4 border border-slate-300 bg-white p-5">
-        <div>
+      <nav className="mb-5 text-xs text-[#4b608a]"><Link href={`/${locale}`}>{locale === "ro" ? "Acasă" : "Home"}</Link>　›　{party.name}</nav>
+      <div className="flex flex-wrap items-center justify-between gap-5 border-b border-slate-300 pb-6">
+        <div className="flex min-w-0 items-center gap-5">
+          <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-md text-2xl font-black" style={{ backgroundColor: `${party.color}22`, color: party.color }}>{logoUrl ? <img src={logoUrl} alt={`${party.shortName} logo`} className="h-full w-full object-contain p-2" /> : party.shortName}</div>
+          <div>
           <div className="flex items-center gap-3">
             <span className="h-4 w-4 rounded-full" style={{ backgroundColor: party.color }} />
             <div className="text-sm font-semibold uppercase text-[#309898]">{party.shortName}</div>
           </div>
-          <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{party.name}</h1>
+          <h1 className="mt-2 font-serif text-5xl font-semibold leading-[.98] tracking-[-.045em] text-[#050e2c] md:text-6xl">{party.name}</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#4b608a]">{locale === "ro" ? "Prezența partidului în Parlament, voturile grupurilor și istoricul verificat din surse oficiale." : "The party's parliamentary presence, group votes and verified history from official sources."}</p>
+          </div>
         </div>
-        <div className="grid min-w-56 gap-2 text-sm text-slate-700">
+        <div className="grid min-w-56 grid-cols-2 gap-2 text-sm text-slate-700">
           <div className="border border-slate-200 px-3 py-2">
             <div className="text-xs font-semibold uppercase text-slate-500">{labels.timelineTitle}</div>
             <div className="text-lg font-semibold text-slate-950">{formationEvents.length}</div>
@@ -43,6 +50,8 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
           </div>
         </div>
       </div>
+
+      {latestSummary ? <section className="mt-5 border border-slate-300 bg-white p-5"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase text-[#075fc6]">{locale === "ro" ? "Rolul actual în Parlament" : "Current role in Parliament"}</p><h2 className="mt-2 font-serif text-3xl font-semibold text-[#061a47]">{latestGovernment ? alignmentLabel(latestGovernment.alignment, locale) : (locale === "ro" ? "Reprezentare parlamentară" : "Parliamentary representation")}</h2></div><div className="text-right"><strong className="font-serif text-4xl text-[#061a47]">{latestSummary.seatCount || latestSummary.memberCount}</strong><span className="ml-2 text-sm text-[#4b608a]">{chamberLabels[locale][latestSummary.chamber]}</span></div></div></section> : null}
 
       {latestGovernment ? (
         <section className="mt-6 border border-slate-300 bg-white p-4">

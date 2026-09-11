@@ -72,3 +72,10 @@ final result: passed
 - TypeScript: passed.
 
 final result: passed
+# Public site editorial refresh — 2026-09-11
+
+- Members directory now follows the approved directory mockup, uses current-legislature database records, real portraits, working filters and bounded rendering for responsive performance.
+- Votes directory now uses the approved desktop list-and-detail pattern. Selection, keyboard activation, filters, Hot reactions and full-detail links work.
+- Composition now leads with current Chamber and Senate seat maps and keeps the evidence-backed historical timeline below.
+- Member, party, vote and bill detail headers use the shared editorial type scale, spacing and surface system. Party identity uses a stored party logo when available.
+- Verified at 1440×1000 and responsive widths in the in-app browser. All representative stored portrait and party-logo URLs returned image responses.

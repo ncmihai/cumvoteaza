@@ -44,12 +44,13 @@ export default async function MemberPage({
   const labels = memberPageLabels[locale];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
       <EditorialSections page="member" locale={locale} entityId={slug} />
       <EngagementTracker entityType="member" entityId={member.id} locale={locale} />
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <nav className="mb-5 text-xs text-[#4b608a]"><Link href={`/${locale}`}>{locale === "ro" ? "Acasă" : "Home"}</Link>　›　<Link href={`/${locale}/members`}>{messages.nav.members}</Link>　›　{member.displayName}</nav>
+      <div className="flex flex-wrap items-start justify-between gap-5 border-b border-slate-300 pb-6">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="relative mt-1 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden border border-slate-300 bg-white">
+          <div className="relative mt-1 flex h-44 w-36 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-300 bg-white">
             {profilePhotoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profilePhotoUrl} alt="" className="h-full w-full object-cover" />
@@ -74,11 +75,11 @@ export default async function MemberPage({
           </div>
           <div className="min-w-0">
             <PartyTextMaybeLink partySlug={party?.slug} locale={locale} className="text-sm font-semibold uppercase text-blue-800 hover:text-[#309898] hover:underline">
-              {group?.shortName ?? party?.shortName ?? "unknown"}
+              {group?.shortName ?? party?.shortName ?? (locale === "ro" ? "Neafiliat" : "Unaffiliated")}
             </PartyTextMaybeLink>
-            <h1 className="mt-2 font-serif text-5xl font-semibold tracking-tight text-[#071a3a]">{member.displayName}</h1>
+            <h1 className="mt-2 font-serif text-5xl font-semibold leading-[.98] tracking-[-.045em] text-[#050e2c] md:text-6xl">{member.displayName}</h1>
             <p className="mt-3 text-slate-600">
-              {mandate ? chamberLabels[locale][mandate.chamber] : "unknown"} · {mandate?.status ?? "unknown"}
+              {mandate ? chamberLabels[locale][mandate.chamber] : "—"} · {mandate?.status ?? "—"}
             </p>
           </div>
         </div>
