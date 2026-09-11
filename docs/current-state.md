@@ -67,11 +67,11 @@ Run a production-sized visual and functional audit across Romanian and English r
 
 ### 2. Make routine refresh boring
 
-Turn the existing May-to-present scripts into saved cockpit workflows for votes, bills, rosters, affiliations and assets. Each run should show added, changed, conflicting, unchanged and failed records, then produce a selected release preview. Preserve manual corrections when sources disagree.
+Implemented: the cockpit seeds stable saved workflows for votes, bills/documents, rosters/affiliations and assets. Existing operator edits are preserved. Import previews and completed batches expose added, changed, conflicting, unchanged and failed records; selected changes feed the existing release-preview flow and approved corrections retain conflict protection.
 
 ### 3. Review the analysis pilot
 
-Approve or correct the 50-family public-sector examples, keep development and held-out bill families separate, and measure precision, recall, evidence validity, ambiguity and coverage. Expand only after the held-out review is trustworthy.
+Tooling complete; human review remains: the 50-family queue exposes pending, accepted, rejected, incomplete and stale states plus precision, recall, citation validity, ambiguity, coverage and agreement metrics. Development and held-out families remain separate. Metrics exclude stale results and results whose source freshness cannot be checked while the local database is offline. The examples still require individual operator decisions before any quality claim or expansion.
 
 ### 4. Build political analysis carefully
 

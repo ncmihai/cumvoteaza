@@ -8,6 +8,7 @@ import re
 import sys
 
 import httpx
+from psycopg import OperationalError
 
 from .cockpit_store import digest, encode, stamp
 from .cockpit_workspace import connect, local_config
@@ -299,30 +300,44 @@ def current_results(store, profile_id=None):
         if profile_id and result.get("profileId") != profile_id:
             continue
         stale = False
+        freshness = "current"
         if result.get("inputHash"):
             bill = result["billId"]
             if bill not in fingerprints:
                 try: fingerprints[bill] = digest(context_for(store.config, bill))
-                except ValueError: fingerprints[bill] = None
-            stale = fingerprints[bill] != result["inputHash"]
+                except ValueError: fingerprints[bill] = ("missing", None)
+                except OperationalError: fingerprints[bill] = ("unknown", None)
+                else: fingerprints[bill] = ("current", fingerprints[bill])
+            freshness, fingerprint = fingerprints[bill]
+            stale = None if freshness == "unknown" else fingerprint != result["inputHash"]
+            if stale:
+                freshness = "stale"
         results.append({**result, "stale": stale, "reviewStatus": result["status"],
-                        "status": "stale" if stale else result["status"]})
+                        "freshness": freshness,
+                        "status": "stale" if stale is True else result["status"]})
     return results
 
 
 def evaluation(store, profile_id):
     profile = store.get(profile_id)
+    profile_results = current_results(store, profile_id)
+    review_counts = {status: 0 for status in ("pending", "accepted", "rejected", "incomplete", "stale")}
+    freshness_unknown = 0
+    for result in profile_results:
+        status = "stale" if result.get("stale") is True else result.get("reviewStatus", result.get("status", "pending"))
+        review_counts[status] = review_counts.get(status, 0) + 1
+        freshness_unknown += result.get("freshness") == "unknown"
     teaching_families = {e.get("familyId",e.get("billId")) for e in profile.get("exampleSnapshots",[])}
     examples = {e.get("familyId",e["billId"]): e for e in reversed(store.objects("example"))
         if e.get("status") == "accepted" and e.get("split") == "holdout"
         and e.get("task","public_sector") == profile["task"]
         and e.get("familyId",e["billId"]) not in teaching_families}
-    results = {r.get("familyId",r["billId"]):r for r in reversed(current_results(store,profile_id))}
+    results = {r.get("familyId",r["billId"]):r for r in reversed(profile_results)}
     tp = fp = fn = compared = attempted = citations = valid_citations = ambiguous = direction_total = direction_agree = 0
     relevance_total = relevance_agree = 0
     for family, example in examples.items():
         result = results.get(family)
-        if not result or result["stale"]:
+        if not result or result.get("freshness") in {"stale", "unknown"}:
             continue
         attempted += 1
         output = result.get("output") or result.get("rawOutput") or {}
@@ -348,7 +363,12 @@ def evaluation(store, profile_id):
             "directionalAgreement":direction_agree/direction_total if direction_total else None,
             "relevanceAgreement":relevance_agree/relevance_total if relevance_total else None,
             "ambiguity":ambiguous/compared if compared else None,
-            "coverage":compared/len(examples) if examples else None, "validated":False}
+            "coverage":compared/len(examples) if examples else None,
+            "review":{"counts":review_counts,"total":len(profile_results),
+                      "needsReview":review_counts.get("pending",0)+review_counts.get("incomplete",0),
+                      "freshnessUnknown":freshness_unknown,
+                      "humanReferenceRequired":len(examples)==0},
+            "validated":False}
 
 
 def compare_methods(store, profile_ids):

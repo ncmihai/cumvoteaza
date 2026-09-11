@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from psycopg import sql
 
 from .cockpit_store import CockpitStore, digest, encode, stamp
-from .cockpit_runtime import Worker, backup, recipe
+from .cockpit_runtime import Worker, backup, recipe, seed_routine_recipes
 from . import cockpit_workspace as ws
 from . import cockpit_analysis as analysis
 
@@ -75,6 +75,7 @@ def bill_rows(store, profile_id=None):
 def attach_cockpit(app, config, canonical_url):
     store = CockpitStore(config)
     analysis.seed_profiles(store)
+    seed_routine_recipes(store)
     worker = Worker(config, canonical_url)
     app.state.cockpit_worker = worker
     from contextlib import asynccontextmanager

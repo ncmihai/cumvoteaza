@@ -21,6 +21,28 @@ from . import cockpit_workspace as workspace
 
 CATEGORIES = ["bills", "votes", "documents", "text", "members", "parties", "groups", "affiliations", "photos", "logos"]
 
+ROUTINE_RECIPE_DEFAULTS = [
+    ("recipe-routine-votes", "Current votes", ["votes"]),
+    ("recipe-routine-bills", "Bills, documents and text", ["bills", "documents", "text"]),
+    ("recipe-routine-rosters", "Members and affiliations", ["members", "parties", "groups", "affiliations"]),
+    ("recipe-routine-assets", "Member photos and party logos", ["photos", "logos"]),
+]
+
+
+def seed_routine_recipes(store, year=None):
+    """Create editable routine workflows once; never overwrite operator changes."""
+    current_year = int(year or datetime.now().year)
+    existing = {item["id"] for item in store.objects("recipe")}
+    created = []
+    for identifier, name, categories in ROUTINE_RECIPE_DEFAULTS:
+        if identifier in existing:
+            continue
+        payload = {"name": name, "categories": categories, "yearFrom": current_year, "yearTo": current_year,
+                   "chamber": "both", "limit": 250, "mode": "latest", "refreshActive": True, "profiles": []}
+        recipe(payload)
+        created.append(store.put("recipe", payload, identifier))
+    return created
+
 
 def recipe(payload):
     selected = set(payload.get("categories", ["bills", "votes", "documents", "text"]))

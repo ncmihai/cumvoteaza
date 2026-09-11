@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from parliament_workbench.config import WorkbenchConfig
 from parliament_workbench.cockpit_store import CockpitStore, digest, encode
-from parliament_workbench.cockpit_runtime import Worker, Canceled, child_environment, recipe
+from parliament_workbench.cockpit_runtime import Worker, Canceled, child_environment, recipe, seed_routine_recipes
 from parliament_workbench.cockpit_workspace import local_url
 from parliament_workbench.cockpit_analysis import compare_methods, seed_profiles, save_profile, validate_result
 
@@ -61,6 +61,7 @@ class CockpitTest(unittest.TestCase):
 
     def test_evaluation_excludes_teaching_and_stale_results(self):
         from parliament_workbench.cockpit_analysis import evaluation, current_results
+        from psycopg import OperationalError
         profile = self.store.put("profile", {"task":"public_sector", "exampleSnapshots":[{"familyId":"training"}]})
         for family in ["training","fresh","stale","failed"]:
             self.store.put("example", {"familyId":family,"billId":family,"task":"public_sector","status":"accepted",
@@ -77,7 +78,18 @@ class CockpitTest(unittest.TestCase):
             self.assertEqual(metrics["coverage"],1/3)
             self.assertEqual(metrics["citationValidity"],.5)
             self.assertIsNone(metrics["directionalAgreement"])
+            self.assertEqual(metrics["review"]["total"],4)
+            self.assertEqual(metrics["review"]["counts"]["stale"],1)
+            self.assertEqual(metrics["review"]["needsReview"],3)
+            self.assertFalse(metrics["review"]["humanReferenceRequired"])
             self.assertEqual(next(r for r in current_results(self.store) if r["billId"] == "stale")["status"],"stale")
+        with patch("parliament_workbench.cockpit_analysis.context_for", side_effect=OperationalError("offline")):
+            metrics = evaluation(self.store, profile["id"])
+            self.assertEqual(metrics["attempted"],0)
+            self.assertEqual(metrics["review"]["freshnessUnknown"],4)
+            rows = current_results(self.store, profile["id"])
+            self.assertTrue(all(row["freshness"] == "unknown" for row in rows))
+            self.assertTrue(all(row["status"] != "stale" for row in rows))
 
     def test_event_tail_preserves_latest_progress_and_cursor(self):
         job = self.store.enqueue("import",{})
@@ -314,5 +326,16 @@ class CockpitTest(unittest.TestCase):
         with self.assertRaises(ValueError): recipe({"categories":["votes"],"billIds":["bill-a"]})
         with self.assertRaises(ValueError): recipe({"categories":["publish"]})
         with self.assertRaises(ValueError): recipe({"categories":["votes"],"chamber":"injected"})
+
+    def test_routine_recipe_seeds_are_complete_and_preserve_operator_edits(self):
+        created = seed_routine_recipes(self.store, 2026)
+        self.assertEqual(len(created), 4)
+        self.assertEqual({item["id"] for item in created}, {
+            "recipe-routine-votes", "recipe-routine-bills", "recipe-routine-rosters", "recipe-routine-assets"
+        })
+        edited = {**self.store.get("recipe-routine-votes"), "name": "My vote workflow"}
+        self.store.put("recipe", edited, edited["id"])
+        self.assertEqual(seed_routine_recipes(self.store, 2026), [])
+        self.assertEqual(self.store.get("recipe-routine-votes")["name"], "My vote workflow")
 
 if __name__ == "__main__": unittest.main()
