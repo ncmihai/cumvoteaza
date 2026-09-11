@@ -1,141 +1,23 @@
-import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
-import { type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
+import { BookOpen, Building2, Clock3, Info } from "lucide-react";
+import { chamberLabels, type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
 import { getCompositionTimelineData, type CompositionMode } from "@/lib/composition-data";
-import { messagesFor, type AppLocale } from "@/lib/i18n";
+import { type AppLocale } from "@/lib/i18n";
+import { EditorialSections } from "../_components/EditorialSections";
 import { CompositionTimeline } from "../_components/CompositionTimeline";
 import { CompositionSeatMap } from "../_components/CompositionSeatMap";
-import { EditorialGuide, EditorialPage } from "../_components/EditorialPage";
 
-export default async function CompositionsPage({
-  params,
-  searchParams
-}: {
-  params: Promise<{ locale: AppLocale }>;
-  searchParams: Promise<{ mode?: string }>;
-}) {
-  const { locale } = await params;
-  const { mode: rawMode } = await searchParams;
-  const mode: CompositionMode = rawMode === "computed" ? "computed" : "official";
-  const data = await getCompositionTimelineData(mode);
-  const messages = messagesFor(locale);
-  const labels = compositionPageLabels[locale];
-
-  return (
-    <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum citim această pagină?" : "How to read this page"} body={locale === "ro" ? "Vezi componența celor două camere, distribuția mandatelor și relația grupurilor cu Guvernul." : "See both chambers, seat distribution and how groups relate to government."} items={locale === "ro" ? ["Alege situația oficială sau susținerea calculată.", "Compară Camera Deputaților și Senatul.", "Folosește istoricul pentru schimbările legislaturii."] : ["Choose official or computed support.", "Compare the Chamber and Senate.", "Use history for changes during the term."]} />}>
-      <EditorialSections page="composition" locale={locale} />
-      <section className="border-b border-slate-300 pb-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${data.asOf}T12:00:00`))}</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-5xl font-semibold leading-[.98] tracking-[-.045em] text-[#050e2c] md:text-6xl">{locale === "ro" ? "Cum arată Parlamentul acum" : "What Parliament looks like now"}</h1>
-            <p className="mt-3 max-w-3xl font-serif text-lg leading-7 text-[#4b608a]">{locale === "ro" ? "Parlamentul României este alcătuit din două Camere care legiferează împreună și controlează activitatea Guvernului." : "Romania's Parliament has two chambers that legislate together and oversee the Government."}</p>
-          </div>
-          <div className="flex rounded-md border border-slate-300 bg-white p-1 text-sm">
-            <ModeLink locale={locale} mode="official" active={mode === "official"}>
-              {labels.officialMode}
-            </ModeLink>
-            <ModeLink locale={locale} mode="computed" active={mode === "computed"}>
-              {labels.computedMode}
-            </ModeLink>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
-          <span className="border border-slate-300 bg-white px-3 py-1.5">
-            {labels.asOf}: {data.asOf}
-          </span>
-          <span className="border border-slate-300 bg-white px-3 py-1.5">
-            {labels.legislatures}: {data.stops.length} · {labels.events}: {data.stops.reduce((sum, stop) => sum + stop.events.length, 0)}
-          </span>
-        </div>
-      </section>
-
-      {data.currentComposition ? <section className="mt-5 grid gap-4 xl:grid-cols-2">
-        {data.currentComposition.chambers.map((chamber) => <CompositionSeatMap key={chamber.chamber} locale={locale} chamber={chamber.chamber} seats={chamber.seats} />)}
-      </section> : null}
-
-      <section className="mt-5 border border-slate-300 bg-white px-5 py-4">
-        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase text-[#075fc6]">{locale === "ro" ? "Istoric verificabil" : "Verifiable history"}</p><h2 className="mt-1 font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Evoluția legislaturilor și a guvernelor" : "Legislatures and governments over time"}</h2></div><span className="text-sm text-[#4b608a]">{data.stops.length} {labels.legislatures.toLowerCase()} · {data.stops.reduce((sum, stop) => sum + stop.events.length, 0)} {labels.events.toLowerCase()}</span></div>
-      </section>
-
-      <div className="mt-4">
-        <CompositionTimeline locale={locale} mode={mode} stops={data.stops} />
-      </div>
-    </EditorialPage>
-  );
+export default async function CompositionsPage({params,searchParams}:{params:Promise<{locale:AppLocale}>;searchParams:Promise<{view?:string;mode?:string}>}){
+ const {locale}=await params; const query=await searchParams; const view=query.view==="history"?"history":"current"; const mode:CompositionMode=query.mode==="computed"?"computed":"official"; const data=await getCompositionTimelineData(mode); const current=data.currentComposition; const stop=data.stops[0];
+ return <main className="mx-auto grid min-h-[calc(100vh-76px)] max-w-[1440px] bg-[#fbfaf6] lg:grid-cols-[minmax(0,1fr)_360px]">
+  <div className="min-w-0 px-4 py-7 md:px-8 lg:px-10"><EditorialSections page="composition" locale={locale}/><p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{new Intl.DateTimeFormat(locale==="ro"?"ro-RO":"en-GB",{day:"numeric",month:"long",year:"numeric"}).format(new Date(`${data.asOf}T12:00:00`))}</p><h1 className="mt-2 font-serif text-5xl font-semibold leading-[.96] tracking-[-.045em] text-[#050e2c] md:text-6xl">{locale==="ro"?"Cum arată Parlamentul acum":"What Parliament looks like now"}</h1><p className="mt-3 max-w-4xl font-serif text-lg leading-7 text-[#4b608a]">{locale==="ro"?"Componența actuală a Camerei Deputaților și Senatului, distribuția mandatelor între grupuri și raportarea lor la Guvern.":"The current Chamber and Senate composition, seat distribution by group and relationship to Government."}</p>
+   <nav className="mt-5 inline-flex border border-[#9eabc0] bg-white"><Tab href={`/${locale}/compozitii`} active={view==="current"} icon={<Building2 size={18}/>}>{locale==="ro"?"Componența actuală":"Current composition"}</Tab><Tab href={`/${locale}/compozitii?view=history`} active={view==="history"} icon={<Clock3 size={18}/>}>{locale==="ro"?"Istoric":"History"}</Tab></nav>
+   {view==="current"?<>{current?<section className="mt-4 grid gap-4 xl:grid-cols-2">{current.chambers.map(chamber=><div key={chamber.chamber} className="min-w-0"><CompositionSeatMap locale={locale} chamber={chamber.chamber} seats={chamber.seats}/><div className="border-x border-b border-slate-300 bg-white px-4 pb-4"><div className="divide-y divide-slate-200">{chamber.groups.slice().sort((a,b)=>b.seats-a.seats).map(item=><div key={item.group.id} className="grid grid-cols-[1fr_45px_55px] gap-2 py-1.5 text-xs"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full" style={{background:item.group.color}}/>{item.party?.shortName??item.group.shortName}</span><strong className="text-right">{item.seats}</strong><span className="text-right text-[#4b608a]">{chamber.seats.length?`${(item.seats/chamber.seats.length*100).toFixed(1)}%`:"—"}</span></div>)}</div></div></div>)}</section>:<Empty locale={locale}/>}<section className="mt-4 border border-slate-300 bg-white p-5"><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale==="ro"?"Cine susține Guvernul?":"Who supports the Government?"}</h2><div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_1fr]"><div className="flex items-start gap-3"><Building2 size={34} className="text-[#061a47]"/><div><strong className="font-serif text-xl text-[#061a47]">{stop?.activeGovernment?.name??(locale==="ro"?"Guvern neidentificat":"Government not identified")}</strong>{stop?.primeMinister?<p className="text-sm text-[#4b608a]">{stop.primeMinister.displayName}</p>:null}</div></div><Alignment groups={current?.chambers.flatMap(x=>x.groups)??[]} type="government" locale={locale}/><Alignment groups={current?.chambers.flatMap(x=>x.groups)??[]} type="opposition" locale={locale}/></div></section></>:<div className="mt-5"><CompositionTimeline locale={locale} mode={mode} stops={data.stops}/></div>}
+  </div>
+  <aside className="border-t border-slate-300 bg-white/70 px-6 py-7 lg:border-l lg:border-t-0"><div className="lg:sticky lg:top-24"><section className="border border-[#dae8f7] bg-[#f0f6fc] p-5"><div className="flex items-center gap-3"><BookOpen className="text-[#061a47]"/><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale==="ro"?"Cum citim această pagină?":"How to read this page"}</h2></div><p className="mt-3 text-sm leading-6 text-[#4b608a]">{locale==="ro"?"Fiecare punct reprezintă un mandat. Culorile arată grupul parlamentar, iar listele păstrează numerele exacte din baza de date.":"Each dot is one seat. Colors show parliamentary groups, while the lists retain exact database counts."}</p><p className="mt-3 text-sm leading-6 text-[#4b608a]">{locale==="ro"?"Pentru schimbările din legislatură folosește fila Istoric.":"Use the History tab for changes during the legislature."}</p></section><section className="mt-5"><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale==="ro"?"Despre Parlament":"About Parliament"}</h2><InfoCard title={chamberLabels[locale].deputies} body={locale==="ro"?"Camera decizională în majoritatea domeniilor și una dintre cele două componente ale Parlamentului.":"The deciding chamber in most areas and one of Parliament's two components."}/><InfoCard title={chamberLabels[locale].senate} body={locale==="ro"?"Participă la adoptarea legilor, inițiază proiecte și exercită control parlamentar.":"Takes part in passing laws, initiating bills and parliamentary scrutiny."}/></section><Link href={`/${locale}/data-health`} className="mt-5 flex items-center justify-between border border-[#dae8f7] bg-[#f0f6fc] p-4 font-semibold text-[#075fc6]"><span>{locale==="ro"?"Metodologie și surse":"Methodology and sources"}</span><span>→</span></Link></div></aside>
+ </main>
 }
-
-function ModeLink({
-  locale,
-  mode,
-  active,
-  children
-}: {
-  locale: AppLocale;
-  mode: CompositionMode;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={`/${locale}/compozitii?mode=${mode}`}
-      className={["rounded px-3 py-1.5", active ? "bg-[#309898] text-white" : "text-slate-700 hover:bg-slate-100"].join(" ")}
-    >
-      {children}
-    </Link>
-  );
-}
-
-const compositionPageLabels = {
-  ro: {
-    eyebrow: "Compoziție parlamentară",
-    subtitle:
-      "Vedere factuală asupra componenței Camerei Deputaților și Senatului, pregătită pentru istoricul post-1989, guverne, coaliții și susținere calculată din voturi.",
-    officialMode: "Investitură oficială",
-    computedMode: "Susținere la vot",
-    asOf: "La data",
-    events: "Evenimente",
-    legislatures: "Legislaturi",
-    groupBreakdown: "Distribuție pe grupuri",
-    alignments: {
-      government: "Guvern",
-      governing_support: "Susținere",
-      opposition: "Opoziție",
-      mixed: "Mixt",
-      unaffiliated: "Neafiliat",
-      unknown: "Necunoscut"
-    }
-  },
-  en: {
-    eyebrow: "Parliament composition",
-    subtitle:
-      "A factual view of the Chamber of Deputies and Senate composition, prepared for post-1989 history, governments, coalitions, and voting-support analysis.",
-    officialMode: "Official investiture",
-    computedMode: "Voting support",
-    asOf: "As of",
-    events: "Events",
-    legislatures: "Legislatures",
-    groupBreakdown: "Breakdown by group",
-    alignments: {
-      government: "Government",
-      governing_support: "Support",
-      opposition: "Opposition",
-      mixed: "Mixed",
-      unaffiliated: "Unaffiliated",
-      unknown: "Unknown"
-    }
-  }
-} satisfies Record<
-  AppLocale,
-  {
-    eyebrow: string;
-    subtitle: string;
-    officialMode: string;
-    computedMode: string;
-    asOf: string;
-    events: string;
-    legislatures: string;
-    groupBreakdown: string;
-    alignments: Record<GovernanceAlignment, string>;
-  }
->;
+function Tab({href,active,icon,children}:{href:string;active:boolean;icon:React.ReactNode;children:React.ReactNode}){return <Link href={href} className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold ${active?"bg-[#061a47] !text-white":"text-[#061a47]"}`}>{icon}{children}</Link>}
+function Alignment({groups,type,locale}:{groups:Array<{seats:number;alignment:GovernanceAlignment;group:{id:string;shortName:string;color:string};party?:{shortName:string}}>;type:"government"|"opposition";locale:AppLocale}){const selected=groups.filter(x=>type==="government"?(x.alignment==="government"||x.alignment==="governing_support"):x.alignment==="opposition");const unique=new Map(selected.map(x=>[x.group.id,x]));const seats=[...unique.values()].reduce((s,x)=>s+x.seats,0);return <div className="border-l border-slate-200 pl-4"><p className="text-xs font-semibold uppercase text-[#4b608a]">{type==="government"?(locale==="ro"?"Susținere guvernamentală":"Government support"):(locale==="ro"?"Opoziție":"Opposition")}</p><div className="mt-2 flex flex-wrap gap-2">{[...unique.values()].map(x=><span key={x.group.id} className="flex items-center gap-1 text-xs"><i className="h-2.5 w-2.5 rounded-full" style={{background:x.group.color}}/>{x.party?.shortName??x.group.shortName}</span>)}</div><strong className="mt-2 block font-serif text-3xl text-[#061a47]">{seats}</strong></div>}
+function InfoCard({title,body}:{title:string;body:string}){return <div className="mt-4 flex gap-3 border-b border-slate-200 pb-4"><Building2 className="shrink-0 text-[#061a47]"/><div><h3 className="font-serif text-lg font-semibold text-[#061a47]">{title}</h3><p className="mt-1 text-sm leading-5 text-[#4b608a]">{body}</p></div></div>}
+function Empty({locale}:{locale:AppLocale}){return <p className="mt-5 border border-slate-300 bg-white p-5 text-sm text-[#4b608a]">{locale==="ro"?"Componența nu este disponibilă pentru data selectată.":"Composition is unavailable for the selected date."}</p>}

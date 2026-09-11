@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowRight, BarChart3, CalendarDays, FileText, Search, Share2 } from "lucide-react";
+import { ArrowRight, BarChart3, CalendarDays, FileText, Filter, Search, Share2 } from "lucide-react";
 import { chamberLabels, formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { AppLocale } from "@/lib/i18n";
 import type { BillExplorerItem, DirectoryFilterOptions, ExplorerFilters, ExplorerPageData, VoteExplorerItem } from "@/lib/explorer-data";
@@ -63,6 +63,7 @@ export function VoteDirectoryExplorer({
                 {bill ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{bill.title}</p> : null}
                 <div className="mt-3" onClick={(event) => event.stopPropagation()}>
                   <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.hot} />
+                  <Link href={`/${locale}/votes/${vote.id}`} className="ml-3 inline-flex items-center gap-1 text-xs font-bold text-[#075fc6] xl:hidden">{locale === "ro" ? "Vezi detalii" : "View details"}<ArrowRight size={14}/></Link>
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-2 text-sm md:text-right">
@@ -81,7 +82,7 @@ export function VoteDirectoryExplorer({
           {selected.bill ? <p className="mt-3 text-sm leading-6 text-[#4b608a]">{selected.bill.title}</p> : null}
           <div className="mt-4 flex items-center gap-2 border-y border-slate-200 py-3 text-sm text-[#4b608a]"><CalendarDays size={17} />{formatDate(selected.vote.heldOn, locale)} · {selected.vote.voteType}</div>
           <div className="mt-5 grid grid-cols-2 gap-3"><StatLine label={voteChoiceLabels[locale].for} value={selected.vote.totals.for} tone="text-emerald-700" /><StatLine label={voteChoiceLabels[locale].against} value={selected.vote.totals.against} tone="text-red-700" /><StatLine label={voteChoiceLabels[locale].abstention} value={selected.vote.totals.abstention} tone="text-amber-700" /><StatLine label={labels.present} value={selected.vote.totals.present} tone="text-[#061a47]" /></div>
-          <Link href={`/${locale}/votes/${selected.vote.id}`} className="mt-5 flex items-center justify-center gap-2 bg-[#061a47] px-4 py-3 text-sm font-bold text-white hover:bg-[#102d5b]">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={17} /></Link>
+          <Link href={`/${locale}/votes/${selected.vote.id}`} className="mt-5 flex items-center justify-center gap-2 bg-[#061a47] px-4 py-3 text-sm font-bold !text-white hover:bg-[#102d5b]">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={17} /></Link>
         </aside> : null}
       </section>
       <LoadMoreButton hasMore={hasMore} isPending={isPending} labels={labels} onClick={loadMore} />
@@ -137,8 +138,8 @@ export function BillDirectoryExplorer({
                   <FileText size={16} aria-hidden="true" />
                   {bill.identifiers.senate ?? bill.identifiers.deputies ?? bill.id}
                 </div>
-                <h2 className="mt-2 line-clamp-2 text-lg font-semibold text-slate-950">{bill.title}</h2>
-                <p className="mt-1 text-sm text-slate-600">{bill.status}</p>
+                <h2 className="mt-2 line-clamp-2 font-serif text-xl font-semibold text-[#061a47]">{cleanBillTitle(bill.title)}</h2>
+                <p className="mt-1 line-clamp-2 text-sm text-slate-600">{cleanBillStatus(bill.status)}</p>
                 <div className="mt-3" onClick={(event) => event.preventDefault()}>
                   <HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.hot} />
                 </div>
@@ -147,7 +148,7 @@ export function BillDirectoryExplorer({
                 <Metric label={labels.submitted} value={submittedOn ? formatDate(submittedOn, locale) : "-"} />
                 <Metric label={labels.latestEvent} value={latestEventOn ? formatDate(latestEventOn, locale) : "-"} />
                 <Metric label={labels.votes} value={String(voteCount)} />
-                <Metric label={labels.origin} value={bill.chamberOfOrigin} />
+                <Metric label={labels.origin} value={bill.chamberOfOrigin === "unknown" ? "—" : chamberLabels[locale][bill.chamberOfOrigin]} />
               </dl>
             </Link>
           ))}
@@ -180,7 +181,7 @@ function DirectoryFilters({
   return (
     <form
       ref={formRef}
-      className="mt-6 grid gap-3 border border-slate-300 bg-white p-4 md:grid-cols-[1.4fr_repeat(6,minmax(0,1fr))_auto]"
+      className="relative mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]"
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
@@ -192,56 +193,25 @@ function DirectoryFilters({
         router.push(`${path}${params.toString() ? `?${params}` : ""}`);
       }}
     >
-      <label className="flex items-center gap-2 border border-slate-300 px-3 py-2">
-        <Search size={16} className="text-slate-500" aria-hidden="true" />
-        <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" name="q" defaultValue={filters.q ?? ""} placeholder={labels.search} />
-      </label>
-      <Select
-        name="legislature"
-        label={labels.legislature}
-        defaultValue={filters.legislature ?? ""}
-        options={filterOptions.legislatures.map((legislature) => [legislature.id, legislature.label])}
-      />
-      <Select name="year" label={labels.year} defaultValue={filters.year ?? ""} options={years.map((year) => [year, year])} />
-      <Select name="month" label={labels.month} defaultValue={filters.month ?? ""} options={monthOptions(locale)} />
-      <Select
-        name="chamber"
-        label={labels.chamber}
-        defaultValue={filters.chamber ?? ""}
-        options={[
-          ["senate", chamberLabels[locale].senate],
-          ["deputies", chamberLabels[locale].deputies]
-        ]}
-      />
-      <Select
-        name="sourceStatus"
-        label={labels.sourceStatus}
-        defaultValue={filters.sourceStatus ?? ""}
-        options={[
-          ["parsed", "parsed"],
-          ["partial", "partial"],
-          ["failed", "failed"]
-        ]}
-      />
-      <Select
-        name="group"
-        label={labels.group}
-        defaultValue={filters.group ?? ""}
-        options={filterOptions.groups.map((group) => [group.id, `${group.shortName} · ${chamberLabels[locale][group.chamber]}`])}
-      />
-      <button className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="submit">
-        {labels.apply}
-      </button>
+      <div className="flex min-w-0 border border-[#bac6d8] bg-white focus-within:outline focus-within:outline-3 focus-within:outline-blue-100"><label className="flex min-w-0 flex-1 items-center gap-3 px-4"><Search size={21} className="shrink-0 text-[#061a47]" aria-hidden="true" /><input className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" name="q" defaultValue={filters.q ?? ""} placeholder={labels.search} /></label><button className="bg-[#061a47] px-6 text-sm font-bold text-white hover:bg-[#102d5b]" type="submit">{locale === "ro" ? "Caută" : "Search"}</button></div>
+      <details className="group relative"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={19}/>{locale === "ro" ? "Filtre" : "Filters"}<span aria-hidden="true">⌄</span></summary><div className="absolute right-0 z-30 mt-2 w-[min(620px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Select name="legislature" label={labels.legislature} defaultValue={filters.legislature ?? ""} options={filterOptions.legislatures.map((legislature) => [legislature.id, legislature.label])} />
+        <Select name="year" label={labels.year} defaultValue={filters.year ?? ""} options={years.map((year) => [year, year])} />
+        <Select name="month" label={labels.month} defaultValue={filters.month ?? ""} options={monthOptions(locale)} />
+        <Select name="chamber" label={labels.chamber} defaultValue={filters.chamber ?? ""} options={[["senate", chamberLabels[locale].senate],["deputies", chamberLabels[locale].deputies]]} />
+        <Select name="sourceStatus" label={labels.sourceStatus} defaultValue={filters.sourceStatus ?? ""} options={[["parsed", locale === "ro" ? "Verificată" : "Verified"],["partial", locale === "ro" ? "Parțială" : "Partial"],["failed", locale === "ro" ? "Cu eroare" : "Failed"]]} />
+        <Select name="group" label={labels.group} defaultValue={filters.group ?? ""} options={filterOptions.groups.map((group) => [group.id, `${group.shortName} · ${chamberLabels[locale][group.chamber]}`])} />
+      </div><button className="mt-4 w-full bg-[#061a47] px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></details>
     </form>
   );
 }
 
 function Select({ name, label, defaultValue, options }: { name: string; label: string; defaultValue: string; options: string[][] }) {
   return (
-    <label className="grid gap-1 text-xs uppercase text-slate-500">
+    <label className="grid gap-1 text-xs font-semibold uppercase text-[#4b608a]">
       {label}
-      <select name={name} defaultValue={defaultValue} className="min-w-0 border border-slate-300 bg-white px-2 py-2 text-sm normal-case text-slate-900">
-        <option value="">-</option>
+      <select name={name} defaultValue={defaultValue} className="min-w-0 border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal normal-case text-slate-900">
+        <option value="">{name === "year" || name === "month" ? ("—") : ("Toate")}</option>
         {options.map(([value, optionLabel]) => (
           <option key={value} value={value}>
             {optionLabel}
@@ -330,6 +300,19 @@ function monthOptions(locale: AppLocale): string[][] {
     const label = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-US", { month: "long" }).format(new Date(Date.UTC(2025, index, 1)));
     return [month, label];
   });
+}
+
+function cleanBillTitle(value: string): string {
+  return value
+    .replace(/\s+în termenul acordat pentru avize[\s\S]*$/i, "")
+    .replace(/\s+inițiator(?:i)?:[\s\S]*$/i, "")
+    .replace(/\s+initiator(?:i)?:[\s\S]*$/i, "")
+    .trim();
+}
+
+function cleanBillStatus(value: string): string {
+  const metadataStart = /\s+(?:inițiator(?:i)?|initiator(?:i)?|consultare publică|consultați|consultati|prioritate legislativă|prioritate legislativa|data acțiunea|data actiunea):/i;
+  return value.split(metadataStart, 1)[0]?.trim() || "—";
 }
 
 export interface DirectoryLabels {
