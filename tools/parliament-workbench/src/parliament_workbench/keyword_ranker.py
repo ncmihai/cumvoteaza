@@ -45,3 +45,42 @@ def rank_document(text, rules=None):
             "rulesHash": hashlib.sha256(json.dumps(rules, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
             "textHash": hashlib.sha256(text.encode()).hexdigest(),
             "ranking": sorted(ranking, key=lambda r: (-r["score"], r["topic"]))}
+
+
+def rank_context(context, rules=None):
+    """Rank a bill dossier from its usable official document passages."""
+    documents = []
+    combined = {}
+    for document in context.get("documents", []):
+        text = document.get("text_excerpt") or document.get("text_preview") or ""
+        ranked = rank_document(text, rules)
+        documents.append({"documentId": document.get("id"), "status": ranked["status"],
+                          "textHash": ranked.get("textHash"), "ranking": ranked["ranking"]})
+        for item in ranked["ranking"]:
+            topic = combined.setdefault(item["topic"], {"topic": item["topic"], "score": 0.0, "evidence": []})
+            # Duplicate chamber versions must not inflate priority merely by existing twice.
+            topic["score"] = max(topic["score"], item["score"])
+            if len(topic["evidence"]) < 3:
+                topic["evidence"].append({"documentId": document.get("id"), "matches": item["evidence"]})
+    ranking = sorted(({**item, "score": round(item["score"], 3)} for item in combined.values()),
+                     key=lambda item: (-item["score"], item["topic"]))
+    return {"status": "ranked" if ranking else ("insufficient_text" if documents and all(d["status"] == "insufficient_text" for d in documents) else "no_keyword_match"),
+            "direction": None, "methodVersion": "keyword-relevance-v1", "ranking": ranking,
+            "topScore": ranking[0]["score"] if ranking else 0, "documents": documents}
+
+
+def prioritize_candidates(candidates, context_loader, limit, pool_limit=500, rules=None):
+    """Bound deterministic preflight work and keep unmatched rows as controls."""
+    pool = list(candidates)[:max(limit, min(pool_limit, max(100, limit * 5)))]
+    scored = []
+    for index, candidate in enumerate(pool):
+        try:
+            context = context_loader(candidate["id"])
+            preflight = rank_context(context, rules)
+        except (ValueError, RuntimeError) as error:
+            context = None
+            preflight = {"status": "unavailable", "direction": None, "methodVersion": "keyword-relevance-v1",
+                         "ranking": [], "topScore": 0, "documents": [], "error": str(error)}
+        scored.append({"candidate": candidate, "context": context, "preflight": preflight, "index": index})
+    scored.sort(key=lambda item: (-item["preflight"]["topScore"], item["index"], item["candidate"]["id"]))
+    return scored[:limit]

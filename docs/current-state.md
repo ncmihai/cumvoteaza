@@ -46,6 +46,7 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 ### Analysis foundations
 
 - Versioned analysis profiles, examples, model settings, evaluation records and review states.
+- Deterministic keyword relevance now runs as a bounded preflight before public-sector, topic and political model jobs. It prioritizes likely-relevant dossiers, retains unmatched controls, records exact source passages and never assigns political direction.
 - A 50-family local model pilot completed with drafts and explicit incomplete results.
 - Evidence contracts and gold-set seeds exist for taxonomy, OCR, citation and dossier-diff tasks.
 - Gemini explanation caching/review code exists but remains disabled because live paid API use was deferred.

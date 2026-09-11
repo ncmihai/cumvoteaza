@@ -13,6 +13,7 @@ from psycopg import OperationalError
 from .cockpit_store import digest, encode, stamp
 from .cockpit_workspace import connect, local_config
 from .db import ReadOnlyDb
+from .keyword_ranker import prioritize_candidates, rank_context
 
 INDICATORS = [
     ("E1", "Tax-burden distribution", "Progressive distribution", "Less progressive distribution"),
@@ -210,13 +211,22 @@ def run_analysis(worker, job):
     from .cockpit_api import bill_rows
     corpus, _ = bill_rows(store)
     families = {row["id"]: row["familyId"] for row in corpus}
+    preflights = {}
+    contexts = {}
     if not ids:
         selected = [row for row in corpus if not job["payload"].get("legislature") or row["legislature"] == job["payload"]["legislature"]]
         unique = {}
         for row in selected:
             if row["familyId"] not in unique or row["text_documents"] > unique[row["familyId"]]["text_documents"]:
                 unique[row["familyId"]] = row
-        ids = [row["id"] for row in unique.values()][:max(1,min(int(job["payload"].get("limit",25)),10000))]
+        limit = max(1,min(int(job["payload"].get("limit",25)),10000))
+        if profile["task"] in {"public_sector", "topics", "political"}:
+            prioritized = prioritize_candidates(list(unique.values()), lambda bill_id: context_for(config, bill_id), limit)
+            ids = [row["candidate"]["id"] for row in prioritized]
+            preflights = {row["candidate"]["id"]: row["preflight"] for row in prioritized}
+            contexts = {row["candidate"]["id"]: row["context"] for row in prioritized if row["context"] is not None}
+        else:
+            ids = [row["id"] for row in unique.values()][:limit]
     results = []
     for index, bill_id in enumerate(ids):
         if index < job["checkpoint"]:
@@ -225,8 +235,10 @@ def run_analysis(worker, job):
         result_id = "result-" + digest([job["id"], bill_id])[:24]
         raw_output = None
         fingerprint = None
+        preflight = preflights.get(bill_id)
         try:
-            context = context_for(config, bill_id)
+            context = contexts.get(bill_id) or context_for(config, bill_id)
+            preflight = preflight or rank_context(context)
             fingerprint = digest(context)
             if not any(len(d.get("text_excerpt", "")) >= 80 for d in context["documents"]):
                 raise ValueError("Usable source text is missing")
@@ -257,15 +269,19 @@ def run_analysis(worker, job):
             raw_output = json.loads(output_file.read_text())
             output = validate_result(raw_output, context, profile)
             result = store.put("result", {"profileId": profile["id"], "billId": bill_id, "familyId": families.get(bill_id, bill_id),
+                "preflight": preflight,
                 "inputHash": fingerprint, "output": output, "status": "pending", "jobId": job["id"]}, result_id)
         except (ValueError, RuntimeError, httpx.HTTPError) as error:
             result = store.put("result", {"profileId": profile["id"], "billId": bill_id, "status": "incomplete",
-                                         "error": str(error), "jobId": job["id"], "rawOutput": raw_output, "inputHash": fingerprint, "familyId": families.get(bill_id, bill_id)}, result_id)
+                                         "error": str(error), "jobId": job["id"], "rawOutput": raw_output, "inputHash": fingerprint,
+                                         "preflight": preflight, "familyId": families.get(bill_id, bill_id)}, result_id)
         results.append(result)
         store.update_job(job["id"], checkpoint=index+1)
     all_results = [r for r in store.objects("result") if r.get("jobId") == job["id"]]
     return {"processed": len(all_results), "drafts": sum(r["status"] != "incomplete" for r in all_results),
             "incomplete": sum(r["status"] == "incomplete" for r in all_results),
+            "preflightRanked": sum(bool((r.get("preflight") or {}).get("ranking")) for r in all_results),
+            "preflightMethod": "keyword-relevance-v1",
             "results": [r["id"] for r in all_results], "reviewRequired": True}
 
 

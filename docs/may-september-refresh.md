@@ -30,7 +30,7 @@ Published Senate release `release-8d16e269d5614ae8`: 162 votes, 17,497 individua
 
 ## Cheap document analysis
 
-`keyword_ranker.py` ranks seven starter topics with editable phrase weights, Romanian diacritic normalization, capped repetition, original matching passages, text hashes and rule hashes. No model calls. Scores measure relevance only; political direction is always unset.
+`keyword_ranker.py` ranks seven starter topics with editable phrase weights, Romanian diacritic normalization, capped repetition, original matching passages, text hashes and rule hashes. No model calls. Scores measure relevance only; political direction is always unset. The cockpit now uses this as a bounded preflight for public-sector, topic and political runs: likely-relevant dossiers are processed first, unmatched dossiers remain eligible as controls, duplicate document versions cannot inflate a score, and the preflight evidence is stored with each result.
 
 Recommended workflow: extract once → cache text/chunks → rank topics → review relevant legal changes and motion meaning → apply reviewed two-axis indicators. Use corrected examples to adjust phrase weights, not party names as topic evidence. A phrase about public services cannot distinguish expanding, cutting or merely mentioning them.
 
