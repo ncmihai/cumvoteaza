@@ -1,4 +1,6 @@
-# cumsevoteaza — Progress Log
+# Progress
+
+> Historical engineering log. For the current product state and prioritized roadmap, use [current-state.md](current-state.md).
 
 Append-only implementation history.
 

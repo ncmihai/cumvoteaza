@@ -1,6 +1,6 @@
-# CumVoteaza public website redesign — proposed sprint
+# CumVoteaza public website redesign — implementation plan
 
-Status: comprehensive planning draft, 2026-09-10. No application implementation or deployment authorized by this planning step. The topic-ranking/political-analysis sprint is deferred. Gemini remains disabled.
+Status: implemented and locally verified on 11 September 2026. This document preserves the accepted design contract; current gaps and next work live in [current-state.md](current-state.md). The topic-ranking/political-analysis sprint remains deferred. Gemini remains disabled.
 
 ## 1. Outcome and visual references
 

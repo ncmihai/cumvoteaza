@@ -1,4 +1,6 @@
-# cumsevoteaza — Tasks
+# Tasks
+
+> Historical implementation checklist. It contains completed work and old open items; use [docs/current-state.md](docs/current-state.md) for the current roadmap.
 
 Operational memory for the project. Keep this file current after meaningful
 implementation steps.

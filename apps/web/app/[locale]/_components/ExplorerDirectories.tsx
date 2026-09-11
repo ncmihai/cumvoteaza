@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowRight, BarChart3, CalendarDays, FileText, Filter, Search, Share2 } from "lucide-react";
 import { chamberLabels, formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { AppLocale } from "@/lib/i18n";
+import { billStatusForDisplay, billTitleForDisplay } from "@/lib/presentation";
 import type { BillExplorerItem, DirectoryFilterOptions, ExplorerFilters, ExplorerPageData, VoteExplorerItem } from "@/lib/explorer-data";
 import { HotButton } from "./HotButton";
 
@@ -138,8 +139,8 @@ export function BillDirectoryExplorer({
                   <FileText size={16} aria-hidden="true" />
                   {bill.identifiers.senate ?? bill.identifiers.deputies ?? bill.id}
                 </div>
-                <h2 className="mt-2 line-clamp-2 font-serif text-xl font-semibold text-[#061a47]">{cleanBillTitle(bill.title)}</h2>
-                <p className="mt-1 line-clamp-2 text-sm text-slate-600">{cleanBillStatus(bill.status)}</p>
+                <h2 className="mt-2 line-clamp-2 font-serif text-xl font-semibold text-[#061a47]">{billTitleForDisplay(bill.title)}</h2>
+                <p className="mt-1 line-clamp-2 text-sm text-slate-600">{billStatusForDisplay(bill.status)}</p>
                 <div className="mt-3" onClick={(event) => event.preventDefault()}>
                   <HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.hot} />
                 </div>
@@ -300,19 +301,6 @@ function monthOptions(locale: AppLocale): string[][] {
     const label = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-US", { month: "long" }).format(new Date(Date.UTC(2025, index, 1)));
     return [month, label];
   });
-}
-
-function cleanBillTitle(value: string): string {
-  return value
-    .replace(/\s+în termenul acordat pentru avize[\s\S]*$/i, "")
-    .replace(/\s+inițiator(?:i)?:[\s\S]*$/i, "")
-    .replace(/\s+initiator(?:i)?:[\s\S]*$/i, "")
-    .trim();
-}
-
-function cleanBillStatus(value: string): string {
-  const metadataStart = /\s+(?:inițiator(?:i)?|initiator(?:i)?|consultare publică|consultați|consultati|prioritate legislativă|prioritate legislativa|data acțiunea|data actiunea):/i;
-  return value.split(metadataStart, 1)[0]?.trim() || "—";
 }
 
 export interface DirectoryLabels {

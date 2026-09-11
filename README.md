@@ -5,6 +5,10 @@ and parliamentary careers.
 
 Public app: <https://cumvoteaza.vercel.app>
 
+**Current status and roadmap:** [`docs/current-state.md`](docs/current-state.md)
+
+**Documentation index:** [`docs/README.md`](docs/README.md)
+
 ## Workspace
 
 ```text
@@ -35,7 +39,7 @@ cp .env.example .env
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-For local-only demo/dev DB:
+For the original local development database:
 
 ```bash
 npm run db:up
@@ -43,11 +47,7 @@ npm run db:migrate
 npm run dev
 ```
 
-The app runs at:
-
-```text
-http://localhost:3000/ro
-```
+The default app URL is `http://localhost:3000/ro`. The persistent local preview may use port 3001 when port 3000 is occupied.
 
 For shared Neon-backed work, ask the project owner for the private `.env`
 values. Never commit `.env`, `.env.local`, exported database URLs, Digi
@@ -73,76 +73,32 @@ DATA_HEALTH_REVIEW_TOKEN=
 Asset imports require Digi Storage credentials. Do not run broad asset imports
 unless you know which storage target is configured.
 
-## Two-Person Git Workflow
+## Git And Release Workflow
 
-Use a simple shared `dev -> main` workflow:
+`main` is the production branch and deploys through Vercel. The operator may push a reviewed, verified change directly to `main`, which is the workflow used for the September data and UI releases. Use `dev` when two contributors need a shared preview before production.
 
-```text
-dev  = shared active work / Vercel preview
-main = production
-```
-
-Both contributors push directly to `dev`. Do not work directly on `main`.
-
-Detailed collaboration rules live in
-[`docs/collaboration-workflow.md`](docs/collaboration-workflow.md).
-
-First-time `dev` branch setup:
+Before starting work:
 
 ```bash
 git checkout main
 git pull origin main
-git checkout -b dev
-git push -u origin dev
-```
-
-Daily start:
-
-```bash
-git checkout dev
-git pull origin dev
 npm install
 npm run typecheck
 ```
 
-Commit to `dev`:
+Before a production push:
 
 ```bash
+npm run typecheck
+npm test
+npm run build
 git status
-git add .
+git add <reviewed-files>
 git commit -m "Describe the change"
-git push origin dev
-```
-
-After pushing, notify the other contributor:
-
-```text
-Pushed dev: <short summary>. Please pull before continuing.
-```
-
-Before merging `dev` to `main`, both contributors review the Vercel `dev`
-preview and run:
-
-```bash
-npm run typecheck
-npm run test -- --runInBand
-npm run build
-```
-
-Release `dev` to production:
-
-```bash
-git checkout dev
-git pull origin dev
-npm run typecheck
-npm run test -- --runInBand
-npm run build
-
-git checkout main
-git pull origin main
-git merge dev
 git push origin main
 ```
+
+For concurrent contributor work, follow [`docs/collaboration-workflow.md`](docs/collaboration-workflow.md) and merge the reviewed `dev` preview into `main`.
 
 ## Dev Review Checklist
 
@@ -155,7 +111,7 @@ Before merging `dev` into `main`, check:
 - CDEP import commands are capped and polite
 - `tasks.md` and `docs/progress.md` updated for meaningful workflow changes
 - Vercel `dev` preview works
-- `npm run typecheck`, `npm run test -- --runInBand`, and `npm run build`
+- `npm run typecheck`, `npm test`, and `npm run build`
   pass
 
 ## Database And Migrations
