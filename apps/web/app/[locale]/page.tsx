@@ -41,11 +41,19 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </form>
         </div>
 
-        <aside className="border border-slate-300 bg-white p-4">
-          <div className="flex items-center justify-between gap-3">
-          <div className="font-serif text-xl font-semibold text-[#071a3a]">{labels.thisMonth}</div>
+        <aside className="border-l border-slate-300 bg-white/70 px-6 py-1 lg:sticky lg:top-24 lg:self-start">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
+            <Link href={`/${locale}/votes`} className="text-sm text-slate-600 hover:text-[#071a3a]">← {locale === "ro" ? "Înapoi la voturi" : "Back to votes"}</Link>
+            <span className="text-sm text-slate-600">{locale === "ro" ? "Distribuie" : "Share"} ↗</span>
           </div>
-          <MetricList items={dashboard.mostViewed} empty={labels.noActivity} />
+          {dashboard.latestVotes[0] ? <>
+            <div className="mt-5 flex items-start justify-between gap-3"><h2 className="font-serif text-4xl font-semibold leading-none text-[#071a3a]">{dashboard.latestVotes[0].vote.title.split(" - ")[0]}</h2><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">{locale === "ro" ? "Verificat" : "Verified"}</span></div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">{dashboard.latestVotes[0].vote.title}</p>
+            <div className="mt-4 grid gap-2 border-b border-slate-200 pb-4 text-xs text-slate-600"><span>▣ {formatDate(dashboard.latestVotes[0].vote.heldOn, locale)}</span><span>♜ {dashboard.latestVotes[0].vote.chamber === "senate" ? "Senat" : "Camera Deputaților"}</span><span>▤ {dashboard.latestVotes[0].vote.voteType}</span></div>
+            <div className="mt-4 border border-[#d8e4ef] bg-[#f1f6fb] p-4"><h3 className="font-serif text-xl font-semibold text-[#071a3a]">{locale === "ro" ? "Pe scurt" : "In brief"}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{locale === "ro" ? "Consultă rezultatul votului, pozițiile parlamentarilor și documentele oficiale pentru contextul complet." : "Review the vote result, member positions and official documents for full context."}</p></div>
+            <div className="mt-5"><h3 className="font-serif text-xl font-semibold text-[#071a3a]">{locale === "ro" ? "Rezultatul votului" : "Vote result"}</h3><div className="mt-3 grid grid-cols-3 gap-2 text-center"><div className="bg-emerald-50 p-2"><strong className="block font-serif text-2xl text-emerald-700">{dashboard.latestVotes[0].vote.totals.for}</strong><span className="text-xs text-slate-600">Pentru</span></div><div className="bg-red-50 p-2"><strong className="block font-serif text-2xl text-red-700">{dashboard.latestVotes[0].vote.totals.against}</strong><span className="text-xs text-slate-600">Contra</span></div><div className="bg-amber-50 p-2"><strong className="block font-serif text-2xl text-amber-700">{dashboard.latestVotes[0].vote.totals.abstention}</strong><span className="text-xs text-slate-600">Abțineri</span></div></div></div>
+            <Link href={`/${locale}/votes/${dashboard.latestVotes[0].vote.id}`} className="mt-5 block border border-slate-400 px-4 py-3 text-center text-sm font-semibold text-[#071a3a] hover:bg-slate-50">{locale === "ro" ? "Detalii oficiale" : "Official details"} ↗</Link>
+          </> : <MetricList items={dashboard.mostViewed} empty={labels.noActivity} />}
         </aside>
       </section>
 
