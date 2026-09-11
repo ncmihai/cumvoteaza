@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { FileText, Info } from "lucide-react";
 
 export function EditorialPage({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
-  return <main className="mx-auto grid min-h-[calc(100vh-76px)] max-w-[1440px] bg-[#fbfaf6] lg:grid-cols-[minmax(0,1fr)_360px]">
+  return <main className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1440px] grid-cols-1 bg-[#fbfaf6] ${aside ? "lg:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
     <div className="min-w-0 px-4 py-7 md:px-8 lg:px-10">{children}</div>
     {aside ? <aside className="border-t border-slate-300 bg-white/70 px-6 py-7 lg:border-l lg:border-t-0">{aside}</aside> : null}
   </main>;

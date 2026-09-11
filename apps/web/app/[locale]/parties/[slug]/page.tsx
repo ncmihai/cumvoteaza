@@ -4,14 +4,16 @@ import { Building2, ExternalLink, FileText, UsersRound } from "lucide-react";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
 import { getPartyPageData } from "@/lib/data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
+import { selectCurrentPartyState } from "@/lib/public-presentation";
 import { EditorialSections } from "../../_components/EditorialSections";
 import { EngagementTracker } from "../../_components/EngagementTracker";
 
 export default async function PartyPage({params}:{params:Promise<{locale:string;slug:string}>}){
  const {locale:rawLocale,slug}=await params; const locale:AppLocale=isLocale(rawLocale)?rawLocale:"ro"; const data=await getPartyPageData(slug); if(!data)notFound();
  const {party,members,legislatureSummaries,groupTotals,votes,formationEvents,governmentParticipations,tribunalSources}=data;
- const logoUrl=legislatureSummaries.flatMap(x=>x.logoUrls)[0]; const government=governmentParticipations[0];
+ const logoUrl=legislatureSummaries.flatMap(x=>x.logoUrls)[0];
  const currentLeg=legislatureSummaries[0]?.legislature.id; const current=legislatureSummaries.filter(x=>!currentLeg||x.legislature.id===currentLeg);
+ const asOf=new Date().toISOString().slice(0,10); const currentPartyState=selectCurrentPartyState(governmentParticipations,asOf); const government=currentPartyState.participation;
  const deputies=current.find(x=>x.chamber==="deputies"); const senate=current.find(x=>x.chamber==="senate");
  const recent=groupTotals.flatMap(total=>{const vote=votes.find(v=>v.id===total.voteId);return vote?[{total,vote}]:[]}).sort((a,b)=>b.vote.heldOn.localeCompare(a.vote.heldOn)).slice(0,6);
  const founded=formationEvents.find(x=>x.eventType==="party_founded"); const restored=formationEvents.find(x=>x.eventType==="party_reestablished");

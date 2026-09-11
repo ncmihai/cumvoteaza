@@ -12,6 +12,7 @@ Start with [current-state.md](current-state.md). It is the authoritative snapsho
 
 ## Product and methods
 
+- [public-ui-contract.md](public-ui-contract.md) — active route/control matrix, public presentation contracts and UI release gates.
 - [editorial-ui-reference.md](editorial-ui-reference.md) — public design system and approved visual references.
 - [political-scale-methodology.md](political-scale-methodology.md) — planned evidence-linked political analysis.
 - [parliament-how-it-works.md](parliament-how-it-works.md) — domain model and parliamentary process.

@@ -12,7 +12,7 @@ export default async function MembersPage({
   searchParams
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ chamber?: string; group?: string | string[]; q?: string; legislature?: string; sort?: string }>;
+  searchParams: Promise<{ chamber?: string; group?: string | string[]; q?: string; legislature?: string; sort?: string; page?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const rawFilters = await searchParams;
@@ -30,7 +30,10 @@ export default async function MembersPage({
   const groupChips = memberGroupChips(data.groups, data.parties, locale, filters.chamber);
   const validGroupValues = new Set(groupChips.map((group) => group.value));
   const activeGroupFilters = parseGroupParam(filters.group).filter((group) => validGroupValues.has(group));
-  const visibleMembers = data.members.slice(0, 60);
+  const pageSize = 20;
+  const totalPages = Math.max(1, Math.ceil(data.members.length / pageSize));
+  const page = Math.min(totalPages, Math.max(1, Number.parseInt(rawFilters.page ?? "1", 10) || 1));
+  const visibleMembers = data.members.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum găsești parlamentarul tău?" : "How to find your representative"} body={locale === "ro" ? "Introdu numele, partidul sau județul și folosește filtrele pentru camera și legislatura potrivită." : "Enter a name, party or county and use filters for the right chamber and legislature."} items={locale === "ro" ? ["Caută după nume, partid sau județ.", "Alege camera și legislatura.", "Intră în profil pentru voturi și inițiative."] : ["Search by name, party or county.", "Choose chamber and legislature.", "Open a profile for votes and initiatives."]} />}>
@@ -131,7 +134,7 @@ export default async function MembersPage({
       </section>
       </div></details></div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-slate-300 py-3 text-sm"><span>{locale === "ro" ? `Afișăm ${data.members.length} parlamentari` : `Showing ${data.members.length} members`}</span><div className="flex items-center gap-2"><span className="text-slate-500">{locale === "ro" ? "Sortează după:" : "Sort by:"}</span>{memberSortOptions(locale).map((option) => <FilterLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</FilterLink>)}</div></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-slate-300 py-3 text-sm"><span>{locale === "ro" ? `${data.members.length} parlamentari · pagina ${page} din ${totalPages}` : `${data.members.length} members · page ${page} of ${totalPages}`}</span><div className="flex flex-wrap items-center gap-2"><span className="text-slate-500">{locale === "ro" ? "Sortează după:" : "Sort by:"}</span>{memberSortOptions(locale).map((option) => <FilterLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</FilterLink>)}</div></div>
 
       <section className="mt-3 space-y-2">
         {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
@@ -139,7 +142,7 @@ export default async function MembersPage({
           <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-[#061a47]">{member.displayName}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#4b608a]"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span></div><p className="mt-1 truncate text-xs text-[#4b608a]">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
           <div className="flex items-center gap-5 pl-3"><div className="hidden text-right sm:block"><strong className="block font-serif text-2xl text-[#061a47]">{voteCount ?? 0}</strong><span className="text-xs text-[#4b608a]">{locale === "ro" ? "voturi" : "votes"}</span></div><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
         </Link>)}
-        {data.members.length > visibleMembers.length ? <p className="border-t border-slate-300 py-4 text-center text-sm text-[#4b608a]">{locale === "ro" ? `Primele ${visibleMembers.length} rezultate. Folosește căutarea sau filtrele pentru a restrânge lista.` : `First ${visibleMembers.length} results. Use search or filters to narrow the list.`}</p> : null}
+        {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="flex items-center justify-between border-t border-slate-300 pt-4"><span className="text-sm text-[#4b608a]">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#061a47]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="bg-[#061a47] px-4 py-2 text-sm font-semibold text-white" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
     </EditorialPage>
   );
@@ -228,7 +231,7 @@ function memberSortOptions(locale: AppLocale): Array<{ value: string; label: str
       ];
 }
 
-function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; group?: string | string[]; q?: string; legislature?: string; sort?: string }): string {
+function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; group?: string | string[]; q?: string; legislature?: string; sort?: string; page?: number }): string {
   const params = new URLSearchParams();
   if (filters.chamber) params.set("chamber", filters.chamber);
   const groups = Array.isArray(filters.group) ? filters.group : parseGroupParam(filters.group);
@@ -236,6 +239,7 @@ function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; gro
   if (filters.q) params.set("q", filters.q);
   if (filters.legislature !== undefined) params.set("legislature", filters.legislature);
   if (filters.sort) params.set("sort", filters.sort);
+  if (filters.page && filters.page > 1) params.set("page", String(filters.page));
   const query = params.toString();
   return `/${locale}/members${query ? `?${query}` : ""}`;
 }

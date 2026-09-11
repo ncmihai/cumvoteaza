@@ -15,6 +15,7 @@ import type {
 import { voteChoiceColors, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 
 interface VoteExplorerProps {
+  voteId: string;
   locale: Locale;
   chamber: ChamberId;
   groups: ParliamentaryGroup[];
@@ -42,7 +43,7 @@ interface SeatSlot {
   rowIndex: number;
 }
 
-export function VoteExplorer({ locale, chamber, groups, groupLogoUrls = {}, members, seatVotes, nominalVotes, groupTotals }: VoteExplorerProps) {
+export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = {}, members, seatVotes, nominalVotes, groupTotals }: VoteExplorerProps) {
   const [failedLogos, setFailedLogos] = useState<string[]>([]);
   const [activeGroups, setActiveGroups] = useState<string[]>([]);
   const [activeChoices, setActiveChoices] = useState<VoteChoice[]>([]);
@@ -189,7 +190,7 @@ export function VoteExplorer({ locale, chamber, groups, groupLogoUrls = {}, memb
                 </button>
                 {seat.member ? (
                   <Link
-                    href={`/${locale}/members/${seat.member.slug}`}
+                    href={`/${locale}/members/${seat.member.slug}?fromVote=${encodeURIComponent(voteId)}`}
                     aria-label={`${labels.openProfile}: ${memberLabel}`}
                     className={popupClass}
                     onClick={(event) => event.stopPropagation()}
@@ -263,7 +264,7 @@ export function VoteExplorer({ locale, chamber, groups, groupLogoUrls = {}, memb
               <tr key={individualVote.id}>
                 <td className="px-3 py-3">
                   {member ? (
-                    <Link className="font-medium underline" href={`/${locale}/members/${member.slug}`}>
+                    <Link className="font-medium underline" href={`/${locale}/members/${member.slug}?fromVote=${encodeURIComponent(voteId)}`}>
                       {member.displayName}
                     </Link>
                   ) : (
