@@ -5,6 +5,7 @@ import { getMemberDirectoryData } from "@/lib/data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
+import { ImageWithFallback } from "../_components/ImageWithFallback";
 import { ArrowRight, Building2, Filter, MapPin, Search } from "lucide-react";
 
 export default async function MembersPage({
@@ -138,7 +139,7 @@ export default async function MembersPage({
 
       <section className="mt-3 space-y-2">
         {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
-          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-[#e9eef5] font-serif text-xl font-bold text-[#4b608a]">{profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="h-full w-full object-cover" /> : initials(member.displayName)}</div>
+          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-[#e9eef5] font-serif text-xl font-bold text-[#4b608a]"><ImageWithFallback src={profilePhotoUrl} alt="" className="h-full w-full object-cover">{initials(member.displayName)}</ImageWithFallback></div>
           <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-[#061a47]">{member.displayName}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#4b608a]"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span></div><p className="mt-1 truncate text-xs text-[#4b608a]">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
           <div className="flex items-center gap-5 pl-3"><div className="hidden text-right sm:block"><strong className="block font-serif text-2xl text-[#061a47]">{voteCount ?? 0}</strong><span className="text-xs text-[#4b608a]">{locale === "ro" ? "voturi" : "votes"}</span></div><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
         </Link>)}

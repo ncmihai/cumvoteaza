@@ -43,6 +43,7 @@ describe("public presentation contracts", () => {
     expect(result.heading).toBe("Aprobarea OUG nr. 6/2026");
     expect(result.officialTitle).toBe(bill.title);
     expect(result.status).toBe("Trimis la promulgare");
+    expect(presentBill({ ...bill, status: "în termenul acordat pentru avize și puncte de vedere solicitate Inițiator: 39 deputați" }).status).toBe("—");
   });
 
   it("does not call coverage-only data attendance", () => {

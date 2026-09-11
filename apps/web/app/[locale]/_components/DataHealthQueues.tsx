@@ -60,7 +60,7 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
 
   return (
     <>
-      <section className="mt-6 grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <HealthStat label={labels.totalOpen} value={data.counts.totalOpen} />
         <HealthStat label={labels.ocr} value={data.counts.ocr} />
         <HealthStat label={labels.weakParses} value={data.counts.weakSectionParses} />
@@ -70,9 +70,9 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
         <HealthStat label={labels.weakTitles} value={data.counts.weakVoteTitles} />
       </section>
 
-      <section className="mt-6 border border-slate-300 bg-white p-4">
-        <div className="text-sm font-semibold text-slate-950">{labels.reviewMode}</div>
-        <p className="mt-1 text-xs leading-5 text-slate-600">{labels.tokenHelp}</p>
+      <details className="mt-6 border border-slate-300 bg-white p-4">
+        <summary className="cursor-pointer font-serif text-lg font-semibold text-[#061a47]">{labels.reviewMode}</summary>
+        <p className="mt-2 text-xs leading-5 text-slate-600">{labels.tokenHelp}</p>
         <div className="mt-3 grid gap-2 md:grid-cols-[1fr_220px_180px]">
           <input
             type="password"
@@ -100,11 +100,11 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
             </select>
           </label>
         </div>
-      </section>
+      </details>
 
       <nav className="mt-6 flex flex-wrap gap-2 text-sm">
         {sections.map(([key, label, rows]) => (
-          <a key={key} href={`#${key}`} className="rounded-md border border-slate-300 px-3 py-2 font-medium text-slate-800 hover:bg-slate-50">
+          <a key={key} href={`#${key}`} className="border border-slate-300 bg-white px-3 py-2 font-medium text-[#061a47] hover:bg-slate-50">
             {label} <span className="text-slate-500">{filterIssues(rows, statusFilter).length}</span>
           </a>
         ))}
@@ -116,7 +116,7 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
           return (
             <section key={key} id={key} className="border border-slate-300 bg-white">
               <div className="border-b border-slate-300 px-4 py-3">
-                <h2 className="font-semibold text-slate-950">{label}</h2>
+                <h2 className="font-serif text-2xl font-semibold text-[#061a47]">{label}</h2>
                 <p className="mt-1 text-sm text-slate-600">{labels.sectionNote}</p>
               </div>
               <div className="divide-y divide-slate-200">
@@ -137,7 +137,7 @@ function HealthStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="border border-slate-300 bg-white px-4 py-3">
       <div className="text-xs font-semibold uppercase text-slate-500">{label}</div>
-      <div className="mt-1 text-3xl font-semibold text-slate-950">{value}</div>
+      <div className="mt-1 font-serif text-3xl font-semibold text-[#061a47]">{value}</div>
     </div>
   );
 }

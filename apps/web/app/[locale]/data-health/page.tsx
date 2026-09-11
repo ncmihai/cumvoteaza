@@ -13,11 +13,11 @@ export default async function DataHealthPage({ params }: { params: Promise<{ loc
   const data = await getDataHealthData();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-8 md:px-8 lg:px-10">
       <div>
-        <div className="text-sm font-semibold uppercase text-blue-800">{labels.eyebrow}</div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">{labels.title}</h1>
-        <p className="mt-2 max-w-3xl text-slate-600">{labels.subtitle}</p>
+        <div className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{labels.eyebrow}</div>
+        <h1 className="mt-2 font-serif text-5xl font-semibold leading-[.96] tracking-[-.045em] text-[#050e2c] md:text-6xl">{labels.title}</h1>
+        <p className="mt-3 max-w-3xl font-serif text-lg leading-7 text-[#4b608a]">{labels.subtitle}</p>
       </div>
       <DataHealthQueues data={data} labels={labels} locale={locale} />
     </main>

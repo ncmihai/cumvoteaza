@@ -254,6 +254,7 @@ function readableVoteHeading(title: string, identifier: string): string {
 
 function cleanImportedText(value: string): string {
   return value
+    .replace(/^în termenul acordat pentru avize[\s\S]*$/i, "")
     .replace(/\s+în termenul acordat pentru avize[\s\S]*$/i, "")
     .replace(/\s+(?:inițiator(?:i)?|initiator(?:i)?|consultare publică|consultați|consultati|prioritate legislativă|prioritate legislativa|data acțiunea|data actiunea):[\s\S]*$/i, "")
     .replace(/\s+/g, " ")
