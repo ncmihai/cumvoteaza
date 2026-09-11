@@ -8,7 +8,7 @@
 - Source pixels: 1280 × 905 for each supplied mockup.
 - Implementation viewport: 1264 × 712 CSS pixels, device scale 1.
 - Density normalization: both source and implementation were inspected at device scale 1; vertical crop differs, so comparisons were limited to shared above-the-fold regions.
-- State: Phase 0 inventory, Phase 1 truth contracts, repaired vote directory and homepage → vote → member journey are applied.
+- State: Phase 0 inventory, Phase 1 truth contracts, repaired homepage → vote → member journey, and Phase 3 party/composition surfaces are applied.
 
 ## Full-view comparison evidence
 
@@ -28,6 +28,8 @@ The vote directory now uses the full available desktop canvas. Vote identity, su
 - Member profile: desktop and 390px mobile captures confirm the identity, activity and context-return layout. The mobile pass found and fixed an implicit grid-track overflow; measured document width now equals the 390px viewport.
 - Member metrics: the inspected profile changed from a misleading percentage to `1 înregistrări de vot acoperite`; no eligible-vote denominator was available.
 - Party current state: the inspected fallback dataset showed `Reprezentare parlamentară` and an unavailable current status rather than selecting a historical government row.
+- Party profile: desktop and 390px mobile captures confirm the mockup-aligned split layout, working share/member/vote links, single-line desktop identity, and no horizontal overflow.
+- Composition: desktop and 390px mobile captures confirm the current Parliament maps, evidence rail and exact seat totals. The current/history tabs update URL state and `aria-current`; no government/opposition alignment is invented while that evidence is unavailable.
 
 ## Required fidelity surfaces
 
@@ -51,12 +53,13 @@ The vote directory now uses the full available desktop canvas. Vote identity, su
 - Earlier member profiles calculated attendance from imported rows. Fixed by separating coverage-only, eligible and unavailable participation states.
 - Earlier party profiles selected `governmentParticipations[0]`. Fixed by requiring both the alignment interval and government interval to contain the displayed date.
 - Post-fix browser evidence confirmed all three presentation changes. The remaining findings belong to later phases and were not hidden to force a pass.
+- Phase 3 browser evidence confirmed party and composition layouts at 1280px and 390px, including functional history, share and cross-directory links.
 
 ## Implementation checklist
 
 1. Add authoritative motion outcome and semantics to the ingest/data/query contract.
-2. Continue the same reconstruction standard through vote/member/party/composition directories and profiles.
-3. Continue matched mobile captures for the party and composition work in Phase 3.
+2. Add verified government-alignment evidence before presenting coalition/opposition totals.
+3. Continue the same reconstruction standard through the remaining bill and data-health surfaces.
 
 ## Follow-up polish
 
