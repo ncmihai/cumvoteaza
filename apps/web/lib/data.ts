@@ -125,6 +125,8 @@ export interface MemberDirectoryItem {
   mandate?: MemberMandate;
   group?: ParliamentaryGroup;
   party?: Party;
+  profilePhotoUrl?: string;
+  voteCount?: number;
 }
 
 export interface MemberDirectoryData {
@@ -786,6 +788,8 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
             p.short_name as party_short_name,
             p.name as party_name,
             p.color as party_color,
+            photo_asset.id as profile_photo_asset_id,
+            coalesce(vote_stats.vote_count, 0)::int as vote_count,
             ${stats.select}
             row_number() over (partition by coalesce(m.person_id, m.id) order by mm.starts_on desc, mm.id desc) as rn
           from member_mandates mm
@@ -803,6 +807,18 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
           ) mgm on true
           left join parliamentary_groups pg on pg.id = mgm.group_id
           left join parties p on p.id = pg.party_id
+          left join lateral (
+            select sa.id
+            from stored_assets sa
+            where sa.entity_id = m.id and sa.asset_type = 'photo' and sa.fetch_status = 'stored'
+            order by (sa.legislature_id = mm.legislature_id) desc, sa.updated_at desc
+            limit 1
+          ) photo_asset on true
+          left join lateral (
+            select count(distinct iv.vote_id)::int as vote_count
+            from individual_votes iv
+            where iv.member_id = m.id
+          ) vote_stats on true
           ${stats.joins}
           ${where}
         )
@@ -1525,7 +1541,9 @@ function mapMemberDirectoryRow(row: MemberDirectoryRow): MemberDirectoryItem {
           name: row.party_name!,
           color: row.party_color!
         }
-      : undefined
+      : undefined,
+    profilePhotoUrl: row.profile_photo_asset_id ? `/api/assets/${encodeURIComponent(row.profile_photo_asset_id)}` : undefined,
+    voteCount: Number(row.vote_count ?? 0)
   };
 }
 
@@ -2924,6 +2942,8 @@ type MemberDirectoryRow = {
   party_short_name: string | null;
   party_name: string | null;
   party_color: string | null;
+  profile_photo_asset_id: string | null;
+  vote_count: number;
   stat_absent: number;
   stat_switches: number;
   stat_seniority_days: number;

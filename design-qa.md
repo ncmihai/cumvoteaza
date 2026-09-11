@@ -58,3 +58,17 @@ The implementation uses current local parliamentary records. The selected local 
 - A later font pass can load Source Serif 4 and Libre Franklin locally if exact glyph metrics are required without remote font requests.
 
 final result: passed
+
+## Members directory iteration — 2026-09-11
+
+- Source visual truth: `docs/design/ui-refresh/02-members-directory.png`
+- Implementation: `http://127.0.0.1:3001/ro/members`
+- Viewports checked: 1440 × 1000 and 653 × 808 CSS pixels, device scale 1.
+- Full-view evidence: the implementation now follows the source's large serif title, introductory deck, combined search/filter controls, count and sorting strip, compact portrait rows, activity total and explanatory rail.
+- Focused evidence: the filter disclosure was opened at desktop size and contains working legislature, chamber, party and ranking links. Rows are full-width links with distinct hover/focus targets.
+- Data fidelity: stored member photos and nominal-vote counts are loaded by the directory query. Initials and zero counts are shown only when those values are unavailable in the active dataset.
+- Responsive evidence: at 653 px the search and filter controls stack, sorting wraps without horizontal overflow, profile rows retain name and metadata, and the explanatory rail follows the directory.
+- Console/runtime: the page loads using the demo fallback while local PostgreSQL is stopped. No mock member records were introduced.
+- TypeScript: passed.
+
+final result: passed
