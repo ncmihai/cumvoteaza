@@ -3,6 +3,10 @@ import type {
   ChamberId,
   GovernanceAlignment,
   Government,
+  Legislature,
+  Member,
+  MemberCareerSegment,
+  MemberHistoryRow,
   SourceSnapshot,
   Vote,
   VoteTotals
@@ -52,6 +56,29 @@ export interface MemberActivityPresentation {
   participationKind: "eligible" | "coverage-only" | "unavailable";
   label: string;
   detail: string;
+}
+
+export interface MemberIdentityPresentation {
+  name: string;
+  office?: string;
+}
+
+export interface MemberCareerPresentation {
+  segments: MemberCareerSegment[];
+  legislatureCount: number;
+  affiliationCount: number;
+  hasChanges: boolean;
+  hasAmbiguousDates: boolean;
+  startsOn?: string;
+  endsOn?: string;
+}
+
+export interface MemberProfileContextPresentation {
+  summary: string;
+  significance: string;
+  evidenceKind: "role" | "committee" | "initiative" | "unavailable";
+  roles: MemberHistoryRow[];
+  committees: MemberHistoryRow[];
 }
 
 export interface DatedGovernmentParticipation {
@@ -197,6 +224,113 @@ export function presentMemberActivity(
   };
 }
 
+export function presentMemberIdentity(
+  member: Pick<Member, "displayName" | "firstName" | "lastName">,
+  history: MemberHistoryRow[] = [],
+  asOf = new Date().toISOString().slice(0, 10)
+): MemberIdentityPresentation {
+  const parsed = splitMemberOffice(member.displayName);
+  const activeRole = history
+    .filter((row) => row.type === "role" && intervalContains(row.startsOn, row.endsOn, asOf))
+    .sort((a, b) => b.startsOn.localeCompare(a.startsOn))[0];
+  const fallbackName = [member.firstName, member.lastName].filter(Boolean).join(" ").trim();
+  return {
+    name: parsed.name || fallbackName || member.displayName,
+    office: activeRole?.label ?? parsed.office
+  };
+}
+
+export function presentMemberCareer(
+  segments: MemberCareerSegment[],
+  legislatures: Legislature[] = []
+): MemberCareerPresentation {
+  const ordered = [...segments]
+    .filter((segment) => Boolean(segment.startsOn))
+    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.label.localeCompare(b.label));
+  const normalized: MemberCareerSegment[] = [];
+  for (const segment of ordered) {
+    const previous = normalized.at(-1);
+    if (
+      previous &&
+      previous.label === segment.label &&
+      previous.partySlug === segment.partySlug &&
+      previous.chamber === segment.chamber &&
+      previous.legislatureId === segment.legislatureId &&
+      periodsTouch(previous.endsOn, segment.startsOn)
+    ) {
+      previous.endsOn = laterDate(previous.endsOn, segment.endsOn);
+      previous.events = mergeById(previous.events, segment.events);
+      previous.governance = mergeGovernanceContexts(previous.governance, segment.governance);
+      previous.logoUrl ??= segment.logoUrl;
+      previous.color ??= segment.color;
+      continue;
+    }
+    normalized.push({ ...segment, events: [...(segment.events ?? [])], governance: [...(segment.governance ?? [])] });
+  }
+  const legislatureIds = new Set(normalized.map((segment) => segment.legislatureId).filter(Boolean));
+  const knownLegislatures = new Set(legislatures.map((legislature) => legislature.id));
+  const legislatureCount = [...legislatureIds].filter((id) => !knownLegislatures.size || knownLegislatures.has(id!)).length;
+  const affiliationCount = new Set(normalized.map((segment) => segment.partySlug ?? segment.label)).size;
+  const hasAmbiguousDates = normalized.some((segment, index) => {
+    const previous = normalized[index - 1];
+    return Boolean(previous && (previous.partySlug ?? previous.label) !== (segment.partySlug ?? segment.label) && periodsOverlap(previous.startsOn, previous.endsOn, segment.startsOn, segment.endsOn));
+  });
+  return {
+    segments: normalized,
+    legislatureCount,
+    affiliationCount,
+    hasChanges: normalized.length > 1 || affiliationCount > 1 || legislatureCount > 1,
+    hasAmbiguousDates,
+    startsOn: normalized[0]?.startsOn,
+    endsOn: normalized.at(-1)?.endsOn
+  };
+}
+
+export function presentMemberProfileContext(input: {
+  identity: MemberIdentityPresentation;
+  chamberLabel?: string;
+  constituency?: string;
+  partyLabel?: string;
+  legislatureId?: string;
+  legislatureLabel?: string;
+  history?: MemberHistoryRow[];
+  sponsoredBillCount?: number;
+  locale: AppLocale;
+  asOf?: string;
+}): MemberProfileContextPresentation {
+  const history = (input.history ?? []).filter((row) => !input.legislatureId || row.legislatureId === input.legislatureId);
+  const asOf = input.asOf ?? new Date().toISOString().slice(0, 10);
+  const roles = history.filter((row) => row.type === "role" && intervalContains(row.startsOn, row.endsOn, asOf));
+  const committees = history.filter((row) => row.type === "committee");
+  const place = input.constituency ? ` ${input.locale === "ro" ? "în circumscripția" : "for"} ${input.constituency}` : "";
+  const party = input.partyLabel ? `, ${input.locale === "ro" ? "din partea" : "representing"} ${input.partyLabel}` : "";
+  const office = input.identity.office ? `${input.identity.office}, ` : "";
+  const summary = input.locale === "ro"
+    ? `${input.identity.name}, ${office}este parlamentar în ${input.chamberLabel ?? "Parlamentul României"}${place}${party}, în legislatura ${input.legislatureLabel ?? "selectată"}.`
+    : `${input.identity.name}, ${office}serves in ${input.chamberLabel ?? "the Romanian Parliament"}${place}${party}, in the ${input.legislatureLabel ?? "selected"} legislature.`;
+
+  if (roles[0]) return {
+    summary,
+    significance: input.locale === "ro" ? `Deține rolul de ${roles[0].label}; această funcție este contextul instituțional verificat disponibil pentru activitatea sa.` : `Serves as ${roles[0].label}; this is the verified institutional context available for the member's activity.`,
+    evidenceKind: "role", roles, committees
+  };
+  if (committees[0]) return {
+    summary,
+    significance: input.locale === "ro" ? `Activează în ${committees.map((row) => row.label).slice(0, 2).join(" și ")}, unde sunt analizate și pregătite proiecte înaintea votului în plen.` : `Serves on ${committees.map((row) => row.label).slice(0, 2).join(" and ")}, where bills are examined before plenary votes.`,
+    evidenceKind: "committee", roles, committees
+  };
+  if ((input.sponsoredBillCount ?? 0) > 0) return {
+    summary,
+    significance: input.locale === "ro" ? `Are ${(input.sponsoredBillCount ?? 0)} inițiative legislative conectate la sursele oficiale în perioada selectată.` : `Has ${(input.sponsoredBillCount ?? 0)} legislative initiatives linked to official sources in the selected period.`,
+    evidenceKind: "initiative", roles, committees
+  };
+  return {
+    summary,
+    significance: input.locale === "ro" ? "Nu există încă suficiente date structurate despre roluri, comisii sau inițiative pentru a explica responsabil aria sa de influență." : "There is not yet enough structured data on roles, committees, or initiatives to responsibly explain the member's area of influence.",
+    evidenceKind: "unavailable", roles, committees
+  };
+}
+
 export function selectCurrentPartyState(
   participations: DatedGovernmentParticipation[],
   asOf: string
@@ -259,6 +393,55 @@ function cleanImportedText(value: string): string {
     .replace(/\s+(?:inițiator(?:i)?|initiator(?:i)?|consultare publică|consultați|consultati|prioritate legislativă|prioritate legislativa|data acțiunea|data actiunea):[\s\S]*$/i, "")
     .replace(/\s+/g, " ")
     .trim() || "—";
+}
+
+function splitMemberOffice(displayName: string): MemberIdentityPresentation {
+  const normalized = displayName.replace(/\s+/g, " ").trim();
+  const parts = normalized.split(/,\s*(?=(?:pre[șşs]edinte|vicepre[șşs]edinte|chestor|secretar|lider|vicelider)\b)/i);
+  if (parts.length < 2) return { name: normalized };
+  return { name: parts[0]!.trim(), office: normalizeOffice(parts.slice(1).join(", ")) };
+}
+
+function normalizeOffice(value: string): string {
+  return value
+    .replace(/^Presedintele\b/i, "Președintele")
+    .replace(/^Presedinte\b/i, "Președinte")
+    .replace(/^Vicepresedinte\b/i, "Vicepreședinte")
+    .replace(/^Vicepreşedinte\b/i, "Vicepreședinte")
+    .replace(/^Preşedintele\b/i, "Președintele")
+    .replace(/^Preşedinte\b/i, "Președinte")
+    .replace(/\bCamerei Deputatilor\b/i, "Camerei Deputaților")
+    .replace(/\bCamerei Deputaţilor\b/i, "Camerei Deputaților")
+    .replace(/\bAl Camerei\b/, "al Camerei")
+    .replace(/\bSenatului\b/i, "Senatului")
+    .trim();
+}
+
+function periodsTouch(endsOn: string | undefined, startsOn: string): boolean {
+  if (!endsOn) return true;
+  const end = new Date(`${endsOn}T00:00:00Z`).getTime();
+  const start = new Date(`${startsOn}T00:00:00Z`).getTime();
+  return start <= end + 86_400_000;
+}
+
+function periodsOverlap(leftStart: string, leftEnd: string | undefined, rightStart: string, rightEnd: string | undefined): boolean {
+  return leftStart <= (rightEnd ?? "9999-12-31") && rightStart <= (leftEnd ?? "9999-12-31");
+}
+
+function laterDate(left?: string, right?: string): string | undefined {
+  if (!left || !right) return undefined;
+  return left >= right ? left : right;
+}
+
+function mergeById<T extends { id: string }>(left: T[] = [], right: T[] = []): T[] {
+  return [...new Map([...left, ...right].map((item) => [item.id, item])).values()];
+}
+
+function mergeGovernanceContexts(
+  left: NonNullable<MemberCareerSegment["governance"]> = [],
+  right: NonNullable<MemberCareerSegment["governance"]> = []
+): NonNullable<MemberCareerSegment["governance"]> {
+  return [...new Map([...left, ...right].map((item) => [[item.governmentId, item.alignment, item.startsOn, item.endsOn].join("|"), item])).values()];
 }
 
 function intervalContains(startsOn: string, endsOn: string | undefined, asOf: string): boolean {

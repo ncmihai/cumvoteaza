@@ -440,6 +440,7 @@ export interface MemberCareerSegment {
   details?: string;
   logoUrl?: string;
   partySlug?: string;
+  sourceUrl?: string;
   color?: string;
   events?: MemberCareerEvent[];
   governance?: MemberCareerGovernanceContext[];

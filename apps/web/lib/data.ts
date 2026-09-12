@@ -2453,8 +2453,11 @@ function buildMemberCareerSegments(
   const partyByLabel = new Map(parties.map((party) => [party.shortName, party]));
   const partyById = new Map(parties.map((party) => [party.id, party]));
   const partyIdByLabel = new Map(parties.map((party) => [party.shortName, party.id]));
-  const rows = history
-    .filter((row) => row.type === "party")
+  const partyRows = history.filter((row) => row.type === "party");
+  const groupFallbackRows = history.filter((row) => row.type === "group" && !partyRows.some((partyRow) =>
+    partyRow.chamber === row.chamber && rangesOverlap(partyRow.startsOn, partyRow.endsOn, row.startsOn, row.endsOn)
+  ));
+  const rows = [...partyRows, ...groupFallbackRows]
     .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.label.localeCompare(b.label));
   const segments: MemberCareerSegment[] = [];
   for (const row of normalizeCareerRows(rows, partyIdByLabel, formationEvents)) {
@@ -2483,6 +2486,7 @@ function buildMemberCareerSegments(
       details: row.details,
       logoUrl: row.logoUrl,
       partySlug: row.partySlug ?? party?.slug ?? groupParty?.slug,
+      sourceUrl: row.sourceUrl,
       color: group?.color ?? party?.color,
       events: careerEventsForRow(row, partyIdByLabel, formationEvents),
       governance: governanceForCareerRow(row, partyIdByLabel, governments, governmentAlignments)

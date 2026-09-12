@@ -1,5 +1,144 @@
 # Public UI design QA — homepage → vote → member journey
 
+## Member profile Phase 4 QA — completion and edge states (12 September 2026)
+
+### Comparison target
+
+- Source visual truth path: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-e5e37ab2-d2d3-4de5-b9a8-5b4da1e0ee06.png`.
+- Implementation evidence: Codex in-app browser captures at `http://localhost:3011`, covering Cozma's current profile, Adrian Mocanu's 2016–2020 profile, the multi-affiliation career state, and the originating-vote return route. The browser provider does not expose screenshot filesystem paths.
+- Source pixels: 1490 × 1060. Implementation viewport: 1280 × 720 CSS pixels, device scale 1; full-page captures were also inspected for the complete content hierarchy.
+- States: current single-party career, ambiguous eight-affiliation career across four legislatures, completed legislature with no imported votes or initiatives, and vote-context navigation.
+
+### Full-view and focused comparison evidence
+
+The current profile retains the mockup's portrait-led identity, wide career rail and balanced lower columns. The completed-legislature state changes party, photo, status, facts, committee evidence and activity without leaking current-term values. Empty recent-vote and initiative panels remain visible and explanatory instead of collapsing the layout.
+
+The multi-affiliation comparison exposed misleading party imagery on independent periods. The post-fix capture shows neutral text assets for independent records, real logos only for named parties, and no false party destination. The vote-context capture exposes a visible `Înapoi la vot` link; activating it returned to the exact originating vote route.
+
+### Required fidelity surfaces
+
+- Typography: editorial serif hierarchy, compact labels and wrapping remain consistent with the reference; long committee and official-title strings wrap without clipping.
+- Spacing/layout: identity, career and lower content preserve the reference rhythm; existing responsive tracks collapse below desktop and all dense rows have stacking rules.
+- Colors/tokens: paper, navy, pale blue, yellow rail and semantic vote/status colors use the established public-site palette.
+- Image quality: source-backed portraits and verified party logos are used; unaffiliated periods now use neutral text rather than an unrelated stored logo.
+- Copy/content: current and historical terms are explicit, missing data has honest empty states, and the introductory Romanian sentence is gender-neutral.
+
+### Findings and comparison history
+
+- [P1, fixed] Independent career periods displayed and linked through an unrelated party logo. Party imagery and party links are now restricted to named-party records; post-fix browser evidence shows neutral independent cards.
+- [P2, fixed] Profiles without a resolved party rendered a `#` navigation link. They now render a non-interactive labeled fact.
+- [P2, fixed] The introductory Romanian sentence assumed a masculine member. Replaced it with gender-neutral institutional copy.
+- [P2, fixed] Historical empty states could be mistaken for loading failures. Completed-legislature browser evidence confirms explicit zero-vote and zero-initiative explanations alongside sourced committee records.
+
+### Implementation checklist
+
+1. Current, historical and ambiguous-career visual states: passed.
+2. Vote → member → originating vote interaction: passed.
+3. Party-logo and link truthfulness: passed.
+4. Romanian and English content structures: passed.
+5. Typecheck, 16 unit tests and production build: passed.
+
+final result: passed
+
+---
+
+## Member profile Phase 3 QA — evidence and activity (12 September 2026)
+
+### Comparison target
+
+- Source visual truth path: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-e5e37ab2-d2d3-4de5-b9a8-5b4da1e0ee06.png`.
+- Implementation evidence: Codex in-app browser full-page capture at `http://localhost:3011/ro/members/adrian-felician-cozma-vicepresedinte-al-camerei-deputatilor`. The browser provider does not expose a screenshot filesystem path.
+- Source pixels: 1490 × 1060. Implementation viewport: 1280 × 720 CSS pixels, device scale 1.
+- State: active Romanian deputy, three documented committees, 427 covered voting records, six recent nominal votes, and no linked initiatives in the selected legislature.
+
+### Full-view comparison evidence
+
+Below the parliamentary-path rail, the profile now follows the supplied mockup's two-column evidence hierarchy. The left column explains the member and verified institutional relevance, then summarizes activity and documented roles. The wider right column promotes the newest vote and compresses the remainder into an easily scanned list, followed by legislative initiatives.
+
+The implementation deliberately diverges where the mockup assumed richer data: committee evidence is used instead of an invented impact narrative; zero initiatives receive an explicit empty state; vote participation remains a coverage count instead of an unsupported attendance percentage.
+
+### Focused comparison evidence
+
+- Content hierarchy: `Pe scurt` and `De ce contează?` are paired in one editorial card; activity, committees, recent votes and initiatives each have a single purpose.
+- Recent votes: the newest record has date, chamber, readable identifier, official subject, semantic member-choice badge and a direct detail link; five subsequent records use compact rows.
+- Evidence gating: relevance resolves in tested order—active sourced role, committee membership, linked initiatives, then an explicit unavailable explanation.
+- Historical state: legislature controls remain above Phase 3 content and preserve the selected legislature in the profile URL.
+- Responsive structure: the desktop columns collapse to one; featured vote metadata wraps; compact vote rows become stacked; activity metrics remain a two-column grid on narrow screens.
+- Accessibility: headings preserve document order, badges include text in addition to color, links retain visible focus behavior, and official sources open as labeled links.
+
+### Findings and comparison history
+
+- [P1, fixed] The old right rail duplicated identity facts and offered generic explanatory copy. Replaced it with a structured summary and an evidence-gated relevance contract.
+- [P1, fixed] Recent votes were six visually equal rows. Added a featured newest-vote card and a compact history beneath it.
+- [P2, fixed] Committee memberships were reduced to a metric and initiatives disappeared when empty. Added sourced role/committee records and an honest initiatives empty state.
+- [P2, fixed] Legislature switching was visually detached from the activity content. Moved it into a full-width utility bar immediately above Phase 3.
+
+### Implementation checklist
+
+1. Tested profile-context presentation contract: complete.
+2. Factual summary and relevance fallback: complete.
+3. Featured vote and compact vote history: complete.
+4. Activity, committees and initiatives states: complete.
+5. Historical-legislature navigation preserved: complete.
+6. Typecheck, 16 unit tests and production build: complete.
+
+final result: passed
+
+---
+
+## Member profile Phase 1–2 QA — identity and parliamentary path (12 September 2026)
+
+### Comparison target
+
+- Source visual truth path: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-e5e37ab2-d2d3-4de5-b9a8-5b4da1e0ee06.png`.
+- Implementation evidence: Codex in-app browser captures at `http://localhost:3011/ro/members/adrian-felician-cozma-vicepresedinte-al-camerei-deputatilor`, plus Adrian Solomon and Adrian Mocanu career-state checks. The browser provider does not expose a screenshot filesystem path.
+- Source pixels: 1490 × 1060. Implementation capture: 1280 × 720 CSS pixels, device scale 1.
+- Density normalization: both source and implementation were inspected at device scale 1; comparison was limited to the shared identity/career region because viewport sizes and Phase 3 content differ.
+- State: active Romanian deputy with one affiliation; five-legislature same-party career; four-legislature record with overlapping multi-affiliation dates.
+
+### Full-view comparison evidence
+
+The rebuilt upper profile follows the mockup's reading order and proportions: breadcrumb, larger portrait, clean member name, separate parliamentary office, labeled party/chamber/constituency/status facts, explanatory line, and a full-width pale-blue parliamentary-path module. Existing activity and supporting content remain below this reconstructed region for Phase 3.
+
+The single-affiliation Cozma state reproduces the mockup's simple start-to-present rail with the real stored PNL logo. Longer careers remain horizontally inspectable on desktop and become a chronological stacked list below the medium breakpoint. A separate affiliation summary prevents the rail from hiding older parties.
+
+### Focused comparison evidence
+
+- Fonts/typography: the established editorial serif and compact sans-serif labels match the target hierarchy; the office is a separate secondary heading rather than part of the oversized name.
+- Spacing/layout: portrait, identity metadata and career panel align as one full-width upper composition; the old 360px sidebar timeline was removed.
+- Colors/tokens: existing navy, paper, pale blue, yellow timeline and semantic active green map to the supplied mockup.
+- Image quality: the source-backed member portrait and stored party logo are used; existing fallback behavior remains intact.
+- Copy/content: role, party, chamber, constituency, status and dates come from structured/imported records. Overlapping historical affiliations receive an explicit date-quality caveat rather than invented switch dates.
+- Interaction: the PNL career card was activated in-browser and correctly opened `/ro/parties/pnl`; breadcrumb, party and official-source paths remain semantic links.
+- Responsive structure: the header reduces from a 210px to 180px portrait track, identity facts wrap, the main content stacks, and the desktop career rail switches to a vertical card sequence under `md`.
+- Accessibility: the member image has the clean name as alt text, identity labels remain visible, career history is an ordered list, and affiliation cards are keyboard-accessible links.
+
+### Findings and comparison history
+
+- [P1, fixed] The imported parliamentary office was embedded in the member name, producing a dominating multi-line heading. Added a tested presentation contract that separates titles and normalizes both modern Romanian comma-below and legacy cedilla characters. The post-fix capture shows `Adrian-Felician Cozma` and `Vicepreședinte al Camerei Deputaților` separately.
+- [P1, fixed] The career journey was compressed into the right sidebar and could not communicate long careers. Replaced it with the full-width path directly under identity.
+- [P1, fixed] Multiple whole-legislature affiliation rows could imply exact party-switch chronology that the source does not contain. Added overlap detection, a visible uncertainty note, removed transition markers in ambiguous records, and relabeled the list as documented affiliations.
+- [P2, fixed] Same-party periods across five legislatures were described as multiple affiliations. The post-fix copy distinguishes one party across several legislatures from actual multi-affiliation history.
+- [P2, fixed] Members without party-affiliation rows could lose their career entirely. The data builder now fills uncovered intervals from parliamentary-group membership records.
+
+### Implementation checklist
+
+1. Tested member identity presentation contract: complete.
+2. Tested career ordering, merging and ambiguity contract: complete.
+3. Group-membership fallback and source URL propagation: complete.
+4. Mockup-aligned identity header: complete.
+5. Full-width simple/multi-period career views: complete.
+6. Career-to-party navigation: complete.
+7. Typecheck, 14 unit tests and production build: complete.
+
+### Follow-up polish
+
+- Phase 3 will rebuild the profile explanation, activity metrics and recent-vote hierarchy below the career module.
+
+final result: passed
+
+---
+
 ## Phase 3 repair QA — current composition and Parliament history (12 September 2026)
 
 ### Comparison target
