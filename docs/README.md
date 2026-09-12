@@ -12,7 +12,7 @@ Start with [current-state.md](current-state.md). It is the authoritative snapsho
 
 ## Product and methods
 
-- [public-ui-contract.md](public-ui-contract.md) — active route/control matrix, public presentation contracts and UI release gates.
+- [public-ui-contract.md](public-ui-contract.md) — active route/control matrix, public presentation contracts and UI release gates; reconciled through the September member-profile completion pass.
 - [editorial-ui-reference.md](editorial-ui-reference.md) — public design system and approved visual references.
 - [political-scale-methodology.md](political-scale-methodology.md) — planned evidence-linked political analysis.
 - [parliament-how-it-works.md](parliament-how-it-works.md) — domain model and parliamentary process.
@@ -22,7 +22,7 @@ Start with [current-state.md](current-state.md). It is the authoritative snapsho
 ## Completed work and evidence
 
 - [ui-redesign-plan.md](ui-redesign-plan.md) — implemented public UI redesign plan.
-- [ui-audit-2026-09-11.md](ui-audit-2026-09-11.md) — route, responsive and data-binding verification.
+- [ui-audit-2026-09-11.md](ui-audit-2026-09-11.md) — route, responsive and data-binding verification, with a 13 September completion addendum.
 - [../design-qa.md](../design-qa.md) — mockup comparison notes.
 - [may-september-refresh.md](may-september-refresh.md) — 2026 vote refresh and release record.
 - [cockpit-sprint-progress.md](cockpit-sprint-progress.md) — detailed cockpit implementation record.

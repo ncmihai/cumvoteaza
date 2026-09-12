@@ -7,15 +7,12 @@ implementation steps.
 
 ## Current Status
 
-- Project repo cloned from `https://github.com/ncmihai/cumsevoteaza`.
-- V2 persistence layer is locally verified: Docker Postgres, Drizzle migration, persistent Senate importers, DB-backed bill/vote pages with demo fallback.
-- Deployment layer in progress for Vercel repo `https://github.com/ncmihai/cumvoteaza`.
-- Scope is private-first, bilingual, data-first, and factual only.
+- Production is deployed from `main` at `https://cumvoteaza.vercel.app`.
+- The bilingual public UI redesign is complete across homepage, vote/bill/member directories and details, party profiles, composition/history and data health.
+- Member profiles include scoped activity, source-aware multi-legislature careers, recent votes, roles, committees and initiative states; unsupported attendance, impact and affiliation dates remain explicit rather than inferred.
+- Scope remains private-first, bilingual, data-first, and factual only.
 - Architecture decision: keep Next.js as the public web/API layer; use Python as a local-first, file-first data pipeline for crawling, parsing, auditing, and backfill preparation. TypeScript remains the canonical DB persistence layer.
-- Local Parliament Workbench v1 is being added under `tools/parliament-workbench`:
-  browser-first FastAPI + React/Vite, local generated wiki, Ollama suggestions,
-  and read-only visualization of data work. V1 writes only ignored artifacts
-  under `data/parliament-workbench/`.
+- The local Parliament Workbench provides the browser-first FastAPI + React/Vite operator workflow. Its local review state and generated artifacts remain separate from canonical public data.
 
 ## Active Milestone — Data Proof + First UI
 

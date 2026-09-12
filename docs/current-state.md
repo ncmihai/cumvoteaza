@@ -1,6 +1,6 @@
 # CumVoteaza current state and roadmap
 
-Updated 11 September 2026. This is the authoritative project handoff. Detailed logs remain linked from [README.md](README.md), but this file decides what is current.
+Updated 13 September 2026. This is the authoritative project handoff. Detailed logs remain linked from [README.md](README.md), but this file decides what is current.
 
 ## Product today
 
@@ -31,6 +31,10 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 - Editorial homepage with a Hot-ranked recent vote, search, explanation panel and vote detail context.
 - Compact vote and bill directories with working search, filters and stable links.
 - Database-backed member directory, member profiles, party profiles and parliamentary compositions.
+- Member profiles now separate imported offices from names, expose a source-aware parliamentary career across legislatures and affiliations, scope activity to the selected legislature, feature the latest vote, and show documented roles, committees and initiatives without inventing missing facts.
+- Parliament history is separated from the current-composition overview; completed legislatures use focused government, chamber, group and member summaries instead of repeating the current term.
+- Homepage and vote-directory previews share one compact detail language, filters dismiss on outside click or Escape, and member sorting/pagination use the current editorial controls.
+- Wide desktop screens use an 80% presentation scale from 1200px upward; tablet and mobile retain normal sizing.
 - Stored portraits and party logos with safe fallbacks.
 - Official sources and evidence links remain reachable.
 - Presentation cleanup prevents importer metadata from leaking into directory cards without modifying canonical records.
@@ -62,9 +66,9 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 
 ## Next roadmap
 
-### 1. Finish public-site quality
+### 1. Maintain public-site quality
 
-Run a production-sized visual and functional audit across Romanian and English routes, including empty states, long official titles, broken source links, image fallbacks, keyboard navigation and small screens. Fix data presentation at reusable boundaries rather than with record-specific exceptions.
+The September redesign and completion audit are implemented. Continue production-sized regression checks across Romanian and English routes after data or layout changes, especially empty states, long official titles, broken source links, image fallbacks, keyboard navigation and small screens. Fix data presentation at reusable boundaries rather than with record-specific exceptions.
 
 ### 2. Make routine refresh boring
 
@@ -91,8 +95,8 @@ The next release is ready when a saved local import workflow can refresh a selec
 As of this handoff:
 
 - TypeScript checks pass.
-- 51 ingestion tests, 6 parliament-model tests and 8 Python pipeline tests pass.
+- 16 web tests, 51 ingestion tests, 6 parliament-model tests and 8 Python pipeline tests pass.
 - The Next.js production build passes.
-- Nine representative local public routes return HTTP 200.
+- Current member, historical member, member directory and vote-return journeys were rechecked in the in-app browser.
 
 Re-run these checks after changes; do not treat this dated baseline as proof of a later build.

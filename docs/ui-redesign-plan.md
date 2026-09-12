@@ -1,6 +1,6 @@
 # CumVoteaza public website redesign — implementation plan
 
-Status: implemented and locally verified on 11 September 2026. This document preserves the accepted design contract; current gaps and next work live in [current-state.md](current-state.md). The topic-ranking/political-analysis sprint remains deferred. Gemini remains disabled.
+Status: implemented and locally verified through 13 September 2026. This document preserves the accepted design contract rather than serving as an active task list; current gaps and next work live in [current-state.md](current-state.md). The topic-ranking/political-analysis sprint remains deferred. Gemini remains disabled.
 
 ## 1. Outcome and visual references
 
@@ -16,7 +16,7 @@ Saved user references:
 
 Match the hierarchy, proportions, spacing, typography, tables, restrained colors and right-hand panels. The mockups are visual references, not factual sources: example people, roles, parties, counts, dates, percentages and explanatory claims must be replaced with verified application data. For example, the mockups themselves use different Senate denominators.
 
-## 2. Decisions to settle
+## 2. Implemented product decisions
 
 Confirmed by the operator:
 
@@ -24,7 +24,7 @@ Confirmed by the operator:
 - Vote interaction: desktop list with an interactive detail panel; canonical full detail page on direct navigation and mobile.
 - Featured votes: a carousel ranked by the existing **Hot** reaction feature, instead of an editorially chosen single vote.
 
-Proposed carousel defaults to confirm during the first visual review: up to five verified final votes, ranked by existing Hot counts; visible arrows, position indicators and keyboard controls; manual cycling by default. Keep a separate latest-votes list below it. Popularity is recorded site interest, not an opinion poll or a measure of legislative importance. If no eligible votes have reactions, use newest verified final votes and label the fallback honestly. Never invent Hot counts. A recent-date window versus all-history ranking remains one small product choice; recommend a clearly labeled recent window, with its duration settled before implementation. Existing Hot counts are lifetime reactions per record, not a seven-day trending metric.
+The homepage cycles through up to five recent eligible votes, ranked by the existing Hot reaction feature, with visible navigation and a separate recent-votes list. Popularity is recorded site interest, not an opinion poll or a measure of legislative importance. When eligible reactions are absent, the interface falls back to recent verified votes and labels the state honestly. Existing Hot counts are lifetime reactions per record, not a seven-day trending metric.
 
 The active carousel vote and desktop detail panel stay synchronized. Selecting a different recent vote opens that detail without unexpectedly changing the user's list position. New reactions update the displayed count without reshuffling a slide under the reader. No automatic rotation is required; if requested later, include pause/resume, pause on hover/focus and respect reduced-motion preferences.
 

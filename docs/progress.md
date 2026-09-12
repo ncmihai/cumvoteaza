@@ -4,6 +4,16 @@
 
 Append-only implementation history.
 
+## 2026-09-13 — Public UI Completion And Documentation Reconciliation
+
+- Completed the editorial public-site pass across homepage, vote and bill discovery/detail, member directory/profile, party profile, parliamentary composition/history and data health.
+- Rebuilt member profiles around clean identity, selected-legislature activity, a source-aware multi-affiliation career, featured/recent votes, roles, committees and initiatives.
+- Added tested presentation boundaries that keep motion outcome, attendance coverage, current government state, member roles and ambiguous affiliation dates honest when evidence is incomplete.
+- Verified current and completed member legislatures, ambiguous career records, bilingual structure, empty states and the vote → member → originating-vote path.
+- Applied the requested 80% wide-desktop density while preserving normal tablet/mobile sizing.
+- Reconciled the authoritative current-state, public UI contract, redesign plan, audit addendum and task status; detailed visual evidence remains in `design-qa.md`.
+- The full verification baseline passes: 16 web tests, 51 ingestion tests, 6 parliament-model tests, 8 Python pipeline tests, all workspace TypeScript checks and the Next.js production build.
+
 ## 2026-06-06 — Local Parliament Workbench V1
 
 - Started `tools/parliament-workbench`, a local browser-first review tool for

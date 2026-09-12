@@ -49,7 +49,7 @@ export function MemberCareerTimeline({ career, locale }: { career: MemberCareerP
 }
 
 function CareerCard({ segment, locale }: { segment: MemberCareerSegment; locale: Locale }) {
-  const isNamedParty = !/^(independent|independentă|independentă|neafiliat|neafiliată|unaffiliated)$/i.test(segment.label.trim());
+  const isNamedParty = !isUnaffiliatedLabel(segment.label);
   const content = <>
     <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden border border-[#c8dcf1] bg-white text-xs font-bold" style={{ color: segment.color ?? "#061a47" }}>
       <ImageWithFallback src={isNamedParty && segment.partySlug ? segment.logoUrl : undefined} alt="" className="h-full w-full object-contain p-1">{segment.label.slice(0, 4)}</ImageWithFallback>
@@ -61,6 +61,10 @@ function CareerCard({ segment, locale }: { segment: MemberCareerSegment; locale:
   if (isNamedParty && segment.partySlug) return <Link href={`/${locale}/parties/${segment.partySlug}`} className={`${className} hover:border-[#075fc6]`}>{content}</Link>;
   if (segment.sourceUrl) return <a href={segment.sourceUrl} target="_blank" rel="noreferrer" className={`${className} hover:border-[#075fc6]`}>{content}</a>;
   return <div className={className}>{content}</div>;
+}
+
+function isUnaffiliatedLabel(label: string): boolean {
+  return /^(independent|independentă|neafiliat|neafiliată|unaffiliated)$/i.test(label.trim());
 }
 
 function Endpoint({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) { return <div className="flex items-center gap-2 text-[#061a47]"><span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5">{icon}</span><span><strong className="block font-serif text-base leading-5">{value}</strong><small className="text-[#4b608a]">{label}</small></span></div>; }
