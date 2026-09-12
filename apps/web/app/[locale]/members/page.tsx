@@ -7,6 +7,7 @@ import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
 import { ImageWithFallback } from "../_components/ImageWithFallback";
 import { ArrowRight, Building2, Filter, MapPin, Search } from "lucide-react";
+import { DismissibleDetails } from "../_components/DismissibleDetails";
 
 export default async function MembersPage({
   params,
@@ -63,7 +64,7 @@ export default async function MembersPage({
           {locale === "ro" ? "Caută" : "Search"}
         </button>
       </form>
-      <details className="group relative"><summary className="flex h-full min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={20} />{locale === "ro" ? "Filtre" : "Filters"}</summary><div className="absolute right-0 z-20 mt-2 w-[min(560px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl">
+      <DismissibleDetails className="relative" summary={<summary className="flex h-full min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={20} />{locale === "ro" ? "Filtre" : "Filters"}</summary>} panelClassName="absolute right-0 z-20 mt-2 w-[min(560px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl">
       <section className="flex flex-wrap gap-2">
         <span className="w-full text-xs font-semibold uppercase text-slate-500">{locale === "ro" ? "Legislatură" : "Legislature"}</span>
         {data.legislatures.map((legislature) => (
@@ -133,9 +134,17 @@ export default async function MembersPage({
           </FilterLink>
         ))}
       </section>
-      </div></details></div>
+      </DismissibleDetails></div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-slate-300 py-3 text-sm"><span>{locale === "ro" ? `${data.members.length} parlamentari · pagina ${page} din ${totalPages}` : `${data.members.length} members · page ${page} of ${totalPages}`}</span><div className="flex flex-wrap items-center gap-2"><span className="text-slate-500">{locale === "ro" ? "Sortează după:" : "Sort by:"}</span>{memberSortOptions(locale).map((option) => <FilterLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</FilterLink>)}</div></div>
+      <div className="mt-5 grid gap-3 border-y border-slate-300 py-3 2xl:grid-cols-[auto_minmax(0,1fr)] 2xl:items-center">
+        <span className="text-sm font-medium text-[#061a47]">{locale === "ro" ? `${data.members.length} parlamentari · pagina ${page} din ${totalPages}` : `${data.members.length} members · page ${page} of ${totalPages}`}</span>
+        <div className="min-w-0 overflow-x-auto pb-1 2xl:justify-self-end">
+          <nav aria-label={locale === "ro" ? "Sortarea parlamentarilor" : "Member sorting"} className="flex w-max min-w-full items-center 2xl:min-w-0">
+            <span className="mr-3 shrink-0 text-xs font-semibold uppercase tracking-wide text-[#4b608a]">{locale === "ro" ? "Sortează" : "Sort"}</span>
+            {memberSortOptions(locale).map((option) => <SortLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</SortLink>)}
+          </nav>
+        </div>
+      </div>
 
       <section className="mt-3 space-y-2">
         {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
@@ -143,7 +152,7 @@ export default async function MembersPage({
           <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-[#061a47]">{member.displayName}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#4b608a]"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span></div><p className="mt-1 truncate text-xs text-[#4b608a]">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
           <div className="flex items-center gap-5 pl-3"><div className="hidden text-right sm:block"><strong className="block font-serif text-2xl text-[#061a47]">{voteCount ?? 0}</strong><span className="text-xs text-[#4b608a]">{locale === "ro" ? "voturi" : "votes"}</span></div><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
         </Link>)}
-        {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="flex items-center justify-between border-t border-slate-300 pt-4"><span className="text-sm text-[#4b608a]">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#061a47]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="bg-[#061a47] px-4 py-2 text-sm font-semibold text-white" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
+        {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-300 pb-2 pt-4"><span className="text-sm text-[#4b608a]">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#061a47] transition hover:border-[#075fc6]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center bg-[#061a47] px-4 py-2 text-sm font-semibold !text-white transition hover:bg-[#102d5b]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
     </EditorialPage>
   );
@@ -256,4 +265,8 @@ function FilterLink({ href, active, children }: { href: string; active: boolean;
       {children}
     </Link>
   );
+}
+
+function SortLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-[#061a47] bg-[#061a47] !text-white" : "border-[#bac6d8] bg-white text-[#21375f] hover:z-10 hover:border-[#075fc6] hover:bg-[#f4f8fd]"}`}>{children}</Link>;
 }

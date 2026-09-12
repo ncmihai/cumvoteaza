@@ -1,5 +1,50 @@
 # Public UI design QA — homepage → vote → member journey
 
+## Phase 3 repair QA — current composition and Parliament history (12 September 2026)
+
+### Comparison target
+
+- Source visual truth: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-7e6d5a39-f893-4de2-a56a-94ab5dee6da6.png`, plus user browser-comment captures 10–11.
+- Implementation evidence: Codex in-app browser capture of the rebuilt production app at `/ro/compozitii` and `/ro/compozitii?view=history`, tab 16. The browser provider does not expose a filesystem path.
+- Source pixels: 1280 × 911. Implementation capture: 1280 × 720 CSS pixels, device scale 1.
+- State: Romanian current-composition overview; historical 2020–2024 and 2016–2020 selections; collapsed and expanded chronology.
+
+### Full-view comparison evidence
+
+The current composition retains the supplied mockup's strong chamber maps and exact group lists, while adding a compact mandate overview above them. Prime minister, government, occupied seats and term dates are now immediately visible, with direct paths to current members and all completed legislatures.
+
+History is now a separate information architecture rather than a second rendering of the current legislature. A stable legislature selector controls one focused detail view containing government periods, chamber mini-maps, largest groups, named members and an optional chronology. This preserves the desired reference/wiki depth while removing the former three-column scroll-linked clutter.
+
+### Focused comparison evidence
+
+- Current/history separation: the active 2024–2028 legislature is present only in the current view; History begins with the completed 2020–2024 term.
+- Content: current view exposes Ilie Bolojan, the active government label, 464 occupied seats and the 2024–2028 term from the existing data model.
+- Historical selection: activating 2016–2020 updates the headline, three prime ministers, seven governments, both chamber compositions, group rankings and member links.
+- Progressive disclosure: the complete 2016–2020 chronology expands to 14 dated events and collapses without changing legislature selection.
+- Typography/layout: long names wrap in fact cells; square bordered surfaces, serif hierarchy, navy/cream palette and blue/yellow navigation cues match the established redesign.
+- Responsive structure: selector and detail stack below the desktop breakpoint; fact grids reduce to two columns and then one without fixed-width overflow.
+- Accessibility: legislature choices expose pressed state, the active choice has a non-color rail/background treatment, and chronology exposes expanded/collapsed state.
+
+### Findings and comparison history
+
+- [P1, fixed] History repeated the current legislature and mixed its full timeline with chamber maps in a dense scroll-linked three-column layout. Replaced it with completed-legislature master–detail navigation.
+- [P2, fixed] The current view lacked the useful prime-minister, government and mandate facts buried in History. Added a concise, source-backed overview above the existing maps.
+- [P2, fixed] Long prime-minister and government labels were visually truncated in the first production capture. Changed historical facts to a two-column grid and allowed values to wrap.
+- Browser interaction evidence confirms successful legislature switching, member destinations and chronology expansion with no runtime errors.
+
+### Implementation checklist
+
+1. Current mandate overview: complete.
+2. Current legislature excluded from History: complete.
+3. Historical master–detail selector: complete.
+4. Government, chamber, member and chronology summaries: complete.
+5. Romanian and English copy: complete.
+6. Typecheck, unit tests and production build: complete.
+
+final result: passed
+
+---
+
 ## Comparison target
 
 - Source visual truth: `docs/design/ui-refresh/01-home-vote.png` through `05-party-profile.png`.
@@ -71,6 +116,50 @@ The vote directory now uses the full available desktop canvas. Vote identity, su
 
 - Load the final editorial fonts locally after the primary layouts stabilize.
 - Tighten unknown/partial-state badges once all state labels are known.
+
+final result: passed
+
+---
+
+# Phase 2 repair QA — popovers and member directory (12 September 2026)
+
+## Comparison target
+
+- Source visual truth path: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-09ef0f70-4171-4fe6-8855-dde76ab00693.png`, plus user browser-comment captures 7–9.
+- Implementation screenshot path: Codex in-app browser capture, `http://localhost:3004/ro/members` and `/ro/votes`, tab 16 (the browser provider does not expose a filesystem path).
+- Source pixels: 1280 × 911. Implementation capture: 1280 × 720 CSS pixels, device scale 1.
+- State: Romanian desktop member directory page 1 and page 2; vote-directory filter open, click-away and Escape states; member filter open and click-away states; homepage filter click-away state.
+
+## Full-view comparison evidence
+
+The member directory now uses the mockup's editorial segmented-control language instead of detached rounded chips. Count, sorting, cards and pagination have clear vertical separation. At the narrower desktop split created by the guide rail, the count and sorter deliberately occupy separate rows; at wider viewports they share a row. The bottom pager is fully visible, has a stable 44px target, and preserves both directions on page 2.
+
+## Focused comparison evidence
+
+- Typography: existing serif member names and sans-serif control hierarchy are preserved; sorter labels use the compact mockup weight and capitalization.
+- Spacing/layout: the earlier count/sort collision was removed; the segmented control horizontally scrolls instead of wrapping or clipping at narrow widths.
+- Colors/tokens: navy active state and blue hover/focus treatment reuse the existing public-site palette.
+- Image quality: profile photos continue through the existing source-backed image/fallback component; no replacement assets were introduced.
+- Copy/content: Romanian and English sorting, range and pagination labels remain complete.
+- Interaction/accessibility: homepage, vote-directory and member-directory filter popovers close on outside click and Escape; Escape returns focus to the trigger. Page 1 → page 2 navigation was verified with correct URL and `21–40 din 472` range.
+
+## Findings and comparison history
+
+- [P1, fixed] Filter popovers remained open after interacting elsewhere. Replaced native unmanaged filter details with a shared dismissible component and added equivalent homepage click-away/Escape handling.
+- [P2, fixed] The first revised sorter collided with the result count at the 1280px split layout. Moved the shared-row breakpoint to 1536px and verified the revised capture has no overlap.
+- [P2, fixed] The next-page button inherited an unreadable link color and sat too close to the viewport edge. Added explicit white text, minimum target height and bottom spacing; browser evidence shows the full button and page-two two-direction state.
+
+## Implementation checklist
+
+1. Shared outside-click and Escape dismissal: complete.
+2. Homepage filter dismissal: complete.
+3. Member segmented sorter and overflow behavior: complete.
+4. Pagination layout and navigation: complete.
+5. Typecheck, unit tests and production build: complete.
+
+## Follow-up polish
+
+- None required for Phase 2.
 
 final result: passed
 

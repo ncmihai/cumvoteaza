@@ -10,6 +10,7 @@ import { presentBill, presentVote } from "@/lib/public-presentation";
 import type { BillExplorerItem, DirectoryFilterOptions, ExplorerFilters, ExplorerPageData, VoteExplorerItem } from "@/lib/explorer-data";
 import { HotButton } from "./HotButton";
 import { VotePreview } from "./VotePreview";
+import { DismissibleDetails } from "./DismissibleDetails";
 
 export function VoteDirectoryExplorer({
   locale,
@@ -218,14 +219,14 @@ function DirectoryFilters({
       }}
     >
       <div className="flex min-w-0 border border-[#bac6d8] bg-white focus-within:outline focus-within:outline-3 focus-within:outline-blue-100"><label className="flex min-w-0 flex-1 items-center gap-3 px-4"><Search size={21} className="shrink-0 text-[#061a47]" aria-hidden="true" /><input className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" name="q" defaultValue={filters.q ?? ""} placeholder={labels.search} /></label><button className="bg-[#061a47] px-6 text-sm font-bold text-white hover:bg-[#102d5b]" type="submit">{locale === "ro" ? "Caută" : "Search"}</button></div>
-      <details className="group relative"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={19}/>{locale === "ro" ? "Filtre" : "Filters"}{activeFilters.length ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#061a47] px-1 text-[11px] text-white">{activeFilters.length}</span> : null}<span aria-hidden="true">⌄</span></summary><div className="absolute right-0 z-30 mt-2 w-[min(620px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <DismissibleDetails className="relative" summary={<summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={19}/>{locale === "ro" ? "Filtre" : "Filters"}{activeFilters.length ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#061a47] px-1 text-[11px] text-white">{activeFilters.length}</span> : null}<span aria-hidden="true">⌄</span></summary>} panelClassName="absolute right-0 z-30 mt-2 w-[min(620px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Select name="legislature" label={labels.legislature} defaultValue={filters.legislature ?? ""} options={filterOptions.legislatures.map((legislature) => [legislature.id, legislature.label])} />
         <Select name="year" label={labels.year} defaultValue={filters.year ?? ""} options={years.map((year) => [year, year])} />
         <Select name="month" label={labels.month} defaultValue={filters.month ?? ""} options={monthOptions(locale)} />
         <Select name="chamber" label={labels.chamber} defaultValue={filters.chamber ?? ""} options={[["senate", chamberLabels[locale].senate],["deputies", chamberLabels[locale].deputies]]} />
         <Select name="sourceStatus" label={labels.sourceStatus} defaultValue={filters.sourceStatus ?? ""} options={[["parsed", locale === "ro" ? "Verificată" : "Verified"],["partial", locale === "ro" ? "Parțială" : "Partial"],["failed", locale === "ro" ? "Cu eroare" : "Failed"]]} />
         <Select name="group" label={labels.group} defaultValue={filters.group ?? ""} options={filterOptions.groups.map((group) => [group.id, `${group.shortName} · ${chamberLabels[locale][group.chamber]}`])} />
-      </div><div className="mt-4 flex gap-2"><Link href={path} className="flex-1 border border-slate-300 px-4 py-2.5 text-center text-sm font-bold text-[#061a47]">{locale === "ro" ? "Resetează" : "Reset"}</Link><button className="flex-1 bg-[#061a47] px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></div></details>
+      </div><div className="mt-4 flex gap-2"><Link href={path} className="flex-1 border border-slate-300 px-4 py-2.5 text-center text-sm font-bold text-[#061a47]">{locale === "ro" ? "Resetează" : "Reset"}</Link><button className="flex-1 bg-[#061a47] px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></DismissibleDetails>
       {activeFilters.length ? <div className="flex flex-wrap gap-2 sm:col-span-2">{activeFilters.map(([key, value]) => <span key={key} className="border border-[#cbd5e1] bg-white px-2.5 py-1 text-xs text-[#4b608a]">{key}: <strong className="text-[#061a47]">{value}</strong></span>)}</div> : null}
     </form>
   );

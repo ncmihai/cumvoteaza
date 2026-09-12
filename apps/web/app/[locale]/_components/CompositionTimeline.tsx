@@ -1,422 +1,77 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { chamberLabels, type CompositionEvent, type Locale } from "@cumsevoteaza/parliament-model";
-import type { ChamberComposition, CompositionMode, CompositionTimelineStop } from "@/lib/composition-data";
-import { CompositionSeatMap, CompositionSeatMapPreview } from "./CompositionSeatMap";
+import { ArrowRight, Building2, CalendarRange, ChevronDown, Clock3, Landmark, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { formatDate, type Locale } from "@cumsevoteaza/parliament-model";
+import type { CompositionMode, CompositionTimelineStop } from "@/lib/composition-data";
+import { CompositionSeatMapPreview } from "./CompositionSeatMap";
 
-interface CompositionTimelineProps {
-  locale: Locale;
-  mode: CompositionMode;
-  stops: CompositionTimelineStop[];
-}
-
-export function CompositionTimeline({ locale, mode, stops }: CompositionTimelineProps) {
-  const labels = timelineLabels[locale];
+export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; mode: CompositionMode; stops: CompositionTimelineStop[] }) {
+  const copy = labels[locale];
   const [activeId, setActiveId] = useState(stops[0]?.id ?? "");
-  const itemRefs = useRef(new Map<string, HTMLElement>());
-  const activeStop = useMemo(() => stops.find((stop) => stop.id === activeId) ?? stops[0], [activeId, stops]);
+  const [showChronology, setShowChronology] = useState(false);
+  const active = useMemo(() => stops.find((stop) => stop.id === activeId) ?? stops[0], [activeId, stops]);
 
-  useEffect(() => {
-    let frame = 0;
-    const updateActiveStop = () => {
-      frame = 0;
-      const markerY = window.innerHeight * 0.38;
-      const entries = [...itemRefs.current.entries()]
-        .map(([id, node]) => ({ id, rect: node.getBoundingClientRect() }))
-        .filter(({ rect }) => rect.height > 0);
-      const containingMarker = entries.find(({ rect }) => rect.top <= markerY && rect.bottom >= markerY);
-      const closest = containingMarker ?? entries.sort((a, b) => Math.abs(a.rect.top - markerY) - Math.abs(b.rect.top - markerY))[0];
-      if (closest) setActiveId(closest.id);
-    };
-    const requestUpdate = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(updateActiveStop);
-    };
-    requestUpdate();
-    window.addEventListener("scroll", requestUpdate, { passive: true });
-    window.addEventListener("resize", requestUpdate);
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", requestUpdate);
-      window.removeEventListener("resize", requestUpdate);
-    };
-  }, [stops]);
+  if (!active) return <section className="border border-slate-300 bg-white p-6 text-sm text-[#4b608a]">{copy.empty}</section>;
 
-  if (stops.length === 0) {
-    return (
-      <section className="border border-slate-300 bg-white p-6 text-sm text-slate-600">
-        {labels.emptyTimeline}
-      </section>
-    );
-  }
+  const memberCount = active.chambers.reduce((sum, chamber) => sum + chamber.seats.length, 0);
+  const representativeMembers = active.chambers.flatMap((chamber) => chamber.seats).sort((a, b) => a.member.displayName.localeCompare(b.member.displayName, locale)).slice(0, 6);
+  const events = [...active.events].sort((a, b) => b.occurredOn.localeCompare(a.occurredOn));
 
-  return (
-    <section className="grid gap-5 lg:grid-cols-[minmax(260px,360px)_minmax(280px,0.8fr)_minmax(360px,1.2fr)]">
-      <div className="grid gap-4 lg:hidden">
-        {stops.map((stop) => (
-          <MobileStop key={stop.id} locale={locale} mode={mode} stop={stop} />
-        ))}
-      </div>
+  return <section className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+    <nav aria-label={copy.legislatures} className="self-start border border-slate-300 bg-white xl:sticky xl:top-24">
+      <div className="border-b border-slate-200 px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#4b608a]">{copy.choose}</div>
+      {stops.map((stop) => <button key={stop.id} type="button" onClick={() => { setActiveId(stop.id); setShowChronology(false); }} aria-pressed={stop.id === active.id} className={`flex w-full items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 text-left last:border-b-0 ${stop.id === active.id ? "border-l-4 border-l-[#f7b500] bg-[#fffaf0]" : "border-l-4 border-l-transparent hover:bg-slate-50"}`}>
+        <span><strong className="block font-serif text-lg text-[#061a47]">{stop.legislature.label}</strong><small className="mt-1 block text-[#4b608a]">{yearRange(stop.legislature.startsOn, stop.legislature.endsOn)}</small></span>
+        <ArrowRight size={16} className="shrink-0 text-[#075fc6]"/>
+      </button>)}
+    </nav>
 
-      <ol className="hidden gap-4 lg:grid">
-        {stops.map((stop) => (
-          <li
-            key={stop.id}
-            data-stop-id={stop.id}
-            ref={(node) => {
-              if (node) itemRefs.current.set(stop.id, node);
-              else itemRefs.current.delete(stop.id);
-            }}
-            className="min-h-[52vh]"
-          >
-            <TimelineCard locale={locale} stop={stop} active={stop.id === activeStop?.id} compact={false} />
-          </li>
-        ))}
-      </ol>
-
-      <div className="hidden min-w-0 lg:block">
-        <div className="sticky top-4">
-          {activeStop ? <GovernmentStage locale={locale} mode={mode} stop={activeStop} /> : null}
+    <div className="min-w-0 space-y-4">
+      <article className="border border-slate-300 bg-white p-5 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
+          <div><p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{copy.legislature}</p><h2 className="mt-1 font-serif text-4xl font-semibold text-[#061a47]">{active.legislature.label}</h2><p className="mt-2 text-sm text-[#4b608a]">{formatDate(active.legislature.startsOn, locale)} – {formatDate(active.legislature.endsOn, locale)}</p></div>
+          <span className={`border px-2.5 py-1 text-xs font-semibold ${active.sourceStatus === "verified" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>{active.sourceStatus === "verified" ? copy.verified : copy.documented}</span>
         </div>
-      </div>
 
-      <div className="hidden min-w-0 lg:block">
-        <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain pr-2">
-          {activeStop ? <ChamberStage locale={locale} stop={activeStop} /> : null}
+        <div className="mt-5 grid gap-px border border-slate-200 bg-slate-200 sm:grid-cols-2">
+          <Fact icon={<Users/>} label={copy.members} value={String(memberCount || "—")}/>
+          <Fact icon={<Building2/>} label={copy.primeMinister} value={primeMinisterNames(active) || copy.unknown}/>
+          <Fact icon={<Landmark/>} label={copy.governments} value={String(active.governments.length || "—")}/>
+          <Fact icon={<CalendarRange/>} label={copy.compositionDate} value={formatDate(active.compositionDate, locale)}/>
         </div>
-      </div>
-    </section>
-  );
-}
 
-function GovernmentStage({ locale, mode, stop }: { locale: Locale; mode: CompositionMode; stop: CompositionTimelineStop }) {
-  const labels = timelineLabels[locale];
-  const pmSummary = primeMinisterSummary(stop);
-  const sortedGovernments = [...stop.governments].sort(
-    (a, b) => b.startsOn.localeCompare(a.startsOn) || a.name.localeCompare(b.name, locale)
-  );
-  return (
-    <div className="grid gap-4">
-      <section className="border border-slate-300 bg-white p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-500">{labels.stage}</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-normal text-slate-950">{stop.legislature.label}</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              {pmSummary || stop.activeGovernment?.name || labels.noGovernment}
-            </p>
-          </div>
-          <SourceBadge locale={locale} status={stop.sourceStatus} />
-        </div>
-        <div className="mt-4 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
-          <Metric label={labels.period} value={periodLabel(stop.legislature.startsOn, stop.legislature.endsOn, labels.present)} />
-          <Metric label={labels.compositionDate} value={stop.compositionDate} />
-          <Metric label={labels.pm} value={pmSummary || stop.primeMinister?.displayName || labels.unknown} />
-          <Metric label={labels.mode} value={mode === "computed" ? labels.computedMode : labels.officialMode} />
-          <Metric label={labels.role} value={stop.primeMinisterRole?.title ?? labels.unknown} />
-        </div>
-        <div className="mt-4">
-          <h3 className="text-sm font-semibold text-slate-950">{labels.governments}</h3>
-          <div className="mt-2 grid gap-2">
-            {stop.governments.length === 0 ? <p className="text-sm text-slate-600">{labels.noGovernment}</p> : null}
-            {sortedGovernments.map((government) => (
-              <div key={government.id} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                <div className="font-medium text-slate-950">{government.name}</div>
-                <div className="mt-1 text-slate-600">{periodLabel(government.startsOn, government.endsOn, labels.present)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {mode === "computed" ? <p className="mt-4 border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{labels.computedEmpty}</p> : null}
-      </section>
-    </div>
-  );
-}
-
-function ChamberStage({ locale, stop }: { locale: Locale; stop: CompositionTimelineStop }) {
-  const labels = timelineLabels[locale];
-  return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      {stop.chambers.length > 0 ? (
-        <>
-          {stop.chambers.map((chamber) => (
-            <CompositionSeatMap key={chamber.chamber} locale={locale} chamber={chamber.chamber} seats={chamber.seats} />
-          ))}
-        </>
-      ) : (
-        <section className="border border-slate-300 bg-white p-5 text-sm text-slate-600 xl:col-span-2">
-          <h3 className="font-semibold text-slate-950">{labels.noCompositionTitle}</h3>
-          <p className="mt-2">{labels.noCompositionBody}</p>
+        <section className="mt-6">
+          <h3 className="font-serif text-2xl font-semibold text-[#061a47]">{copy.governmentPeriods}</h3>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">{active.governments.length ? active.governments.map((government) => <div key={government.id} className="border-l-4 border-l-[#075fc6] bg-[#f4f7fb] px-4 py-3"><strong className="text-sm text-[#061a47]">{government.name}</strong><p className="mt-1 text-xs text-[#4b608a]">{formatDate(government.startsOn, locale)} – {government.endsOn ? formatDate(government.endsOn, locale) : copy.present}</p></div>) : <p className="text-sm text-[#4b608a]">{copy.noGovernment}</p>}</div>
         </section>
-      )}
+      </article>
+
+      <section className="grid gap-4 lg:grid-cols-2">{active.chambers.map((chamber) => <article key={chamber.chamber} className="border border-slate-300 bg-white p-4">
+        <CompositionSeatMapPreview locale={locale} chamber={chamber.chamber} seats={chamber.seats}/>
+        <div className="mt-3 border-t border-slate-200 pt-3"><h3 className="text-xs font-bold uppercase tracking-wide text-[#4b608a]">{copy.largestGroups}</h3><div className="mt-2 space-y-1.5">{chamber.groups.slice().sort((a, b) => b.seats - a.seats).slice(0, 4).map((group) => <div key={group.group.id} className="grid grid-cols-[1fr_auto] items-center gap-3 text-xs"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full" style={{background: group.group.color}}/>{group.party?.shortName ?? group.group.shortName}</span><strong>{group.seats}</strong></div>)}</div></div>
+      </article>)}</section>
+
+      <section className="border border-slate-300 bg-white p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{copy.peopleEyebrow}</p><h3 className="mt-1 font-serif text-2xl font-semibold text-[#061a47]">{copy.people}</h3></div><Link href={`/${locale}/members?legislature=${active.legislature.id}`} className="inline-flex items-center gap-1 text-sm font-bold text-[#075fc6]">{copy.allMembers}<ArrowRight size={15}/></Link></div>
+        {representativeMembers.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{representativeMembers.map(({member, group}) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="border border-slate-200 px-3 py-2 hover:border-[#075fc6] hover:bg-[#f8fbff]"><strong className="block truncate text-sm text-[#061a47]">{member.displayName}</strong><span className="mt-1 block text-xs text-[#4b608a]">{group?.shortName ?? copy.unaffiliated}</span></Link>)}</div> : <p className="mt-3 text-sm text-[#4b608a]">{copy.noMembers}</p>}
+      </section>
+
+      <section className="border border-slate-300 bg-white">
+        <button type="button" onClick={() => setShowChronology((value) => !value)} aria-expanded={showChronology} className="flex w-full items-center justify-between gap-3 p-5 text-left"><span className="flex items-center gap-3"><Clock3 className="text-[#061a47]"/><span><strong className="block font-serif text-xl text-[#061a47]">{copy.fullHistory}</strong><small className="mt-1 block text-[#4b608a]">{events.length} {copy.moments}</small></span></span><ChevronDown className={`transition ${showChronology ? "rotate-180" : ""}`}/></button>
+        {showChronology ? <ol className="border-t border-slate-200 px-5 py-4">{events.length ? events.map((event) => <li key={event.id} className="relative border-l-2 border-slate-200 pb-5 pl-5 last:pb-0"><i className="absolute -left-[5px] top-1 h-2 w-2 rounded-full bg-[#075fc6]"/><time className="text-xs font-bold uppercase text-[#075fc6]">{formatDate(event.occurredOn, locale)}</time><h4 className="mt-1 text-sm font-semibold text-[#061a47]">{event.title}</h4>{event.description ? <p className="mt-1 text-sm leading-5 text-[#4b608a]">{event.description}</p> : null}</li>) : <li className="text-sm text-[#4b608a]">{copy.noMoments}</li>}</ol> : null}
+      </section>
+      {mode === "computed" ? <p className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{copy.computed}</p> : null}
     </div>
-  );
+  </section>;
 }
 
-function MobileStop({ locale, mode, stop }: { locale: Locale; mode: CompositionMode; stop: CompositionTimelineStop }) {
-  const labels = timelineLabels[locale];
-  return (
-    <article className="border border-slate-300 bg-white p-4">
-      <TimelineCard locale={locale} stop={stop} active compact />
-      {mode === "computed" ? <p className="mt-3 border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{labels.computedEmpty}</p> : null}
-      {stop.chambers.length > 0 ? (
-        <div className="mt-4 grid gap-2">
-          {stop.chambers.map((chamber) => (
-            <MobileChamberSummary key={chamber.chamber} locale={locale} chamber={chamber} />
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">{labels.noCompositionBody}</p>
-      )}
-    </article>
-  );
-}
+function Fact({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div className="min-w-0 bg-white p-4"><span className="text-[#075fc6] [&>svg]:h-5 [&>svg]:w-5">{icon}</span><span className="mt-3 block text-[10px] font-bold uppercase tracking-wide text-[#4b608a]">{label}</span><strong className="mt-1 block break-words font-serif text-lg leading-6 text-[#061a47]" title={value}>{value}</strong></div>; }
+function primeMinisterNames(stop: CompositionTimelineStop) { return stop.primeMinisters.map((item) => item.person.displayName).slice(0, 3).join(", ") || stop.primeMinister?.displayName || ""; }
+function yearRange(start: string, end: string) { return `${start.slice(0, 4)}–${end.slice(0, 4)}`; }
 
-function MobileChamberSummary({ locale, chamber }: { locale: Locale; chamber: ChamberComposition }) {
-  const labels = timelineLabels[locale];
-  const [open, setOpen] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  return (
-    <>
-      <CompositionSeatMapPreview locale={locale} chamber={chamber.chamber} seats={chamber.seats} onOpen={() => setOpen(true)} />
-      <div className="-mt-1 text-xs text-slate-600">
-        {chamber.seats.length} {labels.seats} · {chamber.groups.length} {labels.groups}
-      </div>
-      {open ? (
-        <div className="fixed inset-0 z-[1000] bg-slate-950/70 p-3" role="dialog" aria-modal="true" aria-label={chamberLabels[locale][chamber.chamber]}>
-          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden bg-white shadow-xl">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 px-4 py-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-950">{chamberLabels[locale][chamber.chamber]}</div>
-                <div className="text-xs text-slate-600">
-                  {chamber.seats.length} {labels.seats} · {chamber.groups.length} {labels.groups}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" className="border border-slate-300 px-3 py-2 text-sm" onClick={() => setZoom((value) => Math.max(0.8, Number((value - 0.2).toFixed(1))))}>
-                  -
-                </button>
-                <span className="min-w-12 text-center text-sm text-slate-600">{Math.round(zoom * 100)}%</span>
-                <button type="button" className="border border-slate-300 px-3 py-2 text-sm" onClick={() => setZoom((value) => Math.min(2.2, Number((value + 0.2).toFixed(1))))}>
-                  +
-                </button>
-                <button type="button" className="border border-slate-950 bg-slate-950 px-3 py-2 text-sm text-white" onClick={() => setOpen(false)}>
-                  {labels.close}
-                </button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div
-                className="mx-auto origin-top-left transition-transform"
-                style={{
-                  width: `${100 / zoom}%`,
-                  transform: `scale(${zoom})`
-                }}
-              >
-                <CompositionSeatMap locale={locale} chamber={chamber.chamber} seats={chamber.seats} />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-function TimelineCard({ locale, stop, active, compact }: { locale: Locale; stop: CompositionTimelineStop; active: boolean; compact: boolean }) {
-  const labels = timelineLabels[locale];
-  const sortedEvents = [...stop.events].sort(
-    (a, b) => b.occurredOn.localeCompare(a.occurredOn) || a.title.localeCompare(b.title, locale)
-  );
-  return (
-    <article className={["border bg-white p-4 transition", active ? "border-slate-950 shadow-sm" : "border-slate-300", compact ? "" : "sticky top-6"].join(" ")}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase text-slate-500">{labels.legislature}</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-normal text-slate-950">{stop.legislature.label}</h3>
-        </div>
-        <SourceBadge locale={locale} status={stop.sourceStatus} />
-      </div>
-      <p className="mt-2 text-sm text-slate-700">
-        {labels.pm}: {primeMinisterSummary(stop) || stop.primeMinister?.displayName || labels.unknown}
-      </p>
-      <p className="mt-1 text-sm text-slate-600">{periodLabel(stop.legislature.startsOn, stop.legislature.endsOn, labels.present)}</p>
-      <div className="mt-3 grid gap-2">
-        {stop.events.length === 0 ? <p className="text-sm text-slate-600">{labels.noEvents}</p> : null}
-        {sortedEvents.map((event) => (
-          <div key={event.id} className="border-l-2 border-slate-300 pl-3">
-            <div className="text-xs font-semibold uppercase text-slate-500">{event.occurredOn} · {eventTypeLabel(locale, event.eventType)}</div>
-            <div className="mt-1 text-sm font-medium text-slate-950">{event.title}</div>
-            {event.description ? <p className="mt-1 text-sm leading-6 text-slate-700">{event.description}</p> : null}
-          </div>
-        ))}
-      </div>
-      {stop.activeGovernment ? (
-        <Link className="mt-4 inline-flex text-sm font-medium underline" href={`/${locale}/compozitii#${stop.activeGovernment.slug}`}>
-          {labels.futureDetails}
-        </Link>
-      ) : null}
-    </article>
-  );
-}
-
-function SourceBadge({ locale, status }: { locale: Locale; status: CompositionTimelineStop["sourceStatus"] }) {
-  const labels = timelineLabels[locale];
-  return (
-    <span className={["shrink-0 border px-2 py-1 text-xs", status === "verified" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-900"].join(" ")}>
-      {status === "verified" ? labels.verified : labels.manual}
-    </span>
-  );
-}
-
-function primeMinisterSummary(stop: CompositionTimelineStop): string {
-  if (stop.activeGovernment && !stop.activeGovernment.endsOn && stop.primeMinister?.displayName) {
-    return stop.primeMinister.displayName;
-  }
-  const names = stop.primeMinisters.map((item) => item.person.displayName);
-  if (names.length === 0) return "";
-  return names.slice(0, 4).join(", ");
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-slate-200 bg-slate-50 px-3 py-2">
-      <div className="text-xs uppercase text-slate-500">{label}</div>
-      <div className="mt-1 font-medium text-slate-950">{value}</div>
-    </div>
-  );
-}
-
-function periodLabel(startsOn: string, endsOn: string | undefined, present: string): string {
-  return `${startsOn} - ${endsOn ?? present}`;
-}
-
-function eventTypeLabel(locale: Locale, eventType: CompositionEvent["eventType"]): string {
-  return timelineLabels[locale].events[eventType] ?? eventType;
-}
-
-type TimelineLabels = {
-  stage: string;
-  legislature: string;
-  pm: string;
-  period: string;
-  compositionDate: string;
-  event: string;
-  mode: string;
-  role: string;
-  present: string;
-  unknown: string;
-  officialMode: string;
-  computedMode: string;
-  verified: string;
-  manual: string;
-  futureDetails: string;
-  governments: string;
-  noGovernment: string;
-  noEvents: string;
-  noCompositionTitle: string;
-  noCompositionBody: string;
-  computedEmpty: string;
-  emptyTimeline: string;
-  seats: string;
-  groups: string;
-  close: string;
-  events: Record<CompositionEvent["eventType"], string>;
+const labels = {
+  ro: { empty: "Nu există încă date istorice pentru legislaturile încheiate.", legislatures: "Legislaturi istorice", choose: "Alege legislatura", legislature: "Legislatură încheiată", verified: "Date verificate", documented: "Documentare manuală", members: "Mandate documentate", primeMinister: "Prim-miniștri", governments: "Guverne", compositionDate: "Componență la data", unknown: "Necunoscut", governmentPeriods: "Guvernele legislaturii", present: "prezent", noGovernment: "Nu există perioade guvernamentale documentate.", largestGroups: "Cele mai mari grupuri", peopleEyebrow: "Oameni", people: "Parlamentari din legislatură", allMembers: "Vezi toți parlamentarii", unaffiliated: "Neafiliat", noMembers: "Nu există mandate nominale disponibile.", fullHistory: "Vezi cronologia completă", moments: "momente documentate", noMoments: "Nu există momente documentate pentru această legislatură.", computed: "Această vedere folosește o compoziție calculată și poate conține intervale incomplete." },
+  en: { empty: "Historical data is not yet available for completed legislatures.", legislatures: "Historical legislatures", choose: "Choose legislature", legislature: "Completed legislature", verified: "Verified data", documented: "Manually documented", members: "Documented seats", primeMinister: "Prime ministers", governments: "Governments", compositionDate: "Composition date", unknown: "Unknown", governmentPeriods: "Governments during the term", present: "present", noGovernment: "No government periods are documented.", largestGroups: "Largest groups", peopleEyebrow: "People", people: "Members in this legislature", allMembers: "View all members", unaffiliated: "Unaffiliated", noMembers: "No nominal mandates are available.", fullHistory: "View the full chronology", moments: "documented moments", noMoments: "No moments are documented for this legislature.", computed: "This view uses a computed composition and may contain incomplete intervals." }
 };
-
-const timelineLabels = {
-  ro: {
-    stage: "Perioada activă",
-    legislature: "Legislatură",
-    pm: "Prim-ministru",
-    period: "Perioadă",
-    compositionDate: "Compoziție la data",
-    event: "Eveniment",
-    mode: "Mod",
-    role: "Rol",
-    present: "prezent",
-    unknown: "necunoscut",
-    officialMode: "Investitură oficială",
-    computedMode: "Susținere la vot",
-    verified: "verificat oficial",
-    manual: "skeleton manual",
-    futureDetails: "Detalii guvern",
-    governments: "Guverne în legislatură",
-    noGovernment: "Guvern neimportat",
-    noEvents: "Nu există încă evenimente importate pentru această legislatură.",
-    noCompositionTitle: "Compoziție parlamentară neimportată",
-    noCompositionBody: "Pentru această perioadă avem skeleton-ul guvernamental, dar nu avem încă rosters parlamentare importate.",
-    computedEmpty: "Modul de susținere la vot va deveni disponibil după ce importăm suficiente voturi nominale pentru această perioadă.",
-    emptyTimeline: "Nu există încă evenimente de compoziție importate.",
-    seats: "mandate",
-    groups: "grupuri",
-    close: "Închide",
-    events: {
-      legislature_start: "Început legislatură",
-      legislature_end: "Sfârșit legislatură",
-      government_designated: "Desemnare/interimat",
-      government_invested: "Investitură guvern",
-      government_ended: "Sfârșit guvern",
-      minister_appointed: "Numire ministru",
-      minister_ended: "Sfârșit mandat ministru",
-      reshuffle: "Remaniere",
-      no_confidence_motion: "Moțiune de cenzură",
-      confidence_vote: "Vot de încredere",
-      coalition_change: "Schimbare coaliție",
-      group_change: "Schimbare grup",
-      member_mandate_start: "Început mandat",
-      member_mandate_end: "Sfârșit mandat",
-      committee_change: "Schimbare comisie",
-      role_change: "Schimbare rol",
-      other: "Alt eveniment"
-    }
-  },
-  en: {
-    stage: "Active period",
-    legislature: "Legislature",
-    pm: "Prime minister",
-    period: "Period",
-    compositionDate: "Composition date",
-    event: "Event",
-    mode: "Mode",
-    role: "Role",
-    present: "present",
-    unknown: "unknown",
-    officialMode: "Official investiture",
-    computedMode: "Voting support",
-    verified: "officially verified",
-    manual: "manual skeleton",
-    futureDetails: "Government details",
-    governments: "Governments in legislature",
-    noGovernment: "Government not imported",
-    noEvents: "No events are imported for this legislature yet.",
-    noCompositionTitle: "Parliament composition not imported",
-    noCompositionBody: "This period has a government skeleton, but parliamentary rosters are not imported yet.",
-    computedEmpty: "Voting-support mode will become available after enough nominal votes are imported for this period.",
-    emptyTimeline: "No composition events are imported yet.",
-    seats: "seats",
-    groups: "groups",
-    close: "Close",
-    events: {
-      legislature_start: "Legislature start",
-      legislature_end: "Legislature end",
-      government_designated: "Designation/interim",
-      government_invested: "Government investiture",
-      government_ended: "Government ended",
-      minister_appointed: "Minister appointed",
-      minister_ended: "Minister ended",
-      reshuffle: "Reshuffle",
-      no_confidence_motion: "No-confidence motion",
-      confidence_vote: "Confidence vote",
-      coalition_change: "Coalition change",
-      group_change: "Group change",
-      member_mandate_start: "Mandate start",
-      member_mandate_end: "Mandate end",
-      committee_change: "Committee change",
-      role_change: "Role change",
-      other: "Other event"
-    }
-  }
-} satisfies Record<Locale, TimelineLabels>;

@@ -20,6 +20,7 @@ export function HomepageExperience({ locale, votes }: { locale: Locale; votes: V
   const [selectedId, setSelectedId] = useState(votes[1]?.vote.id ?? votes[0]?.vote.id ?? "");
   const [navigatingId, setNavigatingId] = useState<string>();
   const touchStartX = useRef<number | undefined>(undefined);
+  const filterRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const featuredVotes = useMemo(() => votes.slice(0, Math.min(5, votes.length)), [votes]);
   const featured = featuredVotes[Math.min(featuredIndex, featuredVotes.length - 1)] ?? votes[0];
@@ -36,6 +37,24 @@ export function HomepageExperience({ locale, votes }: { locale: Locale; votes: V
     window.addEventListener("popstate", readSelection);
     return () => window.removeEventListener("popstate", readSelection);
   }, [votes]);
+
+  useEffect(() => {
+    function onDocumentClick(event: MouseEvent) {
+      if (filtersOpen && !filterRef.current?.contains(event.target as Node)) setFiltersOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setFiltersOpen(false);
+        filterRef.current?.querySelector("button")?.focus();
+      }
+    }
+    document.addEventListener("click", onDocumentClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("click", onDocumentClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [filtersOpen]);
 
   function selectVote(id: string) {
     if (window.matchMedia("(max-width: 1099px)").matches) {
@@ -64,7 +83,7 @@ export function HomepageExperience({ locale, votes }: { locale: Locale; votes: V
         <p>{copy.intro}</p>
       </section>
 
-      <div className={styles.searchRow}>
+      <div className={styles.searchRow} ref={filterRef}>
         <form className={styles.searchBox} action={`/${locale}/votes`}>
           <Search size={24} aria-hidden="true" />
           <label className={styles.srOnly} htmlFor="homepage-search">{copy.search}</label>
