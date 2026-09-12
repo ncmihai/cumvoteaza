@@ -1,5 +1,18 @@
 # Public UI design QA — homepage → vote → member journey
 
+## Desktop 80% density adjustment (12 September 2026)
+
+- Source intent: match the visual density of the supplied member-profile mockup when a desktop browser is set to 80% zoom.
+- Implementation evidence: Codex in-app browser captures at `http://localhost:3011/ro/members/adrian-felician-cozma-vicepresedinte-al-camerei-deputatilor` and `/ro/members`, 1280 × 720 CSS viewport, device scale 1.
+- Scope: screens at least 1200px wide; tablet and mobile remain unscaled.
+- [P1, fixed] The first `zoom` implementation shifted the centered 1440px canvas and clipped its right edge. Replaced it with a top-left 0.8 transform plus 125% compensating dimensions. Post-fix captures show the profile career endpoint, directory guide rail, navigation and page background fully visible without horizontal clipping.
+- Typography, spacing, colors, images and copy scale together, preserving their proportions rather than selectively shrinking type.
+- Typecheck and production build: passed.
+
+final result: passed
+
+---
+
 ## Member profile Phase 4 QA — completion and edge states (12 September 2026)
 
 ### Comparison target

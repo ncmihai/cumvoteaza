@@ -26,6 +26,17 @@ body {
   overflow-x: hidden;
 }
 
+/* Match the information density of an 80% browser zoom on wide desktop screens.
+   The compensating dimensions keep the scaled page filling the viewport. */
+@media screen and (min-width: 1200px) {
+  body {
+    width: 125%;
+    min-height: 125vh;
+    transform: scale(0.8);
+    transform-origin: top left;
+  }
+}
+
 h1,
 h2,
 h3 {
