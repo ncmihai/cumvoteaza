@@ -1,0 +1,1 @@
+ALTER TABLE "member_group_memberships" ADD COLUMN "current_snapshot_on" date;

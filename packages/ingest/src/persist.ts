@@ -32,6 +32,7 @@ import type { ParsedSenateVote } from "./parsers/senate-vote";
 import { legislatureCatalog, type ParsedRoster } from "./parsers/roster";
 import type { ParsedDeputiesBill } from "./parsers/deputies-bill";
 import type { ParsedChamberVote } from "./parsers/chamber-vote";
+import { classifyVote } from "./vote-classification";
 
 const defaultLegislature = {
   id: "leg-2024-2028",
@@ -169,6 +170,7 @@ export async function persistRoster(parsed: ParsedRoster, suppliedSession?: DbSe
     await upsertGroups(db, parsed.groups);
     await upsertMembers(db, parsed.members);
     await upsertMemberMandates(db, parsed.mandates);
+    const staleMandatesClosed = await closeStaleCurrentMandates(db, parsed);
     await deleteRosterMandateRelations(
       db,
       parsed.mandates.map((mandate) => mandate.id)
@@ -191,6 +193,7 @@ export async function persistRoster(parsed: ParsedRoster, suppliedSession?: DbSe
       groups: parsed.groups.length,
       members: parsed.members.length,
       mandates: parsed.mandates.length,
+      staleMandatesClosed,
       mandateRelations: parsed.mandateRelations?.length ?? 0,
       groupMemberships: parsed.groupMemberships.length,
       partyAffiliations: parsed.partyAffiliations.length,
@@ -229,6 +232,32 @@ async function deleteRosterMemberDetails(db: Db, memberIds: string[]) {
 async function deleteRosterMandateRelations(db: Db, mandateIds: string[]) {
   if (mandateIds.length === 0) return;
   await db.delete(schema.memberMandateRelations).where(inArray(schema.memberMandateRelations.mandateId, mandateIds));
+}
+
+async function closeStaleCurrentMandates(db: Db, parsed: ParsedRoster): Promise<number> {
+  const completeRoster =
+    parsed.groupCounts.length > 0 &&
+    parsed.groupCounts.every((group) => group.expected > 0 && group.expected === group.parsed) &&
+    parsed.groupCounts.reduce((total, group) => total + group.parsed, 0) === parsed.members.length;
+  const snapshotOn = parsed.groupMemberships
+    .flatMap((membership) => membership.currentSnapshotOn ? [membership.currentSnapshotOn] : [])
+    .sort()
+    .at(-1);
+  if (!completeRoster || !snapshotOn || parsed.members.length === 0) return 0;
+
+  const activeMemberIds = parsed.members.map((member) => member.id);
+  const closed = await db
+    .update(schema.memberMandates)
+    .set({ endsOn: previousDay(snapshotOn), status: "ended" })
+    .where(sql`
+      ${schema.memberMandates.legislatureId} = ${parsed.legislature.id}
+      and ${schema.memberMandates.chamber} = ${parsed.chamber}
+      and ${schema.memberMandates.startsOn} <= ${snapshotOn}
+      and (${schema.memberMandates.endsOn} is null or ${schema.memberMandates.endsOn} >= ${snapshotOn})
+      and ${schema.memberMandates.memberId} not in (${sql.join(activeMemberIds.map((id) => sql`${id}`), sql`, `)})
+    `)
+    .returning({ id: schema.memberMandates.id });
+  return closed.length;
 }
 
 function legislatureForDate(date: string) {
@@ -891,6 +920,7 @@ async function upsertMemberGroupMembership(db: Db, membership: MemberGroupMember
         groupId: membership.groupId,
         startsOn: membership.startsOn,
         endsOn: membership.endsOn,
+        currentSnapshotOn: membership.currentSnapshotOn,
         logoUrl: membership.logoUrl,
         sourceSnapshotId: membership.sourceSnapshotId
       }
@@ -910,6 +940,7 @@ async function upsertMemberGroupMemberships(db: Db, memberships: MemberGroupMemb
           groupId: sql`excluded.group_id`,
           startsOn: sql`excluded.starts_on`,
           endsOn: sql`excluded.ends_on`,
+          currentSnapshotOn: sql`excluded.current_snapshot_on`,
           logoUrl: sql`excluded.logo_url`,
           sourceSnapshotId: sql`excluded.source_snapshot_id`
         }
@@ -1194,6 +1225,13 @@ export async function replaceBillDocumentTextChunks(documentId: string, billId: 
 }
 
 async function upsertVote(db: Db, vote: Vote) {
+  const classification = classifyVote({
+    title: vote.title,
+    voteType: vote.voteType,
+    billId: vote.billId,
+    chamber: vote.chamber
+  });
+  const classifiedAt = new Date();
   await db
     .insert(schema.votes)
     .values({
@@ -1203,6 +1241,14 @@ async function upsertVote(db: Db, vote: Vote) {
       title: vote.title,
       heldOn: vote.heldOn,
       voteType: vote.voteType,
+      motionKind: classification.motionKind,
+      prominence: classification.prominence,
+      yesMeaning: classification.yesMeaning,
+      classificationConfidence: classification.confidence,
+      classificationBasis: classification.basis,
+      classificationVersion: classification.version,
+      classificationReason: classification.reason,
+      classifiedAt,
       present: vote.totals.present,
       forCount: vote.totals.for,
       against: vote.totals.against,
@@ -1219,6 +1265,14 @@ async function upsertVote(db: Db, vote: Vote) {
         title: vote.title,
         heldOn: vote.heldOn,
         voteType: vote.voteType,
+        motionKind: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.motionKind} else excluded.motion_kind end`,
+        prominence: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.prominence} else excluded.prominence end`,
+        yesMeaning: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.yesMeaning} else excluded.yes_meaning end`,
+        classificationConfidence: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.classificationConfidence} else excluded.classification_confidence end`,
+        classificationBasis: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.classificationBasis} else excluded.classification_basis end`,
+        classificationVersion: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.classificationVersion} else excluded.classification_version end`,
+        classificationReason: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.classificationReason} else excluded.classification_reason end`,
+        classifiedAt: sql`case when ${schema.votes.classificationBasis} = 'manual_review' then ${schema.votes.classifiedAt} else excluded.classified_at end`,
         present: vote.totals.present,
         forCount: vote.totals.for,
         against: vote.totals.against,

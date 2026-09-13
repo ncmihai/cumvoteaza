@@ -16,7 +16,6 @@ import {
   type Party,
   type Person
 } from "@cumsevoteaza/parliament-model";
-import { chamberSeatCount } from "./chamber-seat-counts";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
 
 export type CompositionMode = "official" | "computed";
@@ -367,15 +366,12 @@ function buildComposition(input: {
           groupSortKey(a.group).localeCompare(groupSortKey(b.group), "ro") ||
           a.member.displayName.localeCompare(b.member.displayName, "ro")
       );
-    const targetSeats = chamberSeatCount(chamber, input.asOf, input.legislatures);
-    const visibleSeats = targetSeats && seats.length > targetSeats ? seats.slice(0, targetSeats) : seats;
-
-    const groups = [...new Set(visibleSeats.flatMap((seat) => (seat.group ? [seat.group.id] : [])))]
+    const groups = [...new Set(seats.flatMap((seat) => (seat.group ? [seat.group.id] : [])))]
       .flatMap((groupId) => {
         const group = groupById.get(groupId);
         if (!group) return [];
         const party = group.partyId ? partyById.get(group.partyId) : undefined;
-        const groupSeats = visibleSeats.filter((seat) => seat.group?.id === group.id);
+        const groupSeats = seats.filter((seat) => seat.group?.id === group.id);
         return [
           {
             group: compactGroup(group),
@@ -387,7 +383,7 @@ function buildComposition(input: {
       })
       .sort((a, b) => b.seats - a.seats || a.group.shortName.localeCompare(b.group.shortName, "ro"));
 
-    return { chamber, seats: visibleSeats, groups };
+    return { chamber, seats, groups };
   });
 
   return {
@@ -527,7 +523,15 @@ function activeMembershipOn(
   return rows
     .filter((row) => activeOn(row.startsOn, row.endsOn, asOf))
     .filter((row) => groupById.get(row.groupId)?.chamber === chamber)
-    .sort((a, b) => b.startsOn.localeCompare(a.startsOn))[0];
+    .sort((a, b) => {
+      const aSnapshot = a.currentSnapshotOn && a.currentSnapshotOn <= asOf ? a.currentSnapshotOn : "";
+      const bSnapshot = b.currentSnapshotOn && b.currentSnapshotOn <= asOf ? b.currentSnapshotOn : "";
+      return (
+        bSnapshot.localeCompare(aSnapshot) ||
+        b.startsOn.localeCompare(a.startsOn) ||
+        b.id.localeCompare(a.id)
+      );
+    })[0];
 }
 
 function activeOn(startsOn: string, endsOn: string | undefined | null, date: string): boolean {
@@ -598,6 +602,7 @@ function mapCompositionRows(input: {
       groupId: row.groupId,
       startsOn: row.startsOn,
       endsOn: row.endsOn ?? undefined,
+      currentSnapshotOn: row.currentSnapshotOn ?? undefined,
       sourceSnapshotId: row.sourceSnapshotId ?? undefined
     })),
     groups: input.groupRows.map((row) => ({

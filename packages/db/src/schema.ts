@@ -20,6 +20,44 @@ export const voteChoiceEnum = pgEnum("vote_choice", [
   "absent",
   "unknown"
 ]);
+export const voteMotionKindEnum = pgEnum("vote_motion_kind", [
+  "final_adoption",
+  "final_rejection",
+  "rejection_report",
+  "amendment",
+  "committee_referral",
+  "reconsideration",
+  "confidence",
+  "no_confidence",
+  "institutional_resolution",
+  "procedural_timing",
+  "agenda_or_schedule",
+  "quorum_or_presence",
+  "internal_procedure",
+  "unknown"
+]);
+export const voteProminenceEnum = pgEnum("vote_prominence", ["major", "standard", "routine", "unclassified"]);
+export const voteClassificationConfidenceEnum = pgEnum("vote_classification_confidence", ["verified", "high", "medium", "low"]);
+export const voteClassificationBasisEnum = pgEnum("vote_classification_basis", [
+  "official_metadata",
+  "deterministic_rule",
+  "contextual_inference",
+  "manual_review",
+  "unclassified"
+]);
+export const voteYesMeaningEnum = pgEnum("vote_yes_meaning", [
+  "supports_adoption",
+  "supports_rejection",
+  "supports_amendment",
+  "supports_referral",
+  "supports_reconsideration",
+  "supports_confidence",
+  "supports_no_confidence",
+  "supports_resolution",
+  "supports_procedure",
+  "confirms_presence",
+  "unknown"
+]);
 export const sourceStatusEnum = pgEnum("source_status", ["parsed", "partial", "failed"]);
 export const ingestionRunStatusEnum = pgEnum("ingestion_run_status", ["running", "completed", "partial", "failed"]);
 export const sourceDiscoveryStatusEnum = pgEnum("source_discovery_status", ["pending", "imported", "partial", "failed", "skipped"]);
@@ -403,6 +441,7 @@ export const memberGroupMemberships = pgTable("member_group_memberships", {
   groupId: text("group_id").notNull().references(() => parliamentaryGroups.id),
   startsOn: date("starts_on").notNull(),
   endsOn: date("ends_on"),
+  currentSnapshotOn: date("current_snapshot_on"),
   logoUrl: text("logo_url"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
 }, (table) => ({
@@ -605,6 +644,14 @@ export const votes = pgTable("votes", {
   title: text("title").notNull(),
   heldOn: date("held_on").notNull(),
   voteType: text("vote_type").notNull(),
+  motionKind: voteMotionKindEnum("motion_kind").notNull().default("unknown"),
+  prominence: voteProminenceEnum("prominence").notNull().default("unclassified"),
+  yesMeaning: voteYesMeaningEnum("yes_meaning").notNull().default("unknown"),
+  classificationConfidence: voteClassificationConfidenceEnum("classification_confidence").notNull().default("low"),
+  classificationBasis: voteClassificationBasisEnum("classification_basis").notNull().default("unclassified"),
+  classificationVersion: text("classification_version"),
+  classificationReason: text("classification_reason"),
+  classifiedAt: timestamp("classified_at", { withTimezone: true }),
   present: integer("present").notNull().default(0),
   forCount: integer("for_count").notNull().default(0),
   against: integer("against").notNull().default(0),
@@ -616,7 +663,8 @@ export const votes = pgTable("votes", {
   heldOnIdx: index("votes_held_on_id_idx").on(table.heldOn, table.id),
   chamberHeldOnIdx: index("votes_chamber_held_on_idx").on(table.chamber, table.heldOn),
   billIdx: index("votes_bill_id_idx").on(table.billId),
-  sourceSnapshotIdx: index("votes_source_snapshot_idx").on(table.sourceSnapshotId)
+  sourceSnapshotIdx: index("votes_source_snapshot_idx").on(table.sourceSnapshotId),
+  classificationIdx: index("votes_classification_idx").on(table.prominence, table.classificationConfidence, table.heldOn)
 }));
 
 export const voteCoverageSummaries = pgTable("vote_coverage_summaries", {
@@ -664,6 +712,11 @@ export const memberLegislatureActivity = pgTable("member_legislature_activity", 
   personId: text("person_id").references(() => people.id),
   legislatureId: text("legislature_id").notNull().references(() => legislatures.id),
   chamber: chamberEnum("chamber").notNull(),
+  voteRecords: integer("vote_records").notNull().default(0),
+  majorVoteRecords: integer("major_vote_records").notNull().default(0),
+  standardVoteRecords: integer("standard_vote_records").notNull().default(0),
+  routineVoteRecords: integer("routine_vote_records").notNull().default(0),
+  unclassifiedVoteRecords: integer("unclassified_vote_records").notNull().default(0),
   votesFor: integer("votes_for").notNull().default(0),
   votesAgainst: integer("votes_against").notNull().default(0),
   abstentions: integer("abstentions").notNull().default(0),

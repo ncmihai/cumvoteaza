@@ -10,6 +10,46 @@ export type VoteChoice =
   | "absent"
   | "unknown";
 
+export type VoteMotionKind =
+  | "final_adoption"
+  | "final_rejection"
+  | "rejection_report"
+  | "amendment"
+  | "committee_referral"
+  | "reconsideration"
+  | "confidence"
+  | "no_confidence"
+  | "institutional_resolution"
+  | "procedural_timing"
+  | "agenda_or_schedule"
+  | "quorum_or_presence"
+  | "internal_procedure"
+  | "unknown";
+
+export type VoteProminence = "major" | "standard" | "routine" | "unclassified";
+
+export type VoteClassificationConfidence = "verified" | "high" | "medium" | "low";
+
+export type VoteClassificationBasis =
+  | "official_metadata"
+  | "deterministic_rule"
+  | "contextual_inference"
+  | "manual_review"
+  | "unclassified";
+
+export type VoteYesMeaning =
+  | "supports_adoption"
+  | "supports_rejection"
+  | "supports_amendment"
+  | "supports_referral"
+  | "supports_reconsideration"
+  | "supports_confidence"
+  | "supports_no_confidence"
+  | "supports_resolution"
+  | "supports_procedure"
+  | "confirms_presence"
+  | "unknown";
+
 export type SourceStatus = "parsed" | "partial" | "failed";
 
 export type DocumentKind =
@@ -264,6 +304,7 @@ export interface MemberGroupMembership {
   groupId: string;
   startsOn: string;
   endsOn?: string;
+  currentSnapshotOn?: string;
   logoUrl?: string;
   sourceSnapshotId?: string;
 }
@@ -389,6 +430,10 @@ export interface Vote {
   title: string;
   heldOn: string;
   voteType: string;
+  motionKind?: VoteMotionKind;
+  prominence?: VoteProminence;
+  classificationConfidence?: VoteClassificationConfidence;
+  yesMeaning?: VoteYesMeaning;
   totals: VoteTotals;
   sourceSnapshotId: string;
 }

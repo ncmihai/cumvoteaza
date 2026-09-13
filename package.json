@@ -59,6 +59,8 @@
     "ingest:import:pending": "npm --workspace @cumsevoteaza/ingest run import:pending --",
     "ingest:audit:current-legislature": "npm --workspace @cumsevoteaza/ingest run audit:current-legislature --",
     "ingest:audit:dossier-reconciliation": "npm --workspace @cumsevoteaza/ingest run audit:dossier-reconciliation --",
+    "ingest:audit:vote-classification": "npm --workspace @cumsevoteaza/ingest run audit:vote-classification --",
+    "ingest:votes:classify": "npm --workspace @cumsevoteaza/ingest run votes:classify --",
     "repair:link-vote-bill": "npm --workspace @cumsevoteaza/ingest run repair:link-vote-bill --",
     "repair:refresh-missing-procedure": "npm --workspace @cumsevoteaza/ingest run repair:refresh-missing-procedure --",
     "repair:duplicate-bill-plan": "npm --workspace @cumsevoteaza/ingest run repair:duplicate-bill-plan --",

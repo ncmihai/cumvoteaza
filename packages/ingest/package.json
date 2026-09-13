@@ -48,6 +48,8 @@
     "import:pending": "tsx src/cli.ts import:pending",
     "audit:current-legislature": "tsx src/cli.ts audit:current-legislature",
     "audit:dossier-reconciliation": "tsx src/cli.ts audit:dossier-reconciliation",
+    "audit:vote-classification": "tsx src/cli.ts audit:vote-classification",
+    "votes:classify": "tsx src/cli.ts votes:classify",
     "repair:link-vote-bill": "tsx src/cli.ts repair:link-vote-bill",
     "repair:refresh-missing-procedure": "tsx src/cli.ts repair:refresh-missing-procedure",
     "repair:duplicate-bill-plan": "tsx src/cli.ts repair:duplicate-bill-plan",

@@ -127,6 +127,27 @@
       "when": 1789041600000,
       "tag": "0017_vote_explanations",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789291050974,
+      "tag": "0018_petite_gressill",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789292022520,
+      "tag": "0019_brave_zaladane",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789306427018,
+      "tag": "0020_overrated_sunset_bain",
+      "breakpoints": true
     }
   ]
 }

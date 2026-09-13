@@ -13,6 +13,8 @@ import { cleanupSupersededCdepHistoryRows } from "./cdep-history-cleanup";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
 import { auditCurrentLegislature } from "./current-legislature-audit";
 import { auditDossierReconciliation } from "./dossier-reconciliation-audit";
+import { auditVoteClassifications } from "./vote-classification-audit";
+import { backfillVoteClassifications } from "./vote-classification-backfill";
 import { parseChamberNominalVote } from "./parsers/chamber-vote";
 import { classifyDeputiesDocumentKind, parseDeputiesBill } from "./parsers/deputies-bill";
 import { parseDeputiesMemberProfile, parseDeputiesRosterGroup, parseDeputiesRosterIndex } from "./parsers/deputies-roster";
@@ -180,6 +182,37 @@ async function main() {
     });
     await writeImport("bill-text-quality-audit", result, JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (command === "audit:vote-classification") {
+    const result = await auditVoteClassifications({
+      chamber: chamberFlag(),
+      year: numberFlag("year"),
+      limit: numberFlag("limit"),
+      examplesPerKind: numberFlag("examples"),
+      reviewLimit: numberFlag("review-limit")
+    });
+    console.log(JSON.stringify(hasFlag("review-only") ? {
+      classifierVersion: result.classifierVersion,
+      filters: result.filters,
+      total: result.total,
+      needsReview: result.needsReview,
+      reviewCandidates: result.reviewCandidates
+    } : result, null, 2));
+    console.log("Dry run only. This command never updates vote rows.");
+    return;
+  }
+
+  if (command === "votes:classify") {
+    const result = await backfillVoteClassifications({
+      chamber: chamberFlag(),
+      year: numberFlag("year"),
+      limit: numberFlag("limit"),
+      persist: hasFlag("persist")
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist after reviewing the audit report.");
     return;
   }
 
@@ -954,7 +987,7 @@ async function importSenateRoster(): Promise<ParsedRoster> {
     mandates: uniqueBy(profiles.flatMap((profile) => (profile.mandate ? [profile.mandate] : [])), (mandate) => mandate.id),
     mandateRelations: uniqueBy(profiles.flatMap((profile) => profile.mandateRelations ?? []), (relation) => relation.id),
     groupMemberships: uniqueBy(
-      [...groupParts.flatMap((group) => group.members.map((member) => member.membership)), ...profiles.flatMap((profile) => profile.groupMemberships)],
+      [...profiles.flatMap((profile) => profile.groupMemberships), ...groupParts.flatMap((group) => group.members.map((member) => member.membership))],
       (membership) => membership.id
     ),
     partyAffiliations: uniqueBy(
@@ -1017,7 +1050,6 @@ async function importDeputiesRoster(): Promise<ParsedRoster> {
       }))
     );
   }
-  const profiledMemberIdsWithGroups = new Set(profiles.filter((profile) => profile.groupMemberships.length > 0).map((profile) => profile.member.id));
   const profiledMemberIdsWithParties = new Set(profiles.filter((profile) => profile.partyAffiliations.length > 0).map((profile) => profile.member.id));
 
   return {
@@ -1060,10 +1092,8 @@ async function importDeputiesRoster(): Promise<ParsedRoster> {
     mandateRelations: uniqueBy(profiles.flatMap((profile) => profile.mandateRelations ?? []), (relation) => relation.id),
     groupMemberships: uniqueBy(
       [
-        ...groupParts.flatMap((group) =>
-          group.members.filter((member) => !profiledMemberIdsWithGroups.has(member.member.id)).map((member) => member.membership)
-        ),
-        ...profiles.flatMap((profile) => profile.groupMemberships)
+        ...profiles.flatMap((profile) => profile.groupMemberships),
+        ...groupParts.flatMap((group) => group.members.map((member) => member.membership))
       ],
       (membership) => membership.id
     ),

@@ -158,6 +158,11 @@ export interface MemberPageData {
 }
 
 export interface MemberLegislatureActivityData {
+  voteRecords: number;
+  majorVoteRecords: number;
+  standardVoteRecords: number;
+  routineVoteRecords: number;
+  unclassifiedVoteRecords: number;
   votesFor: number;
   votesAgainst: number;
   abstentions: number;
@@ -815,9 +820,14 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
             limit 1
           ) photo_asset on true
           left join lateral (
-            select count(distinct iv.vote_id)::int as vote_count
-            from individual_votes iv
-            where iv.member_id = m.id
+            select coalesce(sum(
+              mla.votes_for + mla.votes_against + mla.abstentions +
+              mla.present_not_voting + mla.absent + mla.unknown
+            ), 0)::int as vote_count
+            from member_legislature_activity mla
+            where mla.member_id = m.id
+              and mla.legislature_id = mm.legislature_id
+              and mla.chamber = mm.chamber
           ) vote_stats on true
           ${stats.joins}
           ${where}
@@ -1227,6 +1237,10 @@ function mapVote(row: typeof schema.votes.$inferSelect): Vote {
     title: row.title,
     heldOn: row.heldOn,
     voteType: row.voteType,
+    motionKind: row.motionKind,
+    prominence: row.prominence,
+    classificationConfidence: row.classificationConfidence,
+    yesMeaning: row.yesMeaning,
     totals: {
       present: row.present,
       for: row.forCount,
@@ -1796,6 +1810,10 @@ async function getMemberVotesForLegislature(
       v.title as vote_title,
       v.held_on as vote_held_on,
       v.vote_type as vote_type,
+      v.motion_kind as vote_motion_kind,
+      v.prominence as vote_prominence,
+      v.classification_confidence as vote_classification_confidence,
+      v.yes_meaning as vote_yes_meaning,
       v.present as vote_present,
       v.for_count as vote_for_count,
       v.against as vote_against,
@@ -1880,6 +1898,11 @@ async function getMemberLegislatureActivity(
   try {
     const rows = await db.execute<MemberActivityRow>(sql`
       select
+        sum(vote_records)::int as vote_records,
+        sum(major_vote_records)::int as major_vote_records,
+        sum(standard_vote_records)::int as standard_vote_records,
+        sum(routine_vote_records)::int as routine_vote_records,
+        sum(unclassified_vote_records)::int as unclassified_vote_records,
         sum(votes_for)::int as votes_for,
         sum(votes_against)::int as votes_against,
         sum(abstentions)::int as abstentions,
@@ -1898,6 +1921,11 @@ async function getMemberLegislatureActivity(
     const row = rows[0];
     if (!row) return undefined;
     return {
+      voteRecords: Number(row.vote_records ?? 0),
+      majorVoteRecords: Number(row.major_vote_records ?? 0),
+      standardVoteRecords: Number(row.standard_vote_records ?? 0),
+      routineVoteRecords: Number(row.routine_vote_records ?? 0),
+      unclassifiedVoteRecords: Number(row.unclassified_vote_records ?? 0),
       votesFor: Number(row.votes_for ?? 0),
       votesAgainst: Number(row.votes_against ?? 0),
       abstentions: Number(row.abstentions ?? 0),
@@ -1941,6 +1969,11 @@ async function getVoteCoverage(db: DbClient, voteIds: string[]): Promise<Record<
 
 function activityFromRows(votes: IndividualVote[], proposals: number, history: MemberHistoryRow[]): MemberLegislatureActivityData {
   return {
+    voteRecords: votes.length,
+    majorVoteRecords: 0,
+    standardVoteRecords: 0,
+    routineVoteRecords: 0,
+    unclassifiedVoteRecords: votes.length,
     votesFor: votes.filter((vote) => vote.choice === "for").length,
     votesAgainst: votes.filter((vote) => vote.choice === "against").length,
     abstentions: votes.filter((vote) => vote.choice === "abstention").length,
@@ -1961,6 +1994,10 @@ function voteFromMemberVoteRow(row: MemberVoteRow): Vote {
     title: row.vote_title,
     heldOn: dateString(row.vote_held_on),
     voteType: row.vote_type,
+    motionKind: row.vote_motion_kind,
+    prominence: row.vote_prominence,
+    classificationConfidence: row.vote_classification_confidence,
+    yesMeaning: row.vote_yes_meaning,
     totals: {
       present: Number(row.vote_present),
       for: Number(row.vote_for_count),
@@ -3012,6 +3049,10 @@ type MemberVoteRow = {
   vote_title: string;
   vote_held_on: DateValue;
   vote_type: string;
+  vote_motion_kind: NonNullable<Vote["motionKind"]>;
+  vote_prominence: NonNullable<Vote["prominence"]>;
+  vote_classification_confidence: NonNullable<Vote["classificationConfidence"]>;
+  vote_yes_meaning: NonNullable<Vote["yesMeaning"]>;
   vote_present: number;
   vote_for_count: number;
   vote_against: number;
@@ -3042,6 +3083,11 @@ type BillSponsorMembershipRow = {
 };
 
 type MemberActivityRow = {
+  vote_records: number | null;
+  major_vote_records: number | null;
+  standard_vote_records: number | null;
+  routine_vote_records: number | null;
+  unclassified_vote_records: number | null;
   votes_for: number | null;
   votes_against: number | null;
   abstentions: number | null;

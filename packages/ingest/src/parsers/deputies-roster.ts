@@ -112,6 +112,7 @@ export function parseDeputiesRosterGroup(
       memberId: member.id,
       groupId: group.id,
       startsOn,
+      currentSnapshotOn: sourceSnapshot.fetchedAt.slice(0, 10),
       sourceSnapshotId: sourceSnapshot.id
     };
     const partyAffiliation = group.partyId
