@@ -15,6 +15,7 @@
     "build": "npm --workspace @cumsevoteaza/web run build",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present && npm run test:python-pipeline",
+    "test:responsive": "npm --workspace @cumsevoteaza/web run test:responsive",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:generate": "npm --workspace @cumsevoteaza/db run generate",

@@ -40,6 +40,14 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
   const primaryIdentifier = bill.identifiers.deputies ?? bill.identifiers.senate ?? presentation.identifier;
   const alternateIdentifiers = Object.values(bill.identifiers).filter((value, index, values) => value !== primaryIdentifier && values.indexOf(value) === index);
   const sponsorPreview = sponsorContexts.slice(0, 6);
+  const sponsorGroupMap = new Map<string, typeof sponsorContexts>();
+  for (const context of sponsorContexts) {
+    const affiliation = context.party?.shortName ?? context.group?.shortName ?? (context.sponsor.sponsorType === "government" ? (locale === "ro" ? "Guvern" : "Government") : (locale === "ro" ? "Apartenență neidentificată" : "Affiliation not identified"));
+    const chamber = context.group?.chamber ? chamberLabels[locale][context.group.chamber] : (locale === "ro" ? "Cameră neidentificată" : "Chamber not identified");
+    const label = `${affiliation} · ${chamber}`;
+    sponsorGroupMap.set(label, [...(sponsorGroupMap.get(label) ?? []), context]);
+  }
+  const sponsorGroups = [...sponsorGroupMap.entries()];
 
   return (
     <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
@@ -63,7 +71,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
           </div>
       </DetailPageHeader>
 
-      {sponsorContexts.length ? <details className="mt-5 border border-slate-300 bg-white p-4"><summary className="cursor-pointer font-serif text-xl font-semibold text-[#061a47]">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</summary><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-[#075fc6] pl-3"><strong className="block [overflow-wrap:anywhere] text-[#061a47]">{sponsor.name}</strong><span className="text-xs text-[#4b608a]">{party?.shortName??group?.shortName??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{group?.chamber?` · ${chamberLabels[locale][group.chamber]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<p className="mt-3 text-sm font-semibold text-[#075fc6]">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</p>:null}</details>:null}
+      {sponsorContexts.length ? <section className="mt-5 border border-slate-300 bg-white p-4"><h2 className="font-serif text-xl font-semibold text-[#061a47]">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-[#075fc6] pl-3"><strong className="block [overflow-wrap:anywhere] text-[#061a47]">{sponsor.name}</strong><span className="text-xs text-[#4b608a]">{party?.shortName??group?.shortName??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{group?.chamber?` · ${chamberLabels[locale][group.chamber]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<details className="mt-4 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-[#075fc6]">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</summary><div className="mt-4 space-y-5">{sponsorGroups.map(([label,contexts])=><section key={label}><h3 className="text-xs font-bold uppercase tracking-wide text-[#4b608a]">{label} · {contexts.length}</h3><ul className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">{contexts.map(({sponsor})=><li key={sponsor.id} className="[overflow-wrap:anywhere] text-sm text-[#061a47]">{sponsor.name}</li>)}</ul></section>)}</div></details>:null}</section>:null}
 
       <GovernmentContextPanel context={governmentContext} billSponsors={sponsorContexts} locale={locale} />
 

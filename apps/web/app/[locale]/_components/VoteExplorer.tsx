@@ -89,15 +89,27 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
   const pageSize = 30;
   const pageCount = Math.max(1, Math.ceil(filteredNominalVotes.length / pageSize));
   const visibleNominalVotes = filteredNominalVotes.slice((Math.min(page, pageCount) - 1) * pageSize, Math.min(page, pageCount) * pageSize);
+  const groupBreakdownPanel = <section className="min-w-0 overflow-hidden border border-slate-300 bg-white" aria-labelledby="group-breakdown-heading">
+    <h2 id="group-breakdown-heading" className="border-b border-slate-300 px-4 py-3 text-sm font-semibold text-slate-950">{labels.groupBreakdown}</h2>
+    <div className="overflow-x-auto">
+      <div className="min-w-[560px]">
+        <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(42px,58px))] items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase text-slate-500">
+          <span>{labels.group}</span><span className="text-right">{voteChoiceLabels[locale].for}</span><span className="text-right">{voteChoiceLabels[locale].against}</span><span className="text-right">{voteChoiceLabels[locale].abstention}</span><span className="text-right">{voteChoiceLabels[locale].present_not_voting}</span><span className="text-right">{labels.notVoting}</span>
+        </div>
+        <div className="divide-y divide-slate-200">{breakdown.map((row) => <div key={row.group.id} className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(42px,58px))] items-center gap-2 px-4 py-3 text-sm"><div className="flex min-w-0 items-center gap-2 font-medium"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.group.color }} /><span className="truncate">{row.group.shortName}</span></div><span className="text-right text-emerald-700">{row.counts.for}</span><span className="text-right text-red-700">{row.counts.against}</span><span className="text-right text-amber-700">{row.counts.abstention}</span><span className="text-right text-slate-600">{row.counts.present_not_voting}</span><span className="text-right text-slate-400">{row.counts.absent + row.counts.unknown}</span></div>)}</div>
+      </div>
+    </div>
+  </section>;
 
   return (
     <div className="space-y-6">
+    {groupBreakdownPanel}
     <div className="flex border-b border-slate-300" role="tablist" aria-label={locale === "ro" ? "Mod de afișare" : "Display mode"}>
       <button type="button" role="tab" aria-selected={activeView === "map"} onClick={() => setActiveView("map")} className={viewTabClass(activeView === "map")}>{locale === "ro" ? "Hartă vizuală" : "Visual map"}</button>
       <button type="button" role="tab" aria-selected={activeView === "list"} onClick={() => setActiveView("list")} className={viewTabClass(activeView === "list")}>{locale === "ro" ? "Listă" : "List"}</button>
     </div>
     {activeView === "map" ? <>
-    <section className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
+    <section className="min-w-0">
       <div className="min-w-0 border border-slate-300 bg-white p-4">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setActiveGroups([])} className={buttonClass(activeGroups.length === 0)}>
@@ -216,37 +228,6 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
         </div>
       </div>
 
-      <div className="min-w-0 overflow-hidden border border-slate-300 bg-white">
-        <div className="border-b border-slate-300 px-4 py-3 text-sm font-semibold text-slate-950">
-          {labels.groupBreakdown}
-        </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(30px,42px))] items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase text-slate-500">
-          <span>{labels.group}</span>
-          <span className="text-right">{voteChoiceLabels[locale].for}</span>
-          <span className="text-right">{voteChoiceLabels[locale].against}</span>
-          <span className="text-right">{voteChoiceLabels[locale].abstention}</span>
-          <span className="text-right">{voteChoiceLabels[locale].present_not_voting}</span>
-          <span className="text-right">{labels.notVoting}</span>
-        </div>
-        <div className="divide-y divide-slate-200">
-          {breakdown.map((row) => (
-            <div
-              key={row.group.id}
-              className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(30px,42px))] items-center gap-2 px-4 py-3 text-sm"
-            >
-              <div className="flex min-w-0 items-center gap-2 font-medium">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.group.color }} />
-                <span className="truncate">{row.group.shortName}</span>
-              </div>
-              <span className="text-right text-emerald-700">{row.counts.for}</span>
-              <span className="text-right text-red-700">{row.counts.against}</span>
-              <span className="text-right text-amber-700">{row.counts.abstention}</span>
-              <span className="text-right text-slate-600">{row.counts.present_not_voting}</span>
-              <span className="text-right text-slate-400">{row.counts.absent + row.counts.unknown}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
     </> : null}
     {activeView === "list" ?
