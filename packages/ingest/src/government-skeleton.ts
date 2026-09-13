@@ -1,4 +1,4 @@
-import type { CompositionEvent, Government, GovernmentPartyAlignment, GovernmentRole, Person } from "@cumsevoteaza/parliament-model";
+import type { CompositionEvent, Government, GovernmentPartyAlignment, GovernmentRole, Person, SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { partyAlignmentsForGovernment } from "./government-party-alignments";
 
 const sourceUrl = "https://en.wikipedia.org/wiki/List_of_heads_of_government_of_Romania";
@@ -11,6 +11,8 @@ interface GovernmentSeed {
   endsOn?: string;
   acting?: boolean;
   composition?: string;
+  basis?: Government["basis"];
+  sourceSnapshotId?: string;
   events?: Array<{
     id: string;
     eventType: CompositionEvent["eventType"];
@@ -28,38 +30,20 @@ interface GovernmentSeed {
 }
 
 const governments: GovernmentSeed[] = [
-  { slug: "bolojan-acting-2026", cabinet: "Bolojan interimar", primeMinister: "Ilie Bolojan", startsOn: "2026-05-05", acting: true },
   {
     slug: "bolojan-2025-present",
     cabinet: "Bolojan",
     primeMinister: "Ilie Bolojan",
     startsOn: "2025-06-23",
-    endsOn: "2026-05-05",
-    composition: "PSD-PNL-USR-UDMR-minorități / PNL-USR-UDMR-minorități după retragerea PSD",
-    events: [
-      {
-        id: "psd-withdraws-bolojan-2026",
-        eventType: "coalition_change",
-        title: "Bolojan: PSD se retrage din coaliție",
-        description:
-          "Schimbare de coaliție consemnată în rândul skeleton; PSD este tratat ca ieșit din coaliția guvernamentală începând cu această dată, până la verificare oficială completă.",
-        occurredOn: "2026-04-24"
-      },
-      {
-        id: "bolojan-no-confidence-2026",
-        eventType: "no_confidence_motion",
-        title: "Bolojan: moțiune de cenzură adoptată",
-        description:
-          "Guvernul Bolojan este marcat ca demis prin moțiune de cenzură; rând skeleton, de verificat și legat ulterior de votul oficial.",
-        occurredOn: "2026-05-05"
-      }
-    ],
+    composition: "PSD-PNL-USR-UDMR-Grupul parlamentar al minorităților naționale",
+    basis: "official_investiture",
+    sourceSnapshotId: "source-government-programme-bolojan-2025-2028",
     partyAlignments: [
-      { partyId: "party-psd", alignment: "government", basis: "manual_curation", startsOn: "2025-06-23", endsOn: "2026-04-24" },
-      { partyId: "party-pnl", alignment: "government", basis: "manual_curation", startsOn: "2025-06-23", endsOn: "2026-05-05" },
-      { partyId: "party-usr", alignment: "government", basis: "manual_curation", startsOn: "2025-06-23", endsOn: "2026-05-05" },
-      { partyId: "party-udmr", alignment: "government", basis: "manual_curation", startsOn: "2025-06-23", endsOn: "2026-05-05" },
-      { partyId: "party-minoritati", alignment: "governing_support", basis: "manual_curation", startsOn: "2025-06-23", endsOn: "2026-05-05" }
+      { partyId: "party-psd", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
+      { partyId: "party-pnl", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
+      { partyId: "party-usr", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
+      { partyId: "party-udmr", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
+      { partyId: "party-minoritati", alignment: "governing_support", basis: "official_coalition", startsOn: "2025-06-23" }
     ]
   },
   { slug: "predoiu-acting-2025", cabinet: "Predoiu interimar", primeMinister: "Cătălin Predoiu", startsOn: "2025-05-06", endsOn: "2025-06-23", acting: true },
@@ -193,13 +177,26 @@ const governments: GovernmentSeed[] = [
 ];
 
 export function governmentSkeletonData(): {
+  sourceSnapshots: SourceSnapshot[];
   people: Person[];
   governments: Government[];
   roles: GovernmentRole[];
   events: CompositionEvent[];
   partyAlignments: GovernmentPartyAlignment[];
   obsoleteGovernmentIds: string[];
+  obsoleteEventIds: string[];
 } {
+  const currentGovernmentSourceId = "source-government-programme-bolojan-2025-2028";
+  const sourceSnapshots: SourceSnapshot[] = [{
+    id: currentGovernmentSourceId,
+    sourceUrl: "https://cl.prefectura.mai.gov.ro/wp-content/uploads/sites/35/2026/03/PROGRAM_DE_GUVERNARE-2025-2028.pdf",
+    fetchedAt: "2026-09-13T00:00:00.000Z",
+    contentHash: "2aafaaa24a58ea9bb1f1abc49e7df4dfda198206ca4b7d968b312db3ceab4c5a",
+    parser: "government-skeleton",
+    parserVersion: "2",
+    status: "parsed",
+    notes: "Official government programme naming the PSD-PNL-USR-UDMR-national minorities governing majority."
+  }];
   const people = uniqueBy(
     governments.map((item) => {
       const slug = slugify(item.primeMinister);
@@ -215,6 +212,7 @@ export function governmentSkeletonData(): {
   );
 
   return {
+    sourceSnapshots,
     people,
     governments: governments.map((item) => {
       const personId = `person-${slugify(item.primeMinister)}`;
@@ -225,8 +223,8 @@ export function governmentSkeletonData(): {
         primeMinisterPersonId: personId,
         startsOn: item.startsOn,
         endsOn: item.endsOn,
-        basis: "manual_curation",
-        sourceSnapshotId: undefined
+        basis: item.basis ?? "manual_curation",
+        sourceSnapshotId: item.sourceSnapshotId
       };
     }),
     roles: governments.map((item) => ({
@@ -248,13 +246,16 @@ export function governmentSkeletonData(): {
         description: [
           item.acting ? "Mandat interimar început." : "Guvern început.",
           item.composition ? `Compoziție: ${item.composition}.` : undefined,
-          "Rând skeleton, marcat pentru verificare ulterioară din surse oficiale."
+          item.sourceSnapshotId
+            ? "Componență documentată în programul oficial de guvernare."
+            : "Rând skeleton, marcat pentru verificare ulterioară din surse oficiale."
         ]
           .filter(Boolean)
           .join(" "),
         occurredOn: item.startsOn,
         governmentId,
-        personId
+        personId,
+        sourceSnapshotId: item.sourceSnapshotId
       };
       const end: CompositionEvent | undefined = item.endsOn
         ? {
@@ -286,10 +287,16 @@ export function governmentSkeletonData(): {
         alignment: alignment.alignment,
         basis: alignment.basis,
         startsOn: alignment.startsOn ?? item.startsOn,
-        endsOn: alignment.endsOn ?? item.endsOn
+        endsOn: alignment.endsOn ?? item.endsOn,
+        sourceSnapshotId: item.sourceSnapshotId
       }))
     ),
-    obsoleteGovernmentIds: ["government-bolojan-2025-2026"]
+    obsoleteGovernmentIds: ["government-bolojan-2025-2026", "government-bolojan-acting-2026"],
+    obsoleteEventIds: [
+      "composition-event-bolojan-2025-present-end",
+      "composition-event-bolojan-2025-present-psd-withdraws-bolojan-2026",
+      "composition-event-bolojan-2025-present-bolojan-no-confidence-2026"
+    ]
   };
 }
 

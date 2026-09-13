@@ -587,16 +587,22 @@ export async function backfillPeopleFromMembers() {
 }
 
 export async function persistGovernmentSkeleton(input: {
+  sourceSnapshots?: SourceSnapshot[];
   people: Person[];
   governments: Government[];
   roles: GovernmentRole[];
   events: CompositionEvent[];
   partyAlignments?: GovernmentPartyAlignment[];
   obsoleteGovernmentIds?: string[];
+  obsoleteEventIds?: string[];
 }) {
   const session = createDbSession();
   try {
     await deleteObsoleteGovernments(session.db, input.obsoleteGovernmentIds ?? []);
+    if (input.obsoleteEventIds?.length) {
+      await session.db.delete(schema.compositionEvents).where(inArray(schema.compositionEvents.id, input.obsoleteEventIds));
+    }
+    await upsertSourceSnapshots(session.db, input.sourceSnapshots ?? []);
     await Promise.all(input.people.map((person) => upsertPerson(session.db, person)));
     await Promise.all(input.governments.map((government) => upsertGovernment(session.db, government)));
     await Promise.all(input.roles.map((role) => upsertGovernmentRole(session.db, role)));
@@ -604,13 +610,15 @@ export async function persistGovernmentSkeleton(input: {
     const partyAlignments = await filterExistingPartyAlignments(session.db, input.partyAlignments ?? []);
     await Promise.all(partyAlignments.map((alignment) => upsertGovernmentPartyAlignment(session.db, alignment)));
     return {
+      sourceSnapshots: input.sourceSnapshots?.length ?? 0,
       people: input.people.length,
       governments: input.governments.length,
       roles: input.roles.length,
       events: input.events.length,
       partyAlignments: partyAlignments.length,
       skippedPartyAlignments: (input.partyAlignments ?? []).length - partyAlignments.length,
-      obsoleteGovernmentsDeleted: input.obsoleteGovernmentIds?.length ?? 0
+      obsoleteGovernmentsDeleted: input.obsoleteGovernmentIds?.length ?? 0,
+      obsoleteEventsDeleted: input.obsoleteEventIds?.length ?? 0
     };
   } finally {
     await session.close();
@@ -650,7 +658,7 @@ async function upsertGovernment(db: Db, government: Government) {
       legislatureId: government.legislatureId,
       primeMinisterPersonId: government.primeMinisterPersonId,
       startsOn: government.startsOn,
-      endsOn: government.endsOn,
+      endsOn: government.endsOn ?? null,
       basis: government.basis,
       investitureVoteId: government.investitureVoteId,
       sourceSnapshotId: government.sourceSnapshotId
@@ -663,7 +671,7 @@ async function upsertGovernment(db: Db, government: Government) {
         legislatureId: government.legislatureId,
         primeMinisterPersonId: government.primeMinisterPersonId,
         startsOn: government.startsOn,
-        endsOn: government.endsOn,
+        endsOn: government.endsOn ?? null,
         basis: government.basis,
         investitureVoteId: government.investitureVoteId,
         sourceSnapshotId: government.sourceSnapshotId
@@ -681,7 +689,7 @@ async function upsertGovernmentRole(db: Db, role: GovernmentRole) {
       title: role.title,
       ministry: role.ministry,
       startsOn: role.startsOn,
-      endsOn: role.endsOn,
+      endsOn: role.endsOn ?? null,
       sourceSnapshotId: role.sourceSnapshotId
     })
     .onConflictDoUpdate({
@@ -692,7 +700,7 @@ async function upsertGovernmentRole(db: Db, role: GovernmentRole) {
         title: role.title,
         ministry: role.ministry,
         startsOn: role.startsOn,
-        endsOn: role.endsOn,
+        endsOn: role.endsOn ?? null,
         sourceSnapshotId: role.sourceSnapshotId
       }
     });
@@ -707,7 +715,7 @@ async function upsertCompositionEvent(db: Db, event: CompositionEvent) {
       title: event.title,
       description: event.description,
       occurredOn: event.occurredOn,
-      endsOn: event.endsOn,
+      endsOn: event.endsOn ?? null,
       legislatureId: event.legislatureId,
       governmentId: event.governmentId,
       chamber: event.chamber,
@@ -724,7 +732,7 @@ async function upsertCompositionEvent(db: Db, event: CompositionEvent) {
         title: event.title,
         description: event.description,
         occurredOn: event.occurredOn,
-        endsOn: event.endsOn,
+        endsOn: event.endsOn ?? null,
         legislatureId: event.legislatureId,
         governmentId: event.governmentId,
         chamber: event.chamber,
@@ -765,7 +773,7 @@ async function upsertGovernmentPartyAlignment(db: Db, alignment: GovernmentParty
       alignment: alignment.alignment,
       basis: alignment.basis,
       startsOn: alignment.startsOn,
-      endsOn: alignment.endsOn,
+      endsOn: alignment.endsOn ?? null,
       sourceSnapshotId: alignment.sourceSnapshotId
     })
     .onConflictDoUpdate({
@@ -776,7 +784,7 @@ async function upsertGovernmentPartyAlignment(db: Db, alignment: GovernmentParty
         alignment: alignment.alignment,
         basis: alignment.basis,
         startsOn: alignment.startsOn,
-        endsOn: alignment.endsOn,
+        endsOn: alignment.endsOn ?? null,
         sourceSnapshotId: alignment.sourceSnapshotId
       }
     });

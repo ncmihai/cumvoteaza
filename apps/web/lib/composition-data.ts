@@ -483,6 +483,9 @@ function resolveAlignment(input: {
 }): { alignment: GovernanceAlignment; alignmentBasis: AlignmentBasis } {
   const member = latestAlignment(input.memberAlignments.filter((row) => row.targetId === input.memberId), input.mode, input.asOf);
   if (member) return { alignment: member.alignment, alignmentBasis: member.basis };
+  if (input.groupId && /(?:unaffiliated|neafiliat)/i.test(input.groupId)) {
+    return { alignment: "unaffiliated", alignmentBasis: "parliamentary_group_declaration" };
+  }
   const group = input.groupId
     ? latestAlignment(input.groupAlignments.filter((row) => row.targetId === input.groupId), input.mode, input.asOf)
     : undefined;

@@ -11,11 +11,14 @@ describe("government skeleton", () => {
     expect(new Set(data.partyAlignments.map((item) => item.id)).size).toBe(data.partyAlignments.length);
   });
 
-  it("keeps the current period first and all governments manual-curated", () => {
+  it("keeps the verified current government first", () => {
     const data = governmentSkeletonData();
-    expect(data.governments[0]?.slug).toBe("bolojan-acting-2026");
+    expect(data.governments[0]?.slug).toBe("bolojan-2025-present");
     expect(data.governments[0]?.endsOn).toBeUndefined();
-    expect(data.governments.every((item) => item.basis === "manual_curation")).toBe(true);
+    expect(data.governments[0]?.basis).toBe("official_investiture");
+    expect(data.governments[0]?.sourceSnapshotId).toBe("source-government-programme-bolojan-2025-2028");
+    expect(data.sourceSnapshots).toHaveLength(1);
+    expect(data.governments.slice(1).every((item) => item.basis === "manual_curation")).toBe(true);
   });
 
   it("seeds dated party alignments for known coalitions and support", () => {
@@ -26,7 +29,9 @@ describe("government skeleton", () => {
         partyId: "party-psd",
         alignment: "government",
         startsOn: "2025-06-23",
-        endsOn: "2026-04-24"
+        endsOn: undefined,
+        basis: "official_coalition",
+        sourceSnapshotId: "source-government-programme-bolojan-2025-2028"
       })
     );
     expect(data.partyAlignments).toContainEqual(
