@@ -49,3 +49,22 @@ test("party aggregation and bill editorial controls remain connected", async ({ 
     await expect(page.locator("details").filter({ has: reveal })).toHaveAttribute("open", "");
   }
 });
+
+test("English navigation and source-language framing are explicit", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(routes[3]!.replace("/ro/", "/en/"));
+  await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
+  await expect(page.getByText("Official parliamentary title in Romanian")).toBeVisible();
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeVisible();
+});
+
+test("directory filters expose accessible labels", async ({ page }) => {
+  await page.goto("/en/votes");
+  await page.locator("summary").filter({ hasText: "Filters" }).click();
+  for (const label of ["Legislature", "Year", "Month", "Chamber", "Source", "Group"]) {
+    await expect(page.getByRole("combobox", { name: label })).toBeVisible();
+  }
+  await expect(page.getByRole("button", { name: "Apply" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reset" })).toBeVisible();
+});

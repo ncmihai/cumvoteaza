@@ -225,7 +225,7 @@ export function presentMemberActivity(
 }
 
 export function presentMemberIdentity(
-  member: Pick<Member, "displayName" | "firstName" | "lastName">,
+  member: Pick<Member, "displayName"> & Partial<Pick<Member, "firstName" | "lastName">>,
   history: MemberHistoryRow[] = [],
   asOf = new Date().toISOString().slice(0, 10)
 ): MemberIdentityPresentation {

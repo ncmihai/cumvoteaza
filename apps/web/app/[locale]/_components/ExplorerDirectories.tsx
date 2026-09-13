@@ -89,6 +89,7 @@ export function VoteDirectoryExplorer({
                   <BarChart3 size={16} aria-hidden="true" />
                   {formatDate(vote.heldOn, locale)} · {chamberLabels[locale][vote.chamber]}
                 </div>
+                {locale === "en" ? <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Official title in Romanian</div> : null}
                 <div className="mt-2 flex flex-wrap items-start justify-between gap-3"><h2 className="min-w-0 flex-1 font-serif text-2xl font-semibold leading-tight text-[#071a3a]">{presentation.heading}</h2><span className="shrink-0 border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">{vote.voteType}</span></div>
                 {presentation.subject ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{presentation.subject}</p> : null}
                 <div className="mt-3 flex flex-wrap items-center gap-3" onClick={(event) => event.stopPropagation()}>
@@ -158,10 +159,13 @@ export function BillDirectoryExplorer({
             return (
             <Link key={bill.id} href={`/${locale}/bills/${bill.slug}`} className="grid gap-4 px-4 py-4 hover:bg-slate-50 md:grid-cols-[1fr_280px]">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-semibold uppercase text-blue-800">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold uppercase text-blue-800">
                   <FileText size={16} aria-hidden="true" />
-                  {bill.identifiers.senate ?? bill.identifiers.deputies ?? bill.id}
+                  {bill.identifiers.deputies ? <span>{locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies"}: {bill.identifiers.deputies}</span> : null}
+                  {bill.identifiers.senate ? <span className="border-l border-slate-300 pl-2">Senat: {bill.identifiers.senate}</span> : null}
+                  {!bill.identifiers.senate && !bill.identifiers.deputies ? bill.id : null}
                 </div>
+                {locale === "en" ? <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Official title in Romanian</div> : null}
                 <h2 className="mt-2 line-clamp-2 font-serif text-xl font-semibold text-[#061a47]">{presentation.heading}</h2>
                 <p className="mt-1 line-clamp-2 text-sm text-slate-600">{presentation.status}</p>
                 <div className="mt-3" onClick={(event) => event.preventDefault()}>

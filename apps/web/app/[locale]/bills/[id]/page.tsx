@@ -63,6 +63,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
         subtitle={presentation.status !== "—" ? presentation.status : undefined}
         trailing={<div className="flex flex-col items-start gap-2"><HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.publicInterest} />{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale} /> : null}</div>}
       >
+          {locale === "en" ? <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Official parliamentary title in Romanian</p> : null}
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-700">
             <span className="border border-slate-300 px-2 py-1"><b>{locale === "ro" ? "Identificator principal" : "Primary identifier"}:</b> {primaryIdentifier}</span>
             {alternateIdentifiers.length ? <span className="border border-slate-300 px-2 py-1"><b>{locale === "ro" ? "Identificatori alternativi" : "Alternate identifiers"}:</b> {alternateIdentifiers.join(", ")}</span> : null}

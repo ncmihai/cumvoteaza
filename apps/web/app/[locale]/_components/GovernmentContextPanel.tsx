@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatDate, type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
 import type { BillSponsorContext, GovernmentContextData, VoteGroupContext } from "@/lib/data";
 import type { AppLocale } from "@/lib/i18n";
+import { presentMemberIdentity } from "@/lib/public-presentation";
 
 interface GovernmentContextPanelProps {
   context?: GovernmentContextData;
@@ -97,7 +98,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
                 <div className="font-medium text-slate-950">
                   {item.member ? (
                     <Link href={`/${locale}/members/${item.member.slug}`} className="underline">
-                      {item.member.displayName}
+                      {presentMemberIdentity(item.member).name}
                     </Link>
                   ) : (
                     item.sponsor.name

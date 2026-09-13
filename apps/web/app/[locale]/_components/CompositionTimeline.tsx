@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { formatDate, type Locale } from "@cumsevoteaza/parliament-model";
 import type { CompositionMode, CompositionTimelineStop } from "@/lib/composition-data";
 import { CompositionSeatMapPreview } from "./CompositionSeatMap";
+import { presentMemberIdentity } from "@/lib/public-presentation";
 
 export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; mode: CompositionMode; stops: CompositionTimelineStop[] }) {
   const copy = labels[locale];
@@ -55,7 +56,7 @@ export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; m
 
       <section className="border border-slate-300 bg-white p-5">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{copy.peopleEyebrow}</p><h3 className="mt-1 font-serif text-2xl font-semibold text-[#061a47]">{copy.people}</h3></div><Link href={`/${locale}/members?legislature=${active.legislature.id}`} className="inline-flex items-center gap-1 text-sm font-bold text-[#075fc6]">{copy.allMembers}<ArrowRight size={15}/></Link></div>
-        {representativeMembers.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{representativeMembers.map(({member, group}) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="border border-slate-200 px-3 py-2 hover:border-[#075fc6] hover:bg-[#f8fbff]"><strong className="block truncate text-sm text-[#061a47]">{member.displayName}</strong><span className="mt-1 block text-xs text-[#4b608a]">{group?.shortName ?? copy.unaffiliated}</span></Link>)}</div> : <p className="mt-3 text-sm text-[#4b608a]">{copy.noMembers}</p>}
+        {representativeMembers.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{representativeMembers.map(({member, group}) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="border border-slate-200 px-3 py-2 hover:border-[#075fc6] hover:bg-[#f8fbff]"><strong className="block truncate text-sm text-[#061a47]">{presentMemberIdentity(member).name}</strong><span className="mt-1 block text-xs text-[#4b608a]">{group?.shortName ?? copy.unaffiliated}</span></Link>)}</div> : <p className="mt-3 text-sm text-[#4b608a]">{copy.noMembers}</p>}
       </section>
 
       <section className="border border-slate-300 bg-white">

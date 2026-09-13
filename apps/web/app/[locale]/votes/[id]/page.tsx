@@ -62,6 +62,7 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
           </div>
 
           <DetailPageHeader className="mt-6 pb-6" eyebrow={presentation.voteType} title={presentation.heading} subtitle={presentation.subject ?? presentation.officialTitle} trailing={<span className="rounded-md border border-slate-300 bg-white px-3 py-2 font-serif font-semibold text-[#4b608a]">{presentation.outcomeLabel}</span>}>
+            {locale === "en" ? <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Official parliamentary title in Romanian</p> : null}
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#4b608a]"><span className="inline-flex items-center gap-2"><CalendarDays size={18}/>{formatDate(vote.heldOn,locale)}</span><span className="inline-flex items-center gap-2"><Building2 size={18}/>{vote.chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies")}</span><span className="inline-flex items-center gap-2"><FileText size={18}/>{presentation.voteType}</span></div>
             {process.env.GEMINI_EXPLANATIONS_ENABLED === "1" && <VoteExplanation id={vote.id} locale={locale} />}
           </DetailPageHeader>

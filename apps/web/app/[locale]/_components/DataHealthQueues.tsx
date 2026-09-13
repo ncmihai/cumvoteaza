@@ -49,6 +49,7 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
   const [token, setToken] = useState("");
   const [reviewer, setReviewer] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
+  const [visibleCounts, setVisibleCounts] = useState<Partial<Record<SectionKey, number>>>({});
   const sections = useMemo<Array<[SectionKey, string, HealthIssue[]]>>(() => [
     ["ocr", labels.ocr, data.sections.ocr],
     ["weakSectionParses", labels.weakParses, data.sections.weakSectionParses],
@@ -74,19 +75,8 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
         <summary className="cursor-pointer font-serif text-lg font-semibold text-[#061a47]">{labels.reviewMode}</summary>
         <p className="mt-2 text-xs leading-5 text-slate-600">{labels.tokenHelp}</p>
         <div className="mt-3 grid gap-2 md:grid-cols-[1fr_220px_180px]">
-          <input
-            type="password"
-            value={token}
-            onChange={(event) => setToken(event.target.value)}
-            placeholder={labels.review.token}
-            className="border border-slate-300 px-3 py-2 text-sm"
-          />
-          <input
-            value={reviewer}
-            onChange={(event) => setReviewer(event.target.value)}
-            placeholder={labels.review.reviewer}
-            className="border border-slate-300 px-3 py-2 text-sm"
-          />
+          <label className="grid gap-1 text-xs font-semibold uppercase text-slate-500"><span>{labels.review.token}</span><input aria-label={labels.review.token} type="password" value={token} onChange={(event) => setToken(event.target.value)} className="border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" /></label>
+          <label className="grid gap-1 text-xs font-semibold uppercase text-slate-500"><span>{labels.review.reviewer}</span><input aria-label={labels.review.reviewer} value={reviewer} onChange={(event) => setReviewer(event.target.value)} className="border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" /></label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <span className="shrink-0 text-xs font-semibold uppercase text-slate-500">{labels.statusFilter}</span>
             <select
@@ -113,6 +103,8 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
       <div className="mt-6 space-y-8">
         {sections.map(([key, label, rows]) => {
           const filteredRows = filterIssues(rows, statusFilter);
+          const visibleCount = visibleCounts[key] ?? 20;
+          const visibleRows = filteredRows.slice(0, visibleCount);
           return (
             <section key={key} id={key} className="border border-slate-300 bg-white">
               <div className="border-b border-slate-300 px-4 py-3">
@@ -121,9 +113,10 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
               </div>
               <div className="divide-y divide-slate-200">
                 {filteredRows.length === 0 ? <div className="px-4 py-4 text-sm text-slate-600">{labels.empty}</div> : null}
-                {filteredRows.map((issue) => (
-                  <IssueRow key={issue.issueKey} issue={issue} labels={labels} locale={locale} token={token} reviewer={reviewer} />
+                {visibleRows.map((issue) => (
+                  <IssueRow key={issue.issueKey} issue={issue} labels={labels} locale={locale} token={token} reviewer={reviewer} reviewEnabled={Boolean(token.trim() && reviewer.trim())} />
                 ))}
+                {visibleRows.length < filteredRows.length ? <div className="px-4 py-4"><button type="button" onClick={() => setVisibleCounts((current) => ({ ...current, [key]: visibleCount + 20 }))} className="min-h-11 w-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-[#061a47]">{locale === "ro" ? `Arată încă ${Math.min(20, filteredRows.length - visibleRows.length)}` : `Show ${Math.min(20, filteredRows.length - visibleRows.length)} more`}</button></div> : null}
               </div>
             </section>
           );
@@ -147,13 +140,15 @@ function IssueRow({
   labels,
   locale,
   token,
-  reviewer
+  reviewer,
+  reviewEnabled
 }: {
   issue: HealthIssue;
   labels: DataHealthLabels;
   locale: AppLocale;
   token: string;
   reviewer: string;
+  reviewEnabled: boolean;
 }) {
   const href = issue.href?.replace(/^\/ro\//, `/${locale}/`);
   const open = issue.status === "open";
@@ -200,7 +195,7 @@ function IssueRow({
 
       <div className="mt-3 border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{issue.action}</div>
       {issue.note ? <div className="mt-2 text-sm text-slate-600">{labels.note}: {issue.note}</div> : null}
-      <DataHealthReviewControls issue={issue} labels={labels.review} token={token} reviewer={reviewer} />
+      {reviewEnabled ? <DataHealthReviewControls issue={issue} labels={labels.review} token={token} reviewer={reviewer} /> : null}
     </article>
   );
 }

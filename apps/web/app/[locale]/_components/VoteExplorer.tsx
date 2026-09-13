@@ -13,6 +13,7 @@ import type {
   VoteChoice
 } from "@cumsevoteaza/parliament-model";
 import { voteChoiceColors, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
+import { presentMemberIdentity } from "@/lib/public-presentation";
 
 interface VoteExplorerProps {
   voteId: string;
@@ -163,7 +164,7 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
               (activeGroups.length > 0 && (!seat.vote.groupId || !activeGroups.includes(seat.vote.groupId))) ||
               (activeChoices.length > 0 && !activeChoices.includes(seat.vote.choice));
             const pinned = pinnedSeatId === seat.vote.id;
-            const memberLabel = seat.member?.displayName ?? seat.vote.memberId;
+            const memberLabel = seat.member ? presentMemberIdentity(seat.member).name : seat.vote.memberId;
             const groupLabel = seat.group?.shortName ?? labels.unknownGroup;
             const voteLabel = voteChoiceLabels[locale][seat.vote.choice];
             const popupClass = [
@@ -258,7 +259,7 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
                 <td className="px-3 py-3">
                   {member ? (
                     <Link className="font-medium underline" href={`/${locale}/members/${member.slug}?fromVote=${encodeURIComponent(voteId)}`}>
-                      {member.displayName}
+                      {presentMemberIdentity(member).name}
                     </Link>
                   ) : (
                     individualVote.memberId
@@ -292,8 +293,10 @@ function orderVotesByGroup(input: {
   return [...input.votes].sort((a, b) => {
     const groupA = a.groupId ? groupOrder.get(a.groupId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
     const groupB = b.groupId ? groupOrder.get(b.groupId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
-    const memberA = input.members.get(a.memberId)?.displayName ?? a.memberId;
-    const memberB = input.members.get(b.memberId)?.displayName ?? b.memberId;
+    const rawMemberA = input.members.get(a.memberId);
+    const rawMemberB = input.members.get(b.memberId);
+    const memberA = rawMemberA ? presentMemberIdentity(rawMemberA).name : a.memberId;
+    const memberB = rawMemberB ? presentMemberIdentity(rawMemberB).name : b.memberId;
     return groupA - groupB || memberA.localeCompare(memberB, "ro");
   });
 }

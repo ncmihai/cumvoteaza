@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { chamberLabels, type ChamberId, type GovernanceAlignment, type Locale } from "@cumsevoteaza/parliament-model";
 import type { CompositionSeat } from "@/lib/composition-data";
+import { presentMemberIdentity } from "@/lib/public-presentation";
 
 interface CompositionSeatMapProps {
   locale: Locale;
@@ -82,7 +83,7 @@ export function CompositionSeatMap({ locale, chamber, seats }: CompositionSeatMa
             >
               <button
                 type="button"
-                title={`${seat.member.displayName} · ${groupLabel} · ${alignmentLabel}`}
+                title={`${presentMemberIdentity(seat.member).name} · ${groupLabel} · ${alignmentLabel}`}
                 onClick={() => setPinnedSeatId(pinned ? undefined : seat.member.id)}
                 className="block rounded-full border-2 shadow-sm outline-offset-2 transition hover:scale-125 focus-visible:scale-125"
                 style={{
@@ -93,7 +94,7 @@ export function CompositionSeatMap({ locale, chamber, seats }: CompositionSeatMa
                 }}
               >
                 <span className="sr-only">
-                  {seat.member.displayName} {groupLabel} {alignmentLabel}
+                  {presentMemberIdentity(seat.member).name} {groupLabel} {alignmentLabel}
                 </span>
               </button>
               <Link
@@ -103,7 +104,7 @@ export function CompositionSeatMap({ locale, chamber, seats }: CompositionSeatMa
                   pinned ? "block" : "pointer-events-none hidden group-hover/seat:block group-focus-within/seat:block"
                 ].join(" ")}
               >
-                {seat.member.displayName}
+                {presentMemberIdentity(seat.member).name}
                 <span className="mt-0.5 block font-normal text-slate-600">
                   {groupLabel} · {alignmentLabel}
                 </span>
