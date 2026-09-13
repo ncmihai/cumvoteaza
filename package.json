@@ -58,6 +58,7 @@
     "ingest:sync:daily": "npm --workspace @cumsevoteaza/ingest run sync:daily --",
     "ingest:import:pending": "npm --workspace @cumsevoteaza/ingest run import:pending --",
     "ingest:audit:current-legislature": "npm --workspace @cumsevoteaza/ingest run audit:current-legislature --",
+    "ingest:audit:government-history": "npm --workspace @cumsevoteaza/ingest run audit:government-history --",
     "ingest:audit:dossier-reconciliation": "npm --workspace @cumsevoteaza/ingest run audit:dossier-reconciliation --",
     "ingest:audit:vote-classification": "npm --workspace @cumsevoteaza/ingest run audit:vote-classification --",
     "ingest:votes:classify": "npm --workspace @cumsevoteaza/ingest run votes:classify --",

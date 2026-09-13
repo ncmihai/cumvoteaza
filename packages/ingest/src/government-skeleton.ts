@@ -46,7 +46,15 @@ const governments: GovernmentSeed[] = [
       { partyId: "party-minoritati", alignment: "governing_support", basis: "official_coalition", startsOn: "2025-06-23" }
     ]
   },
-  { slug: "predoiu-acting-2025", cabinet: "Predoiu interimar", primeMinister: "Cătălin Predoiu", startsOn: "2025-05-06", endsOn: "2025-06-23", acting: true },
+  {
+    slug: "predoiu-acting-2025",
+    cabinet: "Predoiu interimar",
+    primeMinister: "Cătălin Predoiu",
+    startsOn: "2025-05-06",
+    endsOn: "2025-06-23",
+    acting: true,
+    sourceSnapshotId: "source-decree-623-predoiu-acting-2025"
+  },
   {
     slug: "ciolacu-ii-2024-2025",
     cabinet: "Ciolacu II",
@@ -54,6 +62,8 @@ const governments: GovernmentSeed[] = [
     startsOn: "2024-12-23",
     endsOn: "2025-05-06",
     composition: "PSD-PNL-UDMR",
+    basis: "official_investiture",
+    sourceSnapshotId: "source-parliament-decision-33-ciolacu-ii-2024",
     partyAlignments: [
       { partyId: "party-psd", alignment: "government", basis: "manual_curation" },
       { partyId: "party-pnl", alignment: "government", basis: "manual_curation" },
@@ -187,16 +197,38 @@ export function governmentSkeletonData(): {
   obsoleteEventIds: string[];
 } {
   const currentGovernmentSourceId = "source-government-programme-bolojan-2025-2028";
-  const sourceSnapshots: SourceSnapshot[] = [{
-    id: currentGovernmentSourceId,
-    sourceUrl: "https://cl.prefectura.mai.gov.ro/wp-content/uploads/sites/35/2026/03/PROGRAM_DE_GUVERNARE-2025-2028.pdf",
-    fetchedAt: "2026-09-13T00:00:00.000Z",
-    contentHash: "2aafaaa24a58ea9bb1f1abc49e7df4dfda198206ca4b7d968b312db3ceab4c5a",
-    parser: "government-skeleton",
-    parserVersion: "2",
-    status: "parsed",
-    notes: "Official government programme naming the PSD-PNL-USR-UDMR-national minorities governing majority."
-  }];
+  const sourceSnapshots: SourceSnapshot[] = [
+    {
+      id: currentGovernmentSourceId,
+      sourceUrl: "https://cl.prefectura.mai.gov.ro/wp-content/uploads/sites/35/2026/03/PROGRAM_DE_GUVERNARE-2025-2028.pdf",
+      fetchedAt: "2026-09-13T00:00:00.000Z",
+      contentHash: "2aafaaa24a58ea9bb1f1abc49e7df4dfda198206ca4b7d968b312db3ceab4c5a",
+      parser: "government-skeleton",
+      parserVersion: "2",
+      status: "parsed",
+      notes: "Official government programme naming the PSD-PNL-USR-UDMR-national minorities governing majority."
+    },
+    {
+      id: "source-parliament-decision-33-ciolacu-ii-2024",
+      sourceUrl: "https://legislatie.just.ro/Public/DetaliiDocumentAfis/292981",
+      fetchedAt: "2026-09-13T00:00:00.000Z",
+      contentHash: "44fa80f31e04e4a6020e091377cac46c0d1f49d09e66b939657055b531236893",
+      parser: "government-history-reviewed-manifest",
+      parserVersion: "1",
+      status: "parsed",
+      notes: "Official Parliament Decision 33/2024 investing the Ciolacu II cabinet and its programme."
+    },
+    {
+      id: "source-decree-623-predoiu-acting-2025",
+      sourceUrl: "https://legislatie.just.ro/Public/DetaliiDocumentAfis/297123",
+      fetchedAt: "2026-09-13T00:00:00.000Z",
+      contentHash: "f826373ef2b5c13b2d86e189651dad7f3093b721652fd716da7737428d4af8a6",
+      parser: "government-history-reviewed-manifest",
+      parserVersion: "1",
+      status: "parsed",
+      notes: "Official Presidential Decree 623/2025 appointing Cătălin Predoiu as interim prime minister."
+    }
+  ];
   const people = uniqueBy(
     governments.map((item) => {
       const slug = slugify(item.primeMinister);

@@ -17,6 +17,7 @@ import { SourceBadge } from "../../_components/SourceBadge";
 import { ShareButton } from "../../_components/ShareButton";
 import { VoteBillDossierPanel } from "../../_components/VoteBillDossierPanel";
 import { VoteExplorer } from "../../_components/VoteExplorer";
+import { DetailPageHeader } from "../../_components/DetailPageHeader";
 
 export default async function VotePage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: rawLocale, id } = await params;
@@ -48,13 +49,6 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
     billSponsorContexts.map((item) => item.member?.displayName ?? item.sponsor.name ?? "").filter(Boolean)
   ).slice(0, 4);
   const presentation = presentVote(vote, { locale, bill, source });
-  const memberById = new Map(members.map((member) => [member.id, member]));
-  const groupById = new Map(groups.map((group) => [group.id, group]));
-  const memberPreview = individualVotes.flatMap((individualVote) => {
-    const member = memberById.get(individualVote.memberId);
-    if (!member) return [];
-    return [{ individualVote, member, group: individualVote.groupId ? groupById.get(individualVote.groupId) : undefined }];
-  }).slice(0, 6);
 
   return (
     <main className="mx-auto max-w-[1440px] bg-[#fbfaf6]">
@@ -67,30 +61,25 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
             <ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 bg-transparent text-[#4b608a]" />
           </div>
 
-          <header className="mt-6 border-b border-slate-300 pb-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold uppercase text-[#075fc6]">{presentation.voteType}</div>
-                <h1 className="mt-2 max-w-4xl font-serif text-4xl font-semibold leading-[1.02] tracking-[-.035em] text-[#050e2c] md:text-6xl">{presentation.heading}</h1>
-              </div>
-              <span className="rounded-md border border-slate-300 bg-white px-3 py-2 font-serif font-semibold text-[#4b608a]">{presentation.outcomeLabel}</span>
-            </div>
-            <p className="mt-4 max-w-4xl font-serif text-lg leading-7 text-[#4b608a]">{presentation.subject ?? presentation.officialTitle}</p>
+          <DetailPageHeader className="mt-6 pb-6" eyebrow={presentation.voteType} title={presentation.heading} subtitle={presentation.subject ?? presentation.officialTitle} trailing={<span className="rounded-md border border-slate-300 bg-white px-3 py-2 font-serif font-semibold text-[#4b608a]">{presentation.outcomeLabel}</span>}>
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#4b608a]"><span className="inline-flex items-center gap-2"><CalendarDays size={18}/>{formatDate(vote.heldOn,locale)}</span><span className="inline-flex items-center gap-2"><Building2 size={18}/>{vote.chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies")}</span><span className="inline-flex items-center gap-2"><FileText size={18}/>{presentation.voteType}</span></div>
             {process.env.GEMINI_EXPLANATIONS_ENABLED === "1" && <VoteExplanation id={vote.id} locale={locale} />}
-          </header>
+          </DetailPageHeader>
 
           <section className="mt-5 border border-[#dae8f7] bg-[#f0f6fc] p-5">
             <h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Pe scurt" : "In brief"}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#4b608a]">{locale === "ro" ? "Pagina separă rezultatul acestei moțiuni de starea juridică a proiectului și păstrează legătura către datele nominale publicate de Parlament." : "This page separates the result of this motion from the legal status of the bill and retains the link to Parliament's published nominal data."}</p>
           </section>
 
-          <section className="mt-6" id="parliamentarians">
-            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-300 pb-2">
-              <div><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Cum au votat parlamentarii" : "How members voted"}</h2><p className="mt-1 text-sm text-[#4b608a]">{locale === "ro" ? "Deschide profilul unui parlamentar pentru activitatea și traseul său complet." : "Open a member profile for their full activity and career."}</p></div>
-              <span className="text-xs font-semibold text-[#4b608a]">{individualVotes.length} {locale === "ro" ? "voturi nominale" : "nominal votes"}</span>
+          <section className="mt-6" aria-labelledby="vote-result-heading">
+            <h2 id="vote-result-heading" className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Rezultatul votului" : "Vote result"}</h2>
+            <div className="mt-3 grid grid-cols-2 border-y border-slate-300 bg-white px-4 py-3 sm:grid-cols-4">
+              <ResultFact label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="bg-emerald-600" />
+              <ResultFact label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="bg-red-600" />
+              <ResultFact label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="bg-amber-600" />
+              <ResultFact label={voteChoiceLabels[locale].present_not_voting} value={vote.totals.presentNotVoting} tone="bg-slate-400" />
             </div>
-            {memberPreview.length ? <div className="grid border-x border-slate-300 bg-white md:grid-cols-2">{memberPreview.map(({individualVote, member, group}) => <Link key={individualVote.id} href={`/${locale}/members/${member.slug}?fromVote=${encodeURIComponent(vote.id)}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-300 px-4 py-3 transition hover:bg-[#fffdf6] md:odd:border-r"><span className="min-w-0"><strong className="block truncate font-serif text-lg text-[#061a47]">{member.displayName}</strong><span className="mt-0.5 block text-xs text-[#4b608a]">{group?.shortName ?? (locale === "ro" ? "Neafiliat" : "Unaffiliated")}</span></span><span className="font-semibold text-[#075fc6]">{voteChoiceLabels[locale][individualVote.choice]} →</span></Link>)}</div> : <p className="border border-t-0 border-slate-300 bg-white p-4 text-sm text-[#4b608a]">{locale === "ro" ? "Lista nominală nu este disponibilă pentru acest vot." : "The nominal list is unavailable for this vote."}</p>}
+            <p className="mt-2 text-sm text-[#4b608a]"><strong className="font-serif text-2xl text-[#061a47]">{vote.totals.present}</strong> {locale === "ro" ? "prezenți" : "present"} · {individualVotes.length} {locale === "ro" ? "voturi nominale" : "nominal votes"}</p>
           </section>
 
           <div className="mt-6">
@@ -104,24 +93,7 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
 
         <aside className="border-t border-slate-300 bg-white/75 px-5 py-6 xl:border-l xl:border-t-0 xl:px-7">
           <div className="xl:sticky xl:top-24">
-            <section>
-              <h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Rezultatul votului" : "Vote result"}</h2>
-              <div className="mt-3 grid grid-cols-2 border-y border-slate-300 py-3">
-                <ResultFact label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="bg-emerald-600" />
-                <ResultFact label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="bg-red-600" />
-                <ResultFact label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="bg-amber-600" />
-                <ResultFact label={voteChoiceLabels[locale].present_not_voting} value={vote.totals.presentNotVoting} tone="bg-slate-400" />
-              </div>
-              <p className="mt-2 text-center text-sm text-[#4b608a]"><strong className="font-serif text-2xl text-[#061a47]">{vote.totals.present}</strong> {locale === "ro" ? "prezenți" : "present"}</p>
-            </section>
-
-            <section className="mt-6">
-              <h2 className="border-b border-slate-300 pb-2 font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Cum au votat grupurile" : "How groups voted"}</h2>
-              {groupContexts.length ? <div className="grid grid-cols-[minmax(0,1fr)_repeat(4,38px)] gap-2 border-b border-slate-200 py-2 text-[10px] font-bold uppercase text-[#4b608a]"><span>{locale === "ro" ? "Grup" : "Group"}</span><span className="text-right" title={voteChoiceLabels[locale].for}>{locale === "ro" ? "P" : "For"}</span><span className="text-right" title={voteChoiceLabels[locale].against}>{locale === "ro" ? "C" : "Agt"}</span><span className="text-right" title={voteChoiceLabels[locale].abstention}>{locale === "ro" ? "Ab" : "Abs"}</span><span className="text-right" title={voteChoiceLabels[locale].present_not_voting}>{locale === "ro" ? "NV" : "DNV"}</span></div> : null}
-              <div className="divide-y divide-slate-200 text-sm">{groupContexts.length ? groupContexts.map(({group,party,totals}) => <div key={group.id} className="grid grid-cols-[minmax(0,1fr)_repeat(4,38px)] items-center gap-2 py-2"><span className="flex min-w-0 items-center gap-2 font-semibold text-[#061a47]"><i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{background:party?.color??group.color}}/>{party?.shortName??group.shortName}</span><span className="text-right text-emerald-700">{totals.for}</span><span className="text-right text-red-700">{totals.against}</span><span className="text-right text-amber-700">{totals.abstention}</span><span className="text-right text-slate-500">{totals.presentNotVoting}</span></div>) : <p className="py-4 text-[#4b608a]">{locale === "ro" ? "Defalcarea pe grupuri nu este disponibilă." : "Group breakdown is unavailable."}</p>}</div>
-            </section>
-
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.publicInterest} />
               {source ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 border border-[#9eabc0] bg-white px-4 py-3 text-sm font-bold text-[#075fc6]"><FileText size={18}/>{locale === "ro" ? "Sursa oficială" : "Official source"}</a> : null}
               {source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale} /> : null}

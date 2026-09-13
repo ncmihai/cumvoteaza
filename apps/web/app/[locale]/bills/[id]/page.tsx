@@ -1,7 +1,7 @@
 import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate } from "@cumsevoteaza/parliament-model";
+import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
 import { getBillTextComparisons } from "@/lib/bill-text-features";
 import { getBillPageData } from "@/lib/data";
 import { getDocumentConfidenceMap } from "@/lib/document-confidence";
@@ -19,6 +19,7 @@ import { GovernmentContextPanel } from "../../_components/GovernmentContextPanel
 import { HotButton } from "../../_components/HotButton";
 import { SourceBadge } from "../../_components/SourceBadge";
 import { ShareButton } from "../../_components/ShareButton";
+import { DetailPageHeader } from "../../_components/DetailPageHeader";
 
 export default async function BillPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: rawLocale, id } = await params;
@@ -36,6 +37,9 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
   const timeline = procedureSteps.length > 0 ? procedureSteps : events;
   const committees = [...new Set(procedureSteps.map((step) => step.committeeName).filter(Boolean))] as string[];
   const presentation = presentBill(bill);
+  const primaryIdentifier = bill.identifiers.deputies ?? bill.identifiers.senate ?? presentation.identifier;
+  const alternateIdentifiers = Object.values(bill.identifiers).filter((value, index, values) => value !== primaryIdentifier && values.indexOf(value) === index);
+  const sponsorPreview = sponsorContexts.slice(0, 6);
 
   return (
     <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
@@ -45,28 +49,27 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
         <Link href={`/${locale}/bills`} className="inline-flex items-center gap-2 font-semibold text-[#075fc6]"><ArrowLeft size={17}/>{locale === "ro" ? "Înapoi la proiecte" : "Back to bills"}</Link>
         <ShareButton href={`/${locale}/bills/${bill.slug}`} title={presentation.heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="bg-transparent text-[#4b608a]" />
       </nav>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="text-sm font-semibold uppercase text-blue-800">{presentation.identifier}</div>
-          <h1 className="mt-2 max-w-5xl break-words font-serif text-3xl font-semibold leading-tight tracking-[-.035em] text-[#050e2c] sm:text-4xl md:text-5xl">{presentation.heading}</h1>
-          {presentation.status !== "—" ? <p className="mt-3 text-slate-600">{presentation.status}</p> : null}
+      <DetailPageHeader
+        eyebrow={presentation.identifier}
+        title={presentation.heading}
+        subtitle={presentation.status !== "—" ? presentation.status : undefined}
+        trailing={<div className="flex flex-col items-start gap-2"><HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.publicInterest} />{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale} /> : null}</div>}
+      >
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-700">
-            {bill.identifiers.deputies ? <span className="border border-slate-300 px-2 py-1">{bill.identifiers.deputies}</span> : null}
-            {bill.identifiers.senate && bill.identifiers.senate !== bill.identifiers.deputies ? <span className="border border-slate-300 px-2 py-1">{bill.identifiers.senate}</span> : null}
+            <span className="border border-slate-300 px-2 py-1"><b>{locale === "ro" ? "Identificator principal" : "Primary identifier"}:</b> {primaryIdentifier}</span>
+            {alternateIdentifiers.length ? <span className="border border-slate-300 px-2 py-1"><b>{locale === "ro" ? "Identificatori alternativi" : "Alternate identifiers"}:</b> {alternateIdentifiers.join(", ")}</span> : null}
+            <span className="border border-slate-300 px-2 py-1"><b>{locale === "ro" ? "Camera de origine" : "Source chamber"}:</b> {bill.chamberOfOrigin === "unknown" ? (locale === "ro" ? "Camera de origine nu a fost identificată" : "Source chamber not identified") : labels.chambers[bill.chamberOfOrigin]}</span>
             {bill.decisionChamber ? <span className="border border-slate-300 px-2 py-1">{labels.decisionChamber}: {labels.chambers[bill.decisionChamber]}</span> : null}
           </div>
-        </div>
-        <div className="flex flex-col items-start gap-2">
-          <HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.publicInterest} />
-          {source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale} /> : null}
-        </div>
-      </div>
+      </DetailPageHeader>
+
+      {sponsorContexts.length ? <details className="mt-5 border border-slate-300 bg-white p-4"><summary className="cursor-pointer font-serif text-xl font-semibold text-[#061a47]">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</summary><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-[#075fc6] pl-3"><strong className="block [overflow-wrap:anywhere] text-[#061a47]">{sponsor.name}</strong><span className="text-xs text-[#4b608a]">{party?.shortName??group?.shortName??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{group?.chamber?` · ${chamberLabels[locale][group.chamber]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<p className="mt-3 text-sm font-semibold text-[#075fc6]">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</p>:null}</details>:null}
 
       <GovernmentContextPanel context={governmentContext} billSponsors={sponsorContexts} locale={locale} />
 
-      <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-5">
-          <div className="border border-slate-300 bg-white">
+      <section className="mt-6 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-5">
+          <div className="min-w-0 border border-slate-300 bg-white">
             <div className="border-b border-slate-300 px-4 py-3 font-semibold">{labels.timeline}</div>
             <div className="divide-y divide-slate-200">
               {timeline.map((item) => (
@@ -87,7 +90,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
           <BillDocumentDiffPanel comparisons={comparisons} locale={locale} />
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <BillTextSearch
             billId={bill.id}
             labels={{
@@ -127,8 +130,8 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
             </div>
           ) : null}
 
-          <div className="border border-slate-300 bg-white">
-            <div className="border-b border-slate-300 px-4 py-3 font-semibold">{labels.documents}</div>
+          <details className="border border-slate-300 bg-white">
+            <summary className="cursor-pointer border-b border-slate-300 px-4 py-3 font-semibold">{labels.documents} ({documents.length})</summary>
             <div className="divide-y divide-slate-200">
               {documents.map((document) => (
                 <div key={document.id} className="px-4 py-3 text-sm">
@@ -162,7 +165,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
               ))}
               {documents.length === 0 ? <div className="px-4 py-4 text-sm text-slate-600">{locale === "ro" ? "Nu există documente oficiale importate." : "No official documents have been imported."}</div> : null}
             </div>
-          </div>
+          </details>
         </aside>
       </section>
     </main>

@@ -10,6 +10,7 @@ import { EditorialSections } from "../../_components/EditorialSections";
 import { EngagementTracker } from "../../_components/EngagementTracker";
 import { MemberCareerTimeline } from "../../_components/MemberCareerTimeline";
 import { ImageWithFallback } from "../../_components/ImageWithFallback";
+import { DetailPageHeader } from "../../_components/DetailPageHeader";
 
 export default async function MemberPage({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string; fromVote?: string }> }) {
   const { locale: rawLocale, slug } = await params;
@@ -39,11 +40,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
     <EditorialSections page="member" locale={locale} entityId={slug}/><EngagementTracker entityType="member" entityId={member.id} locale={locale}/>
     <nav className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-[#4b608a]"><span><Link href={`/${locale}`}>{locale === "ro" ? "Acasă" : "Home"}</Link>　›　<Link href={`/${locale}/members`}>{locale === "ro" ? "Parlamentari" : "Members"}</Link>　›　{identity.name}</span>{contextualVote ? <Link href={`/${locale}/votes/${contextualVote}`} className="font-semibold text-[#075fc6]">← {locale === "ro" ? "Înapoi la vot" : "Back to vote"}</Link> : null}</nav>
 
-    <header className="grid gap-6 pb-1 sm:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[210px_minmax(0,1fr)]">
-      <div className="relative h-[220px] w-[180px] overflow-hidden rounded-md border border-slate-300 bg-[#e9eef5] lg:h-[250px] lg:w-[210px]"><ImageWithFallback src={profilePhotoUrl} alt={identity.name} className="h-full w-full object-cover"><span className="grid h-full place-items-center font-serif text-4xl font-bold text-[#4b608a]">{initials(identity.name)}</span></ImageWithFallback>{currentLogoUrl ? <img src={currentLogoUrl} alt="" className="absolute bottom-2 right-2 h-11 w-11 border border-slate-300 bg-white object-contain p-1"/> : null}</div>
-      <div className="min-w-0 self-center">
-        <h1 className="break-words font-serif text-5xl font-semibold leading-[.92] tracking-[-.045em] text-[#050e2c] md:text-6xl xl:text-7xl">{identity.name}</h1>
-        {identity.office ? <p className="mt-2 font-serif text-2xl font-semibold leading-tight text-[#061a47] md:text-3xl">{identity.office}</p> : null}
+    <DetailPageHeader className="pb-1" media={<div className="relative h-[200px] w-[160px] overflow-hidden rounded-md border border-slate-300 bg-[#e9eef5] lg:h-[250px] lg:w-[210px]"><ImageWithFallback src={profilePhotoUrl} alt={identity.name} className="h-full w-full object-cover"><span className="grid h-full place-items-center font-serif text-4xl font-bold text-[#4b608a]">{initials(identity.name)}</span></ImageWithFallback>{currentLogoUrl ? <img src={currentLogoUrl} alt="" className="absolute bottom-2 right-2 h-11 w-11 border border-slate-300 bg-white object-contain p-1"/> : null}</div>} title={identity.name} subtitle={identity.office ? <strong className="block text-xl leading-tight text-[#061a47] lg:text-2xl">{identity.office}</strong> : undefined}>
         <div className="mt-5 flex flex-wrap items-stretch gap-y-3 text-sm text-[#4b608a]">
           <IdentityFact label={locale === "ro" ? "Partid" : "Party"}>{party ? <Link href={`/${locale}/parties/${party.slug}`} className="flex items-center gap-2 font-semibold text-[#061a47]"><i className="h-4 w-4 rounded-full" style={{ background: party.color ?? group?.color ?? "#8996a9" }}/>{shortParty}</Link> : <span className="flex items-center gap-2 font-semibold text-[#061a47]"><i className="h-4 w-4 rounded-full bg-slate-400"/>{shortParty}</span>}</IdentityFact>
           {mandate ? <IdentityFact label={locale === "ro" ? "Cameră" : "Chamber"}><span className="flex items-center gap-2 font-semibold text-[#061a47]"><Building2 size={20}/>{chamberLabels[locale][mandate.chamber]}</span></IdentityFact> : null}
@@ -51,8 +48,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
           <IdentityFact label={locale === "ro" ? "Statut" : "Status"}><span className={`flex items-center gap-2 font-semibold ${isActive ? "text-emerald-700" : "text-[#4b608a]"}`}><i className={`h-4 w-4 rounded-full ${isActive ? "bg-emerald-600" : "bg-slate-400"}`}/>{statusLabel}</span></IdentityFact>
         </div>
         <p className="mt-5 max-w-4xl font-serif text-lg leading-7 text-[#4b608a]">{locale === "ro" ? `Activitate verificată în legislatura ${selectedLegislature?.label ?? "curentă"}, pe baza voturilor și inițiativelor conectate la sursele oficiale.` : `Verified activity in the ${selectedLegislature?.label ?? "current"} legislature, based on votes and bills linked to official sources.`}</p>
-      </div>
-    </header>
+    </DetailPageHeader>
 
     <MemberCareerTimeline career={career} locale={locale}/>
 

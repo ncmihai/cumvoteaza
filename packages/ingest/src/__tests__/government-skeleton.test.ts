@@ -17,8 +17,9 @@ describe("government skeleton", () => {
     expect(data.governments[0]?.endsOn).toBeUndefined();
     expect(data.governments[0]?.basis).toBe("official_investiture");
     expect(data.governments[0]?.sourceSnapshotId).toBe("source-government-programme-bolojan-2025-2028");
-    expect(data.sourceSnapshots).toHaveLength(1);
-    expect(data.governments.slice(1).every((item) => item.basis === "manual_curation")).toBe(true);
+    expect(data.sourceSnapshots).toHaveLength(3);
+    expect(data.governments.find((item) => item.id === "government-ciolacu-ii-2024-2025")?.basis).toBe("official_investiture");
+    expect(data.governments.filter((item) => !["government-bolojan-2025-present", "government-ciolacu-ii-2024-2025"].includes(item.id)).every((item) => item.basis === "manual_curation")).toBe(true);
   });
 
   it("seeds dated party alignments for known coalitions and support", () => {

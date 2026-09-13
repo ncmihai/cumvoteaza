@@ -44,6 +44,8 @@ interface SeatSlot {
 }
 
 export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = {}, members, seatVotes, nominalVotes, groupTotals }: VoteExplorerProps) {
+  const [activeView, setActiveView] = useState<"map" | "list">("map");
+  const [page, setPage] = useState(1);
   const [failedLogos, setFailedLogos] = useState<string[]>([]);
   const [activeGroups, setActiveGroups] = useState<string[]>([]);
   const [activeChoices, setActiveChoices] = useState<VoteChoice[]>([]);
@@ -84,9 +86,17 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
     [activeChoices, activeGroups, nominalVotes]
   );
   const labels = explorerLabels[locale];
+  const pageSize = 30;
+  const pageCount = Math.max(1, Math.ceil(filteredNominalVotes.length / pageSize));
+  const visibleNominalVotes = filteredNominalVotes.slice((Math.min(page, pageCount) - 1) * pageSize, Math.min(page, pageCount) * pageSize);
 
   return (
     <div className="space-y-6">
+    <div className="flex border-b border-slate-300" role="tablist" aria-label={locale === "ro" ? "Mod de afișare" : "Display mode"}>
+      <button type="button" role="tab" aria-selected={activeView === "map"} onClick={() => setActiveView("map")} className={viewTabClass(activeView === "map")}>{locale === "ro" ? "Hartă vizuală" : "Visual map"}</button>
+      <button type="button" role="tab" aria-selected={activeView === "list"} onClick={() => setActiveView("list")} className={viewTabClass(activeView === "list")}>{locale === "ro" ? "Listă" : "List"}</button>
+    </div>
+    {activeView === "map" ? <>
     <section className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
       <div className="min-w-0 border border-slate-300 bg-white p-4">
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -238,6 +248,8 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
         </div>
       </div>
     </section>
+    </> : null}
+    {activeView === "list" ?
     <section className="max-w-[calc(100vw-2rem)] resize-y overflow-auto border border-slate-300 bg-white" style={{ minHeight: 280, maxHeight: 560 }}>
       <div className="sticky top-0 z-10 border-b border-slate-300 bg-white px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -257,7 +269,7 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200">
-          {filteredNominalVotes.map((individualVote) => {
+          {visibleNominalVotes.map((individualVote) => {
             const member = memberById.get(individualVote.memberId);
             const group = individualVote.groupId ? groupById.get(individualVote.groupId) : undefined;
             return (
@@ -279,9 +291,15 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
           })}
         </tbody>
       </table>
+      {pageCount > 1 ? <nav className="sticky bottom-0 flex items-center justify-between border-t border-slate-300 bg-white px-4 py-3 text-sm" aria-label={locale === "ro" ? "Paginarea listei nominale" : "Nominal list pagination"}><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="border border-slate-300 px-3 py-1.5 font-semibold disabled:opacity-40">{locale === "ro" ? "Înapoi" : "Previous"}</button><span>{Math.min(page, pageCount)} / {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))} className="border border-slate-300 px-3 py-1.5 font-semibold disabled:opacity-40">{locale === "ro" ? "Următorii" : "Next"}</button></nav> : null}
     </section>
+    : null}
     </div>
   );
+}
+
+function viewTabClass(active: boolean): string {
+  return `border border-b-0 px-4 py-2 text-sm font-semibold ${active ? "border-[#061a47] bg-[#061a47] text-white" : "border-slate-300 bg-white text-[#4b608a]"}`;
 }
 
 function orderVotesByGroup(input: {

@@ -47,6 +47,7 @@
     "sync:daily": "tsx src/cli.ts sync:daily",
     "import:pending": "tsx src/cli.ts import:pending",
     "audit:current-legislature": "tsx src/cli.ts audit:current-legislature",
+    "audit:government-history": "tsx src/cli.ts audit:government-history",
     "audit:dossier-reconciliation": "tsx src/cli.ts audit:dossier-reconciliation",
     "audit:vote-classification": "tsx src/cli.ts audit:vote-classification",
     "votes:classify": "tsx src/cli.ts votes:classify",

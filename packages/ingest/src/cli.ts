@@ -12,6 +12,7 @@ import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { cleanupSupersededCdepHistoryRows } from "./cdep-history-cleanup";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
 import { auditCurrentLegislature } from "./current-legislature-audit";
+import { auditGovernmentHistory, governmentHistoryAuditMarkdown } from "./government-history-audit";
 import { auditDossierReconciliation } from "./dossier-reconciliation-audit";
 import { auditVoteClassifications } from "./vote-classification-audit";
 import { backfillVoteClassifications } from "./vote-classification-backfill";
@@ -559,6 +560,16 @@ async function main() {
     });
     await writeImport("audit-current-legislature", result, JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (command === "audit:government-history") {
+    const result = await auditGovernmentHistory();
+    const markdown = governmentHistoryAuditMarkdown(result);
+    await writeGovernmentHistoryAudit(result, markdown);
+    console.log(JSON.stringify(result.summary, null, 2));
+    console.log("Read-only audit. This command never modifies government data.");
+    if (!result.summary.verified) process.exitCode = 1;
     return;
   }
 
@@ -1457,6 +1468,15 @@ async function writeJsonReport(name: string, payload: unknown): Promise<boolean>
   await writeFile(path.join(importDir, `${now}-${name}.json`), JSON.stringify(payload, null, 2));
   console.log(`Wrote ${name} report at ${now}`);
   return true;
+}
+
+async function writeGovernmentHistoryAudit(payload: unknown, markdown: string) {
+  if (hasFlag("no-files") || process.env.VERCEL === "1") return;
+  const reportsDir = path.join(repoRoot, "data/government-history/reports");
+  await mkdir(reportsDir, { recursive: true });
+  await writeFile(path.join(reportsDir, "2024-2028-latest.json"), `${JSON.stringify(payload, null, 2)}\n`);
+  await writeFile(path.join(reportsDir, "2024-2028-latest.md"), markdown);
+  console.log(`Wrote government history audit to ${reportsDir}`);
 }
 
 async function writeCdepHistoryWarningFiles(result: Awaited<ReturnType<typeof importCdepHistoryProfiles>>) {
