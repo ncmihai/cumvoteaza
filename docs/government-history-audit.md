@@ -14,6 +14,13 @@ The command writes JSON and Markdown reports to `data/government-history/reports
 
 Evidence is attached to individual claims, not entire pages. Official investiture, appointment, termination and coalition records can support `official_*` database classifications. Wikipedia is retained as visible secondary context and as a discovery aid, but it cannot promote, close or overwrite an official record.
 
+No-confidence and interim periods must remain distinct. When Parliament adopts
+a no-confidence motion, the cabinet becomes dismissed and continues only with
+the constitutionally limited caretaker mandate until the next cabinet is
+invested. This is a status transition on the existing cabinet, not by itself a
+new interim government. A separate interim-prime-minister record requires an
+official designation decree naming another person and its effective date.
+
 The audit currently rejects or reports:
 
 - duplicate governments, invalid intervals, timeline gaps and overlaps;

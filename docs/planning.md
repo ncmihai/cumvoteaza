@@ -90,3 +90,45 @@ The product has two core surfaces:
   - official coalition/investiture alignment
   - computed governing-support view derived from imported nominal votes
   - month-level composition pages under a future `Compoziții` navigation item
+  - model a successful no-confidence motion as a dated transition into a
+    dismissed/caretaker interval for the same cabinet; create a separate
+    interim-prime-minister interval only when an official presidential decree
+    designates another person
+  - verify and expose the complete minister roster for every cabinet, including
+    appointments, departures, reshuffles, interim portfolios, and source-backed
+    effective dates
+  - reconcile every minister with the canonical `people` identity and any
+    parliamentary mandates held before, during, or after that cabinet
+  - add cabinet detail/history pages with filters for portfolio, party,
+    parliamentary status, and date, plus links between minister and MP profiles
+
+### Cabinet-history acceptance case: Defence, Bolojan cabinet
+
+The portfolio view must be able to reproduce this official sequence without
+overwriting the investiture roster:
+
+1. Liviu-Ionuț Moșteanu — vice-prime minister and Minister of National Defence
+   from the cabinet's investiture until his resignation took effect on
+   2025-11-28.
+2. Radu-Dinel Miruță — interim vice-prime minister and Minister of National
+   Defence from 2025-11-28 through 2025-12-22, under Decree 1111/2025.
+3. Radu-Dinel Miruță — fully appointed vice-prime minister and Minister of
+   National Defence from 2025-12-23, under Decree 1166/2025.
+
+The current composition must resolve the role active on the selected date. The
+cabinet detail must also expose the complete succession, the appointment type,
+the evidence for each transition, and links to parliamentary profiles when the
+officeholder has a reconciled member identity.
+
+### Cabinet page default
+
+The primary public cabinet surface answers “Who governs right now?” It resolves
+the cabinet status and one active holder for every portfolio at the page's
+explicit `as of` date. Interim appointments receive a visible `Interimar`
+badge, and one person may appear under several portfolios at the same time.
+
+The investiture roster remains available as a secondary historical snapshot.
+It must never replace the current resolved roster merely because its source is
+easier to ingest. When current evidence is incomplete, the UI shows the last
+verified date and identifies the unresolved portfolio instead of silently
+falling back to the investiture holder.

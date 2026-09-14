@@ -364,12 +364,36 @@ export const governments = pgTable("governments", {
   legislatureIdx: index("governments_legislature_idx").on(table.legislatureId)
 }));
 
+export const ministries = pgTable("ministries", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  shortName: text("short_name").notNull(),
+  descriptionRo: text("description_ro").notNull(),
+  descriptionEn: text("description_en").notNull(),
+  active: integer("active").notNull().default(1)
+}, (table) => ({
+  slugIdx: uniqueIndex("ministries_slug_idx").on(table.slug)
+}));
+
+export const ministryAliases = pgTable("ministry_aliases", {
+  id: text("id").primaryKey(),
+  ministryId: text("ministry_id").notNull().references(() => ministries.id),
+  name: text("name").notNull(),
+  startsOn: date("starts_on"),
+  endsOn: date("ends_on")
+}, (table) => ({
+  ministryIdx: index("ministry_aliases_ministry_idx").on(table.ministryId),
+  nameIdx: index("ministry_aliases_name_idx").on(table.name)
+}));
+
 export const governmentRoles = pgTable("government_roles", {
   id: text("id").primaryKey(),
   governmentId: text("government_id").notNull().references(() => governments.id),
   personId: text("person_id").notNull().references(() => people.id),
   title: text("title").notNull(),
   ministry: text("ministry"),
+  ministryId: text("ministry_id").references(() => ministries.id),
   startsOn: date("starts_on").notNull(),
   endsOn: date("ends_on"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)

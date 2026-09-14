@@ -9,6 +9,9 @@ describe("government skeleton", () => {
     expect(new Set(data.roles.map((item) => item.id)).size).toBe(data.roles.length);
     expect(new Set(data.events.map((item) => item.id)).size).toBe(data.events.length);
     expect(new Set(data.partyAlignments.map((item) => item.id)).size).toBe(data.partyAlignments.length);
+    expect(data.ministries).toHaveLength(16);
+    expect(new Set(data.ministries.map((item) => item.slug)).size).toBe(data.ministries.length);
+    expect(data.ministryAliases).toHaveLength(data.ministries.length);
   });
 
   it("keeps the verified current government first", () => {
@@ -17,22 +20,53 @@ describe("government skeleton", () => {
     expect(data.governments[0]?.endsOn).toBeUndefined();
     expect(data.governments[0]?.basis).toBe("official_investiture");
     expect(data.governments[0]?.sourceSnapshotId).toBe("source-government-programme-bolojan-2025-2028");
-    expect(data.sourceSnapshots).toHaveLength(4);
+    expect(data.sourceSnapshots.length).toBeGreaterThanOrEqual(12);
     expect(data.governments.find((item) => item.id === "government-ciolacu-ii-2024-2025")?.basis).toBe("official_investiture");
     expect(data.governments.filter((item) => !["government-bolojan-2025-present", "government-ciolacu-ii-2024-2025"].includes(item.id)).every((item) => item.basis === "manual_curation")).toBe(true);
   });
 
   it("seeds the complete officially invested Bolojan cabinet as a dated snapshot", () => {
     const data = governmentSkeletonData();
-    const cabinet = data.roles.filter((item) => item.governmentId === "government-bolojan-2025-present");
+    const roles = data.roles.filter((item) => item.governmentId === "government-bolojan-2025-present");
+    const cabinet = roles.filter((item) => item.startsOn === "2025-06-23");
     expect(cabinet).toHaveLength(20);
-    expect(cabinet.every((item) => item.startsOn === "2025-06-23")).toBe(true);
     expect(cabinet.filter((item) => item.title !== "Prim-ministru").every((item) => item.sourceSnapshotId === "source-parliament-decision-25-bolojan-cabinet-2025")).toBe(true);
-    expect(cabinet).toEqual(expect.arrayContaining([
+    expect(roles).toEqual(expect.arrayContaining([
       expect.objectContaining({ personId: "person-alexandru-nazare", ministry: "Ministerul Finanțelor" }),
       expect.objectContaining({ personId: "person-diana-anda-buzoianu", ministry: "Ministerul Mediului, Apelor și Pădurilor" }),
       expect.objectContaining({ personId: "person-petre-florin-manole", ministry: "Ministerul Muncii, Familiei, Tineretului și Solidarității Sociale" })
     ]));
+  });
+
+  it("resolves one current holder per ministry and preserves role transitions", () => {
+    const roles = governmentSkeletonData().roles.filter((item) => item.governmentId === "government-bolojan-2025-present");
+    const current = roles.filter((item) => item.startsOn <= "2026-09-14" && (!item.endsOn || item.endsOn >= "2026-09-14"));
+    const ministries = current.flatMap((item) => item.ministry && item.ministry !== "Guvernul României" ? [item.ministry] : []);
+    expect(new Set(ministries).size).toBe(ministries.length);
+    expect(current.filter((item) => item.ministry && item.ministry !== "Guvernul României").every((item) => item.ministryId)).toBe(true);
+    expect(current).toEqual(expect.arrayContaining([
+      expect.objectContaining({ personId: "person-radu-dinel-miruta", ministry: "Ministerul Apărării Naționale", title: "Viceprim-ministru, ministrul apărării naționale" }),
+      expect.objectContaining({ personId: "person-radu-dinel-miruta", ministry: "Ministerul Transporturilor și Infrastructurii", title: expect.stringContaining("interimar") }),
+      expect.objectContaining({ personId: "person-ilie-bolojan", ministry: "Ministerul Energiei", title: expect.stringContaining("interimar") }),
+      expect.objectContaining({ personId: "person-mihai-dimian", ministry: "Ministerul Educației și Cercetării" })
+    ]));
+    const defence = roles.filter((item) => item.ministry === "Ministerul Apărării Naționale").sort((a, b) => a.startsOn.localeCompare(b.startsOn));
+    expect(defence.map((item) => [item.startsOn, item.endsOn, item.title])).toEqual([
+      ["2025-06-23", "2025-11-27", "Viceprim-ministru, ministrul apărării naționale"],
+      ["2025-11-28", "2025-12-22", "Ministrul apărării naționale, interimar"],
+      ["2025-12-23", undefined, "Viceprim-ministru, ministrul apărării naționale"]
+    ]);
+  });
+
+  it("marks the Bolojan government caretaker period without ending the cabinet", () => {
+    const data = governmentSkeletonData();
+    expect(data.events).toContainEqual(expect.objectContaining({
+      id: "composition-event-bolojan-2025-present-no-confidence-2026",
+      eventType: "no_confidence_motion",
+      occurredOn: "2026-05-05",
+      sourceSnapshotId: "source-bolojan-no-confidence-2026"
+    }));
+    expect(data.governments[0]?.endsOn).toBeUndefined();
   });
 
   it("seeds dated party alignments for known coalitions and support", () => {

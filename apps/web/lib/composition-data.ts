@@ -54,7 +54,9 @@ export interface CompositionTimelineStop {
   primeMinister?: Person;
   primeMinisterRole?: GovernmentRole;
   primeMinisters: Array<{ person: Person; days: number }>;
-  cabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName"> }>;
+  cabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName">; evidenceUrl?: string }>;
+  investitureCabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName">; evidenceUrl?: string }>;
+  caretakerSince?: string;
   cabinetEvidenceUrl?: string;
   events: CompositionEvent[];
   sourceStatus: "manual" | "verified";
@@ -97,7 +99,7 @@ const getCachedCurrentCompositionData = unstable_cache(
 
 const getCachedCompositionTimelineData = unstable_cache(
   async (mode: CompositionMode) => timed(`composition.timeline.${mode}`, () => getCompositionTimelineDataUncached(mode)),
-  ["composition-timeline-data-v3"],
+  ["composition-timeline-data-v5"],
   { revalidate: 3600, tags: [CACHE_TAGS.composition, CACHE_TAGS.members, CACHE_TAGS.parties] }
 );
 
@@ -231,10 +233,22 @@ async function tryDatabaseCompositionTimeline(
               .filter((role) => role.governmentId === activeGovernment.id && role.startsOn <= compositionDate && (!role.endsOn || role.endsOn >= compositionDate))
               .flatMap((role) => {
                 const person = peopleById.get(role.personId);
-                return person ? [{ role, person, member: memberByPersonId.get(role.personId) }] : [];
+                return person ? [{ role, person, member: memberByPersonId.get(role.personId), evidenceUrl: role.sourceSnapshotId ? sourceUrlById.get(role.sourceSnapshotId) : undefined }] : [];
               })
               .sort((a, b) => cabinetRoleRank(a.role) - cabinetRoleRank(b.role) || a.person.displayName.localeCompare(b.person.displayName, "ro"))
           : [];
+        const investitureCabinet = activeGovernment
+          ? roles
+              .filter((role) => role.governmentId === activeGovernment.id && role.startsOn <= activeGovernment.startsOn && (!role.endsOn || role.endsOn >= activeGovernment.startsOn))
+              .flatMap((role) => {
+                const person = peopleById.get(role.personId);
+                return person ? [{ role, person, member: memberByPersonId.get(role.personId), evidenceUrl: role.sourceSnapshotId ? sourceUrlById.get(role.sourceSnapshotId) : undefined }] : [];
+              })
+              .sort((a, b) => cabinetRoleRank(a.role) - cabinetRoleRank(b.role) || a.person.displayName.localeCompare(b.person.displayName, "ro"))
+          : [];
+        const caretakerSince = activeGovernment
+          ? legislatureEvents.find((event) => event.governmentId === activeGovernment.id && event.eventType === "no_confidence_motion" && event.occurredOn <= compositionDate)?.occurredOn
+          : undefined;
         const cabinetEvidenceUrl = cabinet
           .filter((item) => item.role.sourceSnapshotId !== activeGovernment?.sourceSnapshotId)
           .map((item) => (item.role.sourceSnapshotId ? sourceUrlById.get(item.role.sourceSnapshotId) : undefined))
@@ -256,6 +270,8 @@ async function tryDatabaseCompositionTimeline(
             primeMinisterRole,
             primeMinisters,
             cabinet,
+            investitureCabinet,
+            caretakerSince,
             cabinetEvidenceUrl,
             events: legislatureEvents,
             sourceStatus: legislatureGovernments.some((government) => government.sourceSnapshotId) || legislatureEvents.some((event) => event.sourceSnapshotId) ? "verified" : "manual",
@@ -712,6 +728,7 @@ function mapGovernmentRole(row: typeof schema.governmentRoles.$inferSelect): Gov
     personId: row.personId,
     title: row.title,
     ministry: row.ministry ?? undefined,
+    ministryId: row.ministryId ?? undefined,
     startsOn: row.startsOn,
     endsOn: row.endsOn ?? undefined,
     sourceSnapshotId: row.sourceSnapshotId ?? undefined

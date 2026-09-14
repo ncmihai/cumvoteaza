@@ -588,6 +588,8 @@ export async function backfillPeopleFromMembers() {
 
 export async function persistGovernmentSkeleton(input: {
   sourceSnapshots?: SourceSnapshot[];
+  ministries?: import("@cumsevoteaza/parliament-model").Ministry[];
+  ministryAliases?: import("@cumsevoteaza/parliament-model").MinistryAlias[];
   people: Person[];
   governments: Government[];
   roles: GovernmentRole[];
@@ -595,6 +597,7 @@ export async function persistGovernmentSkeleton(input: {
   partyAlignments?: GovernmentPartyAlignment[];
   obsoleteGovernmentIds?: string[];
   obsoleteEventIds?: string[];
+  obsoleteRoleIds?: string[];
 }) {
   const session = createDbSession();
   try {
@@ -602,7 +605,12 @@ export async function persistGovernmentSkeleton(input: {
     if (input.obsoleteEventIds?.length) {
       await session.db.delete(schema.compositionEvents).where(inArray(schema.compositionEvents.id, input.obsoleteEventIds));
     }
+    if (input.obsoleteRoleIds?.length) {
+      await session.db.delete(schema.governmentRoles).where(inArray(schema.governmentRoles.id, input.obsoleteRoleIds));
+    }
     await upsertSourceSnapshots(session.db, input.sourceSnapshots ?? []);
+    await Promise.all((input.ministries ?? []).map((ministry) => upsertMinistry(session.db, ministry)));
+    await Promise.all((input.ministryAliases ?? []).map((alias) => upsertMinistryAlias(session.db, alias)));
     await Promise.all(input.people.map((person) => upsertPerson(session.db, person)));
     await Promise.all(input.governments.map((government) => upsertGovernment(session.db, government)));
     await Promise.all(input.roles.map((role) => upsertGovernmentRole(session.db, role)));
@@ -611,6 +619,8 @@ export async function persistGovernmentSkeleton(input: {
     await Promise.all(partyAlignments.map((alignment) => upsertGovernmentPartyAlignment(session.db, alignment)));
     return {
       sourceSnapshots: input.sourceSnapshots?.length ?? 0,
+      ministries: input.ministries?.length ?? 0,
+      ministryAliases: input.ministryAliases?.length ?? 0,
       people: input.people.length,
       governments: input.governments.length,
       roles: input.roles.length,
@@ -618,7 +628,8 @@ export async function persistGovernmentSkeleton(input: {
       partyAlignments: partyAlignments.length,
       skippedPartyAlignments: (input.partyAlignments ?? []).length - partyAlignments.length,
       obsoleteGovernmentsDeleted: input.obsoleteGovernmentIds?.length ?? 0,
-      obsoleteEventsDeleted: input.obsoleteEventIds?.length ?? 0
+      obsoleteEventsDeleted: input.obsoleteEventIds?.length ?? 0,
+      obsoleteRolesDeleted: input.obsoleteRoleIds?.length ?? 0
     };
   } finally {
     await session.close();
@@ -688,6 +699,7 @@ async function upsertGovernmentRole(db: Db, role: GovernmentRole) {
       personId: role.personId,
       title: role.title,
       ministry: role.ministry,
+      ministryId: role.ministryId,
       startsOn: role.startsOn,
       endsOn: role.endsOn ?? null,
       sourceSnapshotId: role.sourceSnapshotId
@@ -699,11 +711,31 @@ async function upsertGovernmentRole(db: Db, role: GovernmentRole) {
         personId: role.personId,
         title: role.title,
         ministry: role.ministry,
+        ministryId: role.ministryId,
         startsOn: role.startsOn,
         endsOn: role.endsOn ?? null,
         sourceSnapshotId: role.sourceSnapshotId
       }
     });
+}
+
+async function upsertMinistry(db: Db, ministry: import("@cumsevoteaza/parliament-model").Ministry) {
+  await db.insert(schema.ministries).values({
+    id: ministry.id, slug: ministry.slug, name: ministry.name, shortName: ministry.shortName,
+    descriptionRo: ministry.descriptionRo, descriptionEn: ministry.descriptionEn, active: ministry.active ? 1 : 0
+  }).onConflictDoUpdate({ target: schema.ministries.id, set: {
+    slug: ministry.slug, name: ministry.name, shortName: ministry.shortName,
+    descriptionRo: ministry.descriptionRo, descriptionEn: ministry.descriptionEn, active: ministry.active ? 1 : 0
+  }});
+}
+
+async function upsertMinistryAlias(db: Db, alias: import("@cumsevoteaza/parliament-model").MinistryAlias) {
+  await db.insert(schema.ministryAliases).values({
+    id: alias.id, ministryId: alias.ministryId, name: alias.name,
+    startsOn: alias.startsOn, endsOn: alias.endsOn
+  }).onConflictDoUpdate({ target: schema.ministryAliases.id, set: {
+    ministryId: alias.ministryId, name: alias.name, startsOn: alias.startsOn ?? null, endsOn: alias.endsOn ?? null
+  }});
 }
 
 async function upsertCompositionEvent(db: Db, event: CompositionEvent) {

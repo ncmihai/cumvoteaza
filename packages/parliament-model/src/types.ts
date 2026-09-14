@@ -211,9 +211,28 @@ export interface GovernmentRole {
   personId: string;
   title: string;
   ministry?: string;
+  ministryId?: string;
   startsOn: string;
   endsOn?: string;
   sourceSnapshotId?: string;
+}
+
+export interface Ministry {
+  id: string;
+  slug: string;
+  name: string;
+  shortName: string;
+  descriptionRo: string;
+  descriptionEn: string;
+  active: boolean;
+}
+
+export interface MinistryAlias {
+  id: string;
+  ministryId: string;
+  name: string;
+  startsOn?: string;
+  endsOn?: string;
 }
 
 export interface GovernmentPartyAlignment {
