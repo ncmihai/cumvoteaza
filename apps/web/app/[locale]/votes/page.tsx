@@ -53,7 +53,9 @@ const pageLabels = {
     month: "Lună",
     chamber: "Cameră",
     sourceStatus: "Sursă",
-    group: "Grup"
+    group: "Grup",
+    empty: "Nu am găsit voturi pentru filtrele selectate. Resetează filtrele sau încearcă o căutare mai largă.",
+    error: "Nu am putut încărca următoarele voturi. Încearcă din nou."
   },
   en: {
     title: "Votes",
@@ -73,6 +75,8 @@ const pageLabels = {
     month: "Month",
     chamber: "Chamber",
     sourceStatus: "Source",
-    group: "Group"
+    group: "Group",
+    empty: "No votes match the selected filters. Reset the filters or try a broader search.",
+    error: "The next votes could not be loaded. Try again."
   }
 } satisfies Record<AppLocale, DirectoryLabels>;

@@ -53,7 +53,9 @@ const pageLabels = {
     month: "Lună",
     chamber: "Cameră",
     sourceStatus: "Sursă",
-    group: "Grup sponsor"
+    group: "Grup sponsor",
+    empty: "Nu am găsit proiecte pentru filtrele selectate. Resetează filtrele sau încearcă o căutare mai largă.",
+    error: "Nu am putut încărca următoarele proiecte. Încearcă din nou."
   },
   en: {
     title: "Projects",
@@ -73,6 +75,8 @@ const pageLabels = {
     month: "Month",
     chamber: "Chamber",
     sourceStatus: "Source",
-    group: "Sponsor group"
+    group: "Sponsor group",
+    empty: "No projects match the selected filters. Reset the filters or try a broader search.",
+    error: "The next projects could not be loaded. Try again."
   }
 } satisfies Record<AppLocale, DirectoryLabels>;

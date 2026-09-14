@@ -31,6 +31,7 @@ export function VoteDirectoryExplorer({
   const [isPending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState(initialData.items[0]?.vote.id);
   const [navigatingId, setNavigatingId] = useState<string>();
+  const [loadError, setLoadError] = useState(false);
   const router = useRouter();
   const selected = items.find((item) => item.vote.id === selectedId) ?? items[0];
 
@@ -66,19 +67,27 @@ export function VoteDirectoryExplorer({
   async function loadMore() {
     if (!hasMore || !nextCursor || isPending) return;
     startTransition(async () => {
-      const response = await fetch(`/api/directory/votes?${queryString(initialFilters, nextCursor)}`);
-      const data = await response.json() as ExplorerPageData<VoteExplorerItem>;
-      setItems((current) => [...current, ...data.items]);
-      setNextCursor(data.nextCursor);
-      setHasMore(data.hasMore);
+      setLoadError(false);
+      try {
+        const response = await fetch(`/api/directory/votes?${queryString(initialFilters, nextCursor)}`);
+        if (!response.ok) throw new Error(`Vote directory request failed: ${response.status}`);
+        const data = await response.json() as ExplorerPageData<VoteExplorerItem>;
+        setItems((current) => [...current, ...data.items]);
+        setNextCursor(data.nextCursor);
+        setHasMore(data.hasMore);
+      } catch {
+        setLoadError(true);
+      }
     });
   }
 
   return (
     <>
       <DirectoryFilters locale={locale} kind="votes" filters={initialFilters} filterOptions={filterOptions} labels={labels} />
+      {loadError ? <DirectoryMessage tone="error" message={labels.error} /> : null}
       <section className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="divide-y divide-slate-200 border border-slate-300 bg-white">
+          {items.length === 0 ? <DirectoryMessage message={labels.empty} /> : null}
           {items.map(({ vote, bill, source, hotCount }) => {
             const presentation = presentVote(vote, { locale, bill, source });
             return (
@@ -131,6 +140,7 @@ export function BillDirectoryExplorer({
   const [nextCursor, setNextCursor] = useState(initialData.nextCursor);
   const [hasMore, setHasMore] = useState(initialData.hasMore);
   const [isPending, startTransition] = useTransition();
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     setItems(initialData.items);
@@ -141,19 +151,27 @@ export function BillDirectoryExplorer({
   async function loadMore() {
     if (!hasMore || !nextCursor || isPending) return;
     startTransition(async () => {
-      const response = await fetch(`/api/directory/bills?${queryString(initialFilters, nextCursor)}`);
-      const data = await response.json() as ExplorerPageData<BillExplorerItem>;
-      setItems((current) => [...current, ...data.items]);
-      setNextCursor(data.nextCursor);
-      setHasMore(data.hasMore);
+      setLoadError(false);
+      try {
+        const response = await fetch(`/api/directory/bills?${queryString(initialFilters, nextCursor)}`);
+        if (!response.ok) throw new Error(`Bill directory request failed: ${response.status}`);
+        const data = await response.json() as ExplorerPageData<BillExplorerItem>;
+        setItems((current) => [...current, ...data.items]);
+        setNextCursor(data.nextCursor);
+        setHasMore(data.hasMore);
+      } catch {
+        setLoadError(true);
+      }
     });
   }
 
   return (
     <>
       <DirectoryFilters locale={locale} kind="bills" filters={initialFilters} filterOptions={filterOptions} labels={labels} />
+      {loadError ? <DirectoryMessage tone="error" message={labels.error} /> : null}
       <section className="mt-6 border border-slate-300 bg-white">
         <div className="divide-y divide-slate-200">
+          {items.length === 0 ? <DirectoryMessage message={labels.empty} /> : null}
           {items.map(({ bill, submittedOn, latestEventOn, voteCount, hotCount }) => {
             const presentation = presentBill(bill);
             return (
@@ -283,6 +301,10 @@ function DirectorySkeleton() {
   );
 }
 
+function DirectoryMessage({ message, tone = "empty" }: { message: string; tone?: "empty" | "error" }) {
+  return <div role={tone === "error" ? "alert" : "status"} className={`px-5 py-8 text-center text-sm ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "text-slate-600"}`}>{message}</div>;
+}
+
 function StatLine({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div>
@@ -336,4 +358,6 @@ export interface DirectoryLabels {
   chamber: string;
   sourceStatus: string;
   group: string;
+  empty: string;
+  error: string;
 }

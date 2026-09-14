@@ -1,6 +1,6 @@
 # CumVoteaza current state and roadmap
 
-Updated 13 September 2026. This is the authoritative project handoff. Detailed logs remain linked from [README.md](README.md), but this file decides what is current.
+Updated 14 September 2026. This is the authoritative project handoff. Detailed logs remain linked from [README.md](README.md), but this file decides what is current.
 
 ## Product today
 
@@ -38,6 +38,10 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 - Stored portraits and party logos with safe fallbacks.
 - Official sources and evidence links remain reachable.
 - Presentation cleanup prevents importer metadata from leaking into directory cards without modifying canonical records.
+- Shared detail pages have responsive headings and no document overflow across the supported 320–1920px matrix. Vote details keep one active nominal representation, party summaries expose complete choice totals, and bill initiators are grouped with progressive disclosure.
+- Public controls have localized accessible names. English pages explicitly identify unmodified Romanian parliamentary titles, while normalized member identities keep institutional offices out of names across directories, maps and timelines.
+- Vote and bill directories show deliberate empty and incremental-load error states. Data-health queues initially mount no more than 20 rows per category and mount review controls only after reviewer credentials are provided.
+- A bilingual production-build browser gate covers representative routes, keyboard dismissal, image fallbacks, application console/network failures, the application icon and data-health progressive loading.
 
 ### Imports and reliability
 
@@ -68,7 +72,7 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 
 ### 1. Maintain public-site quality
 
-The September redesign and completion audit are implemented. Continue production-sized regression checks across Romanian and English routes after data or layout changes, especially empty states, long official titles, broken source links, image fallbacks, keyboard navigation and small screens. Fix data presentation at reusable boundaries rather than with record-specific exceptions.
+The September redesign and Phase 1–4 completion audit are implemented. Keep the production-sized Romanian/English browser gates mandatory after data or layout changes. Expand fixtures when a new empty, partial or failure state is discovered; fix presentation at reusable boundaries rather than with record-specific exceptions.
 
 ### 2. Make routine refresh boring
 
@@ -95,8 +99,9 @@ The next release is ready when a saved local import workflow can refresh a selec
 As of this handoff:
 
 - TypeScript checks pass.
-- 16 web tests, 51 ingestion tests, 6 parliament-model tests and 8 Python pipeline tests pass.
+- 16 web unit tests, 77 ingestion tests, 6 parliament-model tests and 8 Python pipeline tests pass.
+- Eleven production-build browser checks cover responsive detail journeys and release hardening.
 - The Next.js production build passes.
-- Current member, historical member, member directory and vote-return journeys were rechecked in the in-app browser.
+- Representative Romanian and English routes, empty/error feedback, keyboard dismissal, image fallbacks, console/network behavior and data-health progressive loading are checked automatically.
 
 Re-run these checks after changes; do not treat this dated baseline as proof of a later build.

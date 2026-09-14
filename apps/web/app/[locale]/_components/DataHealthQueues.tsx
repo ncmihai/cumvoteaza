@@ -74,7 +74,7 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
       <details className="mt-6 border border-slate-300 bg-white p-4">
         <summary className="cursor-pointer font-serif text-lg font-semibold text-[#061a47]">{labels.reviewMode}</summary>
         <p className="mt-2 text-xs leading-5 text-slate-600">{labels.tokenHelp}</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_220px_180px]">
+        <form className="mt-3 grid gap-2 md:grid-cols-[1fr_220px_180px]" onSubmit={(event) => event.preventDefault()}>
           <label className="grid gap-1 text-xs font-semibold uppercase text-slate-500"><span>{labels.review.token}</span><input aria-label={labels.review.token} type="password" value={token} onChange={(event) => setToken(event.target.value)} className="border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" /></label>
           <label className="grid gap-1 text-xs font-semibold uppercase text-slate-500"><span>{labels.review.reviewer}</span><input aria-label={labels.review.reviewer} value={reviewer} onChange={(event) => setReviewer(event.target.value)} className="border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" /></label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -89,7 +89,7 @@ export function DataHealthQueues({ data, labels, locale }: { data: DataHealthDat
               ))}
             </select>
           </label>
-        </div>
+        </form>
       </details>
 
       <nav className="mt-6 flex flex-wrap gap-2 text-sm">
