@@ -54,6 +54,8 @@ export interface CompositionTimelineStop {
   primeMinister?: Person;
   primeMinisterRole?: GovernmentRole;
   primeMinisters: Array<{ person: Person; days: number }>;
+  cabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName"> }>;
+  cabinetEvidenceUrl?: string;
   events: CompositionEvent[];
   sourceStatus: "manual" | "verified";
   chambers: ChamberComposition[];
@@ -95,7 +97,7 @@ const getCachedCurrentCompositionData = unstable_cache(
 
 const getCachedCompositionTimelineData = unstable_cache(
   async (mode: CompositionMode) => timed(`composition.timeline.${mode}`, () => getCompositionTimelineDataUncached(mode)),
-  ["composition-timeline-data"],
+  ["composition-timeline-data-v3"],
   { revalidate: 3600, tags: [CACHE_TAGS.composition, CACHE_TAGS.members, CACHE_TAGS.parties] }
 );
 
@@ -147,7 +149,8 @@ async function tryDatabaseCompositionTimeline(
       partyRows,
       memberAlignmentRows,
       groupAlignmentRows,
-      partyAlignmentRows
+      partyAlignmentRows,
+      sourceSnapshotRows
     ] = await Promise.all([
       session.db.select().from(schema.governments),
       session.db.select().from(schema.people),
@@ -161,7 +164,8 @@ async function tryDatabaseCompositionTimeline(
       session.db.select().from(schema.parties),
       session.db.select().from(schema.memberGovernanceAlignments),
       session.db.select().from(schema.governmentGroupAlignments),
-      session.db.select().from(schema.governmentPartyAlignments)
+      session.db.select().from(schema.governmentPartyAlignments),
+      session.db.select().from(schema.sourceSnapshots)
     ]);
     const compositionRows = mapCompositionRows({
       memberRows,
@@ -176,6 +180,12 @@ async function tryDatabaseCompositionTimeline(
     });
     const people = peopleRows.map(mapPerson);
     const peopleById = new Map(people.map((person) => [person.id, person]));
+    const memberByPersonId = new Map(
+      memberRows
+        .filter((member) => member.personId)
+        .map((member) => [member.personId!, { id: member.id, slug: member.slug, displayName: member.displayName }])
+    );
+    const sourceUrlById = new Map(sourceSnapshotRows.map((source) => [source.id, source.sourceUrl]));
     const roles = roleRows.map(mapGovernmentRole);
     const governments = governmentRows.map(mapGovernment);
     const governmentsById = new Map(governments.map((government) => [government.id, government]));
@@ -216,6 +226,19 @@ async function tryDatabaseCompositionTimeline(
           peopleById,
           legislature
         });
+        const cabinet = activeGovernment
+          ? roles
+              .filter((role) => role.governmentId === activeGovernment.id && role.startsOn <= compositionDate && (!role.endsOn || role.endsOn >= compositionDate))
+              .flatMap((role) => {
+                const person = peopleById.get(role.personId);
+                return person ? [{ role, person, member: memberByPersonId.get(role.personId) }] : [];
+              })
+              .sort((a, b) => cabinetRoleRank(a.role) - cabinetRoleRank(b.role) || a.person.displayName.localeCompare(b.person.displayName, "ro"))
+          : [];
+        const cabinetEvidenceUrl = cabinet
+          .filter((item) => item.role.sourceSnapshotId !== activeGovernment?.sourceSnapshotId)
+          .map((item) => (item.role.sourceSnapshotId ? sourceUrlById.get(item.role.sourceSnapshotId) : undefined))
+          .find((url): url is string => Boolean(url));
         const stopComposition = buildComposition({
           mode,
           asOf: compositionDate,
@@ -232,6 +255,8 @@ async function tryDatabaseCompositionTimeline(
             primeMinister,
             primeMinisterRole,
             primeMinisters,
+            cabinet,
+            cabinetEvidenceUrl,
             events: legislatureEvents,
             sourceStatus: legislatureGovernments.some((government) => government.sourceSnapshotId) || legislatureEvents.some((event) => event.sourceSnapshotId) ? "verified" : "manual",
             chambers: hasCompositionSeats(stopComposition) ? stopComposition.chambers : []
@@ -458,6 +483,13 @@ function rankedPrimeMinistersForLegislature(input: {
       return person ? [{ person, days }] : [];
     })
     .sort((a, b) => b.days - a.days || a.person.displayName.localeCompare(b.person.displayName, "ro"));
+}
+
+function cabinetRoleRank(role: GovernmentRole): number {
+  const title = role.title.toLocaleLowerCase("ro");
+  if (title.includes("prim-ministru") && !title.includes("viceprim")) return 0;
+  if (title.includes("viceprim")) return 1;
+  return 2;
 }
 
 function daysBetweenInclusive(start: string, end: string): number {

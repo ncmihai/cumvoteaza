@@ -17,9 +17,22 @@ describe("government skeleton", () => {
     expect(data.governments[0]?.endsOn).toBeUndefined();
     expect(data.governments[0]?.basis).toBe("official_investiture");
     expect(data.governments[0]?.sourceSnapshotId).toBe("source-government-programme-bolojan-2025-2028");
-    expect(data.sourceSnapshots).toHaveLength(3);
+    expect(data.sourceSnapshots).toHaveLength(4);
     expect(data.governments.find((item) => item.id === "government-ciolacu-ii-2024-2025")?.basis).toBe("official_investiture");
     expect(data.governments.filter((item) => !["government-bolojan-2025-present", "government-ciolacu-ii-2024-2025"].includes(item.id)).every((item) => item.basis === "manual_curation")).toBe(true);
+  });
+
+  it("seeds the complete officially invested Bolojan cabinet as a dated snapshot", () => {
+    const data = governmentSkeletonData();
+    const cabinet = data.roles.filter((item) => item.governmentId === "government-bolojan-2025-present");
+    expect(cabinet).toHaveLength(20);
+    expect(cabinet.every((item) => item.startsOn === "2025-06-23")).toBe(true);
+    expect(cabinet.filter((item) => item.title !== "Prim-ministru").every((item) => item.sourceSnapshotId === "source-parliament-decision-25-bolojan-cabinet-2025")).toBe(true);
+    expect(cabinet).toEqual(expect.arrayContaining([
+      expect.objectContaining({ personId: "person-alexandru-nazare", ministry: "Ministerul Finanțelor" }),
+      expect.objectContaining({ personId: "person-diana-anda-buzoianu", ministry: "Ministerul Mediului, Apelor și Pădurilor" }),
+      expect.objectContaining({ personId: "person-petre-florin-manole", ministry: "Ministerul Muncii, Familiei, Tineretului și Solidarității Sociale" })
+    ]));
   });
 
   it("seeds dated party alignments for known coalitions and support", () => {

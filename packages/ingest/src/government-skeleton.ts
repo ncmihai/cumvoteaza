@@ -29,6 +29,35 @@ interface GovernmentSeed {
   }>;
 }
 
+interface CabinetRoleSeed {
+  person: string;
+  title: string;
+  ministry?: string;
+}
+
+/** Official investiture snapshot: Parliament Decision 25/2025, Annex 1. */
+const bolojanInvestitureCabinet: CabinetRoleSeed[] = [
+  { person: "Marian Neacșu", title: "Viceprim-ministru" },
+  { person: "Tánczos Barna", title: "Viceprim-ministru" },
+  { person: "Michael-Dragoș Anastasiu", title: "Viceprim-ministru" },
+  { person: "Marian-Cătălin Predoiu", title: "Viceprim-ministru, ministrul afacerilor interne", ministry: "Ministerul Afacerilor Interne" },
+  { person: "Liviu-Ionuț Moșteanu", title: "Viceprim-ministru, ministrul apărării naționale", ministry: "Ministerul Apărării Naționale" },
+  { person: "Ciprian-Constantin Șerban", title: "Ministrul transporturilor și infrastructurii", ministry: "Ministerul Transporturilor și Infrastructurii" },
+  { person: "Alexandru Nazare", title: "Ministrul finanțelor", ministry: "Ministerul Finanțelor" },
+  { person: "Radu Marinescu", title: "Ministrul justiției", ministry: "Ministerul Justiției" },
+  { person: "Florin-Ionuț Barbu", title: "Ministrul agriculturii și dezvoltării rurale", ministry: "Ministerul Agriculturii și Dezvoltării Rurale" },
+  { person: "Bogdan-Gruia Ivan", title: "Ministrul energiei", ministry: "Ministerul Energiei" },
+  { person: "Alexandru-Florin Rogobete", title: "Ministrul sănătății", ministry: "Ministerul Sănătății" },
+  { person: "Dragoș-Nicolae Pîslaru", title: "Ministrul investițiilor și proiectelor europene", ministry: "Ministerul Investițiilor și Proiectelor Europene" },
+  { person: "Daniel-Ovidiu David", title: "Ministrul educației și cercetării", ministry: "Ministerul Educației și Cercetării" },
+  { person: "Oana-Silvia Țoiu", title: "Ministrul afacerilor externe", ministry: "Ministerul Afacerilor Externe" },
+  { person: "Diana-Anda Buzoianu", title: "Ministrul mediului, apelor și pădurilor", ministry: "Ministerul Mediului, Apelor și Pădurilor" },
+  { person: "Petre-Florin Manole", title: "Ministrul muncii, familiei, tineretului și solidarității sociale", ministry: "Ministerul Muncii, Familiei, Tineretului și Solidarității Sociale" },
+  { person: "Radu-Dinel Miruță", title: "Ministrul economiei, digitalizării, antreprenoriatului și turismului", ministry: "Ministerul Economiei, Digitalizării, Antreprenoriatului și Turismului" },
+  { person: "Cseke Attila-Zoltán", title: "Ministrul dezvoltării, lucrărilor publice și administrației", ministry: "Ministerul Dezvoltării, Lucrărilor Publice și Administrației" },
+  { person: "Demeter András István", title: "Ministrul culturii", ministry: "Ministerul Culturii" }
+];
+
 const governments: GovernmentSeed[] = [
   {
     slug: "bolojan-2025-present",
@@ -197,6 +226,7 @@ export function governmentSkeletonData(): {
   obsoleteEventIds: string[];
 } {
   const currentGovernmentSourceId = "source-government-programme-bolojan-2025-2028";
+  const currentCabinetSourceId = "source-parliament-decision-25-bolojan-cabinet-2025";
   const sourceSnapshots: SourceSnapshot[] = [
     {
       id: currentGovernmentSourceId,
@@ -207,6 +237,16 @@ export function governmentSkeletonData(): {
       parserVersion: "2",
       status: "parsed",
       notes: "Official government programme naming the PSD-PNL-USR-UDMR-national minorities governing majority."
+    },
+    {
+      id: currentCabinetSourceId,
+      sourceUrl: "https://legislatie.just.ro/Public/DetaliiDocument/299203",
+      fetchedAt: "2026-09-14T00:00:00.000Z",
+      contentHash: "88408cf55615a40d509e2ef55a1d6da1604dcc2266831fdcebea871353a3d155",
+      parser: "government-cabinet-reviewed-manifest",
+      parserVersion: "1",
+      status: "parsed",
+      notes: "Official Parliament Decision 25/2025, Annex 1: invested Bolojan cabinet roster. This is a dated investiture snapshot; later role changes require appointment or termination evidence."
     },
     {
       id: "source-parliament-decision-33-ciolacu-ii-2024",
@@ -230,14 +270,14 @@ export function governmentSkeletonData(): {
     }
   ];
   const people = uniqueBy(
-    governments.map((item) => {
-      const slug = slugify(item.primeMinister);
+    [...governments.map((item) => item.primeMinister), ...bolojanInvestitureCabinet.map((item) => item.person)].map((displayName) => {
+      const slug = slugify(displayName);
       return {
         id: `person-${slug}`,
         slug,
-        displayName: item.primeMinister,
+        displayName,
         normalizedName: slug,
-        sourceIds: { governmentSkeleton: sourceUrl }
+        sourceIds: { governmentSkeleton: displayName === "Ilie Bolojan" ? sourceUrl : "https://legislatie.just.ro/Public/DetaliiDocument/299203" }
       };
     }),
     (person) => person.id
@@ -259,15 +299,24 @@ export function governmentSkeletonData(): {
         sourceSnapshotId: item.sourceSnapshotId
       };
     }),
-    roles: governments.map((item) => ({
+    roles: [...governments.map((item) => ({
       id: `government-role-pm-${item.slug}`,
       governmentId: `government-${item.slug}`,
       personId: `person-${slugify(item.primeMinister)}`,
       title: item.acting ? "Prim-ministru interimar" : "Prim-ministru",
       ministry: "Guvernul României",
       startsOn: item.startsOn,
-      endsOn: item.endsOn
-    })),
+      endsOn: item.endsOn,
+      sourceSnapshotId: item.sourceSnapshotId
+    })), ...bolojanInvestitureCabinet.map((role) => ({
+      id: `government-role-bolojan-2025-${slugify(role.person)}-${slugify(role.ministry ?? role.title)}`,
+      governmentId: "government-bolojan-2025-present",
+      personId: `person-${slugify(role.person)}`,
+      title: role.title,
+      ministry: role.ministry,
+      startsOn: "2025-06-23",
+      sourceSnapshotId: currentCabinetSourceId
+    }))],
     events: governments.flatMap((item) => {
       const governmentId = `government-${item.slug}`;
       const personId = `person-${slugify(item.primeMinister)}`;
