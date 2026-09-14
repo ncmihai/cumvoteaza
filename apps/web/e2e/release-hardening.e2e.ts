@@ -49,6 +49,28 @@ test("directory empty and incremental-load failures have explicit feedback", asy
   await expect(page.getByText("The next votes could not be loaded. Try again.")).toBeVisible();
 });
 
+test("phase-one labels, vote density and compact term facts remain intact", async ({ page }) => {
+  await page.setViewportSize({ width: 638, height: 863 });
+  await page.goto("/ro");
+  await expect(page.getByText("Popular în ultimele 30 de zile", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("Hot în ultimele 30 de zile", { exact: false })).toHaveCount(0);
+
+  await page.goto("/ro/votes");
+  const voteRows = page.getByTestId("vote-directory-list").locator(':scope > [role="button"]');
+  const initialVoteCount = await voteRows.count();
+  expect(initialVoteCount).toBeGreaterThan(0);
+  expect(initialVoteCount).toBeLessThanOrEqual(20);
+  const firstRowBox = await voteRows.first().boundingBox();
+  expect(firstRowBox?.height).toBeLessThan(300);
+
+  await page.goto("/ro/compozitii");
+  const facts = page.getByTestId("current-term-facts");
+  await expect(facts.locator(":scope > div")).toHaveCount(4);
+  const firstFact = await facts.locator(":scope > div").first().boundingBox();
+  const secondFact = await facts.locator(":scope > div").nth(1).boundingBox();
+  expect(Math.abs((firstFact?.y ?? 0) - (secondFact?.y ?? 1))).toBeLessThan(2);
+});
+
 test("keyboard dismissal and image fallbacks remain healthy", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/en/votes");

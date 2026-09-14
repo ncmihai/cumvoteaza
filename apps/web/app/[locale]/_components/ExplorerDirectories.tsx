@@ -86,27 +86,27 @@ export function VoteDirectoryExplorer({
       <DirectoryFilters locale={locale} kind="votes" filters={initialFilters} filterOptions={filterOptions} labels={labels} />
       {loadError ? <DirectoryMessage tone="error" message={labels.error} /> : null}
       <section className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="divide-y divide-slate-200 border border-slate-300 bg-white">
+        <div data-testid="vote-directory-list" className="divide-y divide-slate-200 border border-slate-300 bg-white">
           {items.length === 0 ? <DirectoryMessage message={labels.empty} /> : null}
           {items.map(({ vote, bill, source, hotCount }) => {
             const presentation = presentVote(vote, { locale, bill, source });
             return (
-            <div key={vote.id} role="button" tabIndex={0} aria-pressed={selected?.vote.id === vote.id} aria-busy={navigatingId === vote.id} onClick={() => selectVote(vote.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectVote(vote.id); } }} className={`group relative w-full cursor-pointer border-l-4 px-5 py-5 text-left transition ${selected?.vote.id === vote.id ? "border-[#f7b500] bg-[#fffdf6]" : "border-transparent hover:border-[#f7b500] hover:bg-[#fbfcfd]"} ${navigatingId === vote.id ? "pointer-events-none opacity-60" : ""}`}>
+            <div key={vote.id} role="button" tabIndex={0} aria-pressed={selected?.vote.id === vote.id} aria-busy={navigatingId === vote.id} onClick={() => selectVote(vote.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectVote(vote.id); } }} className={`group relative w-full cursor-pointer border-l-4 px-4 py-3.5 text-left transition ${selected?.vote.id === vote.id ? "border-[#f7b500] bg-[#fffdf6]" : "border-transparent hover:border-[#f7b500] hover:bg-[#fbfcfd]"} ${navigatingId === vote.id ? "pointer-events-none opacity-60" : ""}`}>
               {navigatingId === vote.id ? <span className="absolute right-4 top-4 inline-flex items-center gap-2 bg-white px-2 py-1 text-xs font-bold text-[#075fc6]"><LoaderCircle className="animate-spin" size={15}/>{locale === "ro" ? "Se deschide…" : "Opening…"}</span> : null}
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold uppercase text-blue-800">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-blue-800">
                   <BarChart3 size={16} aria-hidden="true" />
                   {formatDate(vote.heldOn, locale)} · {chamberLabels[locale][vote.chamber]}
                 </div>
                 {locale === "en" ? <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Official title in Romanian</div> : null}
-                <div className="mt-2 flex flex-wrap items-start justify-between gap-3"><h2 className="min-w-0 flex-1 font-serif text-2xl font-semibold leading-tight text-[#071a3a]">{presentation.heading}</h2><span className="shrink-0 border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">{vote.voteType}</span></div>
+                <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2"><h2 className="min-w-0 flex-1 font-serif text-xl font-semibold leading-tight text-[#071a3a]">{presentation.heading}</h2><span className="shrink-0 border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{vote.voteType}</span></div>
                 {presentation.subject ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{presentation.subject}</p> : null}
-                <div className="mt-3 flex flex-wrap items-center gap-3" onClick={(event) => event.stopPropagation()}>
+                <div className="mt-2 flex flex-wrap items-center gap-3" onClick={(event) => event.stopPropagation()}>
                   <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.hot} />
                   <Link href={`/${locale}/votes/${vote.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-[#075fc6]">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={14}/></Link>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm sm:grid-cols-4">
+              <div className="mt-2.5 grid grid-cols-4 gap-2 border-t border-slate-200 pt-2 text-xs">
                 <StatLine label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-emerald-700" />
                 <StatLine label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-red-700" />
                 <StatLine label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-amber-700" />
@@ -324,7 +324,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function queryString(filters: ExplorerFilters, cursor: string): string {
-  const params = new URLSearchParams({ limit: "10", cursor });
+  const params = new URLSearchParams({ limit: "20", cursor });
   for (const [key, value] of Object.entries(filters)) {
     if (value) params.set(key, value);
   }

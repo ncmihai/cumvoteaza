@@ -183,7 +183,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
 
 const billPageLabels = {
   ro: {
-    publicInterest: "Marchează interes",
+    publicInterest: "Popular",
     decisionChamber: "Cameră decizională",
     timeline: "Procedură legislativă",
     committees: "Comisii",
@@ -209,7 +209,7 @@ const billPageLabels = {
     }
   },
   en: {
-    publicInterest: "Mark interest",
+    publicInterest: "Popular",
     decisionChamber: "Decision chamber",
     timeline: "Legislative procedure",
     committees: "Committees",

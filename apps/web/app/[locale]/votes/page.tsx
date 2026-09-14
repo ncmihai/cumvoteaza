@@ -17,7 +17,7 @@ export default async function VotesPage({
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const filters = parseExplorerFilters(rawFilters);
   const [data, filterOptions] = await Promise.all([
-    getVoteExplorerData({ limit: 10, filters }),
+    getVoteExplorerData({ limit: 20, filters }),
     getDirectoryFilterOptions(filters)
   ]);
   const labels = pageLabels[locale];
@@ -43,7 +43,7 @@ const pageLabels = {
     latestEvent: "Ultim eveniment",
     origin: "Origine",
     votes: "Voturi",
-    hot: "Marchează interes",
+    hot: "Popular",
     loadMore: "Încarcă mai multe",
     loading: "Se încarcă",
     apply: "Aplică",
@@ -65,7 +65,7 @@ const pageLabels = {
     latestEvent: "Latest event",
     origin: "Origin",
     votes: "Votes",
-    hot: "Mark interest",
+    hot: "Popular",
     loadMore: "Load more",
     loading: "Loading",
     apply: "Apply",

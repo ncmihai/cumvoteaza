@@ -112,7 +112,7 @@ function ResultFact({label,value,tone}:{label:string;value:number;tone:string}){
 
 const votePageLabels = {
   ro: {
-    publicInterest: "Marchează interes",
+    publicInterest: "Popular",
     billDossier: "Dosar proiect",
     decisionChamber: "Cameră decizională",
     documents: "Documente",
@@ -150,7 +150,7 @@ const votePageLabels = {
     }
   },
   en: {
-    publicInterest: "Mark interest",
+    publicInterest: "Popular",
     billDossier: "Bill dossier",
     decisionChamber: "Decision chamber",
     documents: "Documents",

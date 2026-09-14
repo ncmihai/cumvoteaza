@@ -13,6 +13,31 @@ final result: passed
 
 ---
 
+# Phase 1 follow-up QA — labels and density (14 September 2026)
+
+## Comparison target
+
+- Source visual truth: browser-comment captures 1, 2 and 5 supplied by the user on 14 September 2026.
+- Implementation evidence: Codex in-app browser, local production build at `http://localhost:3011/ro`, `/ro/votes` and `/ro/compozitii`, inspected at a 638px-wide viewport.
+
+## Focused comparison evidence
+
+- Homepage: the former “Hot” language is now the neutral “Popular” label in Romanian and English, including the 30-day feature kicker and interest action.
+- Vote directory: rows use reduced padding, metadata, title and result spacing; the initial and incremental page-size ceiling is 20.
+- Composition overview: the four facts render as a compact two-by-two grid on narrow screens, with smaller typography, icons and internal spacing.
+- Responsive integrity: the inspected views remained within the document width and retained readable wrapping for long legislative titles.
+
+## Verification
+
+- TypeScript typecheck: passed.
+- Unit and pipeline tests: 107 passed.
+- Focused real-browser Phase 1 regression: passed.
+- The broader browser run reached 7 passing cases before unrelated remote database DNS instability interrupted five data-backed cases; no Phase 1 assertion failure remained after the focused rerun.
+
+final result: passed
+
+---
+
 ## Member profile Phase 4 QA — completion and edge states (12 September 2026)
 
 ### Comparison target
