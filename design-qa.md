@@ -13,6 +13,31 @@ final result: passed
 
 ---
 
+# Phase 2 follow-up QA — member directory (14 September 2026)
+
+## Comparison target
+
+- Source visual truth: browser-comment captures 3 and 4 supplied by the user on 14 September 2026.
+- Implementation evidence: local production build at `http://localhost:3011/ro/members?sort=votes`, inspected at the same 638px-wide viewport.
+
+## Findings and resolution
+
+- [P1, fixed] The absence ranking relied on explicit `absent` vote rows, which are not consistently published by official nominal sources and could produce an apparently alphabetical result. It is replaced by “Cele mai multe voturi documentate,” counting expressed and present-without-voting records scoped to the selected legislature and chamber.
+- [P2, fixed] The filter popover was a large undifferentiated chip cloud. It now uses labelled legislature, chamber and ranking selectors, a scrollable party/group checklist, and clear Reset/Apply actions.
+- [P2, fixed] Ranking cards now expose the metric that determines their order: documented votes, group changes or completed years of parliamentary service.
+- [P2, fixed] The filter surface has a viewport-relative maximum height and internal scrolling so its actions remain reachable on short screens.
+
+## Verification
+
+- TypeScript typecheck: passed.
+- Unit and pipeline tests: 107 passed.
+- Focused real-browser member-filter and ranking regression: passed.
+- Production build: passed.
+
+final result: passed
+
+---
+
 # Phase 1 follow-up QA — labels and density (14 September 2026)
 
 ## Comparison target

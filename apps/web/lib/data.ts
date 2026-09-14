@@ -127,6 +127,8 @@ export interface MemberDirectoryItem {
   party?: Party;
   profilePhotoUrl?: string;
   voteCount?: number;
+  groupSwitchCount?: number;
+  serviceDays?: number;
 }
 
 export interface MemberDirectoryData {
@@ -821,8 +823,7 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
           ) photo_asset on true
           left join lateral (
             select coalesce(sum(
-              mla.votes_for + mla.votes_against + mla.abstentions +
-              mla.present_not_voting + mla.absent + mla.unknown
+              mla.votes_for + mla.votes_against + mla.abstentions + mla.present_not_voting
             ), 0)::int as vote_count
             from member_legislature_activity mla
             where mla.member_id = m.id
@@ -1557,7 +1558,9 @@ function mapMemberDirectoryRow(row: MemberDirectoryRow): MemberDirectoryItem {
         }
       : undefined,
     profilePhotoUrl: row.profile_photo_asset_id ? `/api/assets/${encodeURIComponent(row.profile_photo_asset_id)}` : undefined,
-    voteCount: Number(row.vote_count ?? 0)
+    voteCount: Number(row.vote_count ?? 0),
+    groupSwitchCount: Number(row.stat_switches ?? 0),
+    serviceDays: Number(row.stat_seniority_days ?? 0)
   };
 }
 
@@ -2201,7 +2204,10 @@ function filterDirectoryItems(
         .map(normalizeSearch)
         .some((value) => value.includes(query));
     })
-    .sort((a, b) => a.member.displayName.localeCompare(b.member.displayName, "ro"));
+    .sort((a, b) => {
+      if (filters?.sort === "votes") return (b.voteCount ?? 0) - (a.voteCount ?? 0) || a.member.displayName.localeCompare(b.member.displayName, "ro");
+      return a.member.displayName.localeCompare(b.member.displayName, "ro");
+    });
 }
 
 function memberDirectoryConditions(filters?: MemberDirectoryFilters) {
@@ -2233,8 +2239,8 @@ function memberDirectoryConditions(filters?: MemberDirectoryFilters) {
 }
 
 function memberDirectoryOrderSql(sort?: string) {
-  if (sort === "absent") {
-    return sql`stat_absent desc, member_display_name asc, member_id asc`;
+  if (sort === "votes") {
+    return sql`vote_count desc, member_display_name asc, member_id asc`;
   }
   if (sort === "seniority") {
     return sql`stat_seniority_days desc, member_display_name asc, member_id asc`;
@@ -2246,27 +2252,6 @@ function memberDirectoryOrderSql(sort?: string) {
 }
 
 function memberDirectoryStatsSql(sort?: string) {
-  if (sort === "absent") {
-    return {
-      ctes: sql`
-        absence_stats as (
-          select
-            coalesce(ivm.person_id, ivm.id) as person_key,
-            count(*)::int as stat_absent
-          from individual_votes iv
-          join members ivm on ivm.id = iv.member_id
-          where iv.choice = 'absent'
-          group by coalesce(ivm.person_id, ivm.id)
-        ),
-      `,
-      joins: sql`left join absence_stats ast on ast.person_key = coalesce(m.person_id, m.id)`,
-      select: sql`
-        coalesce(ast.stat_absent, 0) as stat_absent,
-        0 as stat_switches,
-        0 as stat_seniority_days,
-      `
-    };
-  }
   if (sort === "switches") {
     return {
       ctes: sql`
@@ -2281,7 +2266,6 @@ function memberDirectoryStatsSql(sort?: string) {
       `,
       joins: sql`left join switch_stats sst on sst.person_key = coalesce(m.person_id, m.id)`,
       select: sql`
-        0 as stat_absent,
         coalesce(sst.stat_switches, 0) as stat_switches,
         0 as stat_seniority_days,
       `
@@ -2311,7 +2295,6 @@ function memberDirectoryStatsSql(sort?: string) {
       `,
       joins: sql`left join seniority_stats snt on snt.person_key = coalesce(m.person_id, m.id)`,
       select: sql`
-        0 as stat_absent,
         0 as stat_switches,
         coalesce(snt.stat_seniority_days, 0) as stat_seniority_days,
       `
@@ -2321,7 +2304,6 @@ function memberDirectoryStatsSql(sort?: string) {
     ctes: sql``,
     joins: sql``,
     select: sql`
-      0 as stat_absent,
       0 as stat_switches,
       0 as stat_seniority_days,
     `
@@ -2985,7 +2967,6 @@ type MemberDirectoryRow = {
   party_color: string | null;
   profile_photo_asset_id: string | null;
   vote_count: number;
-  stat_absent: number;
   stat_switches: number;
   stat_seniority_days: number;
 };

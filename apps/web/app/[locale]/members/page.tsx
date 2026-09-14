@@ -65,76 +65,31 @@ export default async function MembersPage({
           {locale === "ro" ? "Caută" : "Search"}
         </button>
       </form>
-      <DismissibleDetails className="relative" summary={<summary className="flex h-full min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={20} />{locale === "ro" ? "Filtre" : "Filters"}</summary>} panelClassName="absolute right-0 z-20 mt-2 w-[min(560px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl">
-      <section className="flex flex-wrap gap-2">
-        <span className="w-full text-xs font-semibold uppercase text-slate-500">{locale === "ro" ? "Legislatură" : "Legislature"}</span>
-        {data.legislatures.map((legislature) => (
-          <FilterLink
-            key={legislature.id}
-            href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, q: filters.q, legislature: legislature.id, sort: filters.sort })}
-            active={filters.legislature === legislature.id}
-          >
-            {legislature.label}
-          </FilterLink>
-        ))}
-        <FilterLink href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, q: filters.q, legislature: "", sort: filters.sort })} active={!filters.legislature}>
-          {locale === "ro" ? "Toate legislaturile" : "All legislatures"}
-        </FilterLink>
-      </section>
-
-      <section className="mt-4 flex flex-wrap gap-2">
-        <FilterLink href={memberDirectoryHref(locale, { group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: filters.sort })} active={!filters.chamber}>
-          {locale === "ro" ? "Toți" : "All"}
-        </FilterLink>
-        <FilterLink href={memberDirectoryHref(locale, { chamber: "senate", group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: filters.sort })} active={filters.chamber === "senate"}>
-          {chamberLabels[locale].senate}
-        </FilterLink>
-        <FilterLink href={memberDirectoryHref(locale, { chamber: "deputies", group: activeGroupFilters, q: filters.q, legislature: filters.legislature, sort: filters.sort })} active={filters.chamber === "deputies"}>
-          {chamberLabels[locale].deputies}
-        </FilterLink>
-      </section>
-
-      <section className="mt-3 flex flex-wrap gap-2">
-        {activeGroupFilters.length > 0 ? (
-          <FilterLink href={memberDirectoryHref(locale, { chamber: filters.chamber, q: filters.q, legislature: filters.legislature, sort: filters.sort })} active={false}>
-            {locale === "ro" ? "Curăță grupuri" : "Clear groups"}
-          </FilterLink>
-        ) : null}
-        {groupChips.map((group) => (
-          <FilterLink
-            key={group.value}
-            href={memberDirectoryHref(locale, {
-              chamber: filters.chamber,
-              group: toggleGroupFilter(activeGroupFilters, group.value),
-              q: filters.q,
-              legislature: filters.legislature,
-              sort: filters.sort
-            })}
-            active={activeGroupFilters.includes(group.value)}
-          >
-            {group.label}
-          </FilterLink>
-        ))}
-      </section>
-
-      <section className="mt-4 flex flex-wrap gap-2">
-        <span className="w-full text-xs font-semibold uppercase text-slate-500">{locale === "ro" ? "Clasamente" : "Rankings"}</span>
-        {memberSortOptions(locale).map((option) => (
-          <FilterLink
-            key={option.value || "default"}
-            href={memberDirectoryHref(locale, {
-              chamber: filters.chamber,
-              group: activeGroupFilters,
-              q: filters.q,
-              legislature: filters.legislature,
-              sort: option.value
-            })}
-            active={(filters.sort ?? "") === option.value}
-          >
-            {option.label}
-          </FilterLink>
-        ))}
-      </section>
+      <DismissibleDetails className="relative" summary={<summary className="flex h-full min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-[#9eabc0] bg-white text-sm font-semibold text-[#061a47]"><Filter size={20} />{locale === "ro" ? "Filtre" : "Filters"}</summary>} panelClassName="absolute right-0 z-20 mt-2 max-h-[calc(100vh-7rem)] w-[min(560px,calc(100vw-32px))] overflow-y-auto border border-slate-300 bg-white p-4 shadow-xl">
+      <form action={`/${locale}/members`} className="space-y-4" aria-label={locale === "ro" ? "Filtre parlamentari" : "Member filters"}>
+        {filters.q ? <input type="hidden" name="q" value={filters.q}/> : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FilterSelect label={locale === "ro" ? "Legislatură" : "Legislature"} name="legislature" defaultValue={filters.legislature ?? ""}>
+            <option value="">{locale === "ro" ? "Toate legislaturile" : "All legislatures"}</option>
+            {data.legislatures.map((legislature) => <option key={legislature.id} value={legislature.id}>{legislature.label}</option>)}
+          </FilterSelect>
+          <FilterSelect label={locale === "ro" ? "Cameră" : "Chamber"} name="chamber" defaultValue={filters.chamber ?? ""}>
+            <option value="">{locale === "ro" ? "Ambele camere" : "Both chambers"}</option>
+            <option value="deputies">{chamberLabels[locale].deputies}</option>
+            <option value="senate">{chamberLabels[locale].senate}</option>
+          </FilterSelect>
+        </div>
+        <fieldset>
+          <legend className="text-[11px] font-bold uppercase tracking-wide text-[#4b608a]">{locale === "ro" ? "Partide și grupuri" : "Parties and groups"}</legend>
+          <div className="mt-2 grid max-h-40 grid-cols-2 gap-x-4 gap-y-1 overflow-y-auto border-y border-slate-200 py-2 sm:grid-cols-3">
+            {groupChips.map((group) => <label key={group.value} className="flex min-w-0 items-center gap-2 py-1 text-sm text-[#21375f]"><input type="checkbox" name="group" value={group.value} defaultChecked={activeGroupFilters.includes(group.value)} className="h-4 w-4 accent-[#061a47]"/><span className="truncate">{group.label}</span></label>)}
+          </div>
+        </fieldset>
+        <FilterSelect label={locale === "ro" ? "Ordonează după" : "Order by"} name="sort" defaultValue={filters.sort ?? ""}>
+          {memberSortOptions(locale).map((option) => <option key={option.value || "default"} value={option.value}>{option.label}</option>)}
+        </FilterSelect>
+        <div className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3"><Link href={`/${locale}/members`} className="inline-flex min-h-10 items-center justify-center border border-slate-300 bg-white px-4 text-sm font-semibold text-[#061a47]">{locale === "ro" ? "Resetează" : "Reset"}</Link><button type="submit" className="min-h-10 bg-[#061a47] px-4 text-sm font-bold text-white hover:bg-[#102d5b]">{locale === "ro" ? "Aplică" : "Apply"}</button></div>
+      </form>
       </DismissibleDetails></div>
 
       <div className="mt-5 grid gap-3 border-y border-slate-300 py-3 2xl:grid-cols-[auto_minmax(0,1fr)] 2xl:items-center">
@@ -148,10 +103,10 @@ export default async function MembersPage({
       </div>
 
       <section className="mt-3 space-y-2">
-        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
+        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
           <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-[#e9eef5] font-serif text-xl font-bold text-[#4b608a]"><ImageWithFallback src={profilePhotoUrl} alt="" className="h-full w-full object-cover">{initials(member.displayName)}</ImageWithFallback></div>
           <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-[#061a47]">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#4b608a]"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span></div><p className="mt-1 truncate text-xs text-[#4b608a]">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
-          <div className="flex items-center gap-5 pl-3"><div className="hidden text-right sm:block"><strong className="block font-serif text-2xl text-[#061a47]">{voteCount ?? 0}</strong><span className="text-xs text-[#4b608a]">{locale === "ro" ? "voturi" : "votes"}</span></div><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
+          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
         </Link>)}
         {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-300 pb-2 pt-4"><span className="text-sm text-[#4b608a]">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#061a47] transition hover:border-[#075fc6]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center bg-[#061a47] px-4 py-2 text-sm font-semibold !text-white transition hover:bg-[#102d5b]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
@@ -218,25 +173,22 @@ function parseGroupParam(value?: string): string[] {
     .filter(Boolean);
 }
 
-function toggleGroupFilter(current: string[], value: string): string[] {
-  return current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
-}
-
 function normalizeMemberSort(value?: string): string | undefined {
-  return value === "absent" || value === "seniority" || value === "switches" ? value : undefined;
+  if (value === "absent") return "votes";
+  return value === "votes" || value === "seniority" || value === "switches" ? value : undefined;
 }
 
 function memberSortOptions(locale: AppLocale): Array<{ value: string; label: string }> {
   return locale === "ro"
     ? [
         { value: "", label: "Nume" },
-        { value: "absent", label: "Cele mai multe absențe" },
+        { value: "votes", label: "Cele mai multe voturi documentate" },
         { value: "seniority", label: "Cel mai mult timp în Parlament" },
         { value: "switches", label: "Cele mai multe schimbări" }
       ]
     : [
         { value: "", label: "Name" },
-        { value: "absent", label: "Most absences" },
+        { value: "votes", label: "Most documented votes" },
         { value: "seniority", label: "Longest service" },
         { value: "switches", label: "Most switches" }
       ];
@@ -255,19 +207,20 @@ function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; gro
   return `/${locale}/members${query ? `?${query}` : ""}`;
 }
 
-function FilterLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-md border px-3 py-2 text-sm ${
-        active ? "border-[#309898] bg-[#309898] text-white shadow-sm" : "border-slate-300 bg-white text-slate-800 hover:border-[#FF9F00] hover:bg-[#FF9F00]/10"
-      }`}
-    >
-      {children}
-    </Link>
-  );
+function FilterSelect({ label, name, defaultValue, children }: { label: string; name: string; defaultValue: string; children: React.ReactNode }) {
+  return <label className="block min-w-0"><span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[#4b608a]">{label}</span><select aria-label={label} name={name} defaultValue={defaultValue} className="min-h-10 w-full border border-[#bac6d8] bg-white px-3 text-sm text-[#061a47] outline-none focus:border-[#075fc6] focus:ring-2 focus:ring-blue-100">{children}</select></label>;
 }
 
 function SortLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-[#061a47] bg-[#061a47] !text-white" : "border-[#bac6d8] bg-white text-[#21375f] hover:z-10 hover:border-[#075fc6] hover:bg-[#f4f8fd]"}`}>{children}</Link>;
+}
+
+function RankingMetric({ locale, sort, voteCount, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; groupSwitchCount?: number; serviceDays?: number }) {
+  const value = sort === "switches" ? groupSwitchCount ?? 0 : sort === "seniority" ? Math.floor((serviceDays ?? 0) / 365) : voteCount ?? 0;
+  const label = sort === "switches"
+    ? (locale === "ro" ? "schimbări" : "switches")
+    : sort === "seniority"
+      ? (locale === "ro" ? "ani" : "years")
+      : (locale === "ro" ? "voturi documentate" : "documented votes");
+  return <div className="max-w-24 text-right max-[374px]:hidden"><strong className="block font-serif text-2xl text-[#061a47]">{value}</strong><span className="block text-[11px] leading-tight text-[#4b608a]">{label}</span></div>;
 }

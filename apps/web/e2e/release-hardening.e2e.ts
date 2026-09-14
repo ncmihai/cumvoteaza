@@ -71,6 +71,26 @@ test("phase-one labels, vote density and compact term facts remain intact", asyn
   expect(Math.abs((firstFact?.y ?? 0) - (secondFact?.y ?? 1))).toBeLessThan(2);
 });
 
+test("member filters are structured and documented-vote ranking is truthful", async ({ page }) => {
+  await page.setViewportSize({ width: 638, height: 863 });
+  await page.goto("/ro/members?sort=votes");
+  await expect(page.getByRole("link", { name: "Cele mai multe voturi documentate" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("Cele mai multe absențe")).toHaveCount(0);
+
+  const documentedCounts = await page.locator("section.mt-3.space-y-2 > a strong").allTextContents();
+  const values = documentedCounts.map((value) => Number.parseInt(value, 10)).filter(Number.isFinite);
+  expect(values.length).toBeGreaterThan(1);
+  expect(values).toEqual([...values].sort((a, b) => b - a));
+
+  await page.locator("summary").filter({ hasText: "Filtre" }).click();
+  await expect(page.getByRole("combobox", { name: "Legislatură" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Cameră" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Ordonează după" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Partide și grupuri" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Aplică" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Resetează" })).toBeVisible();
+});
+
 test("keyboard dismissal and image fallbacks remain healthy", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/en/votes");
