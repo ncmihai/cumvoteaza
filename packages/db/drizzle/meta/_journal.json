@@ -155,6 +155,13 @@
       "when": 1789418164363,
       "tag": "0021_true_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789990809218,
+      "tag": "0022_ambiguous_warstar",
+      "breakpoints": true
     }
   ]
 }

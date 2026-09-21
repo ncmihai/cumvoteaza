@@ -31,6 +31,7 @@ import {
 } from "./parsers/wikipedia-roster";
 import { fetchOfficialSource } from "./fetch-source";
 import { governmentSkeletonData } from "./government-skeleton";
+import { classifyBillMinistryRelations } from "./ministry-relations";
 import { cleanupLocalData } from "./local-data-cleanup";
 import { canonicalizeOfficialUrl } from "./official-urls";
 import {
@@ -502,6 +503,11 @@ async function main() {
 
   if (command === "governments:skeleton") {
     console.log(JSON.stringify(await persistGovernmentSkeleton(governmentSkeletonData()), null, 2));
+    return;
+  }
+
+  if (command === "ministries:classify-bills") {
+    console.log(JSON.stringify(await classifyBillMinistryRelations(), null, 2));
     return;
   }
 

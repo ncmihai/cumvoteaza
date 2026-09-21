@@ -613,6 +613,22 @@ export const documents = pgTable("documents", {
   textStatusIdx: index("documents_text_status_idx").on(table.textStatus)
 }));
 
+export const billMinistryRelations = pgTable("bill_ministry_relations", {
+  id: text("id").primaryKey(),
+  billId: text("bill_id").notNull().references(() => bills.id),
+  ministryId: text("ministry_id").notNull().references(() => ministries.id),
+  relation: text("relation").notNull(),
+  confidence: text("confidence").notNull(),
+  reason: text("reason").notNull(),
+  documentId: text("document_id").references(() => documents.id),
+  sourceUrl: text("source_url"),
+  evidenceExcerpt: text("evidence_excerpt")
+}, (table) => ({
+  billIdx: index("bill_ministry_relations_bill_idx").on(table.billId),
+  ministryIdx: index("bill_ministry_relations_ministry_idx").on(table.ministryId, table.confidence),
+  uniqueRelationIdx: uniqueIndex("bill_ministry_relations_unique_idx").on(table.billId, table.ministryId, table.relation)
+}));
+
 export const billProcedureSteps = pgTable("bill_procedure_steps", {
   id: text("id").primaryKey(),
   billId: text("bill_id").notNull().references(() => bills.id),
