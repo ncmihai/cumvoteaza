@@ -31,6 +31,8 @@ import {
 } from "./parsers/wikipedia-roster";
 import { fetchOfficialSource } from "./fetch-source";
 import { governmentSkeletonData } from "./government-skeleton";
+import { auditCabinetManifests } from "./government-cabinet-manifests";
+import { ministryCatalog } from "./ministry-catalog";
 import { classifyBillMinistryRelations } from "./ministry-relations";
 import { cleanupLocalData } from "./local-data-cleanup";
 import { canonicalizeOfficialUrl } from "./official-urls";
@@ -503,6 +505,13 @@ async function main() {
 
   if (command === "governments:skeleton") {
     console.log(JSON.stringify(await persistGovernmentSkeleton(governmentSkeletonData()), null, 2));
+    return;
+  }
+
+  if (command === "audit:government-cabinets") {
+    const audits = auditCabinetManifests(new Set(ministryCatalog.map((ministry) => ministry.name)));
+    console.log(JSON.stringify(audits, null, 2));
+    if (audits.some((audit) => audit.errors.length > 0)) process.exitCode = 1;
     return;
   }
 

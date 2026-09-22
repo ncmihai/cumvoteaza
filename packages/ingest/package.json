@@ -37,6 +37,7 @@
     "roster:crosscheck:all": "tsx src/cli.ts roster:crosscheck:all",
     "people:backfill": "tsx src/cli.ts people:backfill",
     "governments:skeleton": "tsx src/cli.ts governments:skeleton",
+    "audit:government-cabinets": "tsx src/cli.ts audit:government-cabinets",
     "ministries:classify-bills": "tsx src/cli.ts ministries:classify-bills",
     "political-formations:seed": "tsx src/cli.ts political-formations:seed",
     "political-entities:candidates": "tsx src/cli.ts political-entities:candidates",

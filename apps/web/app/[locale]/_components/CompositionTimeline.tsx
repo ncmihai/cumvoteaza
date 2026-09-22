@@ -8,7 +8,7 @@ import type { CompositionMode, CompositionTimelineStop } from "@/lib/composition
 import { CompositionSeatMapPreview } from "./CompositionSeatMap";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 
-export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; mode: CompositionMode; stops: CompositionTimelineStop[] }) {
+export function CompositionTimeline({ locale, mode, stops, currentStopId }: { locale: Locale; mode: CompositionMode; stops: CompositionTimelineStop[]; currentStopId?: string }) {
   const copy = labels[locale];
   const [activeId, setActiveId] = useState(stops[0]?.id ?? "");
   const [showChronology, setShowChronology] = useState(false);
@@ -19,12 +19,13 @@ export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; m
   const memberCount = active.chambers.reduce((sum, chamber) => sum + chamber.seats.length, 0);
   const representativeMembers = active.chambers.flatMap((chamber) => chamber.seats).sort((a, b) => a.member.displayName.localeCompare(b.member.displayName, locale)).slice(0, 6);
   const events = [...active.events].sort((a, b) => b.occurredOn.localeCompare(a.occurredOn));
+  const isCurrent = active.id === currentStopId;
 
   return <section className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
     <nav aria-label={copy.legislatures} className="self-start border border-slate-300 bg-white xl:sticky xl:top-24">
       <div className="border-b border-slate-200 px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#4b608a]">{copy.choose}</div>
       {stops.map((stop) => <button key={stop.id} type="button" onClick={() => { setActiveId(stop.id); setShowChronology(false); }} aria-pressed={stop.id === active.id} className={`flex w-full items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 text-left last:border-b-0 ${stop.id === active.id ? "border-l-4 border-l-[#f7b500] bg-[#fffaf0]" : "border-l-4 border-l-transparent hover:bg-slate-50"}`}>
-        <span><strong className="block font-serif text-lg text-[#061a47]">{stop.legislature.label}</strong><small className="mt-1 block text-[#4b608a]">{yearRange(stop.legislature.startsOn, stop.legislature.endsOn)}</small></span>
+        <span><strong className="block font-serif text-lg text-[#061a47]">{stop.legislature.label}</strong><small className="mt-1 block text-[#4b608a]">{yearRange(stop.legislature.startsOn, stop.legislature.endsOn)}{stop.id === currentStopId ? ` · ${copy.current}` : ""}</small></span>
         <ArrowRight size={16} className="shrink-0 text-[#075fc6]"/>
       </button>)}
     </nav>
@@ -32,7 +33,7 @@ export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; m
     <div className="min-w-0 space-y-4">
       <article className="border border-slate-300 bg-white p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
-          <div><p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{copy.legislature}</p><h2 className="mt-1 font-serif text-4xl font-semibold text-[#061a47]">{active.legislature.label}</h2><p className="mt-2 text-sm text-[#4b608a]">{formatDate(active.legislature.startsOn, locale)} – {formatDate(active.legislature.endsOn, locale)}</p></div>
+          <div><p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{isCurrent ? copy.currentLegislature : copy.legislature}</p><h2 className="mt-1 font-serif text-4xl font-semibold text-[#061a47]">{active.legislature.label}</h2><p className="mt-2 text-sm text-[#4b608a]">{formatDate(active.legislature.startsOn, locale)} – {isCurrent ? copy.present : formatDate(active.legislature.endsOn, locale)}</p></div>
           <span className={`border px-2.5 py-1 text-xs font-semibold ${active.sourceStatus === "verified" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>{active.sourceStatus === "verified" ? copy.verified : copy.documented}</span>
         </div>
 
@@ -45,7 +46,7 @@ export function CompositionTimeline({ locale, mode, stops }: { locale: Locale; m
 
         <section className="mt-6">
           <h3 className="font-serif text-2xl font-semibold text-[#061a47]">{copy.governmentPeriods}</h3>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">{active.governments.length ? active.governments.map((government) => <div key={government.id} className="border-l-4 border-l-[#075fc6] bg-[#f4f7fb] px-4 py-3"><strong className="text-sm text-[#061a47]">{government.name}</strong><p className="mt-1 text-xs text-[#4b608a]">{formatDate(government.startsOn, locale)} – {government.endsOn ? formatDate(government.endsOn, locale) : copy.present}</p></div>) : <p className="text-sm text-[#4b608a]">{copy.noGovernment}</p>}</div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">{active.governments.length ? active.governments.map((government) => <Link key={government.id} href={`/${locale}/governments/${government.slug}`} className="group border-l-4 border-l-[#075fc6] bg-[#f4f7fb] px-4 py-3 hover:bg-[#eaf2fb]"><span className="flex items-center justify-between gap-3"><strong className="text-sm text-[#061a47]">{government.name}</strong><ArrowRight size={15} className="shrink-0 text-[#075fc6] transition group-hover:translate-x-0.5"/></span><p className="mt-1 text-xs text-[#4b608a]">{formatDate(government.startsOn, locale)} – {government.endsOn ? formatDate(government.endsOn, locale) : copy.present}</p><span className="mt-2 block text-xs font-bold text-[#075fc6]">{copy.viewCabinet}</span></Link>) : <p className="text-sm text-[#4b608a]">{copy.noGovernment}</p>}</div>
         </section>
       </article>
 
@@ -73,6 +74,6 @@ function primeMinisterNames(stop: CompositionTimelineStop) { return stop.primeMi
 function yearRange(start: string, end: string) { return `${start.slice(0, 4)}–${end.slice(0, 4)}`; }
 
 const labels = {
-  ro: { empty: "Nu există încă date istorice pentru legislaturile încheiate.", legislatures: "Legislaturi istorice", choose: "Alege legislatura", legislature: "Legislatură încheiată", verified: "Date verificate", documented: "Documentare manuală", members: "Mandate documentate", primeMinister: "Prim-miniștri", governments: "Guverne", compositionDate: "Componență la data", unknown: "Necunoscut", governmentPeriods: "Guvernele legislaturii", present: "prezent", noGovernment: "Nu există perioade guvernamentale documentate.", largestGroups: "Cele mai mari grupuri", peopleEyebrow: "Oameni", people: "Parlamentari din legislatură", allMembers: "Vezi toți parlamentarii", unaffiliated: "Neafiliat", noMembers: "Nu există mandate nominale disponibile.", fullHistory: "Vezi cronologia completă", moments: "momente documentate", noMoments: "Nu există momente documentate pentru această legislatură.", computed: "Această vedere folosește o compoziție calculată și poate conține intervale incomplete." },
-  en: { empty: "Historical data is not yet available for completed legislatures.", legislatures: "Historical legislatures", choose: "Choose legislature", legislature: "Completed legislature", verified: "Verified data", documented: "Manually documented", members: "Documented seats", primeMinister: "Prime ministers", governments: "Governments", compositionDate: "Composition date", unknown: "Unknown", governmentPeriods: "Governments during the term", present: "present", noGovernment: "No government periods are documented.", largestGroups: "Largest groups", peopleEyebrow: "People", people: "Members in this legislature", allMembers: "View all members", unaffiliated: "Unaffiliated", noMembers: "No nominal mandates are available.", fullHistory: "View the full chronology", moments: "documented moments", noMoments: "No moments are documented for this legislature.", computed: "This view uses a computed composition and may contain incomplete intervals." }
+  ro: { empty: "Nu există încă date istorice pentru legislaturi.", legislatures: "Legislaturi", choose: "Alege legislatura", legislature: "Legislatură încheiată", currentLegislature: "Legislatura actuală", current: "actuală", verified: "Date verificate", documented: "Documentare manuală", members: "Mandate documentate", primeMinister: "Prim-miniștri", governments: "Guverne", compositionDate: "Componență la data", unknown: "Necunoscut", governmentPeriods: "Guvernele legislaturii", viewCabinet: "Vezi miniștrii și schimbările", present: "prezent", noGovernment: "Nu există perioade guvernamentale documentate.", largestGroups: "Cele mai mari grupuri", peopleEyebrow: "Oameni", people: "Parlamentari din legislatură", allMembers: "Vezi toți parlamentarii", unaffiliated: "Neafiliat", noMembers: "Nu există mandate nominale disponibile.", fullHistory: "Vezi cronologia completă", moments: "momente documentate", noMoments: "Nu există momente documentate pentru această legislatură.", computed: "Această vedere folosește o compoziție calculată și poate conține intervale incomplete." },
+  en: { empty: "Historical data is not yet available for legislatures.", legislatures: "Legislatures", choose: "Choose legislature", legislature: "Completed legislature", currentLegislature: "Current legislature", current: "current", verified: "Verified data", documented: "Manually documented", members: "Documented seats", primeMinister: "Prime ministers", governments: "Governments", compositionDate: "Composition date", unknown: "Unknown", governmentPeriods: "Governments during the term", viewCabinet: "View ministers and changes", present: "present", noGovernment: "No government periods are documented.", largestGroups: "Largest groups", peopleEyebrow: "People", people: "Members in this legislature", allMembers: "View all members", unaffiliated: "Unaffiliated", noMembers: "No nominal mandates are available.", fullHistory: "View the full chronology", moments: "documented moments", noMoments: "No moments are documented for this legislature.", computed: "This view uses a computed composition and may contain incomplete intervals." }
 };

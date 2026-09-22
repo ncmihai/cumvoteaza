@@ -49,6 +49,7 @@
     "ingest:roster:crosscheck:all": "npm --workspace @cumsevoteaza/ingest run roster:crosscheck:all --",
     "ingest:people:backfill": "npm --workspace @cumsevoteaza/ingest run people:backfill --",
     "ingest:governments:skeleton": "npm --workspace @cumsevoteaza/ingest run governments:skeleton --",
+    "ingest:audit:government-cabinets": "npm --workspace @cumsevoteaza/ingest run audit:government-cabinets --",
     "ingest:ministries:classify-bills": "npm --workspace @cumsevoteaza/ingest run ministries:classify-bills --",
     "ingest:political-formations:seed": "npm --workspace @cumsevoteaza/ingest run political-formations:seed --",
     "ingest:political-entities:candidates": "npm --workspace @cumsevoteaza/ingest run political-entities:candidates --",

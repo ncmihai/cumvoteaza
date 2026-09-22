@@ -1,5 +1,6 @@
 import type { CompositionEvent, Government, GovernmentPartyAlignment, GovernmentRole, Ministry, MinistryAlias, Person, SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { partyAlignmentsForGovernment } from "./government-party-alignments";
+import { cabinetManifests } from "./government-cabinet-manifests";
 import { ministryAliases, ministryCatalog, ministryIdByName } from "./ministry-catalog";
 
 const sourceUrl = "https://en.wikipedia.org/wiki/List_of_heads_of_government_of_Romania";
@@ -383,7 +384,7 @@ export function governmentSkeletonData(): {
     }
   ];
   const people = uniqueBy(
-    [...governments.map((item) => item.primeMinister), ...bolojanInvestitureCabinet.map((item) => item.person), ...bolojanCabinetChanges.map((item) => item.person)].map((displayName) => {
+    [...governments.map((item) => item.primeMinister), ...bolojanInvestitureCabinet.map((item) => item.person), ...bolojanCabinetChanges.map((item) => item.person), ...cabinetManifests.flatMap((manifest) => manifest.roles.map((role) => role.person))].map((displayName) => {
       const slug = slugify(displayName);
       return {
         id: `person-${slug}`,
@@ -435,7 +436,19 @@ export function governmentSkeletonData(): {
       startsOn: role.startsOn ?? "2025-06-23",
       endsOn: role.endsOn,
       sourceSnapshotId: role.sourceSnapshotId ?? currentCabinetSourceId
-    }))],
+    })), ...cabinetManifests.flatMap((manifest) => manifest.roles
+      .filter((role) => !/^prim-ministru$/i.test(role.title))
+      .map((role) => ({
+        id: `government-role-${manifest.governmentSlug}-${role.startsOn}-${slugify(role.person)}-${slugify(role.ministry ?? role.title)}`,
+        governmentId: `government-${manifest.governmentSlug}`,
+        personId: `person-${slugify(role.person)}`,
+        title: role.title,
+        ministry: role.ministry,
+        ministryId: role.ministry ? ministryIdByName.get(role.ministry) : undefined,
+        startsOn: role.startsOn,
+        endsOn: role.endsOn,
+        sourceSnapshotId: role.sourceSnapshotId
+      })))],
     events: governments.flatMap((item) => {
       const governmentId = `government-${item.slug}`;
       const personId = `person-${slugify(item.primeMinister)}`;
