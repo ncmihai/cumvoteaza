@@ -77,9 +77,20 @@ describe("government skeleton", () => {
         partyId: "party-psd",
         alignment: "government",
         startsOn: "2025-06-23",
-        endsOn: undefined,
+        endsOn: "2026-04-22",
         basis: "official_coalition",
         sourceSnapshotId: "source-government-programme-bolojan-2025-2028"
+      })
+    );
+    expect(data.partyAlignments).toContainEqual(
+      expect.objectContaining({
+        governmentId: "government-bolojan-2025-present",
+        partyId: "party-psd",
+        alignment: "opposition",
+        startsOn: "2026-04-23",
+        endsOn: undefined,
+        basis: "manual_curation",
+        sourceSnapshotId: "source-bolojan-no-confidence-2026"
       })
     );
     expect(data.partyAlignments).toContainEqual(

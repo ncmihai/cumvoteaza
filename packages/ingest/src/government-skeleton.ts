@@ -27,6 +27,7 @@ interface GovernmentSeed {
     basis: GovernmentPartyAlignment["basis"];
     startsOn?: string;
     endsOn?: string;
+    sourceSnapshotId?: string;
   }>;
 }
 
@@ -96,7 +97,8 @@ const governments: GovernmentSeed[] = [
       occurredOn: "2026-05-05"
     }],
     partyAlignments: [
-      { partyId: "party-psd", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
+      { partyId: "party-psd", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23", endsOn: "2026-04-22" },
+      { partyId: "party-psd", alignment: "opposition", basis: "manual_curation", startsOn: "2026-04-23", sourceSnapshotId: "source-bolojan-no-confidence-2026" },
       { partyId: "party-pnl", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
       { partyId: "party-usr", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
       { partyId: "party-udmr", alignment: "government", basis: "official_coalition", startsOn: "2025-06-23" },
@@ -487,7 +489,7 @@ export function governmentSkeletonData(): {
         basis: alignment.basis,
         startsOn: alignment.startsOn ?? item.startsOn,
         endsOn: alignment.endsOn ?? item.endsOn,
-        sourceSnapshotId: item.sourceSnapshotId
+        sourceSnapshotId: alignment.sourceSnapshotId ?? item.sourceSnapshotId
       }))
     ),
     obsoleteGovernmentIds: ["government-bolojan-2025-2026", "government-bolojan-acting-2026"],

@@ -92,6 +92,7 @@ export interface BillPageData {
 export interface GovernmentContextData {
   government: Government;
   asOf: string;
+  caretakerSince?: string;
   alignments: Array<{
     party: Party;
     alignment: GovernanceAlignment;
@@ -127,6 +128,7 @@ export interface MemberDirectoryItem {
   party?: Party;
   profilePhotoUrl?: string;
   voteCount?: number;
+  absenceCount?: number;
   groupSwitchCount?: number;
   serviceDays?: number;
 }
@@ -280,7 +282,7 @@ const getCachedBillPageData = unstable_cache(
 const getCachedMemberDirectoryData = unstable_cache(
   async (filters?: MemberDirectoryFilters) =>
     timed("data.member-directory", () => getMemberDirectoryDataUncached(filters)),
-  ["member-directory-data"],
+  ["member-directory-data-v2"],
   { revalidate: 600, tags: [CACHE_TAGS.members, CACHE_TAGS.search] }
 );
 
@@ -797,6 +799,7 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
             p.color as party_color,
             photo_asset.id as profile_photo_asset_id,
             coalesce(vote_stats.vote_count, 0)::int as vote_count,
+            coalesce(vote_stats.absence_count, 0)::int as absence_count,
             ${stats.select}
             row_number() over (partition by coalesce(m.person_id, m.id) order by mm.starts_on desc, mm.id desc) as rn
           from member_mandates mm
@@ -824,7 +827,8 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
           left join lateral (
             select coalesce(sum(
               mla.votes_for + mla.votes_against + mla.abstentions + mla.present_not_voting
-            ), 0)::int as vote_count
+            ), 0)::int as vote_count,
+            coalesce(sum(mla.absent), 0)::int as absence_count
             from member_legislature_activity mla
             where mla.member_id = m.id
               and mla.legislature_id = mm.legislature_id
@@ -1324,10 +1328,19 @@ async function loadGovernmentContextForDate(db: DbClient, date: string, relevant
     ? await db.select().from(schema.parties).where(inArray(schema.parties.id, partyIds))
     : [];
   const partiesById = new Map(partyRows.map((row) => [row.id, mapParty(row)]));
+  const caretakerRows = await db.select({ occurredOn: schema.compositionEvents.occurredOn })
+    .from(schema.compositionEvents)
+    .where(sql`
+      ${schema.compositionEvents.governmentId} = ${government.id}
+      and ${schema.compositionEvents.eventType} = 'no_confidence_motion'
+      and ${schema.compositionEvents.occurredOn} <= ${date}::date
+    `);
+  const caretakerSince = caretakerRows.map((row) => row.occurredOn).sort().at(0);
 
   return {
     government,
     asOf: date,
+    caretakerSince,
     alignments: alignmentRows
       .flatMap((row) => {
         const party = partiesById.get(row.partyId);
@@ -1559,6 +1572,7 @@ function mapMemberDirectoryRow(row: MemberDirectoryRow): MemberDirectoryItem {
       : undefined,
     profilePhotoUrl: row.profile_photo_asset_id ? `/api/assets/${encodeURIComponent(row.profile_photo_asset_id)}` : undefined,
     voteCount: Number(row.vote_count ?? 0),
+    absenceCount: Number(row.absence_count ?? 0),
     groupSwitchCount: Number(row.stat_switches ?? 0),
     serviceDays: Number(row.stat_seniority_days ?? 0)
   };
@@ -2206,6 +2220,7 @@ function filterDirectoryItems(
     })
     .sort((a, b) => {
       if (filters?.sort === "votes") return (b.voteCount ?? 0) - (a.voteCount ?? 0) || a.member.displayName.localeCompare(b.member.displayName, "ro");
+      if (filters?.sort === "absent") return (b.absenceCount ?? 0) - (a.absenceCount ?? 0) || a.member.displayName.localeCompare(b.member.displayName, "ro");
       return a.member.displayName.localeCompare(b.member.displayName, "ro");
     });
 }
@@ -2241,6 +2256,9 @@ function memberDirectoryConditions(filters?: MemberDirectoryFilters) {
 function memberDirectoryOrderSql(sort?: string) {
   if (sort === "votes") {
     return sql`vote_count desc, member_display_name asc, member_id asc`;
+  }
+  if (sort === "absent") {
+    return sql`absence_count desc, member_display_name asc, member_id asc`;
   }
   if (sort === "seniority") {
     return sql`stat_seniority_days desc, member_display_name asc, member_id asc`;
@@ -2967,6 +2985,7 @@ type MemberDirectoryRow = {
   party_color: string | null;
   profile_photo_asset_id: string | null;
   vote_count: number;
+  absence_count: number;
   stat_switches: number;
   stat_seniority_days: number;
 };

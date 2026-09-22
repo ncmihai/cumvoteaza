@@ -530,7 +530,6 @@ function resolveAlignment(input: {
   hasKnownOfficialAlignment: boolean;
 }): { alignment: GovernanceAlignment; alignmentBasis: AlignmentBasis } {
   const member = latestAlignment(input.memberAlignments.filter((row) => row.targetId === input.memberId), input.mode, input.asOf);
-  if (member) return { alignment: member.alignment, alignmentBasis: member.basis };
   if (input.groupId && /(?:unaffiliated|neafiliat)/i.test(input.groupId)) {
     return { alignment: "unaffiliated", alignmentBasis: "parliamentary_group_declaration" };
   }
@@ -541,7 +540,14 @@ function resolveAlignment(input: {
   const party = input.partyId
     ? latestAlignment(input.partyAlignments.filter((row) => row.targetId === input.partyId), input.mode, input.asOf)
     : undefined;
-  if (party) return { alignment: party.alignment, alignmentBasis: party.basis };
+  const resolved = [
+    member ? { row: member, specificity: 3 } : undefined,
+    group ? { row: group, specificity: 2 } : undefined,
+    party ? { row: party, specificity: 1 } : undefined
+  ]
+    .filter((item): item is { row: AlignmentRow; specificity: number } => Boolean(item))
+    .sort((a, b) => b.row.startsOn.localeCompare(a.row.startsOn) || b.specificity - a.specificity)[0]?.row;
+  if (resolved) return { alignment: resolved.alignment, alignmentBasis: resolved.basis };
   if (input.mode === "official" && input.hasKnownOfficialAlignment && (input.partyId || input.groupId)) {
     return { alignment: "opposition", alignmentBasis: "manual_curation" };
   }

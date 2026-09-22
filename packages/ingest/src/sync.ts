@@ -172,11 +172,15 @@ export async function discoverSenateVoteSources(options: SyncOptions): Promise<S
 }
 
 export async function runDailySync(options: SyncOptions = {}): Promise<SyncSummary> {
+  const today = new Date().toISOString().slice(0, 10);
+  const senateDateFrom = options.dateFrom ?? `${today.slice(0, 8)}01`;
+  const senateDateTo = options.dateTo ?? today;
   if (options.dryRun) {
     const summary = syncSummary(true);
     const years = options.years ?? [new Date().getUTCFullYear()];
     addSummary(summary, await discoverSenateSources({ ...options, years }));
     addSummary(summary, await discoverDeputiesSources({ ...options, years }));
+    addSummary(summary, await discoverSenateVoteSources({ ...options, dateFrom: senateDateFrom, dateTo: senateDateTo }));
     addSummary(
       summary,
       await discoverDeputiesVoteSources({
@@ -195,6 +199,7 @@ export async function runDailySync(options: SyncOptions = {}): Promise<SyncSumma
     const years = options.years ?? [new Date().getUTCFullYear()];
     const senate = await discoverSenateSources({ ...options, years });
     const deputies = await discoverDeputiesSources({ ...options, years });
+    const senateVotes = await discoverSenateVoteSources({ ...options, dateFrom: senateDateFrom, dateTo: senateDateTo });
     const deputiesVotes = await discoverDeputiesVoteSources({
       ...options,
       years,
@@ -202,6 +207,7 @@ export async function runDailySync(options: SyncOptions = {}): Promise<SyncSumma
     });
     addSummary(summary, senate);
     addSummary(summary, deputies);
+    addSummary(summary, senateVotes);
     addSummary(summary, deputiesVotes);
     addSummary(summary, await importPendingDiscoveries({ years, maxImports: options.maxImports ?? 10, maxRetries: options.maxRetries ?? 4 }));
     await finishIngestionRun(run.id, statusFromSummary(summary), summary);

@@ -103,10 +103,10 @@ export default async function MembersPage({
       </div>
 
       <section className="mt-3 space-y-2">
-        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
+        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-slate-300 bg-white px-3 py-3 transition hover:border-[#075fc6] hover:bg-[#f8fbff]">
           <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-[#e9eef5] font-serif text-xl font-bold text-[#4b608a]"><ImageWithFallback src={profilePhotoUrl} alt="" className="h-full w-full object-cover">{initials(member.displayName)}</ImageWithFallback></div>
           <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-[#061a47]">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#4b608a]"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span></div><p className="mt-1 truncate text-xs text-[#4b608a]">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
-          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
+          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} absenceCount={absenceCount} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-slate-200 pl-5 text-sm font-semibold text-[#075fc6] md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-[#075fc6] md:hidden" size={18} /></div>
         </Link>)}
         {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-300 pb-2 pt-4"><span className="text-sm text-[#4b608a]">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#061a47] transition hover:border-[#075fc6]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center bg-[#061a47] px-4 py-2 text-sm font-semibold !text-white transition hover:bg-[#102d5b]" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
@@ -174,8 +174,7 @@ function parseGroupParam(value?: string): string[] {
 }
 
 function normalizeMemberSort(value?: string): string | undefined {
-  if (value === "absent") return "votes";
-  return value === "votes" || value === "seniority" || value === "switches" ? value : undefined;
+  return value === "votes" || value === "absent" || value === "seniority" || value === "switches" ? value : undefined;
 }
 
 function memberSortOptions(locale: AppLocale): Array<{ value: string; label: string }> {
@@ -183,12 +182,14 @@ function memberSortOptions(locale: AppLocale): Array<{ value: string; label: str
     ? [
         { value: "", label: "Nume" },
         { value: "votes", label: "Cele mai multe voturi documentate" },
+        { value: "absent", label: "Cele mai multe absențe documentate" },
         { value: "seniority", label: "Cel mai mult timp în Parlament" },
         { value: "switches", label: "Cele mai multe schimbări" }
       ]
     : [
         { value: "", label: "Name" },
         { value: "votes", label: "Most documented votes" },
+        { value: "absent", label: "Most documented absences" },
         { value: "seniority", label: "Longest service" },
         { value: "switches", label: "Most switches" }
       ];
@@ -215,12 +216,14 @@ function SortLink({ href, active, children }: { href: string; active: boolean; c
   return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-[#061a47] bg-[#061a47] !text-white" : "border-[#bac6d8] bg-white text-[#21375f] hover:z-10 hover:border-[#075fc6] hover:bg-[#f4f8fd]"}`}>{children}</Link>;
 }
 
-function RankingMetric({ locale, sort, voteCount, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; groupSwitchCount?: number; serviceDays?: number }) {
-  const value = sort === "switches" ? groupSwitchCount ?? 0 : sort === "seniority" ? Math.floor((serviceDays ?? 0) / 365) : voteCount ?? 0;
+function RankingMetric({ locale, sort, voteCount, absenceCount, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; absenceCount?: number; groupSwitchCount?: number; serviceDays?: number }) {
+  const value = sort === "switches" ? groupSwitchCount ?? 0 : sort === "seniority" ? Math.floor((serviceDays ?? 0) / 365) : sort === "absent" ? absenceCount ?? 0 : voteCount ?? 0;
   const label = sort === "switches"
     ? (locale === "ro" ? "schimbări" : "switches")
     : sort === "seniority"
       ? (locale === "ro" ? "ani" : "years")
+      : sort === "absent"
+        ? (locale === "ro" ? "absențe documentate" : "documented absences")
       : (locale === "ro" ? "voturi documentate" : "documented votes");
   return <div className="max-w-24 text-right max-[374px]:hidden"><strong className="block font-serif text-2xl text-[#061a47]">{value}</strong><span className="block text-[11px] leading-tight text-[#4b608a]">{label}</span></div>;
 }

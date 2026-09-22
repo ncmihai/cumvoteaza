@@ -84,10 +84,10 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
           </section>
 
           <div className="mt-6">
-            <VoteExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} groupLogoUrls={data.groupLogoUrls} members={members} seatVotes={seatVotes} nominalVotes={individualVotes} groupTotals={groupTotals} />
+            <VoteExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} groupLogoUrls={data.groupLogoUrls} members={members} seatVotes={seatVotes} nominalVotes={individualVotes} groupTotals={groupTotals} groupAlignments={Object.fromEntries(groupContexts.map((item) => [item.group.id, item.alignment]))} />
           </div>
 
-          <GovernmentContextPanel context={governmentContext} voteGroups={groupContexts} locale={locale} />
+          <GovernmentContextPanel context={governmentContext} locale={locale} />
 
           {bill ? <div className="mt-6"><VoteBillDossierPanel locale={locale} bill={bill} billHref={`/${locale}/bills/${bill.slug}`} voteDate={vote.heldOn} procedureSteps={billProcedureSteps} documents={billDocuments} documentConfidence={Object.fromEntries(billDocumentConfidence)} sponsorNames={sponsorNames} sponsorOverflowCount={Math.max(0, billSponsorContexts.length - sponsorNames.length)} sponsorContexts={billSponsorContexts} labels={labels} /></div> : null}
         </div>

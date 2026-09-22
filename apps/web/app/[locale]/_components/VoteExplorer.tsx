@@ -5,6 +5,7 @@ import { Check, Circle, CircleHelp, Minus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type {
   ChamberId,
+  GovernanceAlignment,
   GroupVoteTotal,
   IndividualVote,
   Locale,
@@ -25,6 +26,7 @@ interface VoteExplorerProps {
   seatVotes: IndividualVote[];
   nominalVotes: IndividualVote[];
   groupTotals: GroupVoteTotal[];
+  groupAlignments?: Record<string, GovernanceAlignment>;
 }
 
 interface PositionedSeat {
@@ -37,6 +39,11 @@ interface PositionedSeat {
 
 const choiceOrder: VoteChoice[] = ["for", "against", "abstention", "present_not_voting", "absent", "unknown"];
 
+const alignmentLabels: Record<Locale, Record<GovernanceAlignment, string>> = {
+  ro: { government: "guvern", governing_support: "susținere", opposition: "opoziție", mixed: "mixt", unaffiliated: "neafiliat", unknown: "necunoscut" },
+  en: { government: "government", governing_support: "support", opposition: "opposition", mixed: "mixed", unaffiliated: "unaffiliated", unknown: "unknown" }
+};
+
 interface SeatSlot {
   left: number;
   top: number;
@@ -44,7 +51,7 @@ interface SeatSlot {
   rowIndex: number;
 }
 
-export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = {}, members, seatVotes, nominalVotes, groupTotals }: VoteExplorerProps) {
+export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = {}, members, seatVotes, nominalVotes, groupTotals, groupAlignments = {} }: VoteExplorerProps) {
   const [activeView, setActiveView] = useState<"map" | "list">("map");
   const [page, setPage] = useState(1);
   const [failedLogos, setFailedLogos] = useState<string[]>([]);
@@ -97,7 +104,7 @@ export function VoteExplorer({ voteId, locale, chamber, groups, groupLogoUrls = 
         <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(42px,58px))] items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase text-slate-500">
           <span>{labels.group}</span><span className="text-right">{voteChoiceLabels[locale].for}</span><span className="text-right">{voteChoiceLabels[locale].against}</span><span className="text-right">{voteChoiceLabels[locale].abstention}</span><span className="text-right">{voteChoiceLabels[locale].present_not_voting}</span><span className="text-right">{labels.notVoting}</span>
         </div>
-        <div className="divide-y divide-slate-200">{breakdown.map((row) => <div key={row.group.id} className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(42px,58px))] items-center gap-2 px-4 py-3 text-sm"><div className="flex min-w-0 items-center gap-2 font-medium"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.group.color }} /><span className="truncate">{row.group.shortName}</span></div><span className="text-right text-emerald-700">{row.counts.for}</span><span className="text-right text-red-700">{row.counts.against}</span><span className="text-right text-amber-700">{row.counts.abstention}</span><span className="text-right text-slate-600">{row.counts.present_not_voting}</span><span className="text-right text-slate-400">{row.counts.absent + row.counts.unknown}</span></div>)}</div>
+        <div className="divide-y divide-slate-200">{breakdown.map((row) => <div key={row.group.id} className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(42px,58px))] items-center gap-2 px-4 py-3 text-sm"><div className="flex min-w-0 items-center gap-2 font-medium"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.group.color }} /><span className="truncate">{row.group.shortName}</span>{groupAlignments[row.group.id] ? <span className="shrink-0 border border-slate-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500">{alignmentLabels[locale][groupAlignments[row.group.id]!]}</span> : null}</div><span className="text-right text-emerald-700">{row.counts.for}</span><span className="text-right text-red-700">{row.counts.against}</span><span className="text-right text-amber-700">{row.counts.abstention}</span><span className="text-right text-slate-600">{row.counts.present_not_voting}</span><span className="text-right text-slate-400">{row.counts.absent + row.counts.unknown}</span></div>)}</div>
       </div>
     </div>
   </section>;

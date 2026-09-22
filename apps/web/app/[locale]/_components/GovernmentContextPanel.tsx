@@ -23,7 +23,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
       <div className="grid gap-4 p-4 md:grid-cols-[1fr_2fr]">
         <div>
           <div className="text-xs font-semibold uppercase text-teal-700">{labels.title}</div>
-          <div className="mt-2 text-xl font-semibold text-slate-950">{context.government.name}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xl font-semibold text-slate-950">{context.government.name}</span>{context.caretakerSince ? <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">{labels.caretaker}</span> : null}</div>
           <div className="mt-1 text-sm text-slate-600">
             {formatDate(context.government.startsOn, locale)}
             {" - "}
@@ -32,6 +32,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
           <div className="mt-2 text-sm text-slate-600">
             {labels.asOf} {formatDate(context.asOf, locale)}
           </div>
+          {context.caretakerSince ? <div className="mt-1 text-xs text-slate-500">{labels.caretakerSince} {formatDate(context.caretakerSince, locale)}</div> : null}
         </div>
 
         <div>
@@ -172,6 +173,8 @@ const governmentContextLabels = {
     formationEvents: "Evenimente politice relevante înainte de dată",
     asOf: "La data:",
     present: "prezent",
+    caretaker: "interimar",
+    caretakerSince: "Atribuții interimare din",
     for: "Pentru",
     against: "Contra",
     abstention: "Abțineri",
@@ -188,6 +191,8 @@ const governmentContextLabels = {
     formationEvents: "Relevant political events before this date",
     asOf: "As of:",
     present: "present",
+    caretaker: "caretaker",
+    caretakerSince: "Caretaker duties since",
     for: "For",
     against: "Against",
     abstention: "Abstentions",
