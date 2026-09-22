@@ -963,6 +963,18 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       ? await getMemberLegislatureActivity(session.db, memberIds, selectedLegislature.id)
       : undefined;
     const voteCoverage = await getVoteCoverage(session.db, selectedVotes.voteRecords.map((vote) => vote.id));
+    const historySourceIds = [...new Set([
+      ...mandates,
+      ...memberships,
+      ...partyAffiliationRows,
+      ...relationRows,
+      ...committeeRows,
+      ...roleRows
+    ].map((row) => row.sourceSnapshotId).filter((id): id is string => Boolean(id)))];
+    const historySources = historySourceIds.length
+      ? await session.db.select().from(schema.sourceSnapshots).where(inArray(schema.sourceSnapshots.id, historySourceIds))
+      : [];
+    const historySourceUrls = new Map(historySources.map((row) => [row.id, row.sourceUrl]));
     const history = buildMemberHistory({
       mandates,
       groupMemberships: memberships,
@@ -974,7 +986,8 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       parties,
       legislatures,
       formationEvents,
-      votes: selectedVotes.individualVotes
+      votes: selectedVotes.individualVotes,
+      sourceUrls: historySourceUrls
     });
     const resolvedHistory = resolveHistoryAssetUrls(history, storedAssetRows);
     const profilePhotoUrl =
@@ -2544,6 +2557,7 @@ function buildMemberHistory(input: {
   legislatures: Legislature[];
   formationEvents?: PoliticalFormationEvent[];
   votes: IndividualVote[];
+  sourceUrls?: Map<string, string>;
 }): MemberHistoryRow[] {
   const votesFor = input.votes.filter((vote) => vote.choice === "for").length;
   const votesAgainst = input.votes.filter((vote) => vote.choice === "against").length;
@@ -2562,6 +2576,7 @@ function buildMemberHistory(input: {
         type: "mandate" as const,
         label: "Mandat parlamentar",
         details: cleanHistoryDetail(mandate.constituency) ?? mandate.status,
+        sourceUrl: mandate.sourceSnapshotId ? input.sourceUrls?.get(mandate.sourceSnapshotId) : undefined,
         ...counts
       };
     }),
@@ -2578,7 +2593,7 @@ function buildMemberHistory(input: {
           type: "relation" as const,
           label: "Înlocuire mandat",
           details: `Înlocuiește pe ${relation.relatedName}`,
-          sourceUrl: relation.relatedOfficialUrl,
+          sourceUrl: relation.relatedOfficialUrl ?? (relation.sourceSnapshotId ? input.sourceUrls?.get(relation.sourceSnapshotId) : undefined),
           ...counts
         }
       ];
@@ -2599,6 +2614,7 @@ function buildMemberHistory(input: {
         details: group?.name ?? "Grup parlamentar",
         logoUrl: membership.logoUrl,
         partySlug: party?.slug,
+        sourceUrl: membership.sourceSnapshotId ? input.sourceUrls?.get(membership.sourceSnapshotId) : undefined,
         ...counts
       };
     }),
@@ -2617,6 +2633,7 @@ function buildMemberHistory(input: {
         details: party?.name ?? "Formațiune politică",
         logoUrl: affiliation.logoUrl,
         partySlug: party?.slug,
+        sourceUrl: affiliation.sourceSnapshotId ? input.sourceUrls?.get(affiliation.sourceSnapshotId) : undefined,
         ...counts
       };
     }),
@@ -2632,6 +2649,7 @@ function buildMemberHistory(input: {
         type: "committee" as const,
         label: committee.committeeName,
         details: committee.role ?? "Membru",
+        sourceUrl: committee.sourceSnapshotId ? input.sourceUrls?.get(committee.sourceSnapshotId) : undefined,
         ...counts
       };
     }),
@@ -2647,6 +2665,7 @@ function buildMemberHistory(input: {
         type: "role" as const,
         label: role.title,
         details: "Rol parlamentar",
+        sourceUrl: role.sourceSnapshotId ? input.sourceUrls?.get(role.sourceSnapshotId) : undefined,
         ...counts
       };
     })
