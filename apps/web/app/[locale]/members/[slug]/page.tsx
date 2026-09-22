@@ -23,20 +23,21 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);
-  const currentGovernmentRole = governmentRoles.find((role) => role.startsOn <= asOf && (!role.endsOn || role.endsOn >= asOf));
+  const today = new Date().toISOString().slice(0, 10);
+  const currentGovernmentRole = governmentRoles.find((role) => role.startsOn <= today && (!role.endsOn || role.endsOn >= today));
   const identity = presentMemberIdentity(member, history, asOf);
   const career = presentMemberCareer(careerSegments, legislatures);
   const activityPresentation = presentMemberActivity({ for: activity?.votesFor ?? 0, against: activity?.votesAgainst ?? 0, abstention: activity?.abstentions ?? 0, presentNotVoting: activity?.presentNotVoting ?? 0, absent: activity?.absent, unknown: activity?.unknown }, locale);
   const expressed = activityPresentation.expressedVotes;
   const isActive = mandate?.status === "active";
-  const statusLabel = isActive ? (locale === "ro" ? "Activ" : "Active") : mandate?.status ?? "—";
+  const statusLabel = mandate?.status === "active" ? (locale === "ro" ? "Activ" : "Active") : mandate?.status === "ended" ? (locale === "ro" ? "Încheiat" : "Ended") : (locale === "ro" ? "Necunoscut" : "Unknown");
   const votesById = new Map(voteRecords.map((vote) => [vote.id, vote]));
   const chronologicalVotes = votes.flatMap((item) => { const vote = votesById.get(item.voteId); return vote ? [{ item, vote }] : []; }).sort((a, b) => b.vote.heldOn.localeCompare(a.vote.heldOn));
   const importantVote = chronologicalVotes.find(({ vote }) => vote.prominence === "major" && (vote.classificationConfidence === "verified" || vote.classificationConfidence === "high"));
   const recent = importantVote ? [importantVote, ...chronologicalVotes.filter(({ item }) => item.id !== importantVote.item.id)].slice(0, 6) : chronologicalVotes.slice(0, 6);
   const shortParty = party?.shortName ?? group?.shortName ?? (locale === "ro" ? "Neafiliat" : "Unaffiliated");
   const contextualVote = fromVote && voteRecords.some((vote) => vote.id === fromVote) ? fromVote : undefined;
-  const context = presentMemberProfileContext({ identity, chamberLabel: mandate ? chamberLabels[locale][mandate.chamber] : undefined, constituency: placeForDisplay(mandate?.constituency), partyLabel: shortParty, legislatureId: selectedLegislature?.id, legislatureLabel: selectedLegislature?.label, history, sponsoredBillCount: sponsoredBills.length, locale, asOf });
+  const context = presentMemberProfileContext({ identity, chamberLabel: mandate ? chamberLabels[locale][mandate.chamber] : undefined, constituency: placeForDisplay(mandate?.constituency), partyLabel: shortParty, legislatureId: selectedLegislature?.id, legislatureLabel: selectedLegislature?.label, history, sponsoredBillCount: sponsoredBills.length, locale, asOf, currentMandate: isActive });
   const featured = recent[0] ? { ...recent[0], presentation: presentVote(recent[0].vote, { locale }) } : undefined;
   const institutionalRoles = [...context.roles, ...context.committees];
   const publicCareerEvents: PublicCareerEvent[] = [

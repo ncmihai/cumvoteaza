@@ -297,6 +297,7 @@ export function presentMemberProfileContext(input: {
   sponsoredBillCount?: number;
   locale: AppLocale;
   asOf?: string;
+  currentMandate?: boolean;
 }): MemberProfileContextPresentation {
   const history = (input.history ?? []).filter((row) => !input.legislatureId || row.legislatureId === input.legislatureId);
   const asOf = input.asOf ?? new Date().toISOString().slice(0, 10);
@@ -305,18 +306,19 @@ export function presentMemberProfileContext(input: {
   const place = input.constituency ? ` ${input.locale === "ro" ? "în circumscripția" : "for"} ${input.constituency}` : "";
   const party = input.partyLabel ? `, ${input.locale === "ro" ? "din partea" : "representing"} ${input.partyLabel}` : "";
   const office = input.identity.office ? `${input.identity.office}, ` : "";
+  const current = input.currentMandate ?? true;
   const summary = input.locale === "ro"
-    ? `${input.identity.name}, ${office}este parlamentar în ${input.chamberLabel ?? "Parlamentul României"}${place}${party}, în legislatura ${input.legislatureLabel ?? "selectată"}.`
-    : `${input.identity.name}, ${office}serves in ${input.chamberLabel ?? "the Romanian Parliament"}${place}${party}, in the ${input.legislatureLabel ?? "selected"} legislature.`;
+    ? `${input.identity.name}, ${office}${current ? "este" : "a fost"} parlamentar în ${input.chamberLabel ?? "Parlamentul României"}${place}${party}, în legislatura ${input.legislatureLabel ?? "selectată"}.`
+    : `${input.identity.name}, ${office}${current ? "serves" : "served"} in ${input.chamberLabel ?? "the Romanian Parliament"}${place}${party}, in the ${input.legislatureLabel ?? "selected"} legislature.`;
 
   if (roles[0]) return {
     summary,
-    significance: input.locale === "ro" ? `Deține rolul de ${roles[0].label}; această funcție este contextul instituțional verificat disponibil pentru activitatea sa.` : `Serves as ${roles[0].label}; this is the verified institutional context available for the member's activity.`,
+    significance: input.locale === "ro" ? `${current ? "Deține" : "A deținut"} rolul de ${roles[0].label}; această funcție este contextul instituțional documentat disponibil pentru activitatea sa.` : `${current ? "Serves" : "Served"} as ${roles[0].label}; this is the documented institutional context available for the member's activity.`,
     evidenceKind: "role", roles, committees
   };
   if (committees[0]) return {
     summary,
-    significance: input.locale === "ro" ? `Activează în ${committees.map((row) => row.label).slice(0, 2).join(" și ")}, unde sunt analizate și pregătite proiecte înaintea votului în plen.` : `Serves on ${committees.map((row) => row.label).slice(0, 2).join(" and ")}, where bills are examined before plenary votes.`,
+    significance: input.locale === "ro" ? `${current ? "Activează" : "A activat"} în ${committees.map((row) => row.label).slice(0, 2).join(" și ")}, unde sunt analizate și pregătite proiecte înaintea votului în plen.` : `${current ? "Serves" : "Served"} on ${committees.map((row) => row.label).slice(0, 2).join(" and ")}, where bills are examined before plenary votes.`,
     evidenceKind: "committee", roles, committees
   };
   if ((input.sponsoredBillCount ?? 0) > 0) return {

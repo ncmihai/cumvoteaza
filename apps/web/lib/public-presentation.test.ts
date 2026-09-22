@@ -132,6 +132,12 @@ describe("public presentation contracts", () => {
     expect(result.evidenceKind).toBe("unavailable");
     expect(result.significance).toContain("Nu există încă suficiente date");
   });
+
+  it("uses past tense for a completed mandate", () => {
+    const result = presentMemberProfileContext({ identity: { name: "Ana Exemplu" }, chamberLabel: "Camera Deputaților", legislatureLabel: "2020–2024", currentMandate: false, locale: "ro" });
+    expect(result.summary).toContain("a fost parlamentar");
+    expect(result.summary).not.toContain("este parlamentar");
+  });
 });
 
 function government(id: string, startsOn: string, endsOn?: string): Government {
