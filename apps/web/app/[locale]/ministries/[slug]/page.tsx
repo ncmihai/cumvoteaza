@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Building2, ExternalLink, Landmark, Vote } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ExternalLink, GitMerge, Landmark, Vote } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getMinistry } from "@/lib/ministry-data";
 import type { AppLocale } from "@/lib/i18n";
@@ -19,6 +19,7 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
         <p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{locale === "ro" ? "Minister" : "Ministry"}</p>
         <h1 className="mt-2 font-serif text-4xl font-semibold leading-[.98] tracking-[-.035em] text-[#050e2c] [overflow-wrap:anywhere] lg:text-6xl">{ministry.name}</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-[#4b608a]">{locale === "ro" ? ministry.descriptionRo : ministry.descriptionEn}</p>
+        {ministry.institutionalHistory.incarnations.length ? <InstitutionalHistory history={ministry.institutionalHistory} locale={locale}/> : null}
         <section className="mt-6 border border-slate-300 bg-white p-4 md:p-5"><div className="flex items-center gap-2"><Landmark className="text-[#075fc6]"/><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history"}</h2></div>
           <div className="mt-4 divide-y divide-slate-200">{ministry.terms.map((term, index) => <article key={term.id} className="grid min-w-0 gap-2 py-4 md:grid-cols-[150px_minmax(0,1fr)_auto] md:items-start">
             <div className="text-xs font-semibold text-[#4b608a]">{formatDate(term.startsOn, locale)}<span className="block">{term.endsOn ? `— ${formatDate(term.endsOn, locale)}` : `— ${locale === "ro" ? "prezent" : "present"}`}</span></div>
@@ -34,6 +35,31 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
       <aside className="self-start border border-[#dae8f7] bg-[#f0f6fc] p-5 lg:sticky lg:top-24"><Building2 className="text-[#075fc6]"/><h2 className="mt-3 font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Conducerea actuală" : "Current leadership"}</h2>{current ? <><div className="mt-4 flex flex-wrap items-center gap-2"><strong className="font-serif text-xl text-[#061a47]">{current.person.displayName}</strong>{current.interim ? <span className="border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-900">{locale === "ro" ? "Interimar" : "Interim"}</span> : null}</div><p className="mt-2 text-xs leading-5 text-[#4b608a]">{locale === "ro" ? "În funcție din" : "In office since"} {formatDate(current.startsOn, locale)}<br/>{locale === "ro" ? "Guvernul" : "Government"} {current.government.name}</p>{current.member ? <Link href={`/${locale}/members/${current.member.slug}`} className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#075fc6]">{locale === "ro" ? "Vezi profilul parlamentar" : "View parliamentary profile"}<ArrowRight size={13}/></Link> : null}</> : <p className="mt-3 text-sm text-[#4b608a]">{locale === "ro" ? "Titularul curent este în curs de verificare." : "The current holder is under verification."}</p>}</aside>
     </div>
   </main>;
+}
+
+function InstitutionalHistory({ history, locale }: { history: NonNullable<Awaited<ReturnType<typeof getMinistry>>>["institutionalHistory"]; locale: AppLocale }) {
+  return <section className="mt-6 border border-[#b8d2ef] bg-[#f0f6fc] p-4 md:p-5">
+    <div className="flex items-center gap-2"><GitMerge className="text-[#075fc6]"/><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Cum s-a schimbat instituția" : "How the institution changed"}</h2></div>
+    <p className="mt-2 max-w-3xl text-xs leading-5 text-[#4b608a]">{locale === "ro" ? "Portofoliul a fost purtat de instituții diferite. Separăm continuitatea domeniului de existența juridică a fiecărui minister." : "This portfolio has been held by different institutions. Policy continuity is shown separately from each ministry’s legal existence."}</p>
+    <div className="mt-4 grid gap-2 md:grid-cols-2">{history.incarnations.map((item) => <article key={item.id} className="min-w-0 border border-[#cadbef] bg-white p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2"><strong className="max-w-xl font-serif text-base leading-5 text-[#061a47]">{item.name}</strong>{item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-[#075fc6]">{locale === "ro" ? "Act oficial" : "Official act"}<ExternalLink size={10}/></a> : null}</div>
+      <p className="mt-1 text-[10px] font-semibold text-[#4b608a]">{formatDate(item.startsOn, locale)} — {item.endsOn ? formatDate(item.endsOn, locale) : (locale === "ro" ? "prezent" : "present")}</p>
+      <div className="mt-2 flex flex-wrap gap-1">{item.portfolios.map((portfolio) => <span key={portfolio.id} className="border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] text-[#4b608a]">{locale === "ro" ? portfolio.nameRo : portfolio.nameEn}</span>)}</div>
+    </article>)}</div>
+    {history.lineage.length ? <div className="mt-4 border-t border-[#cadbef] pt-3"><h3 className="text-[10px] font-bold uppercase tracking-wide text-[#4b608a]">{locale === "ro" ? "Reorganizări documentate" : "Documented reorganisations"}</h3><div className="mt-2 space-y-2">{history.lineage.map((edge) => <div key={edge.id} className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-[#253b66]"><span className="font-semibold">{edge.from.name}</span><ArrowRight size={12} className="shrink-0 text-[#075fc6]"/><span className="font-semibold">{edge.to.name}</span><span className="border border-[#cadbef] bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase">{lineageLabel(edge.relationship, locale)}</span><span className="text-[10px] text-[#4b608a]">{formatDate(edge.effectiveOn, locale)}</span></div>)}</div></div> : null}
+  </section>;
+}
+
+function lineageLabel(relationship: string, locale: AppLocale) {
+  const labels: Record<string, [string, string]> = {
+    renamed_to: ["redenumire", "renamed"],
+    replaced_by: ["înlocuit", "replaced"],
+    merged_into: ["comasare", "merged"],
+    split_into: ["divizare", "split"],
+    responsibility_transferred_to: ["transfer atribuții", "responsibilities transferred"]
+  };
+  const label = labels[relationship] ?? [relationship, relationship];
+  return locale === "ro" ? label[0] : label[1];
 }
 
 function LegislationRow({ locale, item }: { locale: AppLocale; item: NonNullable<Awaited<ReturnType<typeof getMinistry>>>["legislation"][number] }) {

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { governmentSkeletonData } from "../government-skeleton";
-import { auditMinistryInstitutionCatalog, incarnationIdByName, ministryLineage } from "../ministry-institution-catalog";
+import { auditMinistryInstitutionCatalog, ministryIncarnations, ministryLineage } from "../ministry-institution-catalog";
 
 describe("ministry institution catalog", () => {
   it("keeps the reviewed institutional graph internally consistent", () => {
     expect(auditMinistryInstitutionCatalog()).toEqual({
-      portfolios: 13,
-      incarnations: 8,
-      mappings: 26,
+      portfolios: 26,
+      incarnations: 21,
+      mappings: 39,
       lineageEdges: 6,
       errors: []
     });
@@ -19,9 +19,15 @@ describe("ministry institution catalog", () => {
   });
 
   it("connects pilot cabinet roles to active exact incarnations", () => {
-    const pilotNames = new Set(incarnationIdByName.keys());
-    const pilotRoles = governmentSkeletonData().roles.filter((role) => role.ministry && pilotNames.has(role.ministry));
-    expect(pilotRoles.length).toBeGreaterThan(0);
-    expect(pilotRoles.every((role) => role.ministryIncarnationId)).toBe(true);
+    const incarnationById = new Map(ministryIncarnations.map((item) => [item.id, item]));
+    const pilotGovernments = new Set(["government-ciolacu-ii-2024-2025", "government-bolojan-2025-present"]);
+    const pilotRoles = governmentSkeletonData().roles.filter((role) => role.ministryId && pilotGovernments.has(role.governmentId));
+    expect(pilotRoles).toHaveLength(43);
+    for (const role of pilotRoles) {
+      const incarnation = role.ministryIncarnationId ? incarnationById.get(role.ministryIncarnationId) : undefined;
+      expect(incarnation, role.id).toBeDefined();
+      expect(incarnation!.startsOn <= role.startsOn, role.id).toBe(true);
+      expect(!incarnation!.endsOn || incarnation!.endsOn >= role.startsOn, role.id).toBe(true);
+    }
   });
 });

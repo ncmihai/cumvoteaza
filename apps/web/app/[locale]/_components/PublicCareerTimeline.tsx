@@ -1,0 +1,25 @@
+import { Building2, ExternalLink, Landmark, UsersRound } from "lucide-react";
+import { formatDate, type Locale } from "@cumsevoteaza/parliament-model";
+
+export interface PublicCareerEvent {
+  id: string;
+  category: "parliament" | "government" | "party" | "committee";
+  title: string;
+  details: string;
+  startsOn: string;
+  endsOn?: string;
+  sourceUrl?: string;
+}
+
+export function PublicCareerTimeline({ events, locale }: { events: PublicCareerEvent[]; locale: Locale }) {
+  if (!events.length) return null;
+  const ordered = [...events].sort((a, b) => b.startsOn.localeCompare(a.startsOn) || a.title.localeCompare(b.title, locale));
+  return <section className="mt-5 border border-slate-300 bg-white p-4 md:p-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-[#075fc6]">{locale === "ro" ? "CV public documentat" : "Documented public CV"}</p><h2 className="mt-1 font-serif text-2xl font-semibold text-[#061a47] md:text-3xl">{locale === "ro" ? "Parcursul în funcții publice" : "Public-service career"}</h2></div><span className="text-xs text-[#4b608a]">{events.length} {locale === "ro" ? "etape verificate" : "verified entries"}</span></div>
+    <p className="mt-2 max-w-3xl text-xs leading-5 text-[#4b608a]">{locale === "ro" ? "Mandate, funcții parlamentare, comisii, afilieri și roluri în Guvern, reunite cronologic din înregistrările cu perioade documentate." : "Mandates, parliamentary offices, committees, affiliations and government roles, combined chronologically from dated records."}</p>
+    <ol className="mt-5 border-l border-[#b8d2ef] pl-4">{ordered.map((event) => <li key={event.id} className="relative border-b border-slate-200 py-3 last:border-b-0"><span className="absolute -left-[21px] top-[18px] h-2.5 w-2.5 rounded-full border-2 border-white bg-[#075fc6]"/><div className="flex min-w-0 flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-[#075fc6]">{categoryIcon(event.category)}</span><strong className="font-serif text-base text-[#061a47]">{event.title}</strong><span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[8px] font-bold uppercase text-[#4b608a]">{categoryLabel(event.category, locale)}</span></div><p className="mt-1 text-xs leading-5 text-[#4b608a]">{event.details}</p><p className="mt-1 text-[10px] font-semibold text-[#4b608a]">{formatDate(event.startsOn, locale)} — {event.endsOn ? formatDate(event.endsOn, locale) : (locale === "ro" ? "prezent" : "present")}</p></div>{event.sourceUrl ? <a href={event.sourceUrl} target="_blank" rel="noreferrer" aria-label={locale === "ro" ? "Sursă" : "Source"} className="shrink-0 text-[#075fc6]"><ExternalLink size={14}/></a> : null}</div></li>)}</ol>
+  </section>;
+}
+
+function categoryIcon(category: PublicCareerEvent["category"]) { return category === "government" ? <Landmark size={15}/> : category === "committee" ? <UsersRound size={15}/> : <Building2 size={15}/>; }
+function categoryLabel(category: PublicCareerEvent["category"], locale: Locale) { const labels = { parliament: ["Parlament", "Parliament"], government: ["Guvern", "Government"], party: ["Partid", "Party"], committee: ["Comisie", "Committee"] } as const; return labels[category][locale === "ro" ? 0 : 1]; }
