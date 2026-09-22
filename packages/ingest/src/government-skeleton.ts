@@ -1,7 +1,8 @@
-import type { CompositionEvent, Government, GovernmentPartyAlignment, GovernmentRole, Ministry, MinistryAlias, Person, SourceSnapshot } from "@cumsevoteaza/parliament-model";
+import type { CompositionEvent, Government, GovernmentPartyAlignment, GovernmentRole, Ministry, MinistryAlias, MinistryIncarnation, MinistryIncarnationPortfolio, MinistryLineage, Person, PolicyPortfolio, SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { partyAlignmentsForGovernment } from "./government-party-alignments";
 import { cabinetManifests } from "./government-cabinet-manifests";
 import { ministryAliases, ministryCatalog, ministryIdByName } from "./ministry-catalog";
+import { incarnationIdByName, ministryIncarnationPortfolios, ministryIncarnations, ministryLineage, policyPortfolioCatalog } from "./ministry-institution-catalog";
 
 const sourceUrl = "https://en.wikipedia.org/wiki/List_of_heads_of_government_of_Romania";
 
@@ -250,6 +251,10 @@ export function governmentSkeletonData(): {
   sourceSnapshots: SourceSnapshot[];
   ministries: Ministry[];
   ministryAliases: MinistryAlias[];
+  policyPortfolios: PolicyPortfolio[];
+  ministryIncarnations: MinistryIncarnation[];
+  ministryIncarnationPortfolios: MinistryIncarnationPortfolio[];
+  ministryLineage: MinistryLineage[];
   people: Person[];
   governments: Government[];
   roles: GovernmentRole[];
@@ -291,6 +296,36 @@ export function governmentSkeletonData(): {
       parserVersion: "1",
       status: "parsed",
       notes: "Official Parliament Decision 33/2024 investing the Ciolacu II cabinet and its programme."
+    },
+    {
+      id: "source-oug-121-2021-central-administration",
+      sourceUrl: "https://legislatie.just.ro/Public/DetaliiDocumentAfis/267733",
+      fetchedAt: "2026-09-22T00:00:00.000Z",
+      contentHash: "5da09a0b55de34ad149ab1991073aa89756f639982a6bf6457055da011bd1eb8",
+      parser: "ministry-lineage-reviewed-extraction",
+      parserVersion: "1",
+      status: "parsed",
+      notes: "Reviewed official act establishing the 2021 central-administration structure used as the predecessor boundary."
+    },
+    {
+      id: "source-oug-59-2023-central-administration",
+      sourceUrl: "https://legislatie.just.ro/Public/DetaliiDocumentAfis/282118",
+      fetchedAt: "2026-09-22T00:00:00.000Z",
+      contentHash: "7f2c337d00ba63426b5264af7b0af42c7b9b81558c6ecba9c6df23978c0729e1",
+      parser: "ministry-lineage-reviewed-extraction",
+      parserVersion: "1",
+      status: "parsed",
+      notes: "Reviewed official act establishing the 2023 economy, entrepreneurship and tourism ministry structure."
+    },
+    {
+      id: "source-oug-153-2024-central-administration",
+      sourceUrl: "https://legislatie.just.ro/Public/DetaliiDocumentAfis/293372",
+      fetchedAt: "2026-09-22T00:00:00.000Z",
+      contentHash: "5b95f5760cce26a31bd322bfaa811b3e47b54b9d1cba154531182ff3360ce0c7",
+      parser: "ministry-lineage-reviewed-extraction",
+      parserVersion: "1",
+      status: "parsed",
+      notes: "Reviewed official act documenting the December 2024 ministry merger, split, renames and responsibility transfers."
     },
     {
       id: "source-decree-623-predoiu-acting-2025",
@@ -401,6 +436,10 @@ export function governmentSkeletonData(): {
     sourceSnapshots,
     ministries: ministryCatalog,
     ministryAliases,
+    policyPortfolios: policyPortfolioCatalog,
+    ministryIncarnations,
+    ministryIncarnationPortfolios,
+    ministryLineage,
     people,
     governments: governments.map((item) => {
       const personId = `person-${slugify(item.primeMinister)}`;
@@ -433,6 +472,7 @@ export function governmentSkeletonData(): {
       title: role.title,
       ministry: role.ministry,
       ministryId: role.ministry ? ministryIdByName.get(role.ministry) : undefined,
+      ministryIncarnationId: role.ministry ? incarnationIdByName.get(role.ministry) : undefined,
       startsOn: role.startsOn ?? "2025-06-23",
       endsOn: role.endsOn,
       sourceSnapshotId: role.sourceSnapshotId ?? currentCabinetSourceId
@@ -445,6 +485,7 @@ export function governmentSkeletonData(): {
         title: role.title,
         ministry: role.ministry,
         ministryId: role.ministry ? ministryIdByName.get(role.ministry) : undefined,
+        ministryIncarnationId: role.ministry ? incarnationIdByName.get(role.ministry) : undefined,
         startsOn: role.startsOn,
         endsOn: role.endsOn,
         sourceSnapshotId: role.sourceSnapshotId

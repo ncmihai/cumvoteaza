@@ -78,6 +78,13 @@ export const alignmentBasisEnum = pgEnum("alignment_basis", [
   "manual_curation",
   "unknown"
 ]);
+export const ministryLineageTypeEnum = pgEnum("ministry_lineage_type", [
+  "renamed_to",
+  "replaced_by",
+  "merged_into",
+  "split_into",
+  "responsibility_transferred_to"
+]);
 export const compositionEventTypeEnum = pgEnum("composition_event_type", [
   "legislature_start",
   "legislature_end",
@@ -376,6 +383,18 @@ export const ministries = pgTable("ministries", {
   slugIdx: uniqueIndex("ministries_slug_idx").on(table.slug)
 }));
 
+export const policyPortfolios = pgTable("policy_portfolios", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull(),
+  nameRo: text("name_ro").notNull(),
+  nameEn: text("name_en").notNull(),
+  descriptionRo: text("description_ro").notNull(),
+  descriptionEn: text("description_en").notNull(),
+  active: integer("active").notNull().default(1)
+}, (table) => ({
+  slugIdx: uniqueIndex("policy_portfolios_slug_idx").on(table.slug)
+}));
+
 export const ministryAliases = pgTable("ministry_aliases", {
   id: text("id").primaryKey(),
   ministryId: text("ministry_id").notNull().references(() => ministries.id),
@@ -387,6 +406,46 @@ export const ministryAliases = pgTable("ministry_aliases", {
   nameIdx: index("ministry_aliases_name_idx").on(table.name)
 }));
 
+export const ministryIncarnations = pgTable("ministry_incarnations", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  shortName: text("short_name").notNull(),
+  startsOn: date("starts_on").notNull(),
+  endsOn: date("ends_on"),
+  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
+}, (table) => ({
+  slugIdx: uniqueIndex("ministry_incarnations_slug_idx").on(table.slug),
+  periodIdx: index("ministry_incarnations_period_idx").on(table.startsOn, table.endsOn)
+}));
+
+export const ministryIncarnationPortfolios = pgTable("ministry_incarnation_portfolios", {
+  id: text("id").primaryKey(),
+  incarnationId: text("incarnation_id").notNull().references(() => ministryIncarnations.id),
+  portfolioId: text("portfolio_id").notNull().references(() => policyPortfolios.id),
+  startsOn: date("starts_on").notNull(),
+  endsOn: date("ends_on"),
+  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
+}, (table) => ({
+  incarnationIdx: index("ministry_incarnation_portfolios_incarnation_idx").on(table.incarnationId),
+  portfolioPeriodIdx: index("ministry_incarnation_portfolios_portfolio_period_idx").on(table.portfolioId, table.startsOn, table.endsOn),
+  uniqueMappingIdx: uniqueIndex("ministry_incarnation_portfolios_unique_idx").on(table.incarnationId, table.portfolioId, table.startsOn)
+}));
+
+export const ministryLineage = pgTable("ministry_lineage", {
+  id: text("id").primaryKey(),
+  fromIncarnationId: text("from_incarnation_id").notNull().references(() => ministryIncarnations.id),
+  toIncarnationId: text("to_incarnation_id").notNull().references(() => ministryIncarnations.id),
+  relationship: ministryLineageTypeEnum("relationship").notNull(),
+  effectiveOn: date("effective_on").notNull(),
+  notes: text("notes"),
+  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
+}, (table) => ({
+  fromIdx: index("ministry_lineage_from_idx").on(table.fromIncarnationId),
+  toIdx: index("ministry_lineage_to_idx").on(table.toIncarnationId),
+  uniqueEdgeIdx: uniqueIndex("ministry_lineage_unique_idx").on(table.fromIncarnationId, table.toIncarnationId, table.relationship, table.effectiveOn)
+}));
+
 export const governmentRoles = pgTable("government_roles", {
   id: text("id").primaryKey(),
   governmentId: text("government_id").notNull().references(() => governments.id),
@@ -394,6 +453,7 @@ export const governmentRoles = pgTable("government_roles", {
   title: text("title").notNull(),
   ministry: text("ministry"),
   ministryId: text("ministry_id").references(() => ministries.id),
+  ministryIncarnationId: text("ministry_incarnation_id").references(() => ministryIncarnations.id),
   startsOn: date("starts_on").notNull(),
   endsOn: date("ends_on"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)

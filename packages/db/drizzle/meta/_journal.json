@@ -162,6 +162,20 @@
       "when": 1789990809218,
       "tag": "0022_ambiguous_warstar",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790075827513,
+      "tag": "0023_dazzling_princess_powerful",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790075952543,
+      "tag": "0024_reflective_scourge",
+      "breakpoints": true
     }
   ]
 }

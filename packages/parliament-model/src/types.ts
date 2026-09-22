@@ -212,6 +212,7 @@ export interface GovernmentRole {
   title: string;
   ministry?: string;
   ministryId?: string;
+  ministryIncarnationId?: string;
   startsOn: string;
   endsOn?: string;
   sourceSnapshotId?: string;
@@ -233,6 +234,52 @@ export interface MinistryAlias {
   name: string;
   startsOn?: string;
   endsOn?: string;
+}
+
+export interface MinistryIncarnation {
+  id: string;
+  slug: string;
+  name: string;
+  shortName: string;
+  startsOn: string;
+  endsOn?: string;
+  sourceSnapshotId?: string;
+}
+
+export interface PolicyPortfolio {
+  id: string;
+  slug: string;
+  nameRo: string;
+  nameEn: string;
+  descriptionRo: string;
+  descriptionEn: string;
+  active: boolean;
+}
+
+export interface MinistryIncarnationPortfolio {
+  id: string;
+  incarnationId: string;
+  portfolioId: string;
+  startsOn: string;
+  endsOn?: string;
+  sourceSnapshotId?: string;
+}
+
+export type MinistryLineageType =
+  | "renamed_to"
+  | "replaced_by"
+  | "merged_into"
+  | "split_into"
+  | "responsibility_transferred_to";
+
+export interface MinistryLineage {
+  id: string;
+  fromIncarnationId: string;
+  toIncarnationId: string;
+  relationship: MinistryLineageType;
+  effectiveOn: string;
+  notes?: string;
+  sourceSnapshotId?: string;
 }
 
 export interface GovernmentPartyAlignment {

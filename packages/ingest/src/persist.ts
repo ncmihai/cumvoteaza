@@ -590,6 +590,10 @@ export async function persistGovernmentSkeleton(input: {
   sourceSnapshots?: SourceSnapshot[];
   ministries?: import("@cumsevoteaza/parliament-model").Ministry[];
   ministryAliases?: import("@cumsevoteaza/parliament-model").MinistryAlias[];
+  policyPortfolios?: import("@cumsevoteaza/parliament-model").PolicyPortfolio[];
+  ministryIncarnations?: import("@cumsevoteaza/parliament-model").MinistryIncarnation[];
+  ministryIncarnationPortfolios?: import("@cumsevoteaza/parliament-model").MinistryIncarnationPortfolio[];
+  ministryLineage?: import("@cumsevoteaza/parliament-model").MinistryLineage[];
   people: Person[];
   governments: Government[];
   roles: GovernmentRole[];
@@ -611,6 +615,10 @@ export async function persistGovernmentSkeleton(input: {
     await upsertSourceSnapshots(session.db, input.sourceSnapshots ?? []);
     await Promise.all((input.ministries ?? []).map((ministry) => upsertMinistry(session.db, ministry)));
     await Promise.all((input.ministryAliases ?? []).map((alias) => upsertMinistryAlias(session.db, alias)));
+    await Promise.all((input.policyPortfolios ?? []).map((item) => upsertPolicyPortfolio(session.db, item)));
+    await Promise.all((input.ministryIncarnations ?? []).map((item) => upsertMinistryIncarnation(session.db, item)));
+    await Promise.all((input.ministryIncarnationPortfolios ?? []).map((item) => upsertMinistryIncarnationPortfolio(session.db, item)));
+    await Promise.all((input.ministryLineage ?? []).map((item) => upsertMinistryLineage(session.db, item)));
     await Promise.all(input.people.map((person) => upsertPerson(session.db, person)));
     await Promise.all(input.governments.map((government) => upsertGovernment(session.db, government)));
     await Promise.all(input.roles.map((role) => upsertGovernmentRole(session.db, role)));
@@ -621,6 +629,10 @@ export async function persistGovernmentSkeleton(input: {
       sourceSnapshots: input.sourceSnapshots?.length ?? 0,
       ministries: input.ministries?.length ?? 0,
       ministryAliases: input.ministryAliases?.length ?? 0,
+      policyPortfolios: input.policyPortfolios?.length ?? 0,
+      ministryIncarnations: input.ministryIncarnations?.length ?? 0,
+      ministryIncarnationPortfolios: input.ministryIncarnationPortfolios?.length ?? 0,
+      ministryLineage: input.ministryLineage?.length ?? 0,
       people: input.people.length,
       governments: input.governments.length,
       roles: input.roles.length,
@@ -700,6 +712,7 @@ async function upsertGovernmentRole(db: Db, role: GovernmentRole) {
       title: role.title,
       ministry: role.ministry,
       ministryId: role.ministryId,
+      ministryIncarnationId: role.ministryIncarnationId,
       startsOn: role.startsOn,
       endsOn: role.endsOn ?? null,
       sourceSnapshotId: role.sourceSnapshotId
@@ -712,6 +725,7 @@ async function upsertGovernmentRole(db: Db, role: GovernmentRole) {
         title: role.title,
         ministry: role.ministry,
         ministryId: role.ministryId,
+        ministryIncarnationId: role.ministryIncarnationId,
         startsOn: role.startsOn,
         endsOn: role.endsOn ?? null,
         sourceSnapshotId: role.sourceSnapshotId
@@ -736,6 +750,34 @@ async function upsertMinistryAlias(db: Db, alias: import("@cumsevoteaza/parliame
   }).onConflictDoUpdate({ target: schema.ministryAliases.id, set: {
     ministryId: alias.ministryId, name: alias.name, startsOn: alias.startsOn ?? null, endsOn: alias.endsOn ?? null
   }});
+}
+
+async function upsertPolicyPortfolio(db: Db, item: import("@cumsevoteaza/parliament-model").PolicyPortfolio) {
+  await db.insert(schema.policyPortfolios).values({ ...item, active: item.active ? 1 : 0 }).onConflictDoUpdate({
+    target: schema.policyPortfolios.id,
+    set: { slug: item.slug, nameRo: item.nameRo, nameEn: item.nameEn, descriptionRo: item.descriptionRo, descriptionEn: item.descriptionEn, active: item.active ? 1 : 0 }
+  });
+}
+
+async function upsertMinistryIncarnation(db: Db, item: import("@cumsevoteaza/parliament-model").MinistryIncarnation) {
+  await db.insert(schema.ministryIncarnations).values({ ...item, endsOn: item.endsOn ?? null }).onConflictDoUpdate({
+    target: schema.ministryIncarnations.id,
+    set: { slug: item.slug, name: item.name, shortName: item.shortName, startsOn: item.startsOn, endsOn: item.endsOn ?? null, sourceSnapshotId: item.sourceSnapshotId }
+  });
+}
+
+async function upsertMinistryIncarnationPortfolio(db: Db, item: import("@cumsevoteaza/parliament-model").MinistryIncarnationPortfolio) {
+  await db.insert(schema.ministryIncarnationPortfolios).values({ ...item, endsOn: item.endsOn ?? null }).onConflictDoUpdate({
+    target: schema.ministryIncarnationPortfolios.id,
+    set: { incarnationId: item.incarnationId, portfolioId: item.portfolioId, startsOn: item.startsOn, endsOn: item.endsOn ?? null, sourceSnapshotId: item.sourceSnapshotId }
+  });
+}
+
+async function upsertMinistryLineage(db: Db, item: import("@cumsevoteaza/parliament-model").MinistryLineage) {
+  await db.insert(schema.ministryLineage).values(item).onConflictDoUpdate({
+    target: schema.ministryLineage.id,
+    set: { fromIncarnationId: item.fromIncarnationId, toIncarnationId: item.toIncarnationId, relationship: item.relationship, effectiveOn: item.effectiveOn, notes: item.notes, sourceSnapshotId: item.sourceSnapshotId }
+  });
 }
 
 async function upsertCompositionEvent(db: Db, event: CompositionEvent) {
