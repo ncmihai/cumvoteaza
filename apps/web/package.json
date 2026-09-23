@@ -14,6 +14,7 @@
     "@cumsevoteaza/db": "0.1.0",
     "@cumsevoteaza/ingest": "0.1.0",
     "@cumsevoteaza/parliament-model": "0.1.0",
+    "d3-shape": "^3.2.0",
     "lucide-react": "^0.468.0",
     "next": "^16.2.4",
     "next-intl": "^4.0.0",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/d3-shape": "^3.2.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "tailwindcss": "^4.0.0",

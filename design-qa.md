@@ -503,3 +503,60 @@ final result: passed
 - Checks: production build passed; no horizontal overflow or illustration overlap was seen in the checked desktop and tablet views.
 
 final result: passed
+
+---
+
+# Vote hemicycle redesign QA
+
+- Source visual truth: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-8c92e6a2-0260-49ea-a9bd-802ef315866e.png` (1487 × 1058 px).
+- Implementation: `http://localhost:3016/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356`, selected Ştefan-Ovidiu Popa. In-app browser screenshot was compared inline with the source at a 1487 × 1058 CSS-px viewport; capture not persisted to disk. Both were 1487 × 1058 visible pixels at browser density 1.
+- Additional checks: Deputies at 320, 375, 768, 854, 1024, 1280, and 1487 CSS px; Senate sample at 1487 CSS px.
+
+## Findings and comparison history
+
+1. [P1, fixed] The old 120° seat sweep and white-filled rings did not resemble the mockup. Rebuilt the seat coordinates as a broad 180° hemicycle, filled seats by vote while retaining a group-coloured border, and reduced the central mandate count. Final desktop and mobile captures show the intended chamber silhouette.
+2. [P1, fixed] No group arcs appeared in the earlier graph, and party names were desktop-only. Data-derived coloured arcs now follow group boundaries at every width. Desktop labels show group names/counts; tablet and phone have colour-coded group controls next to the still-visible arcs.
+3. [P2, fixed] The first redesigned desktop pass left the smaller groups' labels on top of their seats. The final pass reserves an 8% right gutter for the chart and retains the labels in the full-width wrapper. The revised 1487-px capture shows clear right-side labels.
+4. [P3, intentional] The production page keeps CumVoteaza branding, the previously requested smaller site-wide scale, and “Rezultat neclarificat” rather than copying the mockup's unsupported adoption claim. Those differences are not graph regressions.
+
+## Fidelity and interaction checks
+
+- Typography: serif group labels and smaller central count preserve the site's editorial type; the mockup's larger overall type is intentionally not copied.
+- Layout and spacing: arcs, seats, and labels form one chamber hierarchy; no horizontal document overflow at the seven checked widths. The mobile arc remains visible even though individual seats are necessarily small, with a larger group-member list for selection.
+- Colour and icons: arcs/borders encode groups, filled seats and inner symbols encode votes; the separate vote legend remains. Group hover/focus gently dims other groups and respects reduced-motion preferences.
+- Image quality: existing chamber dais images remain subdued in the centre and are hidden on cramped mobile widths. No official crest or fake portrait was added.
+- Copy/content: removed the redundant “Culoarea conturului” explanation. The 330 Deputies seats and vote totals remain data-driven, and the legal result remains separate from the vote count. The Senate search prompt now says “senator”.
+- Interactions: selected-seat panel showed the correct real member after clicking a seat; mobile group selection opened the enlarged member list and selected-person panel. The Senate sample rendered seven arcs and 134 data records without overflow. Browser console had no observed errors during the visual checks.
+- Checks: web typecheck, 17 web tests, production build, and `git diff --check` passed.
+
+## Follow-up data note
+
+- The sampled 2025 Senate vote still contains duplicate person records with conflicting “Pentru” and “Absent” statuses (for example, Cătălin Silegeanu). This predates the visual change and needs separate ingest reconciliation; the graph preserves the supplied records rather than silently choosing one.
+
+final result: passed
+
+---
+
+# Vote-map labels and vote-color legibility QA
+
+- Source visual truth: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-8c92e6a2-0260-49ea-a9bd-802ef315866e.png` (1487 × 1058 px), plus the user's request for vote-color fills on small seats.
+- Implementation: `http://localhost:3016/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356`. Browser captures were inspected inline at 320, 375, and 678 CSS px; the in-app browser does not provide a persisted screenshot path. The reference and implementation differ in viewport and existing CumVoteaza chrome, so the comparison focused on the graph and legends rather than claiming pixel identity.
+- State: all groups and vote choices visible; PSD arc label selected once at 375 px. Browser density was 2 on the local mobile capture.
+
+## Comparison history
+
+1. [P1, fixed] Labels were hidden below 1024 px despite the coloured arcs remaining visible. A first pass placed all nine names at their arc midpoints, but the small groups covered right-side seats at 678 px.
+2. [P1, fixed] The graph and arcs now reserve a responsive right label rail. The smaller groups' names sit beside their arc segments rather than on seats. PSD is raised above the left arc. The 375 and 678 px captures show all nine names without document overflow; measured label bounds also fit at 854 px. Desktop retains names and counts.
+3. [P1, fixed] Small seats had a 10 px white symbol inside a circle as small as 7 px, with a 2 px party border. Vote status now reads primarily from saturated fill: green, red, amber, purple, or grey. The party colour remains a thin outer ring. Tiny screens use solid dots; larger desktop seats retain symbols. The 320 and 375 px captures show distinct vote colours without overflowing glyphs.
+4. [P2, fixed] At 375 px the first label treatment used an unexpectedly large computed font and caused 7 px of horizontal overflow. A responsive inline font size corrected this; `documentElement.scrollWidth` now equals the 375 px viewport.
+
+## Fidelity and verification
+
+- Typography and spacing: serif party labels remain tied to arcs; compact mobile labels and a separate right rail avoid covering seats. The site-wide smaller type scale is retained intentionally.
+- Colour and icons: party arches/rings and vote fills remain independent signals. The textual vote legend, seat accessible names, focus state, and selected-person panel continue to identify votes without relying on colour alone.
+- Imagery: existing chamber illustration is unchanged and remains hidden on narrow screens; no new placeholder assets were introduced.
+- Copy/data: 330 seats and the 260/1/40/1/28 totals are unchanged. “Rezultat neclarificat” remains separate from the bill's legal status.
+- Interaction: selecting the PSD arc at 375 px activated the corresponding party filter. At 1280 px all nine desktop labels were visible and no document overflow was measured.
+- Checks: production build, web typecheck, 17 web tests, and `git diff --check` passed. No new browser-console error was observed during the graph checks.
+
+final result: passed
