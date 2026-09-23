@@ -480,3 +480,26 @@ final result: passed
 - Checks: workspace typecheck and production build passed.
 
 final result: passed
+
+---
+
+# Chamber dais illustrations QA
+
+- Source visual: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-8c92e6a2-0260-49ea-a9bd-802ef315866e.png`, with a pale architectural dais beneath the seat arc.
+- Local previews: `http://localhost:3015/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356` and `http://localhost:3015/ro/votes/vote-senate-l316-2025-10-27-final`.
+- Compared the source mockup and live Deputies preview at 1487 × 1058 CSS px in one visual check; also inspected the Senate page at that viewport. Browser captures were viewed inline rather than saved as files.
+
+## Comparison and fixes
+
+- [P2, fixed] The first placement was mostly obscured by inner seats. Moved the illustration into the open center, increased its size, softened opacity, and shifted the mandate count slightly down on tablet/desktop. It now reads as the quiet architectural element in the mockup without competing with votes.
+- [P3, intentional] These are two distinct editorial illustrations of chamber furniture, not official emblems or photographs. The CumVoteaza header logo remains unchanged. Mobile omits the illustration to preserve space and seat tap targets.
+
+## Verification
+
+- Typography and spacing: the existing serif mandate count and visual hierarchy are preserved; no seat or callout was moved.
+- Colors and imagery: transparent, pale-slate Deputies and Senate assets are visibly distinct and subdued. Neither introduces a flag, crest, person, or text.
+- Copy/content: the vote's legal status and the data-driven seat total are unchanged.
+- Interactions: images are decorative (`alt=""`, hidden from assistive technology) and ignore pointer events; seat selection remains available.
+- Checks: production build passed; no horizontal overflow or illustration overlap was seen in the checked desktop and tablet views.
+
+final result: passed
