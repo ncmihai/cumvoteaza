@@ -456,3 +456,27 @@ No actionable P0–P2 visual or interaction issue remains in the implemented sco
 - [x] Responsive and desktop/mobile interaction checks; no console errors.
 
 final result: passed
+
+---
+
+# Vote chamber party-label refinement QA
+
+- Source: the supplied PL-x 159/2026 mockup, especially party names/counts placed around the chamber arc.
+- Local preview: `http://localhost:3015/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356`.
+- Checked widths: 320, 375, 768, 854, 1024, 1280 and 1920 CSS px. No horizontal document overflow at any checked width.
+
+## Comparison and fixes
+
+- [P2, fixed] The initial data-driven callouts overlapped the smaller groups' rightmost seats. A desktop-only 16% label gutter now separates those callouts from the chamber; vertical spacing keeps UDMR through SOS RO readable even at 1024 px. The labels show real group short names and counts and act as group filters.
+- [P1, fixed] A sticky selected-person panel obscured the lower rows of seats on desktop. It is now in normal document flow beneath the chamber/legends; the mobile panel remains a bottom sheet.
+- [P3, intentional] The mockup uses parliamentary branding and a larger type scale. This page retains CumVoteaza branding and the site's previously requested smaller scale. Tablet retains the compact group legend, while mobile retains party-first chips instead of attempting dense arc callouts.
+
+## Verification
+
+- Typography, spacing, color and icons: serif group callouts and colored guide strokes follow the existing navy/editorial system; no new raster or imitation crest assets were introduced. The vote-symbol legend remains distinct from parliamentary-group colors.
+- Interactions: clicking an AUR callout dimmed all other seats without moving them; seat selection displayed the real member, group, constituency, vote and profile link below the map. At 375 px, the PSD chip opened its member list and selecting Adrian Câciu opened the bottom sheet.
+- Accessibility: callouts have names and pressed state; arrow-key focus moved between seats, Enter selected a member, and Escape closed the panel. Named and no-result search states rendered. Browser error log was empty.
+- Data integrity: the page still says “Rezultat neclarificat”; 260/1/40/1, 302 present and 28 absent remain separate from the bill's legal outcome.
+- Checks: workspace typecheck and production build passed.
+
+final result: passed
