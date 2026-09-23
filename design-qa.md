@@ -412,3 +412,47 @@ The vote directory preserves the scan-friendly list while the selected card uses
 - A future source-backed “notable split” label can be added once party cohesion semantics are agreed; the current preview intentionally exposes the raw group distribution without editorial inference.
 
 final result: passed
+
+---
+
+# Vote-detail mockup QA
+
+- Source visual truth: `/var/folders/c5/y22nbjqx41q8k63zczmsz10r0000gn/T/codex-clipboard-8c92e6a2-0260-49ea-a9bd-802ef315866e.png` (1487 × 1058 px).
+- Rendered implementation: `http://localhost:3015/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356`.
+- Implementation screenshot path: in-app browser capture shown inline in the Codex QA comparison; the browser did not expose a persistent filesystem path. Captured at 1487 × 1059 CSS px and 375 × 812 CSS px; the desktop capture was 1487 × 1059 px (1× density). Source and desktop implementation were viewed together at their native, nearly identical pixel sizes, with no density normalization required.
+- Compared states: full desktop page, selected-member panel, 375 px mobile group selection and selected-member sheet. Source represents a selected desktop seat; its adoption claim is deliberately not copied.
+
+## Findings
+
+No actionable P0–P2 visual or interaction issue remains in the implemented scope. The source's 260-vote adoption claim conflicts with the live legal-outcome field and is intentionally replaced by “Rezultat neclarificat,” a link to the bill dossier, and vote totals displayed separately.
+
+### P3 follow-up polish
+
+- The mockup labels each party beside its arc. The implementation uses a separate party-border legend below the arc. If users struggle to relate sectors to parties, add data-derived labels around the arc, avoiding overlap at tablet widths.
+- The source shows a member portrait in the selected panel. The implementation uses a real stored portrait only when one is linked to that member; it does not substitute a fabricated or unrelated image. Adding more verified member portraits would improve fidelity.
+- The source uses Parliament branding and a larger typographic scale. The implementation preserves CumVoteaza branding and the project's previously requested smaller desktop scale. This is an intentional product-system difference, not a missing asset.
+
+## Fidelity review
+
+- Typography: display serif/body sans hierarchy matches the app system; long legislative titles wrap without overflow. The smaller scale is intentional.
+- Layout and spacing: two-column identity/map hierarchy matches the mockup on desktop; the selected panel is persistent and the mobile panel becomes a bottom sheet. The map keeps all seats in place during filtering. No document overflow was found at 320, 375, 768, 1024, or 1487 px.
+- Colors/tokens: group border color and inner vote symbol remain independent. Legends explain both; dimming does not remove seats.
+- Imagery: no artificial member portraits or official crest were introduced. Existing brand imagery is preserved.
+- Copy/content: the actual vote totals reconcile (260 + 1 + 40 + 1 = 302 present; 28 absent; 330 seats). Legal status is not inferred. Romanian and English labels were checked.
+- Icons and accessibility: vote symbols, labelled seats, visible focus, arrow navigation, Enter selection, Escape close, selected-person live region, and profile links were checked. The dense mobile map is supplemented by larger party-first member controls.
+
+## Comparison history
+
+1. Initial full-view comparison: the desktop composition preserved the main hierarchy, but dense overlapping hit areas let a mobile tap on Ștefan-Ovidiu Popa open Virgil Alin Chirilă. This was a P1 interaction defect.
+2. Fix: select the nearest seat from the pointer coordinate rather than the overlapping painted button, and place a party-first member picker directly above the mobile map. Revised 375 px browser check selected Ștefan-Ovidiu Popa correctly; selecting PNL revealed its member list adjacent to the picker. No horizontal overflow or browser console errors remained.
+3. Post-fix desktop selected-state comparison: source and rendered implementation were viewed in the same comparison input at 1487 px. The persistent panel, chamber, separate legends and vote totals were visible. Remaining visual differences are the intentional branding/scale decisions and P3 refinements above.
+
+## Implementation checklist
+
+- [x] Real data-driven 330-seat chamber and reconciling totals.
+- [x] Search, filters, preview, persistent selection, mobile party-first controls and bottom sheet.
+- [x] Keyboard navigation, accessible names and live selection announcement.
+- [x] Separate nominal vote from legal outcome; secondary official/context disclosure.
+- [x] Responsive and desktop/mobile interaction checks; no console errors.
+
+final result: passed

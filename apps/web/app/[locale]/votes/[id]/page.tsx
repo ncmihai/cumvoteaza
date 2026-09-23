@@ -16,8 +16,7 @@ import { HotButton } from "../../_components/HotButton";
 import { SourceBadge } from "../../_components/SourceBadge";
 import { ShareButton } from "../../_components/ShareButton";
 import { VoteBillDossierPanel } from "../../_components/VoteBillDossierPanel";
-import { VoteExplorer } from "../../_components/VoteExplorer";
-import { DetailPageHeader } from "../../_components/DetailPageHeader";
+import { VoteChamberExplorer } from "../../_components/VoteChamberExplorer";
 
 export default async function VotePage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: rawLocale, id } = await params;
@@ -39,7 +38,9 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
     members,
     groupTotals,
     individualVotes,
-    seatVotes
+    seatVotes,
+    seatConstituencies,
+    seatPhotoUrls
   } = data;
   const [hotCount, billDocumentConfidence] = await Promise.all([
     getHotCount("vote", vote.id),
@@ -50,64 +51,27 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
   ).slice(0, 4);
   const presentation = presentVote(vote, { locale, bill, source });
 
-  return (
-    <main className="mx-auto max-w-[1440px] bg-[#fbfaf6]">
-      <EditorialSections page="vote" locale={locale} entityId={id} />
-      <EngagementTracker entityType="vote" entityId={vote.id} locale={locale} />
-      <div className="grid min-h-[calc(100vh-76px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="min-w-0 px-4 py-6 md:px-8 lg:px-10">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[#4b608a]">
-            <Link href={`/${locale}/votes`} className="inline-flex items-center gap-2 font-semibold text-[#075fc6]"><ArrowLeft size={17}/>{locale === "ro" ? "Înapoi la voturi" : "Back to votes"}</Link>
-            <ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 bg-transparent text-[#4b608a]" />
-          </div>
-
-          <DetailPageHeader className="mt-6 pb-6" eyebrow={presentation.voteType} title={presentation.heading} subtitle={presentation.subject ?? presentation.officialTitle} trailing={<span className="rounded-md border border-slate-300 bg-white px-3 py-2 font-serif font-semibold text-[#4b608a]">{presentation.outcomeLabel}</span>}>
-            {locale === "en" ? <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Official parliamentary title in Romanian</p> : null}
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#4b608a]"><span className="inline-flex items-center gap-2"><CalendarDays size={18}/>{formatDate(vote.heldOn,locale)}</span><span className="inline-flex items-center gap-2"><Building2 size={18}/>{vote.chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies")}</span><span className="inline-flex items-center gap-2"><FileText size={18}/>{presentation.voteType}</span></div>
-            {process.env.GEMINI_EXPLANATIONS_ENABLED === "1" && <VoteExplanation id={vote.id} locale={locale} />}
-          </DetailPageHeader>
-
-          <section className="mt-5 border border-[#dae8f7] bg-[#f0f6fc] p-5">
-            <h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Pe scurt" : "In brief"}</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#4b608a]">{locale === "ro" ? "Pagina separă rezultatul acestei moțiuni de starea juridică a proiectului și păstrează legătura către datele nominale publicate de Parlament." : "This page separates the result of this motion from the legal status of the bill and retains the link to Parliament's published nominal data."}</p>
-          </section>
-
-          <section className="mt-6" aria-labelledby="vote-result-heading">
-            <h2 id="vote-result-heading" className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Rezultatul votului" : "Vote result"}</h2>
-            <div className="mt-3 grid grid-cols-2 border-y border-slate-300 bg-white px-4 py-3 sm:grid-cols-4">
-              <ResultFact label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="bg-emerald-600" />
-              <ResultFact label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="bg-red-600" />
-              <ResultFact label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="bg-amber-600" />
-              <ResultFact label={voteChoiceLabels[locale].present_not_voting} value={vote.totals.presentNotVoting} tone="bg-slate-400" />
-            </div>
-            <p className="mt-2 text-sm text-[#4b608a]"><strong className="font-serif text-2xl text-[#061a47]">{vote.totals.present}</strong> {locale === "ro" ? "prezenți" : "present"} · {individualVotes.length} {locale === "ro" ? "voturi nominale" : "nominal votes"}</p>
-          </section>
-
-          <div className="mt-6">
-            <VoteExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} groupLogoUrls={data.groupLogoUrls} members={members} seatVotes={seatVotes} nominalVotes={individualVotes} groupTotals={groupTotals} groupAlignments={Object.fromEntries(groupContexts.map((item) => [item.group.id, item.alignment]))} />
-          </div>
-
-          <GovernmentContextPanel context={governmentContext} locale={locale} />
-
-          {bill ? <div className="mt-6"><VoteBillDossierPanel locale={locale} bill={bill} billHref={`/${locale}/bills/${bill.slug}`} voteDate={vote.heldOn} procedureSteps={billProcedureSteps} documents={billDocuments} documentConfidence={Object.fromEntries(billDocumentConfidence)} sponsorNames={sponsorNames} sponsorOverflowCount={Math.max(0, billSponsorContexts.length - sponsorNames.length)} sponsorContexts={billSponsorContexts} labels={labels} /></div> : null}
-        </div>
-
-        <aside className="border-t border-slate-300 bg-white/75 px-5 py-6 xl:border-l xl:border-t-0 xl:px-7">
-          <div className="xl:sticky xl:top-24">
-            <div className="flex flex-col gap-3">
-              <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.publicInterest} />
-              {source ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 border border-[#9eabc0] bg-white px-4 py-3 text-sm font-bold text-[#075fc6]"><FileText size={18}/>{locale === "ro" ? "Sursa oficială" : "Official source"}</a> : null}
-              {source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale} /> : null}
-            </div>
-          </div>
-        </aside>
+  return <main className="mx-auto max-w-[1600px] bg-[#fbfaf6] px-4 py-5 md:px-8 lg:px-10">
+    <EditorialSections page="vote" locale={locale} entityId={id}/><EngagementTracker entityType="vote" entityId={vote.id} locale={locale}/>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d2e0f1] pb-4 text-xs text-[#4b608a]"><Link href={`/${locale}/votes`} className="inline-flex items-center gap-2 font-semibold text-[#075fc6]"><ArrowLeft size={15}/>{locale === "ro" ? "Înapoi la voturi" : "Back to votes"}</Link><ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 bg-transparent text-[#4b608a]"/></div>
+    <div className="grid min-w-0 gap-6 pt-5 lg:grid-cols-[minmax(285px,.38fr)_minmax(0,1fr)] xl:gap-8">
+      <div className="min-w-0 border-b border-[#d2e0f1] pb-6 lg:border-b-0 lg:border-r lg:pr-7">
+        <p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{presentation.voteType}</p><h1 className="mt-2 font-serif text-4xl font-semibold leading-[.98] tracking-[-.035em] text-[#061a47] [overflow-wrap:anywhere] lg:text-5xl">{presentation.heading}</h1>
+        <p className="mt-3 font-serif text-base leading-6 text-[#4b608a]">{presentation.subject ?? presentation.officialTitle}</p>{locale === "en" ? <p className="mt-2 text-xs font-semibold uppercase text-slate-500">Official parliamentary title in Romanian</p> : null}
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[#4b608a]"><span className="inline-flex items-center gap-1.5"><CalendarDays size={16}/>{formatDate(vote.heldOn,locale)}</span><span className="inline-flex items-center gap-1.5"><Building2 size={16}/>{vote.chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies")}</span></div>
+        <div className="mt-5 border border-[#c9dff6] bg-[#f0f6fc] p-4"><p className="font-serif text-lg font-bold text-[#061a47]">{presentation.outcomeLabel}</p><p className="mt-1 text-xs leading-5 text-[#4b608a]">{locale === "ro" ? "Rezultatul juridic al votului nu este dedus din numărul voturilor. Starea proiectului se verifică separat în dosarul său." : "The legal outcome is not inferred from the vote count. The bill's status is tracked separately in its dossier."}</p>{bill ? <Link href={`/${locale}/bills/${bill.slug}`} className="mt-2 inline-block text-xs font-bold text-[#075fc6]">{locale === "ro" ? "Vezi starea proiectului →" : "View bill status →"}</Link> : null}</div>
+        <h2 className="mt-6 font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Cum s-a votat?" : "How did members vote?"}</h2><p className="mt-1 text-sm text-[#4b608a]">{locale === "ro" ? "Voturile nominale publicate de Parlament, fără interpretarea stării juridice a proiectului." : "Parliament's published nominal votes, without interpreting the bill's legal status."}</p>
+        <div className="mt-4 grid grid-cols-2 gap-2"><ResultFact label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-emerald-700"/><ResultFact label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-red-700"/><ResultFact label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-amber-700"/><ResultFact label={voteChoiceLabels[locale].present_not_voting} value={vote.totals.presentNotVoting} tone="text-slate-600"/><ResultFact label={locale === "ro" ? "prezenți" : "present"} value={vote.totals.present} tone="text-[#061a47]"/><ResultFact label={locale === "ro" ? "absenți" : "absent"} value={seatVotes.filter((seat) => seat.choice === "absent").length} tone="text-[#4b608a]"/></div>
+        <div className="mt-5 flex flex-wrap gap-2"><HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.publicInterest}/>{source ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-[#b8c8df] bg-white px-3 py-2 text-xs font-bold text-[#075fc6]"><FileText size={15}/>{locale === "ro" ? "Sursa oficială" : "Official source"}</a> : null}</div>
       </div>
-    </main>
-  );
+      <div className="min-w-0"><VoteChamberExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} members={members} seatVotes={seatVotes} seatConstituencies={seatConstituencies} seatPhotoUrls={seatPhotoUrls} nominalVotes={individualVotes} groupTotals={groupTotals}/></div>
+    </div>
+    <details className="mt-7 border-t border-[#d2e0f1] pt-4"><summary className="cursor-pointer font-serif text-xl font-semibold text-[#061a47]">{locale === "ro" ? "Detalii oficiale și context" : "Official details and context"}</summary><div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"><div className="min-w-0">{process.env.GEMINI_EXPLANATIONS_ENABLED === "1" ? <VoteExplanation id={vote.id} locale={locale}/> : null}<GovernmentContextPanel context={governmentContext} locale={locale}/>{bill ? <div className="mt-6"><VoteBillDossierPanel locale={locale} bill={bill} billHref={`/${locale}/bills/${bill.slug}`} voteDate={vote.heldOn} procedureSteps={billProcedureSteps} documents={billDocuments} documentConfidence={Object.fromEntries(billDocumentConfidence)} sponsorNames={sponsorNames} sponsorOverflowCount={Math.max(0, billSponsorContexts.length - sponsorNames.length)} sponsorContexts={billSponsorContexts} labels={labels}/></div> : null}</div><aside>{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale}/> : null}</aside></div></details>
+  </main>;
 }
 
 function ResultFact({label,value,tone}:{label:string;value:number;tone:string}){
-  return <div className="grid grid-cols-[10px_38px_1fr] items-center gap-2 py-2 text-sm"><i className={`h-2.5 w-2.5 rounded-full ${tone}`}/><strong className="text-[#061a47]">{value}</strong><span className="text-[#4b608a]">{label}</span></div>;
+  return <div className="border-b border-[#d2e0f1] py-2"><strong className={`block font-serif text-3xl leading-none ${tone}`}>{value}</strong><span className="mt-1 block text-xs text-[#4b608a]">{label}</span></div>;
 }
 
 const votePageLabels = {

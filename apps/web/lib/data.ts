@@ -50,6 +50,8 @@ export interface VotePageData {
   groupTotals: GroupVoteTotal[];
   individualVotes: IndividualVote[];
   seatVotes: IndividualVote[];
+  seatConstituencies?: Record<string, string>;
+  seatPhotoUrls?: Record<string, string>;
   sourceKind: "database" | "demo";
 }
 
@@ -366,6 +368,8 @@ async function getVotePageDataUncached(id: string): Promise<VotePageData | undef
     groupTotals: demoDataset.groupVoteTotals.filter((item) => item.voteId === vote.id),
     individualVotes: demoDataset.individualVotes.filter((item) => item.voteId === vote.id),
     seatVotes: demoDataset.individualVotes.filter((item) => item.voteId === vote.id),
+    seatConstituencies: Object.fromEntries(demoDataset.mandates.filter((item) => item.chamber === vote.chamber && item.constituency).map((item) => [item.memberId, item.constituency!])),
+    seatPhotoUrls: Object.fromEntries(demoDataset.members.filter((item) => item.sourceIds.profilePhoto).map((item) => [item.id, item.sourceIds.profilePhoto!])),
     sourceKind: "demo"
   };
 }
@@ -603,6 +607,12 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
     const parties = partyRows.map(mapParty);
     const mandates = rosterRows.map(mapVoteRosterMandate);
     const memberships = rosterRows.flatMap((row) => row.membership_id ? [mapVoteRosterMembership(row)] : []);
+    const photoAssets = scopedMemberIds.length ? await session.db.select().from(schema.storedAssets).where(and(inArray(schema.storedAssets.entityId, scopedMemberIds), eq(schema.storedAssets.assetType, "photo"), eq(schema.storedAssets.fetchStatus, "stored"))) : [];
+    const seatPhotoUrls = Object.fromEntries(memberRows.flatMap((row) => {
+      const mandate = mandates.find((item) => item.memberId === row.id);
+      const url = storedAssetUrl(photoAssets, "photo", row.id, mandate?.legislatureId, voteRow.chamber);
+      return url ? [[row.id, url]] : [];
+    }));
     // Party assets from the official Senate vote page (2026-09-08).
     // A member's election-list logo may represent a previous party, so it must
     // not be used as the group's logo.
@@ -653,6 +663,8 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
         memberships,
         legislatures
       }),
+      seatConstituencies: Object.fromEntries(mandates.filter((item) => item.constituency).map((item) => [item.memberId, item.constituency!])),
+      seatPhotoUrls,
       sourceKind: "database"
     };
   } catch {
