@@ -287,20 +287,20 @@ const getCachedBillPageData = unstable_cache(
 const getCachedMemberDirectoryData = unstable_cache(
   async (filters?: MemberDirectoryFilters) =>
     timed("data.member-directory", () => getMemberDirectoryDataUncached(filters)),
-  ["member-directory-data-v2"],
+  ["member-directory-data-integrity-v3"],
   { revalidate: 600, tags: [CACHE_TAGS.members, CACHE_TAGS.search] }
 );
 
 const getCachedMemberPageData = unstable_cache(
   async (slug: string, options: { legislature?: string } = {}) =>
     timed(`data.member.${slug}`, () => getMemberPageDataUncached(slug, options)),
-  ["member-page-data"],
+  ["member-page-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.members] }
 );
 
 const getCachedPartyPageData = unstable_cache(
   async (slug: string) => timed(`data.party.${slug}`, () => getPartyPageDataUncached(slug)),
-  ["party-page-data"],
+  ["party-page-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.parties, CACHE_TAGS.members] }
 );
 
@@ -413,6 +413,7 @@ export async function getMemberDirectoryData(filters?: MemberDirectoryFilters): 
 }
 
 async function getMemberDirectoryDataUncached(filters?: MemberDirectoryFilters): Promise<MemberDirectoryData> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseMemberDirectory(filters);
   if (dbData) return dbData;
 
@@ -438,8 +439,10 @@ export async function getMemberPageData(slug: string, options: { legislature?: s
 }
 
 async function getMemberPageDataUncached(slug: string, options: { legislature?: string } = {}): Promise<MemberPageData | undefined> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseMember(slug, options);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return undefined;
 
   const member = demoDataset.members.find((item) => item.slug === slug || item.id === slug);
   if (!member) return undefined;
@@ -493,8 +496,10 @@ export async function getPartyPageData(slug: string): Promise<PartyPageData | un
 }
 
 async function getPartyPageDataUncached(slug: string): Promise<PartyPageData | undefined> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseParty(slug);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return undefined;
 
   const party = demoDataset.parties.find((item) => item.slug === slug || item.id === slug);
   if (!party) return undefined;
@@ -883,7 +888,7 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
       sourceKind: "database"
     };
   } catch {
-    return undefined;
+    return dataUnavailable();
   } finally {
     await session.close();
   }
@@ -1041,7 +1046,7 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       sourceKind: "database"
     };
   } catch {
-    return undefined;
+    return dataUnavailable();
   } finally {
     await session.close();
   }
@@ -1253,7 +1258,7 @@ async function tryDatabaseParty(slug: string): Promise<PartyPageData | undefined
       sourceKind: "database"
     };
   } catch {
-    return undefined;
+    return dataUnavailable();
   } finally {
     await session.close();
   }

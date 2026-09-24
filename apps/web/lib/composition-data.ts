@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { dataUnavailable, requireDatabaseOrExplicitDemo } from "./data-availability";
 import * as schema from "@cumsevoteaza/db";
 import {
   type CompositionEvent,
@@ -93,13 +94,13 @@ interface CompositionSourceRows {
 
 const getCachedCurrentCompositionData = unstable_cache(
   async (mode: CompositionMode) => timed(`composition.current.${mode}`, () => getCurrentCompositionDataUncached(mode)),
-  ["current-composition-data"],
+  ["current-composition-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.composition, CACHE_TAGS.members, CACHE_TAGS.parties] }
 );
 
 const getCachedCompositionTimelineData = unstable_cache(
   async (mode: CompositionMode) => timed(`composition.timeline.${mode}`, () => getCompositionTimelineDataUncached(mode)),
-  ["composition-timeline-data-v5"],
+  ["composition-timeline-data-integrity-v6"],
   { revalidate: 3600, tags: [CACHE_TAGS.composition, CACHE_TAGS.members, CACHE_TAGS.parties] }
 );
 
@@ -108,8 +109,10 @@ export async function getCurrentCompositionData(mode: CompositionMode): Promise<
 }
 
 async function getCurrentCompositionDataUncached(mode: CompositionMode): Promise<CompositionPageData> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseCurrentComposition(mode);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return dataUnavailable();
   return demoComposition(mode);
 }
 
@@ -121,6 +124,7 @@ async function getCompositionTimelineDataUncached(mode: CompositionMode): Promis
   const currentComposition = await getCurrentCompositionData(mode);
   const dbData = await tryDatabaseCompositionTimeline(mode, currentComposition);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return dataUnavailable();
   return {
     mode,
     asOf: currentComposition.asOf,
