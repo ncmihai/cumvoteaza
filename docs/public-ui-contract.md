@@ -2,6 +2,8 @@
 
 Status: active regression contract, reconciled 13 September 2026.
 
+24 September review: this is an acceptance contract, not proof that every gate currently passes. See [review-2026-09-24.md](review-2026-09-24.md) for current exceptions. The vote detail now uses a primary chamber map, pinned person panel/mobile sheet and expandable group/nominal list, not mutually exclusive map/list tabs. Add ministry and government journeys to the next browser gate. Missing-data, freshness and filter-dismissal requirements below remain binding despite the confirmed implementation gaps.
+
 This document defines what “finished” means for the public website. It complements `current-state.md`: the roadmap describes direction, while this contract records observable behavior, data ownership and release gates.
 
 ## Product principles

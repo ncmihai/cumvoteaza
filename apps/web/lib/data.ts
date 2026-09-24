@@ -32,6 +32,8 @@ import {
   type Vote
 } from "@cumsevoteaza/parliament-model";
 import { chamberSeatCount } from "./chamber-seat-counts";
+import { uniqueNominalVotes } from "./vote-integrity";
+import { dataUnavailable, requireDatabaseOrExplicitDemo } from "./data-availability";
 import { getBillExplorerData, getVoteExplorerData } from "./explorer-data";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
 
@@ -50,6 +52,7 @@ export interface VotePageData {
   groupTotals: GroupVoteTotal[];
   individualVotes: IndividualVote[];
   seatVotes: IndividualVote[];
+  seatCapacity?: number;
   seatConstituencies?: Record<string, string>;
   seatPhotoUrls?: Record<string, string>;
   sourceKind: "database" | "demo";
@@ -271,7 +274,7 @@ const getCachedBillDirectoryData = unstable_cache(
 
 const getCachedVotePageData = unstable_cache(
   async (id: string) => timed(`data.vote.${id}`, () => getVotePageDataUncached(id)),
-  ["vote-page-data-with-group-logos-v1"],
+  ["vote-page-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.votes] }
 );
 
@@ -306,8 +309,10 @@ export async function getVoteDirectoryData(limit = 30): Promise<VoteDirectoryDat
 }
 
 async function getVoteDirectoryDataUncached(limit = 30): Promise<VoteDirectoryData> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseVoteDirectory(limit);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return dataUnavailable();
 
   return {
     items: [...demoDataset.votes]
@@ -327,8 +332,10 @@ export async function getBillDirectoryData(limit = 30): Promise<BillDirectoryDat
 }
 
 async function getBillDirectoryDataUncached(limit = 30): Promise<BillDirectoryData> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseBillDirectory(limit);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return dataUnavailable();
 
   return {
     items: demoDataset.bills
@@ -349,8 +356,10 @@ export async function getVotePageData(id: string): Promise<VotePageData | undefi
 }
 
 async function getVotePageDataUncached(id: string): Promise<VotePageData | undefined> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseVote(id);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return undefined;
 
   const vote = demoDataset.votes.find((item) => item.id === id);
   if (!vote) return undefined;
@@ -379,8 +388,10 @@ export async function getBillPageData(id: string): Promise<BillPageData | undefi
 }
 
 async function getBillPageDataUncached(id: string): Promise<BillPageData | undefined> {
+  requireDatabaseOrExplicitDemo();
   const dbData = await tryDatabaseBill(id);
   if (dbData) return dbData;
+  if (process.env.DATABASE_URL) return undefined;
 
   const bill = demoDataset.bills.find((item) => item.slug === id || item.id === id);
   if (!bill) return undefined;
@@ -656,8 +667,10 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
       members: memberRows.map(mapMember),
       groupTotals,
       individualVotes,
+      seatCapacity: chamberSeatCount(voteRow.chamber, voteRow.heldOn, legislatures),
       seatVotes: buildVoteSeatRows({
         vote: mapVote(voteRow),
+        members: memberRows.map(mapMember),
         individualVotes,
         mandates,
         memberships,
@@ -668,7 +681,7 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
       sourceKind: "database"
     };
   } catch {
-    return undefined;
+    return dataUnavailable();
   } finally {
     await session.close();
   }
@@ -761,7 +774,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       sourceKind: "database"
     };
   } catch {
-    return undefined;
+    return dataUnavailable();
   } finally {
     await session.close();
   }
@@ -2102,14 +2115,32 @@ function directoryBillItem(input: {
   };
 }
 
-function buildVoteSeatRows(input: {
+export function buildVoteSeatRows(input: {
   vote: Vote;
+  members?: Member[];
   individualVotes: IndividualVote[];
   mandates: MemberMandate[];
   memberships: MemberGroupMembership[];
   legislatures: Legislature[];
 }): IndividualVote[] {
-  const votedByMember = new Map(input.individualVotes.map((vote) => [vote.memberId, vote]));
+  // Known person links reconcile multiple imported member identities; never merge by name.
+  const representativeByPerson = new Map<string, string>();
+  const canonicalIds = new Map<string, string>();
+  const nominalMemberIds = new Set(input.individualVotes.map((row) => row.memberId));
+  const orderedMembers = [...(input.members ?? [])].sort((a, b) => Number(nominalMemberIds.has(b.id)) - Number(nominalMemberIds.has(a.id)) || a.id.localeCompare(b.id));
+  for (const member of orderedMembers) {
+    if (member.personId) {
+      if (!representativeByPerson.has(member.personId)) representativeByPerson.set(member.personId, member.id);
+      canonicalIds.set(member.id, representativeByPerson.get(member.personId)!);
+    }
+  }
+  const canonical = (id: string) => canonicalIds.get(id) ?? id;
+  input = { ...input,
+    individualVotes: input.individualVotes.map((row) => ({ ...row, memberId: canonical(row.memberId) })),
+    mandates: input.mandates.map((row) => ({ ...row, memberId: canonical(row.memberId) })),
+    memberships: input.memberships.map((row) => ({ ...row, memberId: canonical(row.memberId) }))
+  };
+  const votedByMember = new Map(uniqueNominalVotes(input.individualVotes).map((vote) => [vote.memberId, vote]));
   const legislatureById = new Map(input.legislatures.map((legislature) => [legislature.id, legislature]));
   const chamberMemberIds = new Set(
     input.mandates
@@ -2125,7 +2156,6 @@ function buildVoteSeatRows(input: {
     chamberMemberIds.add(vote.memberId);
   }
 
-  const targetSeats = chamberSeatCount(input.vote.chamber, input.vote.heldOn, input.legislatures);
   const currentMembershipByMember = new Map<string, MemberGroupMembership | undefined>();
   for (const memberId of chamberMemberIds) {
     currentMembershipByMember.set(
@@ -2140,13 +2170,8 @@ function buildVoteSeatRows(input: {
       const groupB = votedByMember.get(b)?.groupId ?? currentMembershipByMember.get(b)?.groupId ?? "";
       return groupA.localeCompare(groupB, "ro") || a.localeCompare(b, "ro");
     });
-  const visibleMemberIds =
-    targetSeats && input.individualVotes.length <= targetSeats
-      ? [
-          ...input.individualVotes.map((vote) => vote.memberId),
-          ...orderedMemberIds.filter((memberId) => !votedByMember.has(memberId)).slice(0, Math.max(0, targetSeats - input.individualVotes.length))
-        ]
-      : orderedMemberIds;
+  // Preserve roster conflicts for reconciliation; never arbitrarily trim people to capacity.
+  const visibleMemberIds = orderedMemberIds;
 
   return visibleMemberIds.map((memberId) => {
       const existing = votedByMember.get(memberId);
@@ -2158,11 +2183,11 @@ function buildVoteSeatRows(input: {
         };
       }
       return {
-        id: `${input.vote.id}-${memberId}-absent`,
+        id: `${input.vote.id}-${memberId}-unknown`,
         voteId: input.vote.id,
         memberId,
         groupId: membership?.groupId,
-        choice: "absent"
+        choice: "unknown"
       };
     });
 }

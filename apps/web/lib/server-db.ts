@@ -7,6 +7,8 @@ export const CACHE_TAGS = {
   members: "members",
   parties: "parties",
   composition: "composition",
+  ministries: "ministries",
+  governments: "governments",
   search: "search"
 } as const;
 

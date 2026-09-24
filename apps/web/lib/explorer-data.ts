@@ -14,6 +14,7 @@ import {
   type Vote
 } from "@cumsevoteaza/parliament-model";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
+import { dataUnavailable, requireDatabaseOrExplicitDemo } from "./data-availability";
 
 export type SourceStatusFilter = "parsed" | "partial" | "failed";
 
@@ -133,19 +134,19 @@ export function decodeCursor(cursor?: string): { date: string; id: string } | un
 const getCachedDirectoryFilterOptions = unstable_cache(
   async (filters: Pick<ExplorerFilters, "chamber" | "legislature"> = {}) =>
     timed("explorer.filter-options", () => getDirectoryFilterOptionsUncached(filters)),
-  ["directory-filter-options"],
+  ["directory-filter-options-integrity-v2"],
   { revalidate: 600, tags: [CACHE_TAGS.members, CACHE_TAGS.search] }
 );
 
 const getCachedVoteExplorerData = unstable_cache(
   async (query: ExplorerQuery = {}) => timed("explorer.votes", () => getVoteExplorerDataUncached(query)),
-  ["vote-explorer-data"],
+  ["vote-explorer-data-integrity-v2"],
   { revalidate: 600, tags: [CACHE_TAGS.votes] }
 );
 
 const getCachedBillExplorerData = unstable_cache(
   async (query: ExplorerQuery = {}) => timed("explorer.bills", () => getBillExplorerDataUncached(query)),
-  ["bill-explorer-data"],
+  ["bill-explorer-data-integrity-v2"],
   { revalidate: 600, tags: [CACHE_TAGS.bills] }
 );
 
@@ -160,6 +161,7 @@ export async function getDirectoryFilterOptions(filters: Pick<ExplorerFilters, "
 }
 
 async function getDirectoryFilterOptionsUncached(filters: Pick<ExplorerFilters, "chamber" | "legislature"> = {}): Promise<DirectoryFilterOptions> {
+  requireDatabaseOrExplicitDemo();
   if (!process.env.DATABASE_URL) {
     return {
       groups: filterGroupsForPeriod(demoDataset.groups, demoDataset.mandates, demoDataset.groupMemberships, demoDataset.legislatures, filters),
@@ -184,10 +186,7 @@ async function getDirectoryFilterOptionsUncached(filters: Pick<ExplorerFilters, 
       legislatures
     };
   } catch {
-    return {
-      groups: filterGroupsForPeriod(demoDataset.groups, demoDataset.mandates, demoDataset.groupMemberships, demoDataset.legislatures, filters),
-      legislatures: demoDataset.legislatures
-    };
+    return dataUnavailable();
   } finally {
     await session.close();
   }
@@ -198,6 +197,7 @@ export async function getVoteExplorerData(query: ExplorerQuery = {}): Promise<Ex
 }
 
 async function getVoteExplorerDataUncached(query: ExplorerQuery = {}): Promise<ExplorerPageData<VoteExplorerItem>> {
+  requireDatabaseOrExplicitDemo();
   const limit = normalizedLimit(query.limit);
   if (!process.env.DATABASE_URL) return demoVoteExplorerData(limit, query.cursor);
 
@@ -299,7 +299,7 @@ async function getVoteExplorerDataUncached(query: ExplorerQuery = {}): Promise<E
       sourceKind: "database"
     };
   } catch {
-    return demoVoteExplorerData(limit, query.cursor);
+    return dataUnavailable();
   } finally {
     await session.close();
   }
@@ -310,6 +310,7 @@ export async function getBillExplorerData(query: ExplorerQuery = {}): Promise<Ex
 }
 
 async function getBillExplorerDataUncached(query: ExplorerQuery = {}): Promise<ExplorerPageData<BillExplorerItem>> {
+  requireDatabaseOrExplicitDemo();
   const limit = normalizedLimit(query.limit);
   if (!process.env.DATABASE_URL) return demoBillExplorerData(limit, query.cursor);
 
@@ -365,7 +366,7 @@ async function getBillExplorerDataUncached(query: ExplorerQuery = {}): Promise<E
       sourceKind: "database"
     };
   } catch {
-    return demoBillExplorerData(limit, query.cursor);
+    return dataUnavailable();
   } finally {
     await session.close();
   }

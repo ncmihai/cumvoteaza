@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { eq } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
-import { createWebDbSession } from "./server-db";
+import { CACHE_TAGS, createWebDbSession } from "./server-db";
 
 export interface MinistryTermView {
   id: string;
@@ -59,7 +59,7 @@ export interface MinistryView {
   }>;
 }
 
-const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v2"], { revalidate: 3600 });
+const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v3"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
 
 export async function getMinistries(): Promise<MinistryView[]> {
   return getCachedMinistries();

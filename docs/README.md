@@ -22,7 +22,9 @@ Start with [current-state.md](current-state.md). It is the authoritative snapsho
 
 ## Completed work and evidence
 
-- [ui-audit-2026-09-13.md](ui-audit-2026-09-13.md) — latest production journey audit and prioritized repair backlog.
+- [data-trust-phase-1.md](data-trust-phase-1.md) — 25 September data-trust safeguards, tests and remaining acceptance work.
+- [review-2026-09-24.md](review-2026-09-24.md) — latest code/test review, fresh browser evidence, open defects and verification limits.
+- [ui-audit-2026-09-13.md](ui-audit-2026-09-13.md) — historical production journey audit and repair backlog.
 - [ui-redesign-plan.md](ui-redesign-plan.md) — implemented public UI redesign plan.
 - [ui-audit-2026-09-11.md](ui-audit-2026-09-11.md) — earlier route, responsive and data-binding verification, with a 13 September completion addendum.
 - [../design-qa.md](../design-qa.md) — mockup comparison notes.

@@ -1,6 +1,6 @@
 # CumVoteaza current state and roadmap
 
-Updated 14 September 2026. This is the authoritative project handoff. Detailed logs remain linked from [README.md](README.md), but this file decides what is current.
+Updated 24 September 2026. This is the authoritative project handoff. Detailed logs remain linked from [README.md](README.md), but this file decides what is current. The [24 September review](review-2026-09-24.md) qualifies earlier completion claims: the current browser gate is not green, and data-integrity and interaction defects remain open.
 
 ## Product today
 
@@ -28,17 +28,17 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 ### Public website
 
 - Shared CumVoteaza shell, Romanian/English navigation and responsive mobile menu.
-- Editorial homepage with a Hot-ranked recent vote, search, explanation panel and vote detail context.
+- Editorial homepage with a Popular-ranked recent vote, search, explanation panel and vote detail context.
 - Compact vote and bill directories with working search, filters and stable links.
 - Database-backed member directory, member profiles, party profiles and parliamentary compositions.
 - Member profiles now separate imported offices from names, expose a source-aware parliamentary career across legislatures and affiliations, scope activity to the selected legislature, feature the latest vote, and show documented roles, committees and initiatives without inventing missing facts.
-- Parliament history is separated from the current-composition overview; completed legislatures use focused government, chamber, group and member summaries instead of repeating the current term.
+- Parliament history is separated from the current-composition overview and includes the current legislature's earlier governments. Ministry/government pages and source-linked government roles extend member career histories.
 - Homepage and vote-directory previews share one compact detail language, filters dismiss on outside click or Escape, and member sorting/pagination use the current editorial controls.
 - Wide desktop screens use an 80% presentation scale from 1200px upward; tablet and mobile retain normal sizing.
 - Stored portraits and party logos with safe fallbacks.
 - Official sources and evidence links remain reachable.
 - Presentation cleanup prevents importer metadata from leaking into directory cards without modifying canonical records.
-- Shared detail pages have responsive headings and no document overflow across the supported 320–1920px matrix. Vote details keep one active nominal representation, party summaries expose complete choice totals, and bill initiators are grouped with progressive disclosure.
+- Shared detail pages have responsive headings intended for the 320–1920px matrix; the full matrix needs re-verification. Vote details now prioritize the chamber map with party arcs, vote-colored seats, hover previews and a pinned person panel/mobile sheet; group summaries and the paginated nominal list are expandable. Bill initiators are grouped with progressive disclosure.
 - Public controls have localized accessible names. English pages explicitly identify unmodified Romanian parliamentary titles, while normalized member identities keep institutional offices out of names across directories, maps and timelines.
 - Vote and bill directories show deliberate empty and incremental-load error states. Data-health queues initially mount no more than 20 rows per category and mount review controls only after reviewer credentials are provided.
 - A bilingual production-build browser gate covers representative routes, keyboard dismissal, image fallbacks, application console/network failures, the application icon and data-health progressive loading.
@@ -61,6 +61,9 @@ These numbers are dated observations, not live counters. Use the cockpit and dat
 
 ## Known limits
 
+- The 24 September review identifies silent demo fallback on query failure, unsupported inferred absences and ineffective map reconciliation. Treat these as data-trust repair priorities, not presentation polish.
+- Map search is diacritic-sensitive and excludes constituency; Escape does not close its filter panel. The automated vote test still targets removed map/list tabs.
+- Ministry-directory cache invalidation and cabinet verification-date wording need correction. A query's effective date is not evidence of an editorial verification on that date.
 - The 50-family reference labels still need human review. No model-quality claim is justified before that review.
 - Political direction and member/party profiles are experimental and remain internal. Motion meaning, legal version, evidence coverage and minimum thresholds still need an operator-approved method.
 - Some historical records lack portraits, curated party history, clean titles, documents or reliable cross-chamber links. The UI must show absence or uncertainty rather than invent values.
@@ -96,12 +99,11 @@ The next release is ready when a saved local import workflow can refresh a selec
 
 ## Verification baseline
 
-As of this handoff:
+Checked on 24 September:
 
-- TypeScript checks pass.
-- 16 web unit tests, 77 ingestion tests, 6 parliament-model tests and 8 Python pipeline tests pass.
-- Eleven production-build browser checks cover responsive detail journeys and release hardening.
-- The Next.js production build passes.
-- Representative Romanian and English routes, empty/error feedback, keyboard dismissal, image fallbacks, console/network behavior and data-health progressive loading are checked automatically.
+- TypeScript checks and the Next.js production build pass.
+- Working-tree tests pass: 17 web, 90 ingestion, 6 parliament-model and 8 Python pipeline tests. Four ingestion tests belong to pre-existing untracked political-state candidate work, not the committed baseline.
+- The responsive runner discovered 13 checks: its HTTP-only bilingual route/icon check passed; 12 browser checks were blocked before application assertions by macOS Chromium launch permissions. This is not twelve confirmed app regressions.
+- In-app browser observations cover the homepage, local/deployed vote directory, deployed vote map/search/filter behavior and mobile composition. They do not replace the full seven-width, bilingual interactive regression matrix.
 
 Re-run these checks after changes; do not treat this dated baseline as proof of a later build.

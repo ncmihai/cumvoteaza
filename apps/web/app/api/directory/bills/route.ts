@@ -9,7 +9,10 @@ export async function GET(request: Request) {
   const filters = parseExplorerFilters(Object.fromEntries(url.searchParams.entries()));
   const limit = Number(url.searchParams.get("limit") ?? "10");
   const cursor = url.searchParams.get("cursor") ?? undefined;
-  const data = await getBillExplorerData({ limit, cursor, filters });
-
-  return NextResponse.json(data);
+  try {
+    const data = await getBillExplorerData({ limit, cursor, filters });
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json({ error: "data_unavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }
