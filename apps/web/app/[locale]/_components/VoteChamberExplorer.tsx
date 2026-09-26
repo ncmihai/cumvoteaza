@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { arc } from "d3-shape";
 import { Check, ChevronDown, Circle, CircleHelp, ExternalLink, Minus, Search, Slash, SlidersHorizontal, X } from "lucide-react";
 import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { voteChoiceLabels, type ChamberId, type GroupVoteTotal, type IndividualVote, type Locale, type Member, type ParliamentaryGroup, type VoteChoice } from "@cumsevoteaza/parliament-model";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 import { reconcileVoteSeats } from "@/lib/vote-integrity";
+import { matchesVoteSearch, normalizeVoteSearch } from "@/lib/vote-search";
+import { readVoteMapState, updateVoteMapUrl } from "@/lib/vote-map-url";
 import type { VoteTotals } from "@cumsevoteaza/parliament-model";
 
 type Seat = { vote: IndividualVote; member?: Member; group?: ParliamentaryGroup; name: string; left: number; top: number; progress: number; row: number };
@@ -26,17 +29,31 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   seatVotes: IndividualVote[]; seatConstituencies?: Record<string, string>; seatPhotoUrls?: Record<string, string>; nominalVotes: IndividualVote[]; groupTotals: GroupVoteTotal[];
   officialTotals: VoteTotals; capacity?: number;
 }) {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const urlState = readVoteMapState(new URLSearchParams(searchParams.toString()));
+  const query = urlState.query;
+  const groupFilter = groups.some((group) => group.id === urlState.group) ? urlState.group : null;
+  const choiceFilter = urlState.choice;
+  const selectedId = urlState.selected;
+  function updateMap(key: "mapSearch" | "mapGroup" | "mapChoice" | "mapSeat", value: string | null, replace = false) {
+    const next = updateVoteMapUrl(window.location.href, key, value);
+    if (next === `${window.location.pathname}${window.location.search}${window.location.hash}`) return;
+    if (replace) window.history.replaceState(null, "", next);
+    else window.history.pushState(null, "", next);
+    setNominalPage(1);
+  }
+  const setQuery = (value: string) => updateMap("mapSearch", value, true);
+  const setGroupFilter = (value: string | null) => updateMap("mapGroup", value);
+  const setChoiceFilter = (value: VoteChoice | null) => updateMap("mapChoice", value);
+  const setSelectedId = (value: string | null) => updateMap("mapSeat", value);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
-  const [choiceFilter, setChoiceFilter] = useState<VoteChoice | null>(null);
   const [previewedId, setPreviewedId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [mobileGroupOpen, setMobileGroupOpen] = useState(false);
   const [nominalPage, setNominalPage] = useState(1);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
   const labels = copy[locale];
   const searchLabel = chamber === "senate" ? labels.searchSenator : labels.search;
   const seats = useMemo(() => {
@@ -62,8 +79,8 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   }), [groupsShown, seats]);
   const highlightedGroupId = hoveredGroupId ?? groupFilter;
   const counts = useMemo(() => Object.fromEntries(choices.map((choice) => [choice, seats.filter((seat) => seat.vote.choice === choice).length])) as Record<VoteChoice, number>, [seats]);
-  const normalizedQuery = query.trim().toLocaleLowerCase(locale);
-  const matches = (seat: Seat) => (!groupFilter || seat.group?.id === groupFilter) && (!choiceFilter || seat.vote.choice === choiceFilter) && (!normalizedQuery || `${seat.name} ${seat.group?.shortName ?? ""}`.toLocaleLowerCase(locale).includes(normalizedQuery));
+  const normalizedQuery = normalizeVoteSearch(query);
+  const matches = (seat: Seat) => (!groupFilter || seat.group?.id === groupFilter) && (!choiceFilter || seat.vote.choice === choiceFilter) && matchesVoteSearch(query, [seat.name, seat.group?.shortName, seat.group?.name, seatConstituencies[seat.vote.memberId]]);
   const matchingSeats = seats.filter(matches);
   const namedResults = normalizedQuery ? matchingSeats.slice(0, 8) : [];
   const nominalIds = new Set(nominalVotes.map((vote) => vote.id));
@@ -77,7 +94,7 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   const profileHref = (seat: Seat) => seat.member ? `/${locale}/members/${seat.member.slug}?fromVote=${encodeURIComponent(voteId)}` : undefined;
 
   function moveFocus(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (event.key === "Escape") { setSelectedId(null); setPreviewedId(null); return; }
+    if (event.key === "Escape") return; // The section handles dismissal in layer order.
     const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
     if (!direction) return;
     event.preventDefault();
@@ -107,10 +124,16 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
     setPreviewedId(nearbySeat?.vote.id ?? null);
   }
 
-  return <section className="min-w-0" aria-label={labels.chamberMap} onKeyDown={(event) => { if (event.key === "Escape") { setSelectedId(null); setPreviewedId(null); } }}>
+  return <section className="min-w-0" aria-label={labels.chamberMap} onKeyDown={(event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (filtersOpen) { setFiltersOpen(false); filterButtonRef.current?.focus(); }
+    else { setSelectedId(null); setPreviewedId(null); buttonRefs.current[focusedIndex]?.focus(); }
+  }}>
     <div className="flex flex-col gap-2 sm:flex-row">
       <label className="flex min-w-0 flex-1 items-center gap-3 border border-[#b8c8df] bg-white px-4 py-2.5 text-[#061a47]"><Search size={20} aria-hidden="true"/><span className="sr-only">{searchLabel}</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchLabel} className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#617293]"/></label>
-      <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)} className="inline-flex items-center justify-center gap-2 border border-[#b8c8df] bg-white px-4 py-2.5 text-sm font-semibold text-[#061a47]"><SlidersHorizontal size={18}/>{labels.filters}<ChevronDown size={15}/></button>
+      <button ref={filterButtonRef} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)} className="inline-flex items-center justify-center gap-2 border border-[#b8c8df] bg-white px-4 py-2.5 text-sm font-semibold text-[#061a47]"><SlidersHorizontal size={18}/>{labels.filters}<ChevronDown size={15}/></button>
     </div>
     {filtersOpen ? <div className="mt-2 border border-[#b8c8df] bg-[#f7faff] p-3 text-xs">
       <p className="font-bold uppercase tracking-wide text-[#4b608a]">{labels.groups}</p><div className="mt-2 flex flex-wrap gap-1.5"><Filter active={!groupFilter} onClick={() => { setGroupFilter(null); setMobileGroupOpen(false); }}>{labels.allGroups}</Filter>{groupsShown.map((group) => <Filter key={group.id} active={groupFilter === group.id} onClick={() => { setGroupFilter(groupFilter === group.id ? null : group.id); setMobileGroupOpen(false); }}>{group.shortName}</Filter>)}</div>
@@ -144,6 +167,6 @@ function VoteSymbol({ choice, inverse = false }: { choice: VoteChoice; inverse?:
 function buildSlots(total: number) { const rows = total > 260 ? 8 : total > 170 ? 7 : 6; const weights = Array.from({length:rows}, (_, index) => .7 + index * .25); const sum = weights.reduce((a,b) => a+b,0); const counts = weights.map((weight) => Math.max(1, Math.round(total * weight / sum))); while (counts.reduce((a,b) => a+b,0) > total) counts[counts.indexOf(Math.max(...counts))]!--; while (counts.reduce((a,b) => a+b,0) < total) counts[counts.length-1]!++; const slots: Array<{left:number;top:number;progress:number;row:number}> = []; counts.forEach((count,row) => { const fraction = row / Math.max(rows-1,1); const radiusX = 24 + fraction * 21; const radiusY = 34 + fraction * 32; for (let index=0;index<count;index++) { const progress = count===1 ? .5 : index/(count-1); const angle = (-.5 + progress)*Math.PI; slots.push({left:50+Math.sin(angle)*radiusX,top:88-Math.cos(angle)*radiusY,progress,row}); } }); return slots.sort((a,b)=>a.progress-b.progress||b.row-a.row); }
 
 const copy = {
-  ro: { chamberMap:"Harta votului în plen", search:"Găsește un deputat (nume, partid)", searchSenator:"Găsește un senator (nume, partid)", filters:"Filtre", groups:"Grupuri parlamentare", votes:"Voturi", allGroups:"Toate grupurile", allVotes:"Toate voturile", matches:"rezultate", instructions:"Cursor: previzualizare · Click: fixează · Tastatură: săgeți + Enter", results:"Rezultate căutare", noResults:"Niciun parlamentar nu corespunde căutării și filtrelor.", unknownGroup:"Grup necunoscut", seats:"mandate", reconciliationWarning:"Datele nominale nu se reconciliază complet cu numărul de locuri afișate.", chooseGroup:"Alege un grup pentru a inspecta parlamentarii", filterGroup:"Filtrează grupul", enlargeGroup:"Mărește grupul", hideGroup:"Ascunde lista grupului", mobileHint:"Pentru selecție mai ușoară, alege un grup de mai sus și deschide lista membrilor.", selectedPerson:"Parlamentar selectat", close:"Închide fișa", profile:"Vezi profilul", selectPrompt:"Selectează un loc pentru a vedea persoana și votul său.", groupBreakdown:"Vot pe grupuri", nominalList:"Lista nominală", nominalRecords:"înregistrări nominale", groupRecords:"grupuri cu date", previous:"Înapoi", next:"Următorii" },
-  en: { chamberMap:"Chamber voting map", search:"Find a deputy (name, party)", searchSenator:"Find a senator (name, party)", filters:"Filters", groups:"Parliamentary groups", votes:"Votes", allGroups:"All groups", allVotes:"All votes", matches:"matches", instructions:"Pointer: preview · Click: pin · Keyboard: arrows + Enter", results:"Search results", noResults:"No members match the search and filters.", unknownGroup:"Unknown group", seats:"seats", reconciliationWarning:"Nominal data do not fully reconcile with the displayed seat count.", chooseGroup:"Choose a group to inspect its members", filterGroup:"Filter group", enlargeGroup:"Enlarge group", hideGroup:"Hide group list", mobileHint:"For easier selection, choose a group above and open its member list.", selectedPerson:"Selected member", close:"Close panel", profile:"View profile", selectPrompt:"Select a seat to see the person and their vote.", groupBreakdown:"Group votes", nominalList:"Nominal list", nominalRecords:"nominal records", groupRecords:"groups with data", previous:"Previous", next:"Next" }
+  ro: { chamberMap:"Harta votului în plen", search:"Găsește un deputat (nume, partid, județ)", searchSenator:"Găsește un senator (nume, partid, județ)", filters:"Filtre", groups:"Grupuri parlamentare", votes:"Voturi", allGroups:"Toate grupurile", allVotes:"Toate voturile", matches:"rezultate", instructions:"Cursor: previzualizare · Click: fixează · Tastatură: săgeți + Enter", results:"Rezultate căutare", noResults:"Niciun parlamentar nu corespunde căutării și filtrelor.", unknownGroup:"Grup necunoscut", seats:"mandate", reconciliationWarning:"Datele nominale nu se reconciliază complet cu numărul de locuri afișate.", chooseGroup:"Alege un grup pentru a inspecta parlamentarii", filterGroup:"Filtrează grupul", enlargeGroup:"Mărește grupul", hideGroup:"Ascunde lista grupului", mobileHint:"Pentru selecție mai ușoară, alege un grup de mai sus și deschide lista membrilor.", selectedPerson:"Parlamentar selectat", close:"Închide fișa", profile:"Vezi profilul", selectPrompt:"Selectează un loc pentru a vedea persoana și votul său.", groupBreakdown:"Vot pe grupuri", nominalList:"Lista nominală", nominalRecords:"înregistrări nominale", groupRecords:"grupuri cu date", previous:"Înapoi", next:"Următorii" },
+  en: { chamberMap:"Chamber voting map", search:"Find a deputy (name, party, constituency)", searchSenator:"Find a senator (name, party, constituency)", filters:"Filters", groups:"Parliamentary groups", votes:"Votes", allGroups:"All groups", allVotes:"All votes", matches:"matches", instructions:"Pointer: preview · Click: pin · Keyboard: arrows + Enter", results:"Search results", noResults:"No members match the search and filters.", unknownGroup:"Unknown group", seats:"seats", reconciliationWarning:"Nominal data do not fully reconcile with the displayed seat count.", chooseGroup:"Choose a group to inspect its members", filterGroup:"Filter group", enlargeGroup:"Enlarge group", hideGroup:"Hide group list", mobileHint:"For easier selection, choose a group above and open its member list.", selectedPerson:"Selected member", close:"Close panel", profile:"View profile", selectPrompt:"Select a seat to see the person and their vote.", groupBreakdown:"Group votes", nominalList:"Nominal list", nominalRecords:"nominal records", groupRecords:"groups with data", previous:"Previous", next:"Next" }
 } satisfies Record<Locale, Record<string,string>>;
