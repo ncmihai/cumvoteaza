@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
 
@@ -80,13 +80,19 @@ export async function getGovernmentRolesForPerson(personId?: string): Promise<Ar
   if (!personId || !process.env.DATABASE_URL) return [];
   const session = createWebDbSession();
   try {
-    const [roles, people, governments, ministries, incarnations, members, sources] = await Promise.all([
-      session.db.select().from(schema.governmentRoles).where(eq(schema.governmentRoles.personId, personId)),
+    const roles = await session.db.select().from(schema.governmentRoles).where(eq(schema.governmentRoles.personId, personId));
+    if (!roles.length) return [];
+    const governmentIds = [...new Set(roles.map((role) => role.governmentId))];
+    const ministryIds = [...new Set(roles.flatMap((role) => role.ministryId ? [role.ministryId] : []))];
+    const incarnationIds = [...new Set(roles.flatMap((role) => role.ministryIncarnationId ? [role.ministryIncarnationId] : []))];
+    const sourceIds = [...new Set(roles.flatMap((role) => role.sourceSnapshotId ? [role.sourceSnapshotId] : []))];
+    const [people, governments, ministries, incarnations, members, sources] = await Promise.all([
       session.db.select().from(schema.people).where(eq(schema.people.id, personId)).limit(1),
-      session.db.select().from(schema.governments), session.db.select().from(schema.ministries),
-      session.db.select().from(schema.ministryIncarnations),
+      session.db.select().from(schema.governments).where(inArray(schema.governments.id, governmentIds)),
+      ministryIds.length ? session.db.select().from(schema.ministries).where(inArray(schema.ministries.id, ministryIds)) : [],
+      incarnationIds.length ? session.db.select().from(schema.ministryIncarnations).where(inArray(schema.ministryIncarnations.id, incarnationIds)) : [],
       session.db.select().from(schema.members).where(eq(schema.members.personId, personId)).limit(1),
-      session.db.select().from(schema.sourceSnapshots)
+      sourceIds.length ? session.db.select({ id: schema.sourceSnapshots.id, sourceUrl: schema.sourceSnapshots.sourceUrl }).from(schema.sourceSnapshots).where(inArray(schema.sourceSnapshots.id, sourceIds)) : []
     ]);
     const person = people[0];
     if (!person) return [];

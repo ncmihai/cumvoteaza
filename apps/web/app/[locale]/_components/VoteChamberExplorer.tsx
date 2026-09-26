@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { arc } from "d3-shape";
 import { Check, ChevronDown, Circle, CircleHelp, ExternalLink, Minus, Search, Slash, SlidersHorizontal, X } from "lucide-react";
-import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { voteChoiceLabels, type ChamberId, type GroupVoteTotal, type IndividualVote, type Locale, type Member, type ParliamentaryGroup, type VoteChoice } from "@cumsevoteaza/parliament-model";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 import { reconcileVoteSeats } from "@/lib/vote-integrity";
@@ -45,7 +45,33 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   const setQuery = (value: string) => updateMap("mapSearch", value, true);
   const setGroupFilter = (value: string | null) => updateMap("mapGroup", value);
   const setChoiceFilter = (value: VoteChoice | null) => updateMap("mapChoice", value);
-  const setSelectedId = (value: string | null) => updateMap("mapSeat", value);
+  const selectionOriginRef = useRef<HTMLElement | null>(null);
+  const focusSelectionRef = useRef(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const setSelectedId = (value: string | null, origin?: HTMLElement | null) => {
+    if (value) {
+      selectionOriginRef.current = origin ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      focusSelectionRef.current = true;
+      // Selecting the same person does not change the URL, but must still reach their panel.
+      if (value === selectedId) {
+        focusSelectionRef.current = false;
+        sectionRef.current?.querySelector<HTMLElement>('[role="dialog"] a, [role="dialog"] button')?.focus();
+      }
+    } else {
+      focusSelectionRef.current = false;
+      const origin = selectionOriginRef.current;
+      const index = seats.findIndex((seat) => seat.vote.id === selectedId);
+      const target = origin?.isConnected && origin.getClientRects().length ? origin : buttonRefs.current[index >= 0 ? index : focusedIndex];
+      target?.focus();
+      setPreviewedId(null);
+    }
+    updateMap("mapSeat", value);
+  };
+  useEffect(() => {
+    if (!focusSelectionRef.current) return;
+    focusSelectionRef.current = false;
+    sectionRef.current?.querySelector<HTMLElement>('[role="dialog"] a, [role="dialog"] button')?.focus();
+  }, [selectedId]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
   const [previewedId, setPreviewedId] = useState<string | null>(null);
@@ -114,7 +140,11 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   function selectSeatAt(event: MouseEvent<HTMLDivElement>) {
     if (event.detail === 0) return;
     const nearest = nearestSeat(event.currentTarget, event.clientX, event.clientY);
-    if (nearest && nearest.distance <= (window.innerWidth < 768 ? 20 : 16)) setSelectedId(nearest.seat.vote.id);
+    if (nearest && nearest.distance <= (window.innerWidth < 768 ? 20 : 16)) {
+      const index = seats.indexOf(nearest.seat);
+      setFocusedIndex(index);
+      setSelectedId(nearest.seat.vote.id, buttonRefs.current[index]);
+    }
   }
 
   function previewSeatAt(event: PointerEvent<HTMLDivElement>) {
@@ -124,12 +154,12 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
     setPreviewedId(nearbySeat?.vote.id ?? null);
   }
 
-  return <section className="min-w-0" aria-label={labels.chamberMap} onKeyDown={(event) => {
+  return <section ref={sectionRef} className="min-w-0" aria-label={labels.chamberMap} onKeyDown={(event) => {
     if (event.key !== "Escape") return;
     event.preventDefault();
     event.stopPropagation();
     if (filtersOpen) { setFiltersOpen(false); filterButtonRef.current?.focus(); }
-    else { setSelectedId(null); setPreviewedId(null); buttonRefs.current[focusedIndex]?.focus(); }
+    else if (selectedId) setSelectedId(null);
   }}>
     <div className="flex flex-col gap-2 sm:flex-row">
       <label className="flex min-w-0 flex-1 items-center gap-3 border border-[#b8c8df] bg-white px-4 py-2.5 text-[#061a47]"><Search size={20} aria-hidden="true"/><span className="sr-only">{searchLabel}</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchLabel} className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#617293]"/></label>
