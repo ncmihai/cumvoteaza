@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { eq, inArray } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
+import { dataUnavailable } from "./data-availability";
 
 export interface MinistryTermView {
   id: string;
@@ -59,7 +60,7 @@ export interface MinistryView {
   }>;
 }
 
-const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v3"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
+const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v4"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
 
 export async function getMinistries(): Promise<MinistryView[]> {
   return getCachedMinistries();
@@ -158,7 +159,7 @@ async function loadMinistries(): Promise<MinistryView[]> {
     const ministries = await session.db.select().from(schema.ministries);
     return (await assembleMinistries(session, ministries)).sort((a, b) => a.shortName.localeCompare(b.shortName, "ro"));
   } catch {
-    return [];
+    return dataUnavailable();
   } finally {
     await session.close();
   }

@@ -21,5 +21,8 @@ data/parliament-workbench/
 tools/parliament-workbench/.venv/
 
 .next-cockpit/
+.next-reliability/
 output/playwright/
+apps/web/test-results/
+apps/web/playwright-report/
 .vercel

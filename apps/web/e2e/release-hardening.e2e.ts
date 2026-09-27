@@ -75,7 +75,8 @@ test("member filters are structured and documented-vote ranking is truthful", as
   await page.setViewportSize({ width: 638, height: 863 });
   await page.goto("/ro/members?sort=votes");
   await expect(page.getByRole("link", { name: "Cele mai multe voturi documentate" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("Cele mai multe absențe")).toHaveCount(0);
+  await expect(page.getByText("Cele mai multe absențe", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Cele mai multe absențe documentate", exact: true })).toBeVisible();
 
   const documentedCounts = await page.locator("section.mt-3.space-y-2 > a strong").allTextContents();
   const values = documentedCounts.map((value) => Number.parseInt(value, 10)).filter(Number.isFinite);

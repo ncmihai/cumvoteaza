@@ -8,6 +8,7 @@
     "build": "next build",
     "test": "vitest run",
     "test:responsive": "playwright test",
+    "test:reliability": "playwright test --config=playwright.reliability.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
