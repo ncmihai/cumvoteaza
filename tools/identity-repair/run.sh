@@ -4,11 +4,21 @@
 # Inputs: data/cdep-history/parsed/profiles.jsonl re-parsed with `python3 tools/cdep-history-probe/cdep_history_probe.py reparse`.
 set -euo pipefail
 
-: "${DATABASE_URL:?Set DATABASE_URL to the target database}"
+# Usage: tools/identity-repair/run.sh --env-file .env --confirm-host <db host>
+#    or: DATABASE_URL=... CONFIRM_HOST=<db host> tools/identity-repair/run.sh
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --env-file) DATABASE_URL="$(grep '^DATABASE_URL=' "$2" | cut -d= -f2- | sed 's/^"//;s/"$//')"; export DATABASE_URL; shift 2 ;;
+    --confirm-host) CONFIRM_HOST="$2"; shift 2 ;;
+    *) echo "Unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+: "${DATABASE_URL:?Set DATABASE_URL or pass --env-file}"
 host="$(printf '%s' "$DATABASE_URL" | sed -E 's#.*@([^/:?]+).*#\1#')"
 echo "Target database host: $host"
 if [ "${CONFIRM_HOST:-}" != "$host" ]; then
-  echo "Refusing to run: set CONFIRM_HOST=$host to confirm this is the intended database." >&2
+  echo "Refusing to run: pass --confirm-host $host to confirm this is the intended database." >&2
   exit 1
 fi
 
@@ -46,5 +56,4 @@ npm run --silent ingest:integrity:check | tee "$log_dir/7-integrity.log"
 npm run --silent ingest:urls:check -- --file="$PWD/$log_dir/0-urls-before.txt" | tee "$log_dir/7-urls.log"
 grep -q '"broken": 0' "$log_dir/7-urls.log" || { echo "Some public profile URLs no longer resolve (see 7-urls.log)." >&2; exit 1; }
 echo; echo "Done. Logs: $log_dir"
-echo "Next: deploy the matching code, then revalidate the site's data cache (profile pages are cached):"
-echo "  curl -H \"Authorization: Bearer \$CRON_SECRET\" 'https://cumvoteaza.vercel.app/api/cron/daily-import?revalidateOnly=1'"
+echo "Next: deploy the matching code, then refresh the site's data cache: npm run ingest:site:revalidate"

@@ -503,6 +503,17 @@ async function main() {
     return;
   }
 
+  if (command === "site:revalidate") {
+    // Purges the public site's cached data (profiles, directories) after a data repair or import.
+    const secret = process.env.CRON_SECRET ?? readRootEnvValue("CRON_SECRET");
+    if (!secret) throw new Error("CRON_SECRET is not set in the environment or .env");
+    const site = flag("site") ?? "https://cumvoteaza.vercel.app";
+    const response = await fetch(`${site}/api/cron/daily-import?revalidateOnly=1`, { headers: { authorization: `Bearer ${secret}` } });
+    console.log(response.status, await response.text());
+    if (!response.ok) process.exitCode = 1;
+    return;
+  }
+
   if (command === "urls:snapshot" || command === "urls:check") {
     // Profile URL continuity: every member slug that existed before a repair must still resolve afterwards,
     // either directly or through a retired-slug alias (the site redirects those).
@@ -1832,3 +1843,10 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+function readRootEnvValue(name: string): string | undefined {
+  const envPath = path.join(repoRoot, ".env");
+  if (!existsSync(envPath)) return undefined;
+  const line = readFileSync(envPath, "utf8").split("\n").find((item) => item.startsWith(`${name}=`));
+  return line?.slice(name.length + 1).replace(/^"|"$/g, "").trim() || undefined;
+}
