@@ -259,7 +259,9 @@ export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislat
         };
         committeeMemberships.set(membership.id, membership);
       };
-      add(undatedSingleRole ?? "Membru", period);
+      // "- Secretar (din sep. 2008)" with no dates of its own describes the role only: no whole-mandate membership is invented.
+      const onlyDatedRoles = !committee.startMonth && !committee.endMonth && roles.length > 0 && roles.every((item) => item.startMonth || item.endMonth);
+      if (!onlyDatedRoles) add(undatedSingleRole ?? "Membru", period);
       if (!undatedSingleRole) for (const role of roles) add(cleanText(role.role), periodWithin(role, period));
     }
 

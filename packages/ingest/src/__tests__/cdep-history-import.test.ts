@@ -37,7 +37,8 @@ describe("CDEP history roster", () => {
         { label: "Comisia specială X", url: "https://cdep.ro/co?idc=40", startMonth: "1998-02", endMonth: "1998-06", roles: [
           { role: "Secretar", startMonth: null, endMonth: "1998-03" },
           { role: "Vicepreşedinte", startMonth: "1998-03", endMonth: null }
-        ] }
+        ] },
+        { label: "Comisia economică", url: "https://cdep.ro/co?idc=7", startMonth: null, endMonth: null, roles: [{ role: "Secretar", startMonth: "1999-09", endMonth: null }] }
       ]
     }], legislature, "deputies");
     const rows = roster.committeeMemberships.map((row) => [row.committeeName.slice(0, 18), row.role, row.startsOn, row.startsOnPrecision, row.endsOn, row.endsOnPrecision]);
@@ -46,7 +47,8 @@ describe("CDEP history roster", () => {
       ["Comisia pentru Int", "Secretar", "1997-11-01", "month", undefined, "day"],
       ["Comisia specială X", "Membru", "1998-02-01", "month", "1998-06-01", "month"],
       ["Comisia specială X", "Secretar", "1998-02-01", "month", "1998-03-01", "month"],
-      ["Comisia specială X", "Vicepreşedinte", "1998-03-01", "month", "1998-06-01", "month"]
+      ["Comisia specială X", "Vicepreşedinte", "1998-03-01", "month", "1998-06-01", "month"],
+      ["Comisia economică", "Secretar", "1999-09-01", "month", undefined, "day"]
     ]);
   });
 });

@@ -129,6 +129,8 @@ export async function refreshReadModels(): Promise<ReadModelRefreshSummary> {
         left join votes v on v.chamber = b.chamber
           and v.held_on >= b.starts_on
           and v.held_on < b.ends_on
+          -- An attendance check records presence, not a position: it never counts as a vote cast or a vote "for".
+          and v.motion_kind <> 'quorum_or_presence'
         left join individual_votes iv on iv.vote_id = v.id
           and iv.member_id = b.member_id
         group by b.member_id, b.legislature_id, b.chamber

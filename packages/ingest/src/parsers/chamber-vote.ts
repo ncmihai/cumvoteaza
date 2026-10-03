@@ -62,6 +62,8 @@ export function parseChamberNominalVote(html: string, sourceUrl: string): Parsed
   }
 
   if (individualVotes.length === 0) {
+    // Newer attendance checks ("Prezenţă - Vot test") list who is present, with no vote column: presence, not positions.
+    if (isNamesOnlyAttendance($)) warnings.push("Attendance check lists names without votes; nothing to import as votes.");
     warnings.push("No nominal vote rows detected. Source structure may require a specific Chamber parser update.");
   }
   if (!subject) {
@@ -147,6 +149,12 @@ function extractVoteSubject($: cheerio.CheerioAPI, sourceUrl: string): { voteTit
         }
       : undefined
   };
+}
+
+function isNamesOnlyAttendance($: cheerio.CheerioAPI): boolean {
+  const text = cleanText($("body").text());
+  const header = $("tr").toArray().map((row) => cleanText($(row).text())).find((row) => /Nume si prenume/i.test(row)) ?? "";
+  return /Subiect vot:\s*Prezen/i.test(text) && !/\bVot\b/i.test(header.replace(/Nume si prenume/i, ""));
 }
 
 function detectsJointVote($: cheerio.CheerioAPI): boolean {

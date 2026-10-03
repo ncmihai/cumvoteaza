@@ -542,10 +542,10 @@ async function importDiscovery(row: typeof schema.sourceDiscoveries.$inferSelect
       const parsed = parseChamberNominalVote(html, importUrl);
       if (parsed.sourceSnapshot.status === "failed") {
         if (options.dryRun) {
-          return parsed.warnings.some((warning) => /Joint Chamber\/Senate vote/i.test(warning)) ? "would_skip" : "would_fail";
+          return parsed.warnings.some(isKnownUnsupportedPage) ? "would_skip" : "would_fail";
         }
         await saveSourceSnapshot(parsed.sourceSnapshot);
-        const status = parsed.warnings.some((warning) => /Joint Chamber\/Senate vote/i.test(warning)) ? "skipped" : "failed";
+        const status = parsed.warnings.some(isKnownUnsupportedPage) ? "skipped" : "failed";
         await markDiscovery(row.id, status, parsed.sourceSnapshot.id, parsed.sourceSnapshot.notes);
         return status;
       }
@@ -1093,4 +1093,9 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string): T[] {
     seen.add(key);
     return true;
   });
+}
+
+/** Pages that are understood but deliberately not imported: joint sittings (D21) and names-only attendance checks. */
+function isKnownUnsupportedPage(warning: string): boolean {
+  return /Joint Chamber\/Senate vote|Attendance check lists names without votes/i.test(warning);
 }

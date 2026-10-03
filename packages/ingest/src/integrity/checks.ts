@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { createDbSession, type DbClient } from "@cumsevoteaza/db";
+import { committeeDuplicateCondition } from "../identity/committee-dedupe";
 
 /**
  * Data integrity checks. Every check is a query that returns offending rows; zero rows means pass.
@@ -116,6 +117,15 @@ export const checks: Check[] = [
     severity: "error",
     description: "A vote is stored with a placeholder title instead of the official item.",
     query: sql`select id, held_on::text, vote_type from votes where title in ('Senate vote', 'Chamber vote', 'Vot Senat', 'Vot Camera')`
+  },
+  {
+    name: "duplicate_committee_membership",
+    severity: "error",
+    description: "The same committee membership is stored by two importers (CDEP profile and roster, or CDEP and senat.ro).",
+    query: sql`
+      select l.id, l.member_id, l.committee_name, ls.parser
+      from member_committee_memberships l join source_snapshots ls on ls.id = l.source_snapshot_id
+      where ${committeeDuplicateCondition()}`
   },
   {
     name: "duplicate_bill_dossier",

@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { createDbSession, type DbSession } from "@cumsevoteaza/db";
+import { createDbSession, type DbClient, type DbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import type {
   Bill,
@@ -37,6 +37,7 @@ import { resolveVoters, type SittingMember, type VoterResolution } from "./ident
 import { hasOfficeTitle } from "./identity/names";
 import { recordRetiredSlug } from "./identity/member-merge";
 import { billDossierKeys } from "./identity/bill-merge";
+import { deleteDuplicateCommitteeMemberships } from "./identity/committee-dedupe";
 
 const defaultLegislature = {
   id: "leg-2024-2028",
@@ -220,6 +221,8 @@ export async function persistRoster(input: ParsedRoster, policy: RosterPersistPo
     }
     await deleteOwnMemberDetails(db, memberIds, policy.detailParsers);
     await upsertMemberCommitteeMemberships(db, parsed.committeeMemberships);
+    // Whichever roster runs last, a committee read by two importers keeps only its owning source's row.
+    const duplicateCommitteesRemoved = await deleteDuplicateCommitteeMemberships(db as unknown as DbClient, memberIds);
     await upsertMemberRoles(db, parsed.roles);
 
     return {
@@ -234,6 +237,7 @@ export async function persistRoster(input: ParsedRoster, policy: RosterPersistPo
       groupMemberships: parsed.groupMemberships.length,
       partyAffiliations: parsed.partyAffiliations.length,
       committeeMemberships: parsed.committeeMemberships.length,
+      duplicateCommitteesRemoved,
       roles: parsed.roles.length,
       groupCounts: parsed.groupCounts
     };

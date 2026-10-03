@@ -107,4 +107,16 @@ describe("parseChamberNominalVote", () => {
     expect(parsed.individualVotes).toHaveLength(0);
     expect(parsed.warnings).toContain("Joint Chamber/Senate vote page is not supported by the Deputies nominal vote parser yet.");
   });
+
+  it("recognises a names-only attendance check instead of reporting a parser failure (idv 37367)", () => {
+    const html = `<html><body><p>Miercuri, 16 septembrie 2026, ora 13:05</p><table>
+      <tr valign="top"><td>Sedinta:</td><td>Camerei Deputatilor</td></tr>
+      <tr valign="top"><td>Subiect vot:</td><td><b> Prezenţă - Vot test 1 </b></td></tr></table>
+      <table><thead><tr align="center"><td>#</td><td><a href="#">Nume si prenume</a></td><td><a href="#">Grup</a></td></tr></thead>
+      <tr valign="top"><td>1.</td><td><a href="/ords/pls/parlam/structura2015.mp?idm=1&cam=2&leg=2024">Adomnicăi Mirela Elena</a></td><td>PSD</td></tr>
+      </table></body></html>`;
+    const parsed = parseChamberNominalVote(html, "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=37367");
+    expect(parsed.individualVotes).toEqual([]);
+    expect(parsed.warnings[0]).toMatch(/Attendance check lists names without votes/);
+  });
 });

@@ -35,6 +35,14 @@ Each Open question has a recommendation; the owner decides.
 
 ---
 
+### Q13 — Joint Chamber–Senate sittings: how to model them? (D21)
+
+Joint sittings (budget, state of the nation, motions of censure, joint committees' reports) are skipped today. CDEP publishes them with one name list of deputies and senators together, and per-chamber group totals. Their majority rules count all members of both chambers (465 now), so a per-chamber result would be wrong.
+
+- **A. A third "chamber" value `joint`** (recommended): one vote, one nominal list, outcome against 465 members; vote pages and profiles show "Ședință comună". Touches the chamber enum, seat maps, filters and outcome rules.
+- **B. Split each joint vote into a deputies part and a senate part**: fits the current model, but every outcome shown per chamber would be misleading.
+- **C. Keep skipping**, and say on the site that joint sittings are not covered yet.
+
 ## Decided
 
 | ID | Date | Decision | Why |

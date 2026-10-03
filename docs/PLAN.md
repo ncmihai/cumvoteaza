@@ -155,7 +155,7 @@ Then the audit fixes (2026-10-03, branch `phase-2/fixes`):
 - [x] D23 html lang: `[locale]/layout.tsx` is the root layout with `lang={locale}`; `/` redirects in next.config; localized not-found inside the locale, bilingual `global-not-found` for unknown sections. Unknown locale prefixes (`/xx`) still get Next's built-in 404.
 - [x] D20 (2026-10-03): not our bug. On all 9 pages senat.ro announces one more "for" than it lists by name (e.g. L181/2025: 109 announced, 108 named, group table 108). Vote pages now state the gap per choice; nothing is filled in. Phase 3 gate: compare imported rows with the page's own name list, and treat headline-vs-list gaps as a source discrepancy, not an import failure.
 - [ ] D19 committee dates: code done (probe `parse_dated_committees` for all 9 committee sections, roles with their own dates, month precision in `member_committee_memberships`, migration `0030` applied). Reparsed locally: 3,657 of 10,178 committee rows carry CDEP dates. **Production re-import pending** (`cdep-history:import --persist` per legislature).
-- [ ] D21 joint sittings.
+- [ ] D21 (2026-10-03, part done): newer CDEP attendance checks ("Prezenţă - Vot test") list names with no vote column; they are now recorded as skipped with that reason, not as parser failures. Found on the way: attendance checks counted as votes cast / votes "for" in profile stats (up to 19 per deputy); the activity read model now excludes them. **Joint sittings still skipped: needs an owner decision (Q13).**
 
 Earlier:
 - [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
