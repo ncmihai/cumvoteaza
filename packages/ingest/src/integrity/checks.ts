@@ -112,6 +112,20 @@ export const checks: Check[] = [
       select 'person', id, display_name from people where display_name ~* ',\\s*(pre[sşș]edinte|vicepre[sşș]edinte|chestor|secretar)'`
   },
   {
+    name: "vote_nominal_totals_mismatch",
+    severity: "warning",
+    description: "A vote's nominal for/against/abstention rows differ from the official totals (source vs stored).",
+    // Warning for history: 9 Senate votes of 2025 were already one 'for' short before the identity repair (D20).
+    // The updater applies this check to each newly imported vote as a blocking gate (D-008).
+    query: sql`
+      select v.id, v.held_on::text, v.for_count, n.f as nominal_for, v.against, n.a as nominal_against, v.abstention, n.ab as nominal_abstention
+      from votes v join (
+        select vote_id, count(*) filter (where choice = 'for') as f, count(*) filter (where choice = 'against') as a,
+               count(*) filter (where choice = 'abstention') as ab
+        from individual_votes group by vote_id) n on n.vote_id = v.id
+      where n.f <> coalesce(v.for_count, -1) or n.a <> coalesce(v.against, -1) or n.ab <> coalesce(v.abstention, -1)`
+  },
+  {
     name: "orphan_people",
     severity: "warning",
     description: "People with no member record and no government role.",

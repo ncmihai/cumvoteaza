@@ -71,6 +71,8 @@ Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is 
 | D17 | P2 | The member page fell back to the first profile whose URL *starts with* the requested name, which could show a namesake. | code |
 | D18 | P3 | Dates are formatted in the viewer's time zone, so a calendar date can shift to the previous day west of UTC. | code |
 | D19 | P2 | Committee memberships also get whole-mandate dates although CDEP gives "(din … / până în …)". Follow-up. | code |
+| D20 | P2 | 9 Senate votes of 2025 have one fewer nominal "for" row than the official total (pre-existing; probably one voter not parsed on those senat.ro pages). | DB, 2026-10-03 |
+| D21 | P3 | Joint Chamber–Senate sitting votes are skipped (parser unsupported); 2 Chamber votes (idv 37367, 37387) have no nominal rows. | rehearsal import |
 | D2 | P1 | Data stale since 2026-09-09; no unattended updater. | DB query |
 | D3 | P1 | Vote seat map turns *missing* nominal records into "absent" and silently trims roster conflicts. | archive/review-2026-09-24 R2 |
 | D4 | P1 | Seat-map reconciliation compares the map to its own counts, so it can never fail. | review R3 |
@@ -134,7 +136,9 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [x] Runbook `tools/identity-repair/run.sh` (refuses to run without confirming the target host). Final rehearsal on a fresh copy of production: exit 0, all 13 checks pass.
 - [ ] Owner: answer the 37-row review in `data/curated/identity-review.md` (not blocking; undecided rows stay as today).
 - [ ] Owner approval, then: (1) Neon backup branch of production, (2) runbook on production (~15 min; the old site keeps working, data changes underneath), (3) merge and deploy the code, (4) revalidate the data cache, (5) verify the live profiles, (6) delete the rehearsal branches.
-- [ ] Follow-up: committee dates (D19).
+- [x] Identity review: 24 of 37 decided (owner + CDEP CVs: birth dates, careers named in CVs; `cvs` probe command, `tools/identity-repair/cv_evidence.py`); 13 left unchanged for lack of evidence.
+- [x] Missing-votes import rehearsed on the copy with the new voter resolution: 122 new votes (Chamber 35, Senate 87, 14–30 Sept), Chamber totals match exactly, all integrity checks still pass.
+- [ ] Follow-up: committee dates (D19); Senate off-by-one (D20); joint sittings (D21); store CV birth dates in `people.birth_date` and use them as resolver evidence.
 
 Then:
 - [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
