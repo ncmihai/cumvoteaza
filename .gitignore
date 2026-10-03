@@ -32,3 +32,6 @@ data/cabinet-evidence/
 
 # Local preview configs (may point at scratch databases)
 .claude/launch.json
+
+# Local import and runbook logs
+data/imports/
