@@ -29,3 +29,6 @@ apps/web/playwright-report/
 
 # Local-only cabinet evidence captures (parked Codex 3B work)
 data/cabinet-evidence/
+
+# Local preview configs (may point at scratch databases)
+.claude/launch.json
