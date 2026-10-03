@@ -116,6 +116,7 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [ ] **Missing-info brainstorm.** For each entity (MP, vote, bill, party, cabinet, minister, president, ambassador), what a citizen would want to know and we don't have yet, ranked by value and effort.
 - [ ] **Re-verify D3–D8.**
 - [ ] Inventory local `data/` (~2.5 GB): keep or delete (D-009).
+- [ ] Noted during the identity repair: profile header shows an interim minister role instead of Prime Minister (Bolojan); header labels a parliamentary group as "Partid"; local `.env` and the cockpit write straight to the production DB (use a Neon dev branch for local work); CI passes a Jest-only `--runInBand` flag.
 - [ ] Output: `docs/audit-2026-10.md` with findings and the agreed cut list. Decisions go into `DECISIONS.md`.
 
 **Exit:** audit written, cut list agreed, cuts made.
@@ -128,9 +129,11 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [x] One member record per mandate: senat.ro records folded into CDEP records, ghost voters re-attached, D12 votes re-attributed; `id_aliases` so no importer can recreate a retired ID; retired profile URLs redirect (D17).
 - [x] Importers: votes never create members/mandates/memberships (D13); only CDEP owns group/party history and each importer deletes only its own rows (D14); mass mandate closure refused (D1); `official-careers` and `wikipedia:roster:import` can no longer persist.
 - [x] `integrity:check`: 10 blocking + 3 warning checks. Production today: 8 blocking checks fail. Rehearsal copy after repair: all 13 pass, 226,093 votes preserved.
-- [x] Runbook `tools/identity-repair/run.sh` (refuses to run without confirming the target host).
+- [x] Career timeline uses dated group memberships when they document more changes than the party field (Peia: SOS → unaffiliated → PACE); a hand-over month is not "ambiguous".
+- [x] URL continuity: retired profile URLs redirect; the runbook snapshots every public profile URL first and fails if any stops resolving (rehearsal: 5,569 checked, 0 broken).
+- [x] Runbook `tools/identity-repair/run.sh` (refuses to run without confirming the target host). Final rehearsal on a fresh copy of production: exit 0, all 13 checks pass.
 - [ ] Owner: answer the 37-row review in `data/curated/identity-review.md` (not blocking; undecided rows stay as today).
-- [ ] Owner approval → run the runbook on production → verify the live site.
+- [ ] Owner approval, then: (1) Neon backup branch of production, (2) runbook on production (~15 min; the old site keeps working, data changes underneath), (3) merge and deploy the code, (4) revalidate the data cache, (5) verify the live profiles, (6) delete the rehearsal branches.
 - [ ] Follow-up: committee dates (D19).
 
 Then:
