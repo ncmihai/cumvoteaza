@@ -120,7 +120,9 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [ ] Inventory local `data/` (~2.5 GB): keep or delete (D-009).
 - [ ] Noted during the identity repair: profile header shows an interim minister role instead of Prime Minister (Bolojan); header labels a parliamentary group as "Partid"; local `.env` and the cockpit write straight to the production DB (use a Neon dev branch for local work); CI passes a Jest-only `--runInBand` flag.
 - [x] Output: [`docs/audit-2026-10.md`](audit-2026-10.md) (2026-10-03): module verdicts, cut list, fix list A1–A8, privacy items, ranked missing information, local data inventory.
-- [ ] Owner decisions on the audit's §7, then the cuts.
+- [x] Owner decisions (D-015…D-018) and the cuts (2026-10-03): cockpit retired (archived on `archive/cockpit-2026-10`), `parliament-pipeline` and eleven one-off commands removed, demo-data mode removed, Digi-only storage, cookieless counts, dead components removed. About 27,000 lines gone. Gemini explanations kept (Q12); member/group alignment tables kept on review.
+- [ ] Deploy the cuts, then apply migration `0028` (drops the three cockpit tables).
+- [ ] Data-health page: keep read-only or remove (audit §2.9, still open).
 
 **Exit:** audit written, cut list agreed, cuts made.
 
@@ -148,15 +150,18 @@ Then:
 
 **Exit:** all integrity checks pass on production; spot-checks match the sources.
 
-### Phase 3 — Unattended updater
+### Phase 3 — Worker and admin v1
 
-Goal: new votes for this legislature appear on the site without manual work.
+Design (D-017): one admin inside the website at `/admin` (GitHub login), and the BC250 as a **worker, not a server**. They talk only through the database.
 
-- Runs on the **BC250** (CachyOS) from a systemd timer (D-007). Every run catches up from the last successful run, because the box is only *almost* always on.
-- Job flow: discover new sittings → import → integrity checks plus source-vs-stored comparison → **auto-publish if all pass**, otherwise hold and notify (D-008, Q11).
-- The site shows a visible "data updated on …" date per chamber.
+- [ ] **Job queue and heartbeat.** The admin writes job requests; the worker polls, runs them, writes progress and results, and records a heartbeat, so the admin shows whether the BC250 is connected. The worker need not be always on: requests wait. Every run catches up from the last successful run (D-007).
+- [ ] **Updater job.** Discover new sittings → import → integrity checks plus source-vs-stored comparison → auto-publish if all pass, otherwise hold and open a GitHub issue (D-008, D-011). The site shows "data updated on …" per chamber.
+- [ ] **Admin v1: Jobs and Review.** Worker status, run or schedule an import, held batches, identity questions. Add a screen only when the previous ones are used.
+- [ ] Linux OCR path for scanned bill PDFs (the macOS tool cannot run on the BC250).
 
-**Exit:** two consecutive weeks of sitting days imported with zero manual intervention.
+**Exit:** two consecutive weeks of sitting days imported with zero manual intervention, visible in the admin.
+
+Later, on the same base: the analysis studio for votes and political direction (internal until validated; [political-scale-methodology.md](political-scale-methodology.md)), and summaries (Q12).
 
 ### Phase 4 — Complete the 2024–2028 legislature
 
