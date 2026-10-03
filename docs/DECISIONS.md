@@ -28,6 +28,11 @@ Each Open question has a recommendation; the owner decides.
 ### Q10 — Vercel Hobby is non-commercial
 - Fine for now. Any donations or ads would require a paid plan or another host.
 
+### Q12 — Plain-language vote/bill summaries: which model?
+- Owner wants summaries in the future. Options: generate on first page view and cache; a local model on the BC250 (batch, free); a very cheap hosted model.
+- Constraints: summaries are model output, so they need the evidence link and review rules (D-008: model output never auto-publishes, or is clearly labeled as unreviewed); cost must stay near zero.
+- The existing (disabled) explanation code and its 3 tables are kept until this is decided.
+
 ---
 
 ## Decided
@@ -50,3 +55,6 @@ Each Open question has a recommendation; the owner decides.
 | D-014 | 2026-10-03 | Person merges are automatic only when the normalized name matches **and** an official signal agrees (CDEP career link, same official ID, or same chamber and constituency with non-overlapping mandates). Everything else goes to a review list. Every merge is logged and reversible. | Name-only matching would merge real namesakes. |
 | D-015 | 2026-10-03 | Popular-votes ranking uses cookieless view counts; the visitor-ID cookie goes. | EU consent rules; popularity is still useful. |
 | D-016 | 2026-10-03 | Keep working against production during the current build-out; create a Neon `dev` branch once the core is stable. | Owner: "we are in a dev-like working phase". |
+| D-017 | 2026-10-03 | **One admin inside the website (`/admin`, GitHub login), and the BC250 as a worker, not a server.** They communicate through the database: the admin writes job requests, the worker polls, runs, and reports progress and a heartbeat (the admin shows whether the worker is connected). The worker does not need to be always on; requests wait. | No home network exposure, one stack, analysis pages can graduate to public. |
+| D-018 | 2026-10-03 | Retire the cockpit (archived on a branch first) and do the audit cut list, **except Gemini/vote explanations**, which stay for a future summaries feature (Q12). Digi Storage stays; only the unused Vercel Blob and generic FTP upload routes go. | Owner, after the audit. |
+
