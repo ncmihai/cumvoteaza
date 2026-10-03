@@ -1270,24 +1270,9 @@ async function loadGovernmentContextForDate(db: DbClient, date: string, relevant
       })
       .sort((a, b) => alignmentSortWeight(a.alignment) - alignmentSortWeight(b.alignment) || a.party.shortName.localeCompare(b.party.shortName, "ro")),
     hasCuratedCoalitionData: alignmentRows.length > 0,
-    formationEvents: await loadRelevantFormationEventsForDate(db, date, uniqueStrings([
-      ...relevantEntityIds,
-      ...alignmentRows.map((row) => row.partyId)
-    ]))
+    // Party founding/merger events belong on party pages, not on every vote and bill (tester #8).
+    formationEvents: []
   };
-}
-
-async function loadRelevantFormationEventsForDate(db: DbClient, date: string, entityIds: string[]): Promise<PoliticalFormationEvent[]> {
-  if (entityIds.length === 0) return [];
-  const eventRows = await db.select().from(schema.politicalFormationEvents).where(sql`
-    ${schema.politicalFormationEvents.date} <= ${date}::date
-  `);
-  const eventEntityRows = await db.select().from(schema.politicalFormationEventEntities);
-  const entityIdSet = new Set(entityIds);
-  return mapPoliticalFormationEvents(eventRows, eventEntityRows)
-    .filter((event) => event.entities.some((entity) => entityIdSet.has(entity.entityId)))
-    .sort((a, b) => b.date.localeCompare(a.date) || a.titleRo.localeCompare(b.titleRo, "ro"))
-    .slice(0, 6);
 }
 
 function buildVoteGroupContexts(

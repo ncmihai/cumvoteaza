@@ -34,10 +34,18 @@ const bill: Bill = {
 };
 
 describe("public presentation contracts", () => {
-  it("never infers a legal outcome from procedural title text", () => {
-    expect(presentVote(vote, { locale: "ro", bill }).outcome).toBe("unknown");
-    expect(presentVote(vote, { locale: "ro", bill }).outcomeLabel).toBe("Rezultat neclarificat");
+  it("takes the outcome from the official counts and the majority rule, never from the title text", () => {
+    // The title says "Adoptare", but 129 for of 291 present is below a majority under any rule.
+    const presented = presentVote(vote, { locale: "ro", bill });
+    expect(presented.outcome).toBe("not_adopted");
+    expect(presented.outcomeLabel).toBe("Neadoptat");
+    expect(presented.outcomeExplanation).toContain("prag: 146");
     expect(presentVote(vote, { locale: "ro", bill, authoritativeOutcome: "adopted" }).outcome).toBe("adopted");
+  });
+
+  it("says when the outcome depends on the type of law instead of guessing", () => {
+    const band = { ...vote, totals: { ...vote.totals, for: 150 } };
+    expect(presentVote(band, { locale: "ro", bill }).outcome).toBe("depends_on_law_type");
   });
 
   it("separates readable and official bill text", () => {

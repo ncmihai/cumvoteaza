@@ -25,3 +25,16 @@ export function chamberSeatCountForLegislature(chamber: ChamberId, legislature: 
   if (chamber !== "deputies" && chamber !== "senate") return undefined;
   return chamberSeatCountsByLegislature[legislature.label]?.[chamber];
 }
+
+/** Legislature start dates, so a seat count can be found from a vote date alone. */
+const legislatureStarts: Array<[string, string]> = [
+  ["2024-12-21", "2024-2028"], ["2020-12-21", "2020-2024"], ["2016-12-21", "2016-2020"], ["2012-12-19", "2012-2016"],
+  ["2008-12-15", "2008-2012"], ["2004-12-13", "2004-2008"], ["2000-12-11", "2000-2004"], ["1996-11-22", "1996-2000"],
+  ["1992-10-16", "1992-1996"], ["1990-06-18", "1990-1992"]
+];
+
+export function chamberSeatCountOnDate(chamber: ChamberId, date: string): number | undefined {
+  if (chamber !== "deputies" && chamber !== "senate") return undefined;
+  const label = legislatureStarts.find(([start]) => date >= start)?.[1];
+  return label ? chamberSeatCountsByLegislature[label]?.[chamber] : undefined;
+}

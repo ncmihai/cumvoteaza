@@ -6,7 +6,7 @@ import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Load
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { VoteExplorerItem } from "@/lib/explorer-data";
-import { presentVote, type VoteOutcome } from "@/lib/public-presentation";
+import { presentVote, voteOutcomeTone, type VoteOutcome } from "@/lib/public-presentation";
 import { HotButton } from "./HotButton";
 import { VotePreview } from "./VotePreview";
 import styles from "./HomepageExperience.module.css";
@@ -139,9 +139,8 @@ function FeaturedVote({ locale, item }: { locale: Locale; item: VoteExplorerItem
 }
 
 function Outcome({ outcome, label, compact = false }: { outcome: VoteOutcome; label: string; compact?: boolean }) {
-  const rejected = outcome === "rejected";
-  const established = outcome === "adopted" || rejected;
-  return <span className={`${styles.outcome} ${rejected ? styles.rejected : established ? styles.adopted : ""} ${compact ? styles.compact : ""}`}>{rejected ? <X /> : established ? <Check /> : null}{label}</span>;
+  const tone = voteOutcomeTone(outcome);
+  return <span className={`${styles.outcome} ${tone === "negative" ? styles.rejected : tone === "positive" ? styles.adopted : ""} ${compact ? styles.compact : ""}`}>{tone === "negative" ? <X /> : tone === "positive" ? <Check /> : null}{label}</span>;
 }
 
 function Count({ number, label, tone }: { number: number; label: string; tone: string }) { return <div className={`${styles.count} ${styles[tone]}`}><strong>{number}</strong><span>{label}</span></div>; }

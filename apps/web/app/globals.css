@@ -27,13 +27,11 @@ body {
 }
 
 /* Match the information density of an 80% browser zoom on wide desktop screens.
-   The compensating dimensions keep the scaled page filling the viewport. */
+   `zoom` scales the layout itself; the earlier transform only scaled the picture and left
+   blank scroll space and a narrow page on long pages (tester #6, #7). */
 @media screen and (min-width: 1200px) {
   body {
-    width: 125%;
-    min-height: 125vh;
-    transform: scale(0.8);
-    transform-origin: top left;
+    zoom: 0.8;
   }
 }
 

@@ -8,7 +8,8 @@ export type ReactionEntityType = "bill" | "vote";
 export const LEGACY_VISITOR_COOKIE = "cumsevoteaza_visitor";
 
 export function analyticsEnabled(): boolean {
-  return Boolean(process.env.DATABASE_URL);
+  // Local development (which may point at the production database) never counts views.
+  return Boolean(process.env.DATABASE_URL) && process.env.NODE_ENV === "production";
 }
 
 /**

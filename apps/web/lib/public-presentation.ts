@@ -13,8 +13,12 @@ import type {
   VoteTotals
 } from "@cumsevoteaza/parliament-model";
 import type { AppLocale } from "./i18n";
+import { voteOutcome, type VoteOutcome as ComputedVoteOutcome } from "@cumsevoteaza/parliament-model";
+import { chamberSeatCountOnDate } from "./chamber-seat-counts";
 
-export type VoteOutcome = "adopted" | "rejected" | "recorded" | "unknown";
+export type VoteOutcome =
+  | "adopted" | "rejected" | "not_adopted" | "rejection_failed" | "approved" | "not_approved"
+  | "depends_on_law_type" | "attendance" | "unknown";
 
 export interface VotePresentation {
   id: string;
@@ -27,6 +31,8 @@ export interface VotePresentation {
   voteType: string;
   outcome: VoteOutcome;
   outcomeLabel: string;
+  /** How the outcome was determined (rule and threshold), shown next to it. */
+  outcomeExplanation: string;
   totals: VoteTotals;
   source?: SourcePresentation;
 }
@@ -119,7 +125,16 @@ export function presentVote(
 ): VotePresentation {
   const identifier = voteIdentifier(vote.title, options.bill);
   const subject = options.bill ? presentBill(options.bill).heading : undefined;
-  const outcome = options.authoritativeOutcome ?? "unknown";
+  const computed = voteOutcome({
+    motionKind: vote.motionKind,
+    yesMeaning: vote.yesMeaning,
+    title: vote.title,
+    billTitle: options.bill?.title,
+    forCount: vote.totals.for,
+    present: vote.totals.present,
+    members: chamberSeatCountOnDate(vote.chamber, vote.heldOn)
+  });
+  const outcome = options.authoritativeOutcome ?? outcomeFromComputed(computed);
 
   return {
     id: vote.id,
@@ -132,6 +147,7 @@ export function presentVote(
     voteType: vote.voteType,
     outcome,
     outcomeLabel: voteOutcomeLabel(outcome, options.locale),
+    outcomeExplanation: outcomeExplanation(computed, vote, options.locale),
     totals: vote.totals,
     source: options.source ? presentSource(options.source, options.locale, options.asOf) : undefined
   };
@@ -376,10 +392,66 @@ export function presentCompositionSnapshot(input: {
 
 export function voteOutcomeLabel(outcome: VoteOutcome, locale: AppLocale): string {
   const labels: Record<AppLocale, Record<VoteOutcome, string>> = {
-    ro: { adopted: "Adoptat", rejected: "Respins", recorded: "Înregistrat", unknown: "Rezultat neclarificat" },
-    en: { adopted: "Adopted", rejected: "Rejected", recorded: "Recorded", unknown: "Outcome not established" }
+    ro: {
+      adopted: "Adoptat", rejected: "Respins", not_adopted: "Neadoptat", rejection_failed: "Respingerea nu a trecut",
+      approved: "Aprobat", not_approved: "Neaprobat", depends_on_law_type: "Depinde de caracterul legii",
+      attendance: "Verificarea prezenței", unknown: "Rezultat nedeterminat"
+    },
+    en: {
+      adopted: "Adopted", rejected: "Rejected", not_adopted: "Not adopted", rejection_failed: "Rejection failed",
+      approved: "Approved", not_approved: "Not approved", depends_on_law_type: "Depends on the type of law",
+      attendance: "Attendance check", unknown: "Outcome not determined"
+    }
   };
   return labels[locale][outcome];
+}
+
+/** Positive, negative or neutral styling for an outcome badge. */
+export function voteOutcomeTone(outcome: VoteOutcome): "positive" | "negative" | "neutral" {
+  if (outcome === "adopted" || outcome === "approved") return "positive";
+  if (outcome === "rejected" || outcome === "not_adopted" || outcome === "not_approved") return "negative";
+  return "neutral";
+}
+
+function outcomeFromComputed(computed: ComputedVoteOutcome): VoteOutcome {
+  if (computed.status === "not_a_decision") return "attendance";
+  if (computed.rule === "depends_on_law_type") return "depends_on_law_type";
+  return computed.effect ?? "unknown";
+}
+
+function outcomeExplanation(computed: ComputedVoteOutcome, vote: Vote, locale: AppLocale): string {
+  const ro = locale === "ro";
+  const chamber = vote.chamber === "senate" ? (ro ? "Senatului" : "the Senate") : (ro ? "Camerei" : "the Chamber");
+  const intro = ro
+    ? "Camerele nu publică rezultatul pe pagina votului; îl calculăm din voturile oficiale și regula de majoritate din Constituție (art. 76)."
+    : "The chambers do not publish the result on the vote page; it is calculated from the official votes and the Constitution's majority rule (art. 76).";
+  const rules: Record<string, string> = ro ? {
+    majority_of_present: `majoritatea celor prezenți (${vote.totals.present})`,
+    majority_of_members: `majoritatea membrilor ${chamber}`,
+    two_thirds_of_members: `două treimi din membrii ${chamber}`,
+    passes_under_any_rule: `peste jumătate din membrii ${chamber}, deci trece indiferent dacă legea este ordinară sau organică`,
+    fails_under_any_rule: `cel puțin jumătate din cei prezenți, prag neatins, deci nu trece sub nicio regulă`
+  } : {
+    majority_of_present: `a majority of those present (${vote.totals.present})`,
+    majority_of_members: `a majority of the members of ${chamber}`,
+    two_thirds_of_members: `two thirds of the members of ${chamber}`,
+    passes_under_any_rule: `more than half of the members of ${chamber}, so it passes whether the law is ordinary or organic`,
+    fails_under_any_rule: `more than half of those present, which was not reached, so it fails under any rule`
+  };
+  switch (computed.rule) {
+    case "attendance_check":
+      return ro ? "Verificare a prezenței, nu o decizie." : "An attendance check, not a decision.";
+    case "depends_on_law_type":
+      return ro
+        ? `${vote.totals.for} voturi pentru: peste jumătate din cei prezenți, dar nu peste jumătate din membrii ${chamber}. Trece dacă legea este ordinară, nu trece dacă este organică; caracterul legii nu este încă în date.`
+        : `${vote.totals.for} votes for: more than half of those present, but not more than half of the members of ${chamber}. It passes if the law is ordinary and fails if it is organic; the law type is not yet in the data.`;
+    case "below_quorum":
+      return ro ? "Prezența înregistrată este sub cvorum; rezultatul nu poate fi stabilit." : "Recorded attendance is below quorum; the result cannot be established.";
+    case "missing_counts":
+      return ro ? "Lipsesc numerele oficiale necesare pentru a stabili rezultatul." : "The official counts needed to establish the result are missing.";
+    default:
+      return `${intro} ${ro ? `${vote.totals.for} voturi pentru; prag: ${computed.threshold} (${rules[computed.rule]}).` : `${vote.totals.for} votes for; threshold: ${computed.threshold} (${rules[computed.rule]}).`}`;
+  }
 }
 
 function voteIdentifier(title: string, bill?: Bill): string {
