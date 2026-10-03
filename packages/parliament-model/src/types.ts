@@ -364,12 +364,17 @@ export interface MemberMandate {
   sourceSnapshotId?: string;
 }
 
+/** "month": the official source gives only the month; the stored date is the 1st of that month. */
+export type DatePrecision = "day" | "month";
+
 export interface MemberGroupMembership {
   id: string;
   memberId: string;
   groupId: string;
   startsOn: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
   currentSnapshotOn?: string;
   logoUrl?: string;
   sourceSnapshotId?: string;
@@ -380,7 +385,9 @@ export interface MemberPartyAffiliation {
   memberId: string;
   partyId: string;
   startsOn: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
   logoUrl?: string;
   sourceSnapshotId?: string;
 }

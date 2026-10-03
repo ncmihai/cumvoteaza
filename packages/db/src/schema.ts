@@ -524,7 +524,10 @@ export const memberGroupMemberships = pgTable("member_group_memberships", {
   memberId: text("member_id").notNull().references(() => members.id),
   groupId: text("group_id").notNull().references(() => parliamentaryGroups.id),
   startsOn: date("starts_on").notNull(),
+  // "month" when the official source only gives a month (CDEP: "din iun. 2025"); the date is then the 1st of that month.
+  startsOnPrecision: text("starts_on_precision").notNull().default("day"),
   endsOn: date("ends_on"),
+  endsOnPrecision: text("ends_on_precision").notNull().default("day"),
   currentSnapshotOn: date("current_snapshot_on"),
   logoUrl: text("logo_url"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
@@ -539,7 +542,9 @@ export const memberPartyAffiliations = pgTable("member_party_affiliations", {
   memberId: text("member_id").notNull().references(() => members.id),
   partyId: text("party_id").notNull().references(() => parties.id),
   startsOn: date("starts_on").notNull(),
+  startsOnPrecision: text("starts_on_precision").notNull().default("day"),
   endsOn: date("ends_on"),
+  endsOnPrecision: text("ends_on_precision").notNull().default("day"),
   logoUrl: text("logo_url"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
 }, (table) => ({

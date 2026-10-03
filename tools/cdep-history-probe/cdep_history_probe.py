@@ -136,6 +136,9 @@ def main() -> None:
     preview.add_argument("--profiles", type=Path, default=DEFAULT_OUT_DIR / "parsed" / "profiles.jsonl")
     preview.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR / "parsed" / "import-preview.json")
 
+    reparse = sub.add_parser("reparse", help="Re-parse cached raw profile pages into profiles.jsonl. Never touches the network.")
+    reparse.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
+
     assets = sub.add_parser("asset-inventory", help="Build a file-only inventory of official profile assets.")
     assets.add_argument("--profiles", type=Path, default=DEFAULT_OUT_DIR / "parsed" / "profiles.jsonl")
     assets.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR / "parsed" / "assets.jsonl")
@@ -158,6 +161,33 @@ def main() -> None:
     if args.command == "asset-inventory":
         run_asset_inventory(args)
         return
+    if args.command == "reparse":
+        run_reparse(args)
+        return
+
+
+def run_reparse(args: argparse.Namespace) -> None:
+    """Rebuild parsed/profiles.jsonl from raw snapshots only. Missing raw files are reported, never fetched."""
+    raw_dir = args.out / "raw"
+    profiles_path = args.out / "parsed" / "profiles.jsonl"
+    previous = [json.loads(line) for line in profiles_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    records: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for old in previous:
+        canonical = canonical_url(old["url"])
+        stem = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        html_path, meta_path = raw_dir / f"{stem}.html", raw_dir / f"{stem}.json"
+        if not html_path.exists() or not meta_path.exists():
+            missing.append(old["url"])
+            records.append(old)
+            continue
+        snapshot = json.loads(meta_path.read_text(encoding="utf-8"))
+        records.append(parse_profile_page(html_path.read_text(encoding="utf-8"), canonical, snapshot))
+    backup = profiles_path.with_suffix(".jsonl.bak")
+    if not backup.exists():
+        backup.write_text(profiles_path.read_text(encoding="utf-8"), encoding="utf-8")
+    write_jsonl(profiles_path, records)
+    print(json.dumps({"reparsed": len(records) - len(missing), "missingRaw": len(missing), "backup": str(backup)}, indent=2))
 
 
 def run_crawl(args: argparse.Namespace) -> None:
@@ -347,7 +377,7 @@ def parse_profile_page(html_text: str, source_url: str, snapshot: dict[str, Any]
     body = parsed.text
     profile_key = profile_key_from_url(source_url)
     profile_identity = profile_identity_from_url(source_url)
-    name = extract_profile_name(html_text, parsed)
+    name = strip_office_suffix(extract_profile_name(html_text, parsed))
     links = parsed.links
     career_links = parse_career_links(links, source_url)
     replacement = parse_replacement(html_text, source_url)
@@ -372,6 +402,8 @@ def parse_profile_page(html_text: str, source_url: str, snapshot: dict[str, Any]
         "replacement": replacement,
         "partyLinks": parties,
         "groupLinks": groups,
+        "partyMemberships": parse_dated_memberships(html_text, source_url, "Formatiunea politica:", "structura.fp"),
+        "groupMemberships": parse_dated_memberships(html_text, source_url, "Grupul parlamentar:", "structura.gp"),
         "committeeLinks": committees,
         "constituencyLinks": constituencies,
         "activityLinks": action_links,
@@ -434,6 +466,71 @@ def parse_replacement(html_text: str, source_url: str) -> dict[str, str] | None:
     if name:
         return {"relation": "replaces", "relatedName": clean_text(name)}
     return {"relation": "replaces"}
+
+
+ROMANIAN_MONTHS = {
+    "ian": 1, "feb": 2, "mar": 3, "apr": 4, "mai": 5, "iun": 6,
+    "iul": 7, "aug": 8, "sep": 9, "oct": 10, "noi": 11, "dec": 12,
+}
+_MONTH = r"(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|noi|dec)\.?\s+(\d{4})"
+_PERIOD_RE = re.compile(
+    rf"^\s*(?:în\s+\w+-\d{{4}}\s*)?(?:-\s*din\s+{_MONTH})?\s*;?\s*(?:-\s*până\s+în\s+{_MONTH})?\s*(.*)$",
+    re.I | re.S,
+)
+
+
+def month_value(name: str | None, year: str | None) -> str | None:
+    if not name or not year:
+        return None
+    return f"{int(year):04d}-{ROMANIAN_MONTHS[name.lower()]:02d}"
+
+
+def parse_period(text: str) -> tuple[str | None, str | None, str]:
+    """Split '- din iun. 2025 ; - până în sep. 2025 <rest>' into (start month, end month, rest)."""
+    match = _PERIOD_RE.match(text)
+    if not match:
+        return None, None, text
+    return month_value(match.group(1), match.group(2)), month_value(match.group(3), match.group(4)), clean_text(match.group(5))
+
+
+def profile_section(html_text: str, header: str) -> str:
+    start = html_text.find(f"<b>{header}</b>")
+    if start < 0:
+        return ""
+    following = re.search(r"<td colspan=2><b>", html_text[start + 1:], re.I)
+    return html_text[start: start + 1 + following.start()] if following else html_text[start:]
+
+
+def parse_dated_memberships(html_text: str, source_url: str, header: str, path_part: str) -> list[dict[str, Any]]:
+    """Memberships listed under a CDEP profile section, keeping CDEP's month-precision dates.
+
+    CDEP writes each membership as one table row: the link, then '- din <month>' and/or
+    '- până în <month>'. A role inside the group (Lider, Vicelider, Secretar, ...) may follow
+    with its own dates; those belong to the role, not to the membership.
+    """
+    section = profile_section(html_text, header)
+    rows: list[dict[str, Any]] = []
+    for piece in re.split(r"<tr\b", section, flags=re.I)[1:]:
+        row = piece.split("</tr>", 1)[0]
+        anchor = re.search(r"<a[^>]+href=\"([^\"]*)\"[^>]*>(.*?)</a>(.*)", row, re.I | re.S)
+        if not anchor or path_part not in anchor.group(1):
+            continue
+        after = clean_text(strip_tags(re.sub(r"<br\s*/?>", " ; ", anchor.group(3), flags=re.I)))
+        after = re.sub(r"^-\s*(?!din\b|până\b)[^;]*?(?=\s*-\s*(?:din|până)\b|$)", "", after).strip() if path_part == "structura.fp" else after
+        start, end, rest = parse_period(after)
+        roles: list[dict[str, Any]] = []
+        for role_match in re.finditer(r"([A-ZĂÂÎȘŞȚŢ][\wăâîșşțţ]+)\s*((?:-\s*(?:din|până)[^A-ZĂÂÎȘŞȚŢ]*)?)", rest):
+            role_start, role_end, _ = parse_period(role_match.group(2))
+            roles.append({"role": role_match.group(1), "startMonth": role_start, "endMonth": role_end})
+        rows.append({
+            "url": canonical_url(absolute_url(anchor.group(1), source_url)),
+            "label": clean_text(strip_tags(anchor.group(2))),
+            "startMonth": start,
+            "endMonth": end,
+            "roles": roles,
+            "raw": after,
+        })
+    return rows
 
 
 def parse_links_by_path(links: Iterable[Link], source_url: str, path_part: str) -> list[dict[str, str]]:
@@ -620,6 +717,17 @@ def extract_profile_name(html_text: str, parsed: ParsedHtml) -> str:
     if is_plausible_name(parsed.title):
         return normalize_name_case(parsed.title)
     return ""
+
+
+_OFFICE_SUFFIX_RE = re.compile(
+    r",\s*(?:Pre[sş]edinte(?:le)?|Vicepre[sş]edinte|Chestor|Secretar)\b.*$",
+    re.I,
+)
+
+
+def strip_office_suffix(name: str) -> str:
+    """'Gianina Şerban, Vicepreşedinte Al Camerei Deputaţilor' -> 'Gianina Şerban'. An office is not part of a name."""
+    return _OFFICE_SUFFIX_RE.sub("", name).strip()
 
 
 def is_plausible_name(value: str) -> bool:

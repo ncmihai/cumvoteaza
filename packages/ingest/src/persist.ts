@@ -1021,7 +1021,9 @@ async function upsertMemberGroupMemberships(db: Db, memberships: MemberGroupMemb
           memberId: sql`excluded.member_id`,
           groupId: sql`excluded.group_id`,
           startsOn: sql`excluded.starts_on`,
+          startsOnPrecision: sql`excluded.starts_on_precision`,
           endsOn: sql`excluded.ends_on`,
+          endsOnPrecision: sql`excluded.ends_on_precision`,
           currentSnapshotOn: sql`excluded.current_snapshot_on`,
           logoUrl: sql`excluded.logo_url`,
           sourceSnapshotId: sql`excluded.source_snapshot_id`
@@ -1059,7 +1061,9 @@ async function upsertMemberPartyAffiliations(db: Db, affiliations: MemberPartyAf
           memberId: sql`excluded.member_id`,
           partyId: sql`excluded.party_id`,
           startsOn: sql`excluded.starts_on`,
+          startsOnPrecision: sql`excluded.starts_on_precision`,
           endsOn: sql`excluded.ends_on`,
+          endsOnPrecision: sql`excluded.ends_on_precision`,
           logoUrl: sql`excluded.logo_url`,
           sourceSnapshotId: sql`excluded.source_snapshot_id`
         }

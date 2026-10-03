@@ -86,7 +86,7 @@
     "workbench:atlas": "python3 tools/parliament-workbench/workbench.py atlas-seed",
     "workbench:wiki": "python3 tools/parliament-workbench/workbench.py build-wiki",
     "workbench:test": "python3 tools/parliament-workbench/workbench.py test",
-    "test:python-pipeline": "python3 -m unittest discover -s tools/parliament-pipeline/tests"
+    "test:python-pipeline": "python3 -m unittest discover -s tools/parliament-pipeline/tests && python3 -m unittest discover -s tools/cdep-history-probe/tests"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

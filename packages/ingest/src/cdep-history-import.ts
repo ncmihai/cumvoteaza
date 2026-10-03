@@ -23,6 +23,7 @@ import {
   type ParsedRoster
 } from "./parsers/roster";
 import { cleanText, slugify } from "./parsers/utils";
+import { membershipPeriods, type DatedMembershipRow, type MembershipPeriod } from "./membership-periods";
 import { persistRoster } from "./persist";
 
 type CdepLink = {
@@ -60,6 +61,9 @@ type CdepProfile = {
   } | null;
   partyLinks?: CdepLink[];
   groupLinks?: CdepLink[];
+  /** Dated rows written by the probe since 2026-10 ("din / până în <month>"). Older parses only have *Links. */
+  partyMemberships?: DatedMembershipRow[];
+  groupMemberships?: DatedMembershipRow[];
   committeeLinks?: CdepLink[];
   constituencyLinks?: CdepLink[];
 };
@@ -96,7 +100,7 @@ export type CdepHistoryImportResult = {
 };
 
 export type CdepHistoryWarningItem = {
-  type: "missing_constituency";
+  type: "missing_constituency" | "unresolved_membership_order";
   legislature: string;
   chamber: ChamberId;
   memberName: string;
@@ -150,7 +154,7 @@ export async function importCdepHistoryProfiles(options: CdepHistoryImportOption
   };
 }
 
-function buildParsedRoster(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): ParsedRoster {
+export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): ParsedRoster {
   const selected = profiles.filter(
     (profile) => profile.identity?.legislature === legislature.label.slice(0, 4) && profile.identity?.chamber === chamber && profile.name
   );
@@ -185,37 +189,44 @@ function buildParsedRoster(profiles: CdepProfile[], legislature: Legislature, ch
     members.set(member.id, member);
     mandates.set(mandate.id, mandate);
 
-    for (const party of partiesFromProfile(profile)) {
+    // The /aleg/ image is the electoral list the member was elected on, so it belongs to the first period only.
+    const electionLogo = firstLogo(profile);
+
+    const partyPeriods = membershipPeriods(profile.partyMemberships ?? profile.partyLinks ?? [], mandate);
+    partyPeriods.periods.forEach((period, index) => {
+      const party = partyFromLabel(period.label, profile.identity.legislature);
+      if (!party) return;
       parties.set(party.id, party);
       const affiliation: MemberPartyAffiliation = {
-        id: `party-affiliation-${member.id}-${party.id}-${startsOn}`,
+        id: `party-affiliation-${member.id}-${party.id}-${period.startsOn}`,
         memberId: member.id,
         partyId: party.id,
-        startsOn,
-        endsOn,
-        logoUrl: firstLogo(profile),
+        ...periodDates(period),
+        logoUrl: index === 0 ? electionLogo : undefined,
         sourceSnapshotId: sourceSnapshot.id
       };
       partyAffiliations.set(affiliation.id, affiliation);
-    }
+    });
 
-    for (const group of groupsFromProfile(profile, legislature, chamber)) {
+    const groupPeriods = membershipPeriods(profile.groupMemberships ?? profile.groupLinks ?? [], mandate);
+    groupPeriods.periods.forEach((period, index) => {
+      const group = groupFromLink(period, legislature, chamber);
+      if (!group) return;
       groups.set(group.id, group);
       if (group.partyId) {
         const knownParty = partyFromText(group.name);
         if (knownParty) parties.set(knownParty.id, knownParty);
       }
       const membership: MemberGroupMembership = {
-        id: `group-membership-${member.id}-${group.id}-${startsOn}`,
+        id: `group-membership-${member.id}-${group.id}-${period.startsOn}`,
         memberId: member.id,
         groupId: group.id,
-        startsOn,
-        endsOn,
-        logoUrl: firstLogo(profile),
+        ...periodDates(period),
+        logoUrl: index === 0 ? electionLogo : undefined,
         sourceSnapshotId: sourceSnapshot.id
       };
       groupMemberships.set(membership.id, membership);
-    }
+    });
 
     for (const committee of profile.committeeLinks ?? []) {
       const name = cleanText(committee.label);
@@ -295,37 +306,35 @@ function sourceSnapshotFromProfile(profile: CdepProfile): SourceSnapshot {
   };
 }
 
-function partiesFromProfile(profile: CdepProfile): Party[] {
-  const parties = new Map<string, Party>();
-  for (const link of profile.partyLinks ?? []) {
-    const label = cleanText(link.label);
-    if (!label) continue;
-    const knownParty = partyFromText(label);
-    const party = knownParty ?? historicalFormation(label, profile.identity.legislature);
-    parties.set(party.id, party);
-  }
-  return [...parties.values()];
+function periodDates(period: MembershipPeriod) {
+  return {
+    startsOn: period.startsOn,
+    startsOnPrecision: period.startsOnPrecision,
+    endsOn: period.endsOn,
+    endsOnPrecision: period.endsOnPrecision
+  };
 }
 
-function groupsFromProfile(profile: CdepProfile, legislature: Legislature, chamber: ChamberId): ParliamentaryGroup[] {
-  const groups = new Map<string, ParliamentaryGroup>();
-  for (const link of profile.groupLinks ?? []) {
-    const name = cleanText(link.label);
-    if (!name) continue;
-    const knownParty = partyFromText(name);
-    const idg = link.url.match(/[?&]idg=([^&]+)/i)?.[1] ?? name;
-    const fallbackId = knownParty ? idg : `${legislature.label}-${idg}`;
-    const group: ParliamentaryGroup = {
-      id: groupId(chamber, name, fallbackId),
-      partyId: knownParty?.id,
-      chamber,
-      shortName: shortNameFromGroupName(name),
-      name,
-      color: knownParty?.color ?? "#64748b"
-    };
-    groups.set(group.id, group);
-  }
-  return [...groups.values()];
+function partyFromLabel(rawLabel: string, legislatureYear: string): Party | undefined {
+  const label = cleanText(rawLabel);
+  if (!label) return undefined;
+  return partyFromText(label) ?? historicalFormation(label, legislatureYear);
+}
+
+function groupFromLink(link: CdepLink, legislature: Legislature, chamber: ChamberId): ParliamentaryGroup | undefined {
+  const name = cleanText(link.label);
+  if (!name) return undefined;
+  const knownParty = partyFromText(name);
+  const idg = link.url.match(/[?&]idg=([^&]+)/i)?.[1] ?? name;
+  const fallbackId = knownParty ? idg : `${legislature.label}-${idg}`;
+  return {
+    id: groupId(chamber, name, fallbackId),
+    partyId: knownParty?.id,
+    chamber,
+    shortName: shortNameFromGroupName(name),
+    name,
+    color: knownParty?.color ?? "#64748b"
+  };
 }
 
 function historicalFormation(label: string, legislatureYear: string): Party {
@@ -416,6 +425,39 @@ function diagnoseRoster(roster: ParsedRoster): {
 }
 
 function warningItemsForProfiles(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): CdepHistoryWarningItem[] {
+  return [...missingConstituencyItems(profiles, legislature, chamber), ...unresolvedMembershipItems(profiles, legislature, chamber)];
+}
+
+function unresolvedMembershipItems(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): CdepHistoryWarningItem[] {
+  return profiles
+    .filter((profile) => profile.identity?.legislature === legislature.label.slice(0, 4) && profile.identity?.chamber === chamber && profile.name)
+    .flatMap((profile) => {
+      const mandate = {
+        startsOn: parseRomanianDate(profile.validationDateRaw ?? "") ?? legislature.startsOn,
+        endsOn: parseRomanianDate(profile.mandateEndRaw ?? "")
+      };
+      const unresolved = [
+        ...membershipPeriods(profile.partyMemberships ?? [], mandate).unresolved,
+        ...membershipPeriods(profile.groupMemberships ?? [], mandate).unresolved
+      ];
+      if (unresolved.length === 0) return [];
+      return [{
+        type: "unresolved_membership_order" as const,
+        legislature: legislature.label,
+        chamber,
+        memberName: profile.name,
+        officialId: profile.identity.officialId,
+        profileKey: profile.profileKey,
+        profileUrl: profile.url,
+        validationDateRaw: profile.validationDateRaw,
+        partyLabels: (profile.partyMemberships ?? []).map((row) => cleanText(row.label)),
+        groupLabels: (profile.groupMemberships ?? []).map((row) => cleanText(row.label)),
+        note: `Not imported: ${unresolved.map((row) => cleanText(row.label)).join(", ")}. CDEP lists them without dates, so their order is unknown.`
+      }];
+    });
+}
+
+function missingConstituencyItems(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): CdepHistoryWarningItem[] {
   return profiles
     .filter(
       (profile) =>
@@ -456,7 +498,7 @@ function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
   return [...map.values()];
 }
 
-async function readJsonl<T>(filePath: string): Promise<T[]> {
+export async function readJsonl<T>(filePath: string): Promise<T[]> {
   const raw = await readFile(filePath, "utf8");
   return raw
     .split("\n")
