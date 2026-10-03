@@ -1,4 +1,4 @@
-import type { ChamberId, DatePrecision, Locale, VoteChoice } from "./types";
+import type { ChamberId, DatePrecision, Locale, VoteChamber, VoteChoice } from "./types";
 
 export const chamberLabels: Record<Locale, Record<ChamberId, string>> = {
   ro: {
@@ -9,6 +9,12 @@ export const chamberLabels: Record<Locale, Record<ChamberId, string>> = {
     senate: "Senate",
     deputies: "Chamber of Deputies"
   }
+};
+
+/** Chamber labels for votes, which can also be held in a joint sitting. */
+export const voteChamberLabels: Record<Locale, Record<VoteChamber, string>> = {
+  ro: { ...chamberLabels.ro, joint: "Ședință comună" },
+  en: { ...chamberLabels.en, joint: "Joint sitting" }
 };
 
 export const voteChoiceLabels: Record<Locale, Record<VoteChoice, string>> = {

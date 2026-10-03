@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { Bill, IndividualVote, Member, SourceSnapshot, Vote, VoteChoice } from "@cumsevoteaza/parliament-model";
+import type { Bill, IndividualVote, Member, SourceSnapshot, Vote, VoteChamber, VoteChoice } from "@cumsevoteaza/parliament-model";
 import { billIdForIdentifier, canonicalBillIdentifier, findOfficialIdentifiers, identifierRecord } from "./identifiers";
 import { cleanText, slugify, snapshotFor, titleCase } from "./utils";
 
@@ -17,18 +17,39 @@ export function parseChamberNominalVote(html: string, sourceUrl: string): Parsed
   const sourceSnapshot = snapshotFor("chamber-nominal-vote", sourceUrl, html, "partial");
   const text = cleanText($("body").text());
   const heldOn = inferDate(text) ?? new Date().toISOString().slice(0, 10);
-  const voteId = `vote-deputies-${slugify(sourceUrl)}`;
+  const isJointVote = detectsJointVote($);
+  const voteChamber: VoteChamber = isJointVote ? "joint" : "deputies";
+  const voteId = `vote-${voteChamber}-${slugify(sourceUrl)}`;
   const warnings: string[] = [];
   const members = new Map<string, Member>();
   const individualVotes: IndividualVote[] = [];
   const subject = extractVoteSubject($, sourceUrl);
-  const isJointVote = detectsJointVote($);
 
   if (isJointVote) {
-    warnings.push("Joint Chamber/Senate vote page is not supported by the Deputies nominal vote parser yet.");
-  }
-
-  if (!isJointVote) {
+    // Joint sitting (art. 65): one list of deputies and senators, each row stating which, with the profile link carrying the chamber.
+    $("table tr").each((_, row) => {
+      const cells = $(row).find("td").toArray().map((cell) => cleanText($(cell).text()));
+      const profileHref = $(row).find("a[href*='structura2015.mp'], a[href*='structura.mp']").attr("href");
+      const idm = profileHref?.match(/[?&]idm=(\d+)/i)?.[1];
+      const cam = profileHref?.match(/[?&]cam=(\d)/i)?.[1];
+      const role = cells[2]?.toLowerCase();
+      const chamber = role === "senator" || cam === "1" ? "senate" : role === "deputat" || cam === "2" ? "deputies" : undefined;
+      if (!/^\d+\.$/.test(cells[0] ?? "") || !idm || !chamber || !cells[1] || !cells[4]) return;
+      const choice = choiceFromText(cells[4]);
+      if (choice === "unknown") return;
+      const displayName = titleCase(cells[1]);
+      const memberId = `member-${chamber}-${idm}`;
+      members.set(memberId, {
+        id: memberId,
+        slug: slugify(displayName),
+        firstName: displayName.split(" ").slice(0, -1).join(" ") || displayName,
+        lastName: displayName.split(" ").at(-1) ?? displayName,
+        displayName,
+        sourceIds: { cdepIdm: idm, chamber }
+      });
+      individualVotes.push({ id: `iv-${voteId}-${memberId}`, voteId, memberId, groupId: groupIdFromLabel(cells[3], chamber), choice });
+    });
+  } else {
     $("table tr").each((_, row) => {
       const cells = $(row).find("td").toArray().map((cell) => cleanText($(cell).text()));
       const rowNumber = cells[0]?.match(/^(\d+)\.$/)?.[1];
@@ -96,7 +117,7 @@ export function parseChamberNominalVote(html: string, sourceUrl: string): Parsed
     bill: subject?.bill,
     vote: {
       id: voteId,
-      chamber: "deputies",
+      chamber: voteChamber,
       billId: subject?.bill?.id,
       title: subject?.voteTitle ?? (cleanText($("title").first().text()) || "Chamber nominal vote"),
       heldOn,
@@ -211,11 +232,12 @@ function numberAfter(text: string, marker: RegExp): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
-function groupIdFromLabel(value?: string): string | undefined {
+function groupIdFromLabel(value?: string, chamber: "deputies" | "senate" = "deputies"): string | undefined {
   if (!value) return undefined;
   const normalized = value.replace(/\(afiliat\)/i, "").trim();
   const slug = slugify(normalized);
   if (!slug) return undefined;
+  if (chamber === "senate") return /neafili/i.test(normalized) ? "group-senate-neafiliati" : /^S\.?O\.?S\b/i.test(normalized) ? "group-senate-s-o-s-ro" : `group-senate-${slug}`;
   if (/neafili/i.test(normalized)) return "group-deputies-unaffiliated";
   if (/minorit/i.test(normalized)) return "group-deputies-minoritati";
   if (/^SOS\b/i.test(normalized)) return "group-deputies-sos-ro";

@@ -1,5 +1,5 @@
 import type {
-  ChamberId,
+  VoteChamber,
   VoteClassificationBasis,
   VoteClassificationConfidence,
   VoteMotionKind,
@@ -14,7 +14,7 @@ export interface VoteClassificationInput {
   voteType?: string | null;
   billTitle?: string | null;
   billId?: string | null;
-  chamber?: ChamberId;
+  chamber?: VoteChamber;
 }
 
 export interface VoteClassification {

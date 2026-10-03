@@ -1,4 +1,4 @@
-import type { ChamberId } from "./types";
+import type { ChamberId, VoteChamber } from "./types";
 
 type CountedChamber = Extract<ChamberId, "deputies" | "senate">;
 
@@ -23,7 +23,13 @@ const legislatureStarts: Array<[string, string]> = [
   ["1992-10-16", "1992-1996"], ["1990-06-18", "1990-1992"]
 ];
 
-export function chamberSeatCountOnDate(chamber: ChamberId, date: string): number | undefined {
+/** Seats in a chamber on a date; for a joint sitting, the deputies and senators together. */
+export function chamberSeatCountOnDate(chamber: VoteChamber, date: string): number | undefined {
+  if (chamber === "joint") {
+    const deputies = chamberSeatCountOnDate("deputies", date);
+    const senate = chamberSeatCountOnDate("senate", date);
+    return deputies !== undefined && senate !== undefined ? deputies + senate : undefined;
+  }
   if (chamber !== "deputies" && chamber !== "senate") return undefined;
   const label = legislatureStarts.find(([start]) => date >= start)?.[1];
   return label ? chamberSeatCountsByLegislature[label]?.[chamber] : undefined;

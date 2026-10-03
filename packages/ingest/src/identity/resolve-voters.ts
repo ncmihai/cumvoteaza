@@ -56,6 +56,9 @@ function sameOfficialId(chamber: ChamberId, legislatureYear: string, voter: Memb
     const idm = voter.sourceIds?.cdepIdm;
     return Boolean(idm) && member.sourceIds[`deputies:${legislatureYear}`] === idm;
   }
+  // Joint-sitting pages name a senator by CDEP's idm; senat.ro votes name them by GUID.
+  const idm = voter.sourceIds?.cdepIdm;
+  if (idm && member.sourceIds[`senate:${legislatureYear}`] === idm) return true;
   const guid = voter.sourceIds?.senate?.toLowerCase();
   return Boolean(guid) && member.sourceIds.senatRoGuid?.toLowerCase() === guid;
 }

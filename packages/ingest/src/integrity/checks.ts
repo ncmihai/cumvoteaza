@@ -81,7 +81,7 @@ export const checks: Check[] = [
       from individual_votes iv join votes v on v.id = iv.vote_id
       where not exists (
         select 1 from member_mandates mm join legislatures l on l.id = mm.legislature_id
-        where mm.member_id = iv.member_id and mm.chamber = v.chamber
+        where mm.member_id = iv.member_id and (v.chamber = 'joint' or mm.chamber::text = v.chamber::text)
           and v.held_on >= mm.starts_on and v.held_on <= coalesce(mm.ends_on, l.ends_on))`
   },
   {

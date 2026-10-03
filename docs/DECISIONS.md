@@ -35,14 +35,6 @@ Each Open question has a recommendation; the owner decides.
 
 ---
 
-### Q13 — Joint Chamber–Senate sittings: how to model them? (D21)
-
-Joint sittings (budget, state of the nation, motions of censure, joint committees' reports) are skipped today. CDEP publishes them with one name list of deputies and senators together, and per-chamber group totals. Their majority rules count all members of both chambers (465 now), so a per-chamber result would be wrong.
-
-- **A. A third "chamber" value `joint`** (recommended): one vote, one nominal list, outcome against 465 members; vote pages and profiles show "Ședință comună". Touches the chamber enum, seat maps, filters and outcome rules.
-- **B. Split each joint vote into a deputies part and a senate part**: fits the current model, but every outcome shown per chamber would be misleading.
-- **C. Keep skipping**, and say on the site that joint sittings are not covered yet.
-
 ## Decided
 
 | ID | Date | Decision | Why |
@@ -66,3 +58,6 @@ Joint sittings (budget, state of the nation, motions of censure, joint committee
 | D-017 | 2026-10-03 | **One admin inside the website (`/admin`, GitHub login), and the BC250 as a worker, not a server.** They communicate through the database: the admin writes job requests, the worker polls, runs, and reports progress and a heartbeat (the admin shows whether the worker is connected). The worker does not need to be always on; requests wait. | No home network exposure, one stack, analysis pages can graduate to public. |
 | D-018 | 2026-10-03 | Retire the cockpit (archived on a branch first) and do the audit cut list, **except Gemini/vote explanations**, which stay for a future summaries feature (Q12). Digi Storage stays; only the unused Vercel Blob and generic FTP upload routes go. | Owner, after the audit. |
 
+### D-019 — Joint sittings are a third vote chamber (2026-10-04)
+
+Decided by the owner (Q13, option A): a vote can be held in `joint` session, shown with its own tag and chart; majorities count deputies and senators together (465). Only votes have it (`vote_chamber`); mandates, committees and groups stay per chamber.

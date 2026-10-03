@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { chamberSeatCountOnDate } from "../seat-counts";
 import { lawTypeFromCharacter, lawTypeFromText, voteOutcome } from "../vote-outcome";
 
 const deputies = { members: 331 };
@@ -74,5 +75,12 @@ describe("voteOutcome", () => {
     expect(lawTypeFromCharacter(" organic ")).toBe("organic");
     expect(lawTypeFromCharacter("Constituţională")).toBe("constitutional");
     expect(lawTypeFromCharacter("")).toBeUndefined();
+  });
+
+  it("counts a joint sitting against deputies and senators together (331 + 134 = 465)", () => {
+    expect(chamberSeatCountOnDate("joint", "2026-09-30")).toBe(465);
+    expect(chamberSeatCountOnDate("joint", "1980-01-01")).toBeUndefined();
+    expect(voteOutcome({ members: 465, motionKind: "final_adoption", yesMeaning: "supports_adoption", forCount: 283, present: 298 }))
+      .toEqual({ status: "passed", rule: "passes_under_any_rule", effect: "adopted", threshold: 233 });
   });
 });

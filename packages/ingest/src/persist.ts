@@ -153,9 +153,15 @@ export async function persistChamberVote(parsed: ParsedChamberVote, suppliedSess
       else await ensurePlaceholderBill(db, { ...parsed.bill, sourceSnapshotIds: [parsed.sourceSnapshot.id] });
     }
     // Votes attach to existing members only; rosters own members, mandates and group history.
-    const voters = await resolveVoteVoters(db, "deputies", vote.heldOn, parsed.members);
+    // A joint sitting lists deputies and senators together: each is resolved among the members of their own chamber.
+    const voters = vote.chamber === "joint"
+      ? mergeVoterResolutions(await Promise.all((["deputies", "senate"] as const).map((chamber) =>
+          resolveVoteVoters(db, chamber, vote.heldOn, parsed.members.filter((member) => member.id.startsWith(`member-${chamber}-`))))))
+      : await resolveVoteVoters(db, "deputies", vote.heldOn, parsed.members);
     await upsertVote(db, vote);
-    await upsertIndividualVotes(db, canonicalIndividualVotes(parsed.individualVotes, voters));
+    const knownGroups = new Set((await db.select({ id: schema.parliamentaryGroups.id }).from(schema.parliamentaryGroups)).map((row) => row.id));
+    const rows = canonicalIndividualVotes(parsed.individualVotes, voters).map((row) => (row.groupId && !knownGroups.has(row.groupId) ? { ...row, groupId: undefined } : row));
+    await upsertIndividualVotes(db, rows);
 
     return {
       voteId: parsed.vote.id,
@@ -1493,6 +1499,14 @@ async function resolveVoteVoters(db: Db, chamber: "senate" | "deputies", heldOn:
       .onConflictDoNothing();
   }
   return resolution;
+}
+
+function mergeVoterResolutions(parts: VoterResolution[]): VoterResolution {
+  return {
+    canonicalByParsedId: new Map(parts.flatMap((part) => [...part.canonicalByParsedId])),
+    learnedAliases: parts.flatMap((part) => part.learnedAliases),
+    unresolved: parts.flatMap((part) => part.unresolved)
+  };
 }
 
 /** Individual vote rows keyed by the canonical member; voters that could not be resolved are left out. */

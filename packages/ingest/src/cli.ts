@@ -342,6 +342,26 @@ async function main() {
     return;
   }
 
+  if (command === "votes:requeue-joint") {
+    // D21/Q13: joint sittings were skipped before the parser supported them. Puts them back in the import queue.
+    const session = createDbSession();
+    try {
+      const rows = await session.db.execute<{ id: string; official_id: string | null; source_url: string }>(sql`
+        select id, official_id, source_url from source_discoveries
+        where kind = 'vote' and chamber = 'deputies' and status = 'skipped' and last_error ilike 'Joint Chamber/Senate vote%'`);
+      if (hasFlag("persist") && rows.length > 0) {
+        await session.db.execute(sql`
+          update source_discoveries set status = 'pending', failure_count = 0, last_error = null
+          where kind = 'vote' and chamber = 'deputies' and status = 'skipped' and last_error ilike 'Joint Chamber/Senate vote%'`);
+      }
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), requeued: rows.length, votes: rows.map((row) => row.official_id ?? row.source_url) }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist, then run the pending-vote import.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
   if (command === "bills:law-type") {
     // Reads "Caracterul legii" from official bill pages for bills whose vote outcome depends on it (A1b).
     // Fetches live pages (sequential, --delay-ms, --limit); writes only with --persist.

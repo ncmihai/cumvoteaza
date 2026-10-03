@@ -60,4 +60,14 @@ describe("resolveVoters", () => {
     expect(result.unresolved).toEqual([{ memberId: "member-ion-popescu", displayName: "Ion Popescu" }]);
     expect(result.canonicalByParsedId.size).toBe(0);
   });
+
+  it("matches a senator named by CDEP's idm on a joint-sitting page, even when the spelling differs", () => {
+    const result = resolveVoters({
+      chamber: "senate", legislatureYear: "2024",
+      voters: [voter("member-senate-81", "Peia Ninel-Marian", { cdepIdm: "81", chamber: "senate" }), voter("member-senate-9999", "Nobody Known", { cdepIdm: "9999" })],
+      aliases: new Map(), sitting: sittingSenate.filter((member) => member.id !== "member-senate-81").concat([{ id: "member-senate-81-canonical", displayName: "Ninel Peia", sourceIds: { "senate:2024": "81" } }])
+    });
+    expect(result.canonicalByParsedId.get("member-senate-81")).toBe("member-senate-81-canonical");
+    expect(result.unresolved.map((item) => item.memberId)).toEqual(["member-senate-9999"]);
+  });
 });

@@ -145,7 +145,7 @@ function Outcome({ outcome, label, compact = false }: { outcome: VoteOutcome; la
 }
 
 function Count({ number, label, tone }: { number: number; label: string; tone: string }) { return <div className={`${styles.count} ${styles[tone]}`}><strong>{number}</strong><span>{label}</span></div>; }
-function chamberLabel(chamber: string, locale: Locale) { return chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies"); }
+function chamberLabel(chamber: string, locale: Locale) { if (chamber === "joint") return locale === "ro" ? "Ședință comună" : "Joint sitting"; return chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies"); }
 
 const labels = {
   ro: { title: "Astăzi în Parlament", deck: "Ce s-a decis și de ce contează", intro: "Urmărim voturile finale, pe înțelesul tuturor. Află rapid ce s-a decis, de ce contează pentru tine și cum au votat parlamentarii.", search: "Caută voturi și proiecte...", searchButton: "Caută", filters: "Filtre", quickFilters: "Filtre rapide", deputies: "Camera Deputaților", senate: "Senat", allVotes: "Vezi toate voturile", noVotes: "Nu există voturi disponibile.", recent: "Alte voturi recente", why: "De ce contează?", whyCopy: "Votul arată decizia plenului asupra măsurii și poziția exprimată de fiecare parlamentar prezent.", readBrief: "Vezi contextul complet", present: "prezenți", details: "Vezi detalii", official: "Sursa oficială", hot: "Popular", hotWindow: "Popular în ultimele 30 de zile", previous: "Votul anterior", next: "Votul următor", slide: "Vot" },

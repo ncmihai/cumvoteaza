@@ -79,7 +79,7 @@ describe("parseChamberNominalVote", () => {
     ]);
   });
 
-  it("marks joint Chamber and Senate vote pages as unsupported", () => {
+  it("reads the old-format joint Chamber and Senate page as a joint vote (idv 35087)", () => {
     const html = `
       <html>
         <body>
@@ -103,9 +103,8 @@ describe("parseChamberNominalVote", () => {
 
     const parsed = parseChamberNominalVote(html, "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=35087");
 
-    expect(parsed.sourceSnapshot.status).toBe("failed");
-    expect(parsed.individualVotes).toHaveLength(0);
-    expect(parsed.warnings).toContain("Joint Chamber/Senate vote page is not supported by the Deputies nominal vote parser yet.");
+    expect(parsed.vote.chamber).toBe("joint");
+    expect(parsed.individualVotes.map((vote) => [vote.memberId, vote.choice])).toEqual([["member-senate-1", "for"]]);
   });
 
   it("recognises a names-only attendance check instead of reporting a parser failure (idv 37367)", () => {
@@ -118,5 +117,28 @@ describe("parseChamberNominalVote", () => {
     const parsed = parseChamberNominalVote(html, "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=37367");
     expect(parsed.individualVotes).toEqual([]);
     expect(parsed.warnings[0]).toMatch(/Attendance check lists names without votes/);
+  });
+
+  it("parses a joint sitting: deputies and senators in one list, each in their own chamber (idv 37401)", () => {
+    const row = (n: number, name: string, idm: number, cam: number, role: string, group: string, vote: string) =>
+      `<tr valign="top"><td>${n}.</td><td><a href="/ords/pls/parlam/structura2015.mp?idm=${idm}&cam=${cam}&leg=2024">${name}</a></td><td>${role}</td><td>${group}</td><td> ${vote} </td></tr>`;
+    const html = `<html><body><p>Miercuri, 30 septembrie 2026, ora 13:14</p><table>
+      <tr><td>Sedinta:</td><td>comuna a Camerei Deputatilor si Senatului</td></tr>
+      <tr><td>Subiect vot:</td><td><b> Timp dezbateri </b></td></tr></table>
+      <table><tr><td>Optiune:</td><td>Total</td><td>Camera Deputatilor</td><td>Senat</td></tr>
+      <tr><td>#</td><td>Nume si prenume</td><td>Parlamentar</td><td>Grup</td><td>Vot</td></tr>
+      ${row(1, "Abrudean Mircea", 1, 1, "senator", "PNL", "DA")}
+      ${row(2, "Adomnicăi Mirela Elena", 1, 2, "deputat", "PSD", "NU")}
+      ${row(3, "Aldea Valentina-Mariana", 2, 1, "senator", "Neafiliati", "AB")}
+      </table></body></html>`;
+    const parsed = parseChamberNominalVote(html, "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=37401");
+    expect(parsed.vote.chamber).toBe("joint");
+    expect(parsed.vote.id).toMatch(/^vote-joint-/);
+    expect(parsed.individualVotes.map((v) => [v.memberId, v.groupId, v.choice])).toEqual([
+      ["member-senate-1", "group-senate-pnl", "for"],
+      ["member-deputies-1", "group-deputies-psd", "against"],
+      ["member-senate-2", "group-senate-neafiliati", "abstention"]
+    ]);
+    expect(parsed.members.map((m) => m.sourceIds)).toEqual([{ cdepIdm: "1", chamber: "senate" }, { cdepIdm: "1", chamber: "deputies" }, { cdepIdm: "2", chamber: "senate" }]);
   });
 });

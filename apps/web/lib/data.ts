@@ -481,7 +481,7 @@ async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {
         order by mgm.starts_on desc, mgm.id desc
         limit 1
       ) mgm on true
-      where mm.chamber = ${voteRow.chamber}
+      where (${voteRow.chamber}::text = 'joint' or mm.chamber::text = ${voteRow.chamber}::text)
         and mm.starts_on <= ${voteRow.heldOn}::date
         and coalesce(mm.ends_on, l.ends_on) >= ${voteRow.heldOn}::date
         and ${voteRow.heldOn}::date >= l.starts_on

@@ -1095,7 +1095,7 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string): T[] {
   });
 }
 
-/** Pages that are understood but deliberately not imported: joint sittings (D21) and names-only attendance checks. */
+/** Pages that are understood but deliberately not imported: names-only attendance checks. */
 function isKnownUnsupportedPage(warning: string): boolean {
-  return /Joint Chamber\/Senate vote|Attendance check lists names without votes/i.test(warning);
+  return /Attendance check lists names without votes/i.test(warning);
 }

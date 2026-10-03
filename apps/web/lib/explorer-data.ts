@@ -10,7 +10,8 @@ import {
   type MemberMandate,
   type ParliamentaryGroup,
   type SourceSnapshot,
-  type Vote
+  type Vote,
+  type VoteChamber
 } from "@cumsevoteaza/parliament-model";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
 import { dataUnavailable, requireDatabase } from "./data-availability";
@@ -20,7 +21,7 @@ export type SourceStatusFilter = "parsed" | "partial" | "failed";
 export interface ExplorerFilters {
   year?: string;
   month?: string;
-  chamber?: ChamberId;
+  chamber?: VoteChamber;
   sourceStatus?: SourceStatusFilter;
   q?: string;
   group?: string;
@@ -108,7 +109,7 @@ export function parseExplorerFilters(input: Record<string, string | string[] | u
   return {
     ...(year ? { year } : {}),
     ...(monthNumber && monthNumber >= 1 && monthNumber <= 12 ? { month: String(monthNumber) } : {}),
-    ...(chamber === "senate" || chamber === "deputies" ? { chamber } : {}),
+    ...(chamber === "senate" || chamber === "deputies" || chamber === "joint" ? { chamber } : {}),
     ...(sourceStatus === "parsed" || sourceStatus === "partial" || sourceStatus === "failed" ? { sourceStatus } : {}),
     ...(q ? { q } : {}),
     ...(group ? { group } : {}),
@@ -516,7 +517,7 @@ function billConditions(filters: ExplorerFilters, cursor?: { date: string; id: s
     conditions.push(sql`${sortDate} >= ${range.start}::date`);
     conditions.push(sql`${sortDate} < ${range.end}::date`);
   }
-  if (filters.chamber) conditions.push(sql`b.chamber_of_origin = ${filters.chamber}`);
+  if (filters.chamber && filters.chamber !== "joint") conditions.push(sql`b.chamber_of_origin = ${filters.chamber}`);
   if (filters.legislature) {
     conditions.push(sql`exists (
       select 1
@@ -713,7 +714,7 @@ function mapLegislatureRow(row: LegislatureRow): Legislature {
 
 function groupOptionsSql(filters: Pick<ExplorerFilters, "chamber" | "legislature">) {
   const conditions = [];
-  if (filters.chamber) conditions.push(sql`pg.chamber = ${filters.chamber}`);
+  if (filters.chamber && filters.chamber !== "joint") conditions.push(sql`pg.chamber = ${filters.chamber}`);
 
   if (filters.legislature) {
     conditions.push(sql`exists (
@@ -847,7 +848,7 @@ interface VoteDirectoryRow extends SourceColumns {
   [key: string]: unknown;
   vote_id: string;
   vote_bill_id: string | null;
-  vote_chamber: ChamberId;
+  vote_chamber: VoteChamber;
   vote_title: string;
   vote_held_on: string | Date;
   vote_type: string;

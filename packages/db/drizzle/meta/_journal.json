@@ -218,6 +218,13 @@
       "when": 1791059626283,
       "tag": "0030_committee_date_precision",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791068451224,
+      "tag": "0031_vote_chamber_joint",
+      "breakpoints": true
     }
   ]
 }

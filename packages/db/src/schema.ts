@@ -12,6 +12,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const chamberEnum = pgEnum("chamber", ["senate", "deputies"]);
+/** Votes can also be held in a joint sitting of both chambers (Constitution art. 65). */
+export const voteChamberEnum = pgEnum("vote_chamber", ["senate", "deputies", "joint"]);
 export const voteChoiceEnum = pgEnum("vote_choice", [
   "for",
   "against",
@@ -763,7 +765,7 @@ export const dataHealthReviews = pgTable("data_health_reviews", {
 export const votes = pgTable("votes", {
   id: text("id").primaryKey(),
   billId: text("bill_id").references(() => bills.id),
-  chamber: chamberEnum("chamber").notNull(),
+  chamber: voteChamberEnum("chamber").notNull(),
   title: text("title").notNull(),
   heldOn: date("held_on").notNull(),
   voteType: text("vote_type").notNull(),

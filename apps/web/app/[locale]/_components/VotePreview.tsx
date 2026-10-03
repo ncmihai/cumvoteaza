@@ -3,7 +3,7 @@
 import { OfficialText } from "./OfficialText";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Landmark, Users } from "lucide-react";
-import { chamberLabels, formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
+import { chamberLabels, formatDate, voteChamberLabels, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
 import type { VoteExplorerItem, VotePreviewGroup } from "@/lib/explorer-data";
 import { presentVote } from "@/lib/public-presentation";
 import { ShareButton } from "./ShareButton";
@@ -21,7 +21,7 @@ export function VotePreview({ locale, item, className = "" }: { locale: Locale; 
 
   return <aside className={`self-start border border-slate-300 bg-white p-5 xl:sticky xl:top-24 ${className}`} aria-live="polite">
     <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#075fc6]">
-      <span>{chamberLabels[locale][vote.chamber]}</span>
+      <span className={vote.chamber === "joint" ? "bg-[#061a47] px-1.5 py-0.5 text-[10px] font-bold uppercase text-white" : undefined}>{voteChamberLabels[locale][vote.chamber]}</span>
       <ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={copy.share} copiedLabel={copy.copied} errorLabel={copy.copyError} className="bg-transparent text-[#4b608a]" />
     </div>
     <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-[#061a47]">{presentation.heading}</h2>

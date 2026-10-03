@@ -126,7 +126,7 @@ export async function refreshReadModels(): Promise<ReadModelRefreshSummary> {
           min(v.held_on) as first_vote_on,
           max(v.held_on) as last_vote_on
         from base b
-        left join votes v on v.chamber = b.chamber
+        left join votes v on (v.chamber::text = b.chamber::text or v.chamber = 'joint')
           and v.held_on >= b.starts_on
           and v.held_on < b.ends_on
           -- An attendance check records presence, not a position: it never counts as a vote cast or a vote "for".

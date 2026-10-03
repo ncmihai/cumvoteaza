@@ -13,7 +13,7 @@ import type {
   VoteTotals
 } from "@cumsevoteaza/parliament-model";
 import type { AppLocale } from "./i18n";
-import { voteOutcome, type VoteOutcome as ComputedVoteOutcome } from "@cumsevoteaza/parliament-model";
+import { voteOutcome, type VoteChamber, type VoteOutcome as ComputedVoteOutcome } from "@cumsevoteaza/parliament-model";
 import { chamberSeatCountOnDate } from "./chamber-seat-counts";
 
 export type VoteOutcome =
@@ -26,7 +26,7 @@ export interface VotePresentation {
   heading: string;
   officialTitle: string;
   subject?: string;
-  chamber: ChamberId;
+  chamber: VoteChamber;
   heldOn: string;
   voteType: string;
   outcome: VoteOutcome;
@@ -422,7 +422,9 @@ function outcomeFromComputed(computed: ComputedVoteOutcome): VoteOutcome {
 
 function outcomeExplanation(computed: ComputedVoteOutcome, vote: Vote, locale: AppLocale): string {
   const ro = locale === "ro";
-  const chamber = vote.chamber === "senate" ? (ro ? "Senatului" : "the Senate") : (ro ? "Camerei" : "the Chamber");
+  const chamber = vote.chamber === "senate" ? (ro ? "Senatului" : "the Senate")
+    : vote.chamber === "joint" ? (ro ? "Parlamentului (Camera și Senatul)" : "Parliament (Chamber and Senate together)")
+    : (ro ? "Camerei" : "the Chamber");
   const intro = ro
     ? "Camerele nu publică rezultatul pe pagina votului; îl calculăm din voturile oficiale și regula de majoritate din Constituție (art. 76)."
     : "The chambers do not publish the result on the vote page; it is calculated from the official votes and the Constitution's majority rule (art. 76).";

@@ -2,6 +2,9 @@ export type Locale = "ro" | "en";
 
 export type ChamberId = "senate" | "deputies";
 
+/** Where a vote was held: one chamber, or a joint sitting of deputies and senators (Constitution art. 65). */
+export type VoteChamber = ChamberId | "joint";
+
 export type VoteChoice =
   | "for"
   | "against"
@@ -503,7 +506,7 @@ export interface VoteTotals {
 export interface Vote {
   id: string;
   billId?: string;
-  chamber: ChamberId;
+  chamber: VoteChamber;
   title: string;
   heldOn: string;
   voteType: string;

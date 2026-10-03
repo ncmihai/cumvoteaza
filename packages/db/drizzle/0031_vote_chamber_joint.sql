@@ -1,0 +1,2 @@
+CREATE TYPE "public"."vote_chamber" AS ENUM('senate', 'deputies', 'joint');--> statement-breakpoint
+ALTER TABLE "votes" ALTER COLUMN "chamber" SET DATA TYPE "public"."vote_chamber" USING "chamber"::text::"public"."vote_chamber";
