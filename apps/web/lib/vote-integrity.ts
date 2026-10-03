@@ -25,3 +25,19 @@ export function reconcileVoteSeats(rows: IndividualVote[], totals: VoteTotals, c
     [count("for") + count("against") + count("abstention") + count("present_not_voting"), totals.present]];
   return pairs.every(([actual, expected]) => expected !== undefined && actual === expected);
 }
+
+export type NominalShortfall = { choice: "for" | "against" | "abstention" | "present_not_voting"; listed: number; announced: number };
+
+/**
+ * Choices where the published name list holds fewer votes than the announced official total
+ * (senat.ro sometimes announces one more "for" than it lists by name, D20). Never filled in or guessed.
+ */
+export function nominalShortfalls(rows: IndividualVote[], totals: VoteTotals): NominalShortfall[] {
+  if (!rows.length) return [];
+  const announced: Array<[NominalShortfall["choice"], number | undefined]> = [
+    ["for", totals.for], ["against", totals.against], ["abstention", totals.abstention], ["present_not_voting", totals.presentNotVoting]
+  ];
+  return announced
+    .map(([choice, expected]) => ({ choice, listed: rows.filter((row) => row.choice === choice).length, announced: expected ?? 0 }))
+    .filter((item) => item.listed < item.announced);
+}

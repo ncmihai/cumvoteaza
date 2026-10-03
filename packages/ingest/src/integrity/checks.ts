@@ -135,7 +135,8 @@ export const checks: Check[] = [
     name: "vote_nominal_totals_mismatch",
     severity: "warning",
     description: "A vote's nominal for/against/abstention rows differ from the official totals (source vs stored).",
-    // Warning for history: 9 Senate votes of 2025 were already one 'for' short before the identity repair (D20).
+    // Warning for history: 9 Senate votes of 2025 (D20). Verified 2026-10-03: senat.ro itself lists one 'for' name fewer than it
+    // announces on those pages; our rows match the page. The vote page states the gap instead of filling it.
     // The updater applies this check to each newly imported vote as a blocking gate (D-008).
     query: sql`
       select v.id, v.held_on::text, v.for_count, n.f as nominal_for, v.against, n.a as nominal_against, v.abstention, n.ab as nominal_abstention
