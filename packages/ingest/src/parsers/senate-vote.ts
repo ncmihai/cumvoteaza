@@ -32,12 +32,16 @@ export function parseSenateVote(html: string, sourceUrl: string): ParsedSenateVo
 
   const billCode = headerText.match(/L\d+\/\d{4}/)?.[0];
   const dateMatch = headerText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  const heldOn = dateMatch ? `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}` : new Date().toISOString().slice(0, 10);
+  // Never fall back to today's date: a vote without a parsed date is a failed import, not a vote held today.
+  if (!dateMatch) throw new Error(`Senate vote page has no parsable date: ${sourceUrl}`);
+  const heldOn = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
   const voteType = headerLines.at(-1) ?? "unknown";
   const voteKind = normalizeVoteKind(voteType);
-  const title = cleanText($(".plenary-votes h5").first().text()) || billCode || "Senate vote";
+  const headingTitle = cleanText($(".plenary-votes h5").first().text());
+  const title = headingTitle || billCode || describeSenateItem(voteType);
   const shortDate = heldOn.slice(5);
-  const voteId = `vote-senate-${slugify(`${billCode ?? title}-${shortDate}-${voteKind}`)}`;
+  // The ID keeps its original formula ("Senate vote" for untitled items) so re-imports update existing rows.
+  const voteId = `vote-senate-${slugify(`${billCode ?? (headingTitle || "Senate vote")}-${shortDate}-${voteKind}`)}`;
 
   const totalsText = $(".total-votes li")
     .toArray()
@@ -213,4 +217,18 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string): T[] {
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * A readable title for Senate items that have neither a bill number nor a heading on the vote page,
+ * built only from the official identifier (e.g. "PH - COM (2026) 314 final").
+ */
+export function describeSenateItem(identifier: string): string {
+  const value = cleanText(identifier);
+  const european = value.match(/^PH\s*-\s*(COM|JOIN|SEC|SWD)\s*\((\d{4})\)\s*(\d+)\s*final$/i);
+  if (european) return `Proiect de hotărâre privind documentul european ${european[1]!.toUpperCase()}(${european[2]}) ${european[3]} final`;
+  if (/^PH\s*-\s*anchet/i.test(value)) return "Proiect de hotărâre privind o anchetă parlamentară";
+  if (/^PH\b/i.test(value)) return `Proiect de hotărâre (${value.replace(/^PH\s*-\s*/i, "")})`;
+  if (!value || value === "unknown") return "Vot în Senat";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }

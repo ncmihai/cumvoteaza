@@ -10,6 +10,7 @@ import { importStoredAssetsFromInventory, type AssetType } from "./asset-import"
 import { importBillText, importBillTextBatch } from "./bill-text";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
+import { describeSenateItem } from "./parsers/senate-vote";
 import { runIntegrityChecks } from "./integrity/checks";
 import { applyMemberMergePlan, planMemberMerges } from "./identity/member-merge";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
@@ -318,6 +319,23 @@ async function main() {
           2
         )
       );
+    }
+    return;
+  }
+
+  if (command === "repair:senate-untitled-votes") {
+    // One-off (2026-10): Senate items without a bill number were stored with the title "Senate vote".
+    const session = createDbSession();
+    try {
+      const rows = await session.db.execute<{ id: string; vote_type: string }>(sql`select id, vote_type from votes where chamber = 'senate' and title = 'Senate vote'`);
+      const changes = rows.map((row) => ({ id: row.id, title: describeSenateItem(row.vote_type) }));
+      if (hasFlag("persist")) {
+        for (const change of changes) await session.db.execute(sql`update votes set title = ${change.title} where id = ${change.id} and title = 'Senate vote'`);
+      }
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), changes }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist, then npm run ingest:refresh-read-models.");
+    } finally {
+      await session.close();
     }
     return;
   }

@@ -39,6 +39,7 @@
     "ingest:identity:resolve": "npm --workspace @cumsevoteaza/ingest run identity:resolve --",
     "ingest:integrity:check": "npm --workspace @cumsevoteaza/ingest run integrity:check --",
     "ingest:site:revalidate": "npm --workspace @cumsevoteaza/ingest run site:revalidate --",
+    "repair:senate-untitled-votes": "npm --workspace @cumsevoteaza/ingest run repair:senate-untitled-votes --",
     "ingest:urls:snapshot": "npm --workspace @cumsevoteaza/ingest run urls:snapshot --",
     "ingest:urls:check": "npm --workspace @cumsevoteaza/ingest run urls:check --",
     "ingest:identity:merge-members": "npm --workspace @cumsevoteaza/ingest run identity:merge-members --",

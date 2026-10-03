@@ -25,3 +25,14 @@ describe("parseSenateVote", () => {
     expect(parsed.individualVotes.find((vote) => vote.choice === "abstention")).toBeTruthy();
   });
 });
+
+describe("untitled Senate items", () => {
+  it("builds a readable title from the official identifier, never a placeholder", async () => {
+    const { describeSenateItem } = await import("../parsers/senate-vote");
+    expect(describeSenateItem("PH - COM (2026) 314 final")).toBe("Proiect de hotărâre privind documentul european COM(2026) 314 final");
+    expect(describeSenateItem("PH - JOIN (2026) 25 final")).toBe("Proiect de hotărâre privind documentul european JOIN(2026) 25 final");
+    expect(describeSenateItem("PH - ancheta parlamentara")).toBe("Proiect de hotărâre privind o anchetă parlamentară");
+    expect(describeSenateItem("raport de activitate")).toBe("Raport de activitate");
+    expect(describeSenateItem("Declarația Senatului")).toBe("Declarația Senatului");
+  });
+});

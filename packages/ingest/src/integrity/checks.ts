@@ -112,6 +112,12 @@ export const checks: Check[] = [
       select 'person', id, display_name from people where display_name ~* ',\\s*(pre[sşș]edinte|vicepre[sşș]edinte|chestor|secretar)'`
   },
   {
+    name: "placeholder_vote_title",
+    severity: "error",
+    description: "A vote is stored with a placeholder title instead of the official item.",
+    query: sql`select id, held_on::text, vote_type from votes where title in ('Senate vote', 'Chamber vote', 'Vot Senat', 'Vot Camera')`
+  },
+  {
     name: "vote_nominal_totals_mismatch",
     severity: "warning",
     description: "A vote's nominal for/against/abstention rows differ from the official totals (source vs stored).",
