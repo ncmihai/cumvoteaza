@@ -22,7 +22,7 @@ The rest of the `data/` tree is local, rebuildable, and ignored by git:
 - `data/cdep-history/raw/` stores raw CDEP crawl files.
 - `data/cdep-history/parsed/` stores generated JSON/JSONL parser output.
 - `data/cdep-history/reports/` stores generated audit/review reports.
-- `data/parliament-pipeline/` stores Python pipeline downloads and reports.
+- `data/parliament-pipeline/` holds old downloads from the retired Python pipeline (2026-10); the curated result is in `data/curated/`.
 - `data/parliament-workbench/` stores the generated local wiki, model
   suggestions, local proposals/notes, workbench jobs, and review reports.
 

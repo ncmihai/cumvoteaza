@@ -398,6 +398,7 @@ Tribunal registry source:
   - Official index for other party association forms.
   - Current parser run found `2` PDF records.
 - Current command:
+  - (Retired 2026-10: the Python tribunal pipeline was removed; its curated output is `data/curated/tribunal-political-entity-sources.*`. The tool is in git history before commit "Remove parliament-pipeline".)
   - `npm run pipeline:tribunal -- fetch-index`
   - `npm run pipeline:tribunal -- parse-index`
   - `npm run pipeline:tribunal -- fetch-pdfs`
