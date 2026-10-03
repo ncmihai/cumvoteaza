@@ -431,6 +431,8 @@ export interface Bill {
   chamberOfOrigin: ChamberId | "unknown";
   decisionChamber?: ChamberId;
   status: string;
+  /** Law type as stated on the official bill page ("Caracterul legii"); absent when not read. */
+  lawType?: "ordinary" | "organic" | "constitutional";
   sourceSnapshotIds: string[];
 }
 

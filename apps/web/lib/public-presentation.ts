@@ -130,6 +130,7 @@ export function presentVote(
     yesMeaning: vote.yesMeaning,
     title: vote.title,
     billTitle: options.bill?.title,
+    lawType: options.bill?.lawType,
     forCount: vote.totals.for,
     present: vote.totals.present,
     members: chamberSeatCountOnDate(vote.chamber, vote.heldOn)

@@ -27,6 +27,7 @@
     "identity:resolve": "tsx src/cli.ts identity:resolve",
     "integrity:check": "tsx src/cli.ts integrity:check",
     "site:revalidate": "tsx src/cli.ts site:revalidate",
+    "bills:law-type": "tsx src/cli.ts bills:law-type",
     "repair:senate-untitled-votes": "tsx src/cli.ts repair:senate-untitled-votes",
     "urls:snapshot": "tsx src/cli.ts urls:snapshot",
     "urls:check": "tsx src/cli.ts urls:check",

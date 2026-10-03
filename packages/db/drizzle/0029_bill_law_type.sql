@@ -1,0 +1,1 @@
+ALTER TABLE "bills" ADD COLUMN "law_type" text;

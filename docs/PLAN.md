@@ -123,7 +123,7 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [ ] Noted during the identity repair: profile header shows an interim minister role instead of Prime Minister (Bolojan); header labels a parliamentary group as "Partid"; local `.env` and the cockpit write straight to the production DB (use a Neon dev branch for local work); CI passes a Jest-only `--runInBand` flag.
 - [x] Output: [`docs/audit-2026-10.md`](audit-2026-10.md) (2026-10-03): module verdicts, cut list, fix list A1–A8, privacy items, ranked missing information, local data inventory.
 - [x] Owner decisions (D-015…D-018) and the cuts (2026-10-03): cockpit retired (archived on `archive/cockpit-2026-10`), `parliament-pipeline` and eleven one-off commands removed, demo-data mode removed, Digi-only storage, cookieless counts, dead components removed. About 27,000 lines gone. Gemini explanations kept (Q12); member/group alignment tables kept on review.
-- [ ] Deploy the cuts, then apply migration `0028` (drops the three cockpit tables).
+- [x] Deploy the cuts, then apply migration `0028` (drops the three cockpit tables).
 - [ ] Data-health page: keep read-only or remove (audit §2.9, still open).
 
 **Exit:** audit written, cut list agreed, cuts made.
@@ -147,10 +147,10 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 
 Then the audit fixes (2026-10-03, branch `phase-2/fixes`):
 - [x] **A1 vote outcomes** from official counts plus the Constitution's majority rules, with the rule and threshold shown; law type read from official titles when stated. 1,072 of 1,173 votes determined, 19 attendance checks, 82 honestly "depends on the type of law". Cross-checked against CDEP's own "nu a fost întrunită majoritatea calificată".
-- [ ] A1b: read the law type ("Caracterul legii") from Senate and CDEP bill pages to resolve the remaining 82.
+- [x] A1b law type (2026-10-03): bill parsers read "Caracterul legii" / "Caracter" into `bills.law_type` (migration `0029`); chamber resolutions use art. 76(2) from the title. `bills:law-type` backfill read 73 official pages (68 + 5 via the CDEP vote page link): 62 ordinary, 11 organic. **1,152 of 1,154 decisions now have an outcome**; the other 2 are below quorum.
 - [x] A2 real titles for 25 untitled Senate items (repair command, blocking check); no "today" date fallback.
 - [x] A3 wide-screen scaling (tester #6/#7), A4 no party events on vote pages (tester #8), A5 no badge overlap (tester #3), A6 English headings and marked official titles (tester #4), A7 profile header (PM role, own party vs group), A8 honest wording.
-- [ ] Deploy, then `repair:senate-untitled-votes --persist`, refresh read models, revalidate. Close tester issues #3–#8.
+- [x] Deploy, then `repair:senate-untitled-votes --persist`, refresh read models, revalidate. Close tester issues #3–#8.
 - [ ] D22 duplicate bills, D19 committee dates, D20 Senate off-by-one, D21 joint sittings, D23 html lang.
 
 Earlier:
@@ -197,6 +197,7 @@ Each item gets its own exit criteria when started.
 
 | Date | Entry |
 | --- | --- |
+| 2026-10-03 | Phase 2 fixes A1–A8 live, tester issues #3–#8 closed. A1b: law types from official bill pages; every decided vote now shows adopted/rejected with the rule used. |
 | 2026-10-03 | **Identity repair live in production**; 122 missing votes imported; owner + CV decisions for 24 of 37 review cases. Next: Phase 1 audit, then the Phase 3 updater. |
 | 2026-10-03 | Identity and group-history repair built and rehearsed on a Neon copy of production (all integrity checks pass). Found and fixed D12–D18 on the way. Awaiting owner approval to apply. |
 | 2026-10-03 | Senate repair investigation found the problem is systemic (D1, D10, D11), not Senate-only. A quick patch would swap one false claim for another, so it was not applied. Identity and group-history rebuild pulled to the front of Phase 2. |

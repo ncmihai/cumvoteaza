@@ -15,6 +15,15 @@ describe("parseSenateBill", () => {
     expect(parsed.documents[0]?.url).toContain("25L316FS.pdf");
   });
 
+  it("reads the law type from the bill summary table", () => {
+    const row = (value: string) => `<html><body><h4>L316/2025</h4><table><tr><td>Caracterul legii:</td><td>
+      ${value}
+    </td></tr></table></body></html>`;
+    expect(parseSenateBill(row("Ordinară"), "https://www.senat.ro/Legis/Lista.aspx?cod=1").bill.lawType).toBe("ordinary");
+    expect(parseSenateBill(row("Organică"), "https://www.senat.ro/Legis/Lista.aspx?cod=1").bill.lawType).toBe("organic");
+    expect(parseSenateBill("<html><body><h4>L316/2025</h4></body></html>", "https://www.senat.ro/Legis/Lista.aspx?cod=1").bill.lawType).toBeUndefined();
+  });
+
   it("extracts lifecycle rows and vote discoveries from Senate timelines", () => {
     const html = `
       <html>

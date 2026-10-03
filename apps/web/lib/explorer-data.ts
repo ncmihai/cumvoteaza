@@ -219,6 +219,7 @@ async function getVoteExplorerDataUncached(query: ExplorerQuery = {}): Promise<E
         b.identifiers as bill_identifiers,
         b.chamber_of_origin as bill_chamber_of_origin,
         b.status as bill_status,
+        b.law_type as bill_law_type,
         b.source_snapshot_ids as bill_source_snapshot_ids,
         ss.id as source_id,
         ss.source_url as source_url,
@@ -668,8 +669,13 @@ function mapBillFromRow(row: VoteDirectoryRow): Bill {
     identifiers: jsonRecord(row.bill_identifiers),
     chamberOfOrigin: row.bill_chamber_of_origin === "senate" || row.bill_chamber_of_origin === "deputies" ? row.bill_chamber_of_origin : "unknown",
     status: row.bill_status!,
+    lawType: lawTypeValue(row.bill_law_type),
     sourceSnapshotIds: jsonStringArray(row.bill_source_snapshot_ids)
   };
+}
+
+function lawTypeValue(value: string | null): Bill["lawType"] {
+  return value === "ordinary" || value === "organic" || value === "constitutional" ? value : undefined;
 }
 
 function mapSourceFromRow(row: SourceColumns): SourceSnapshot {
@@ -858,6 +864,7 @@ interface VoteDirectoryRow extends SourceColumns {
   bill_identifiers: unknown;
   bill_chamber_of_origin: string | null;
   bill_status: string | null;
+  bill_law_type: string | null;
   bill_source_snapshot_ids: unknown;
   hot_count: number;
   group_breakdown: unknown;

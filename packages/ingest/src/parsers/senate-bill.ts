@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { Bill, BillEvent, BillSponsor, DocumentSource, SourceSnapshot } from "@cumsevoteaza/parliament-model";
+import { lawTypeFromCharacter, type Bill, type BillEvent, type BillSponsor, type DocumentSource, type SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { cleanText, slugify, snapshotFor } from "./utils";
 import {
   billIdForIdentifier,
@@ -78,6 +78,7 @@ export function parseSenateBill(html: string, sourceUrl: string): ParsedSenateBi
       identifiers: identifierRecord(identifiers.length > 0 ? identifiers : []),
       chamberOfOrigin: /Senat/i.test(allText) ? "senate" : "unknown",
       status: /adoptat/i.test(allText) ? "Adoptat" : "unknown",
+      lawType: lawTypeFromCharacter(fieldValue($, "Caracterul legii")),
       sourceSnapshotIds: [sourceSnapshot.id]
     },
     events: timeline.events,

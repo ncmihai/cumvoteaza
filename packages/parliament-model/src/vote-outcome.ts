@@ -97,11 +97,25 @@ function effectOf(passed: boolean, input: VoteOutcomeInput): VoteOutcomeEffect {
   }
 }
 
-/** Law type stated in an official title: "revizuire a Constituţiei", "lege organică", "lege ordinară". */
+/**
+ * Majority category stated in an official title: "revizuire a Constituţiei", "lege organică", "lege ordinară".
+ * A chamber resolution ("proiect de hotărâre", CDEP "PH CD") follows the ordinary-law rule (art. 76(2)),
+ * except a resolution on the chamber's own rules, which needs a majority of members (art. 76(1)).
+ */
 export function lawTypeFromText(text?: string | null): LawType | undefined {
   const value = (text ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
   if (/revizuir\w*\s+(a\s+)?constitut/.test(value)) return "constitutional";
   if (/\blege(a)?\s+organic/.test(value)) return "organic";
   if (/\blege(a)?\s+ordinar/.test(value)) return "ordinary";
+  if (/\bproiect(ul)?\s+de\s+hotarare\b|\bph\s+cd\b/.test(value)) return /\bregulament/.test(value) ? "organic" : "ordinary";
+  return undefined;
+}
+
+/** Law type as a bill page states it: Senate "Caracterul legii: Ordinară", CDEP "Caracter: ordinar". */
+export function lawTypeFromCharacter(text?: string | null): LawType | undefined {
+  const value = (text ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
+  if (/^constitutional/.test(value)) return "constitutional";
+  if (/^organic/.test(value)) return "organic";
+  if (/^ordinar/.test(value)) return "ordinary";
   return undefined;
 }

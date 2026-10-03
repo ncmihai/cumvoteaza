@@ -1141,6 +1141,7 @@ async function upsertBill(db: Db, bill: Bill) {
       chamberOfOrigin: bill.chamberOfOrigin,
       decisionChamber: bill.decisionChamber,
       status: bill.status,
+      lawType: bill.lawType,
       sourceSnapshotIds: bill.sourceSnapshotIds
     })
     .onConflictDoUpdate({
@@ -1152,6 +1153,8 @@ async function upsertBill(db: Db, bill: Bill) {
         chamberOfOrigin: bill.chamberOfOrigin,
         decisionChamber: bill.decisionChamber,
         status: bill.status,
+        // A page that does not state the law type never erases one read earlier.
+        lawType: sql`coalesce(excluded.law_type, ${schema.bills.lawType})`,
         sourceSnapshotIds: bill.sourceSnapshotIds
       }
     });

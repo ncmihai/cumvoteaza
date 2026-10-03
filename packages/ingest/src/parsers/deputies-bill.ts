@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
-import type { Bill, BillEvent, BillProcedureStep, BillSponsor, ChamberId, DocumentKind, DocumentSource, SourceSnapshot } from "@cumsevoteaza/parliament-model";
+import { lawTypeFromCharacter, type Bill, type BillEvent, type BillProcedureStep, type BillSponsor, type ChamberId, type DocumentKind, type DocumentSource, type SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { cleanText, slugify, snapshotFor } from "./utils";
 import { billIdForIdentifier, canonicalBillIdentifier, findOfficialIdentifiers, identifierRecord, normalizeOfficialIdentifier } from "./identifiers";
 
@@ -46,6 +46,7 @@ export function parseDeputiesBill(html: string, sourceUrl: string): ParsedDeputi
       chamberOfOrigin: chamberOfOrigin(bodyText),
       decisionChamber: decisionChamber(bodyText),
       status: extractStatus(bodyText),
+      lawType: lawTypeFromCharacter(characterField($)),
       sourceSnapshotIds: [sourceSnapshot.id]
     },
     events,
@@ -60,6 +61,12 @@ export function parseDeputiesBill(html: string, sourceUrl: string): ParsedDeputi
     ],
     documents
   };
+}
+
+/** The "Caracter:" row of the bill's summary table ("ordinar", "organic"). */
+function characterField($: cheerio.CheerioAPI): string | undefined {
+  const row = $("tr").toArray().find((node) => /^caracter:?$/i.test(cleanText($(node).children("td").first().text())));
+  return row ? cleanText($(row).children("td").eq(1).text()) : undefined;
 }
 
 function extractDocuments($: cheerio.CheerioAPI, billId: string, sourceUrl: string): DocumentSource[] {

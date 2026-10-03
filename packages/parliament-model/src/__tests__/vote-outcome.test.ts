@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lawTypeFromText, voteOutcome } from "../vote-outcome";
+import { lawTypeFromCharacter, lawTypeFromText, voteOutcome } from "../vote-outcome";
 
 const deputies = { members: 331 };
 
@@ -58,5 +58,21 @@ describe("voteOutcome", () => {
     expect(outcome).toEqual({ status: "failed", rule: "majority_of_members", effect: "not_adopted", threshold: 166 });
     expect(lawTypeFromText("Lege ordinară")).toBe("ordinary");
     expect(lawTypeFromText("Vot final adoptare")).toBeUndefined();
+  });
+
+  it("decides chamber resolutions by the majority of those present, except resolutions on the rules (art. 76)", () => {
+    const base = { members: 134, motionKind: "final_adoption", yesMeaning: "supports_adoption", forCount: 60, present: 100 };
+    expect(voteOutcome({ ...base, title: "Proiect de hotărâre privind documentul european COM(2026) 53 final" }))
+      .toEqual({ status: "passed", rule: "majority_of_present", effect: "adopted", threshold: 51 });
+    expect(voteOutcome({ ...deputies, motionKind: "final_adoption", forCount: 150, present: 240, title: "Vot final - PH CD 42/2026 - Vot final adoptare" }).status).toBe("passed");
+    expect(lawTypeFromText("Proiect de hotărâre pentru modificarea Regulamentului Senatului")).toBe("organic");
+    expect(lawTypeFromText("Proiect de lege privind aprobarea Hotărârii Guvernului nr. 5/2026")).toBeUndefined();
+  });
+
+  it("reads the law type stated on bill pages", () => {
+    expect(lawTypeFromCharacter("Ordinară")).toBe("ordinary");
+    expect(lawTypeFromCharacter(" organic ")).toBe("organic");
+    expect(lawTypeFromCharacter("Constituţională")).toBe("constitutional");
+    expect(lawTypeFromCharacter("")).toBeUndefined();
   });
 });

@@ -32,6 +32,15 @@ describe("parseDeputiesBill", () => {
     expect(parsed.events.length).toBe(parsed.procedureSteps.length);
   });
 
+  it("reads the law type from the Caracter row, not from other text mentioning it", () => {
+    const html = `<html><body><h4>PL-x 158/2026</h4><table>
+      <tr valign=top><td bgcolor="fff0d8">Prelucrarea datelor cu caracter personal</td><td>link</td></tr>
+      <tr valign=top><td bgcolor="fff0d8">Caracter:</td><td>
+organic
+</td></tr></table></body></html>`;
+    expect(parseDeputiesBill(html, "https://www.cdep.ro/ords/pls/proiecte/upl_pck2015.proiect?idp=1").bill.lawType).toBe("organic");
+  });
+
   it("classifies CDEP document kinds from official filename conventions when labels are generic", () => {
     const html = `
       <html>

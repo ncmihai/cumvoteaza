@@ -8,6 +8,7 @@ import * as schema from "@cumsevoteaza/db";
 import { dataHealthIssueKey } from "@cumsevoteaza/parliament-model";
 import { importStoredAssetsFromInventory, type AssetType } from "./asset-import";
 import { importBillText, importBillTextBatch } from "./bill-text";
+import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "./bill-law-type";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
@@ -334,6 +335,24 @@ async function main() {
       }
       console.log(JSON.stringify({ persisted: hasFlag("persist"), changes }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist, then npm run ingest:refresh-read-models.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "bills:law-type") {
+    // Reads "Caracterul legii" from official bill pages for bills whose vote outcome depends on it (A1b).
+    // Fetches live pages (sequential, --delay-ms, --limit); writes only with --persist.
+    const session = createDbSession();
+    try {
+      const { candidates, withoutSource } = await findBillsNeedingLawType(session.db);
+      const selected = candidates.slice(0, numberFlag("limit") ?? 100);
+      console.log(`${candidates.length} bills need a law type; fetching ${selected.length}. Without a source page: ${withoutSource.join(", ") || "none"}`);
+      const results = await readBillLawTypes(selected, { delayMs: numberFlag("delay-ms") ?? 2000 });
+      const written = hasFlag("persist") ? await persistBillLawTypes(session.db, results) : 0;
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), written, results }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist, then npm run ingest:site:revalidate.");
     } finally {
       await session.close();
     }

@@ -630,6 +630,8 @@ export const bills = pgTable("bills", {
   chamberOfOrigin: text("chamber_of_origin").notNull().default("unknown"),
   decisionChamber: chamberEnum("decision_chamber"),
   status: text("status").notNull().default("unknown"),
+  /** "Caracterul legii" from the official bill page: ordinary | organic | constitutional; null when not read. */
+  lawType: text("law_type").$type<"ordinary" | "organic" | "constitutional">(),
   sourceSnapshotIds: jsonb("source_snapshot_ids").$type<string[]>().notNull().default([])
 }, (table) => ({
   slugIdx: uniqueIndex("bills_slug_idx").on(table.slug),

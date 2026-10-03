@@ -1155,6 +1155,7 @@ function mapBill(row: typeof schema.bills.$inferSelect): Bill {
     chamberOfOrigin: row.chamberOfOrigin === "senate" || row.chamberOfOrigin === "deputies" ? row.chamberOfOrigin : "unknown",
     decisionChamber: row.decisionChamber ?? undefined,
     status: row.status,
+    lawType: row.lawType ?? undefined,
     sourceSnapshotIds: row.sourceSnapshotIds
   };
 }
