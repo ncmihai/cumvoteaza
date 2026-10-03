@@ -1,9 +1,8 @@
 import { unstable_cache } from "next/cache";
-import { dataUnavailable, requireDatabaseOrExplicitDemo } from "./data-availability";
+import { dataUnavailable, requireDatabase } from "./data-availability";
 import * as schema from "@cumsevoteaza/db";
 import {
   type CompositionEvent,
-  demoDataset,
   type AlignmentBasis,
   type ChamberId,
   type Government,
@@ -43,7 +42,7 @@ export interface CompositionPageData {
   mode: CompositionMode;
   asOf: string;
   chambers: ChamberComposition[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface CompositionTimelineStop {
@@ -69,7 +68,7 @@ export interface CompositionTimelineData {
   asOf: string;
   stops: CompositionTimelineStop[];
   currentComposition?: CompositionPageData;
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 interface AlignmentRow {
@@ -109,11 +108,10 @@ export async function getCurrentCompositionData(mode: CompositionMode): Promise<
 }
 
 async function getCurrentCompositionDataUncached(mode: CompositionMode): Promise<CompositionPageData> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseCurrentComposition(mode);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return dataUnavailable();
-  return demoComposition(mode);
+  return dataUnavailable();
 }
 
 export async function getCompositionTimelineData(mode: CompositionMode): Promise<CompositionTimelineData> {
@@ -335,24 +333,6 @@ async function tryDatabaseCurrentComposition(mode: CompositionMode): Promise<Com
   }
 }
 
-function demoComposition(mode: CompositionMode): CompositionPageData {
-  const asOf = new Date().toISOString().slice(0, 10);
-  return buildComposition({
-    mode,
-    asOf,
-    members: demoDataset.members,
-    mandates: demoDataset.mandates,
-    memberships: demoDataset.groupMemberships,
-    legislatures: demoDataset.legislatures,
-    groups: demoDataset.groups,
-    parties: demoDataset.parties,
-    memberAlignments: [],
-    groupAlignments: [],
-    partyAlignments: [],
-    sourceKind: "demo"
-  });
-}
-
 function buildComposition(input: {
   mode: CompositionMode;
   asOf: string;
@@ -365,7 +345,7 @@ function buildComposition(input: {
   memberAlignments: AlignmentRow[];
   groupAlignments: AlignmentRow[];
   partyAlignments: AlignmentRow[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }): CompositionPageData {
   const memberById = new Map(input.members.map((member) => [member.id, member]));
   const legislatureById = new Map(input.legislatures.map((legislature) => [legislature.id, legislature]));

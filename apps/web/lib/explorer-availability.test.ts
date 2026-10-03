@@ -8,9 +8,8 @@ vi.mock("./server-db", () => ({
 import { getBillExplorerData, getDirectoryFilterOptions, getVoteExplorerData } from "./explorer-data";
 
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
-it("never substitutes demos when a configured database fails, even with demo opt-in", async () => {
+it("never substitutes sample data when a configured database fails", async () => {
   vi.stubEnv("DATABASE_URL", "configured");
-  vi.stubEnv("CUMSEVOTEAZA_DEMO_MODE", "1");
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   await expect(getVoteExplorerData({ filters: { q: "not a demo" } })).rejects.toThrow("temporarily unavailable");
   await expect(getBillExplorerData()).rejects.toThrow("temporarily unavailable");

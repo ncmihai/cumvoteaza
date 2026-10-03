@@ -1,16 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requireDatabaseOrExplicitDemo } from "./data-availability";
+import { requireDatabase } from "./data-availability";
 
 afterEach(() => vi.unstubAllEnvs());
-describe("explicit public demo mode", () => {
-  it("fails closed without a database", () => {
+describe("public data availability", () => {
+  it("fails closed without a database instead of showing sample data", () => {
     vi.stubEnv("DATABASE_URL", "");
-    vi.stubEnv("CUMSEVOTEAZA_DEMO_MODE", "");
-    expect(requireDatabaseOrExplicitDemo).toThrow("temporarily unavailable");
+    expect(requireDatabase).toThrow("temporarily unavailable");
   });
-  it("requires deliberate opt-in for database-free previews", () => {
-    vi.stubEnv("DATABASE_URL", "");
-    vi.stubEnv("CUMSEVOTEAZA_DEMO_MODE", "1");
-    expect(requireDatabaseOrExplicitDemo).not.toThrow();
+  it("allows reads when a database is configured", () => {
+    vi.stubEnv("DATABASE_URL", "postgres://example");
+    expect(requireDatabase).not.toThrow();
   });
 });

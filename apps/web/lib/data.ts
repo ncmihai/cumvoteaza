@@ -4,7 +4,6 @@ import type { DbClient } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import tribunalEntitySources from "../../../data/curated/tribunal-political-entity-sources.json";
 import {
-  demoDataset,
   type Bill,
   type BillEvent,
   type BillProcedureStep,
@@ -33,7 +32,7 @@ import {
 } from "@cumsevoteaza/parliament-model";
 import { chamberSeatCount } from "./chamber-seat-counts";
 import { uniqueNominalVotes } from "./vote-integrity";
-import { dataUnavailable, requireDatabaseOrExplicitDemo } from "./data-availability";
+import { dataUnavailable, requireDatabase } from "./data-availability";
 import { getBillExplorerData, getVoteExplorerData } from "./explorer-data";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
 
@@ -55,7 +54,7 @@ export interface VotePageData {
   seatCapacity?: number;
   seatConstituencies?: Record<string, string>;
   seatPhotoUrls?: Record<string, string>;
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface VoteDirectoryItem {
@@ -66,7 +65,7 @@ export interface VoteDirectoryItem {
 
 export interface VoteDirectoryData {
   items: VoteDirectoryItem[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface BillDirectoryItem {
@@ -79,7 +78,7 @@ export interface BillDirectoryItem {
 
 export interface BillDirectoryData {
   items: BillDirectoryItem[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface BillPageData {
@@ -91,7 +90,7 @@ export interface BillPageData {
   source?: SourceSnapshot;
   governmentContext?: GovernmentContextData;
   sponsorContexts: BillSponsorContext[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface GovernmentContextData {
@@ -143,7 +142,7 @@ export interface MemberDirectoryData {
   groups: ParliamentaryGroup[];
   parties: Party[];
   legislatures: Legislature[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface MemberPageData {
@@ -163,7 +162,7 @@ export interface MemberPageData {
   votes: IndividualVote[];
   voteRecords: Vote[];
   sponsoredBills: Bill[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface MemberLegislatureActivityData {
@@ -210,7 +209,7 @@ export interface PartyPageData {
   formationEvents: PoliticalFormationEvent[];
   governmentParticipations: PartyGovernmentParticipation[];
   tribunalSources: TribunalPoliticalEntitySource[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface PartyLegislatureSummary {
@@ -309,22 +308,10 @@ export async function getVoteDirectoryData(limit = 30): Promise<VoteDirectoryDat
 }
 
 async function getVoteDirectoryDataUncached(limit = 30): Promise<VoteDirectoryData> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseVoteDirectory(limit);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return dataUnavailable();
-
-  return {
-    items: [...demoDataset.votes]
-      .sort((a, b) => b.heldOn.localeCompare(a.heldOn))
-      .slice(0, limit)
-      .map((vote) => ({
-        vote,
-        bill: demoDataset.bills.find((bill) => bill.id === vote.billId),
-        source: demoDataset.sourceSnapshots.find((source) => source.id === vote.sourceSnapshotId)
-      })),
-    sourceKind: "demo"
-  };
+  return dataUnavailable();
 }
 
 export async function getBillDirectoryData(limit = 30): Promise<BillDirectoryData> {
@@ -332,23 +319,10 @@ export async function getBillDirectoryData(limit = 30): Promise<BillDirectoryDat
 }
 
 async function getBillDirectoryDataUncached(limit = 30): Promise<BillDirectoryData> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseBillDirectory(limit);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return dataUnavailable();
-
-  return {
-    items: demoDataset.bills
-      .map((bill) => directoryBillItem({
-        bill,
-        events: demoDataset.billEvents.filter((event) => event.billId === bill.id),
-        votes: demoDataset.votes.filter((vote) => vote.billId === bill.id),
-        sources: demoDataset.sourceSnapshots
-      }))
-      .sort((a, b) => (b.submittedOn ?? b.latestEventOn ?? "").localeCompare(a.submittedOn ?? a.latestEventOn ?? ""))
-      .slice(0, limit),
-    sourceKind: "demo"
-  };
+  return dataUnavailable();
 }
 
 export async function getVotePageData(id: string): Promise<VotePageData | undefined> {
@@ -356,31 +330,10 @@ export async function getVotePageData(id: string): Promise<VotePageData | undefi
 }
 
 async function getVotePageDataUncached(id: string): Promise<VotePageData | undefined> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseVote(id);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return undefined;
-
-  const vote = demoDataset.votes.find((item) => item.id === id);
-  if (!vote) return undefined;
-
-  return {
-    vote,
-    bill: demoDataset.bills.find((item) => item.id === vote.billId),
-    billProcedureSteps: [],
-    billDocuments: [],
-    billSponsorContexts: [],
-    source: demoDataset.sourceSnapshots.find((item) => item.id === vote.sourceSnapshotId),
-    groupContexts: [],
-    groups: demoDataset.groups,
-    members: demoDataset.members,
-    groupTotals: demoDataset.groupVoteTotals.filter((item) => item.voteId === vote.id),
-    individualVotes: demoDataset.individualVotes.filter((item) => item.voteId === vote.id),
-    seatVotes: demoDataset.individualVotes.filter((item) => item.voteId === vote.id),
-    seatConstituencies: Object.fromEntries(demoDataset.mandates.filter((item) => item.chamber === vote.chamber && item.constituency).map((item) => [item.memberId, item.constituency!])),
-    seatPhotoUrls: Object.fromEntries(demoDataset.members.filter((item) => item.sourceIds.profilePhoto).map((item) => [item.id, item.sourceIds.profilePhoto!])),
-    sourceKind: "demo"
-  };
+  return undefined;
 }
 
 export async function getBillPageData(id: string): Promise<BillPageData | undefined> {
@@ -388,24 +341,10 @@ export async function getBillPageData(id: string): Promise<BillPageData | undefi
 }
 
 async function getBillPageDataUncached(id: string): Promise<BillPageData | undefined> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseBill(id);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return undefined;
-
-  const bill = demoDataset.bills.find((item) => item.slug === id || item.id === id);
-  if (!bill) return undefined;
-
-  return {
-    bill,
-    events: demoDataset.billEvents.filter((event) => event.billId === bill.id),
-    procedureSteps: [],
-    documents: demoDataset.documents.filter((document) => document.billId === bill.id),
-    votes: demoDataset.votes.filter((vote) => vote.billId === bill.id),
-    source: demoDataset.sourceSnapshots.find((item) => bill.sourceSnapshotIds.includes(item.id)),
-    sponsorContexts: [],
-    sourceKind: "demo"
-  };
+  return undefined;
 }
 
 export async function getMemberDirectoryData(filters?: MemberDirectoryFilters): Promise<MemberDirectoryData> {
@@ -413,25 +352,10 @@ export async function getMemberDirectoryData(filters?: MemberDirectoryFilters): 
 }
 
 async function getMemberDirectoryDataUncached(filters?: MemberDirectoryFilters): Promise<MemberDirectoryData> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseMemberDirectory(filters);
   if (dbData) return dbData;
-
-  const items = demoDataset.members.map((member) => {
-    const mandate = demoDataset.mandates.find((item) => item.memberId === member.id);
-    const membership = demoDataset.groupMemberships.find((item) => item.memberId === member.id && !item.endsOn);
-    const group = demoDataset.groups.find((item) => item.id === membership?.groupId);
-    const party = demoDataset.parties.find((item) => item.id === group?.partyId);
-    return { member, mandate, group, party };
-  });
-
-  return {
-    members: filterDirectoryItems(items, filters),
-    groups: filterMemberDirectoryGroups(demoDataset.groups, demoDataset.mandates, demoDataset.groupMemberships, demoDataset.legislatures, filters),
-    parties: demoDataset.parties,
-    legislatures: demoDataset.legislatures,
-    sourceKind: "demo"
-  };
+  return dataUnavailable();
 }
 
 export async function getMemberPageData(slug: string, options: { legislature?: string } = {}): Promise<MemberPageData | undefined> {
@@ -457,56 +381,10 @@ export async function getCurrentMemberSlug(slugOrId: string): Promise<string | u
 }
 
 async function getMemberPageDataUncached(slug: string, options: { legislature?: string } = {}): Promise<MemberPageData | undefined> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseMember(slug, options);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return undefined;
-
-  const member = demoDataset.members.find((item) => item.slug === slug || item.id === slug);
-  if (!member) return undefined;
-  const history = demoDataset.memberHistory[member.id] ?? [];
-  const groupMembership = demoDataset.groupMemberships.find((item) => item.memberId === member.id && !item.endsOn);
-  const group = demoDataset.groups.find((item) => item.id === groupMembership?.groupId);
-  const party = demoDataset.parties.find((item) => item.id === group?.partyId);
-  const mandate = demoDataset.mandates.find((item) => item.memberId === member.id);
-  const legislatures = demoDataset.legislatures.filter((legislature) => demoDataset.mandates.some((item) => item.memberId === member.id && item.legislatureId === legislature.id));
-  const selectedLegislature = legislatures.find((legislature) => legislature.id === options.legislature) ?? legislatures[0];
-  const selectedMandate = selectedLegislature
-    ? demoDataset.mandates.find((item) => item.memberId === member.id && item.legislatureId === selectedLegislature.id)
-    : mandate;
-  const source = demoDataset.sourceSnapshots.find((item) => item.id === groupMembership?.sourceSnapshotId);
-  const votes = demoDataset.individualVotes.filter((vote) => {
-    const record = demoDataset.votes.find((item) => item.id === vote.voteId);
-    return vote.memberId === member.id && (!selectedLegislature || (record && record.heldOn >= selectedLegislature.startsOn && record.heldOn < selectedLegislature.endsOn));
-  });
-  const voteRecords = demoDataset.votes.filter((vote) => votes.some((individualVote) => individualVote.voteId === vote.id));
-  const sponsoredBills = demoDataset.billSponsors
-    .filter((sponsor) => sponsor.memberId === member.id)
-    .flatMap((sponsor) => demoDataset.bills.filter((bill) => bill.id === sponsor.billId))
-    .filter((bill) => {
-      const events = demoDataset.billEvents.filter((event) => event.billId === bill.id);
-      return !selectedLegislature || events.some((event) => event.occurredOn >= selectedLegislature.startsOn && event.occurredOn < selectedLegislature.endsOn);
-    });
-
-  return {
-    member,
-    mandate: selectedMandate,
-    group,
-    party,
-    profilePhotoUrl: member.sourceIds.profilePhoto,
-    currentLogoUrl: groupMembership?.logoUrl,
-    careerSegments: buildMemberCareerSegments(history, demoDataset.groups, demoDataset.parties, []),
-    source,
-    legislatures,
-    selectedLegislature,
-    activity: activityFromRows(votes, sponsoredBills.length, history),
-    voteCoverage: {},
-    history,
-    votes,
-    voteRecords,
-    sponsoredBills,
-    sourceKind: "demo"
-  };
+  return undefined;
 }
 
 export async function getPartyPageData(slug: string): Promise<PartyPageData | undefined> {
@@ -514,32 +392,10 @@ export async function getPartyPageData(slug: string): Promise<PartyPageData | un
 }
 
 async function getPartyPageDataUncached(slug: string): Promise<PartyPageData | undefined> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const dbData = await tryDatabaseParty(slug);
   if (dbData) return dbData;
-  if (process.env.DATABASE_URL) return undefined;
-
-  const party = demoDataset.parties.find((item) => item.slug === slug || item.id === slug);
-  if (!party) return undefined;
-  const groups = demoDataset.groups.filter((group) => group.partyId === party.id);
-  const groupIds = new Set(groups.map((group) => group.id));
-  const members = demoDataset.members.filter((member) =>
-    demoDataset.groupMemberships.some((membership) => membership.memberId === member.id && groupIds.has(membership.groupId))
-  );
-  const groupTotals = demoDataset.groupVoteTotals.filter((total) => groupIds.has(total.groupId));
-  const votes = demoDataset.votes.filter((vote) => groupTotals.some((total) => total.voteId === vote.id));
-  return {
-    party,
-    groups,
-    members,
-    legislatureSummaries: [],
-    groupTotals,
-    votes,
-    formationEvents: [],
-    governmentParticipations: [],
-    tribunalSources: tribunalSourcesForEntity("party", party.id),
-    sourceKind: "demo"
-  };
+  return undefined;
 }
 
 async function tryDatabaseVote(id: string): Promise<VotePageData | undefined> {

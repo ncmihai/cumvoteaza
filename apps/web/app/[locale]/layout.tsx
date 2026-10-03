@@ -24,7 +24,6 @@ export default async function LocaleLayout({
       <div className="min-h-screen">
         <SiteHeader locale={locale} labels={{ today: locale === "ro" ? "Astăzi" : "Today", votes: messages.nav.votes, bills: messages.nav.bills, members: messages.nav.members, compositions: messages.nav.compositions, health: messages.nav.dataHealth, tagline: locale === "ro" ? "Voturi. Oameni. Decizii care contează." : "Votes. People. Decisions that matter.", search: locale === "ro" ? "Caută" : "Search" }} />
         {children}
-        {process.env.CUMSEVOTEAZA_DEMO_MODE === "1" && !process.env.DATABASE_URL ? <p role="status" className="fixed bottom-0 inset-x-0 z-[100] bg-amber-100 p-2 text-center text-sm text-amber-950">{locale === "ro" ? "Mod demonstrativ — date fictive, nu informații parlamentare verificate." : "Demo mode — fictional data, not verified parliamentary information."}</p> : null}
       </div>
     </NextIntlClientProvider>
   );

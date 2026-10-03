@@ -1,11 +1,13 @@
-import type { NormalizedDataset } from "./types";
+import type { NormalizedDataset } from "@cumsevoteaza/parliament-model";
+
+/** Small sample dataset for unit tests only. The website never shows it (demo mode was removed 2026-10). */
 
 const sourceSnapshotId = "source-senate-vote-l316-2025";
 const billSourceSnapshotId = "source-senate-bill-l316-2025";
 const voteId = "vote-senate-l316-2025-10-27-final";
 const billId = "bill-l316-2025";
 
-export const demoDataset: NormalizedDataset = {
+export const sampleDataset: NormalizedDataset = {
   legislatures: [
     {
       id: "leg-2024-2028",

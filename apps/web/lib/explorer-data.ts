@@ -3,7 +3,6 @@ import { unstable_cache } from "next/cache";
 import type { DbClient } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import {
-  demoDataset,
   type Bill,
   type ChamberId,
   type Legislature,
@@ -14,7 +13,7 @@ import {
   type Vote
 } from "@cumsevoteaza/parliament-model";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
-import { dataUnavailable, requireDatabaseOrExplicitDemo } from "./data-availability";
+import { dataUnavailable, requireDatabase } from "./data-availability";
 
 export type SourceStatusFilter = "parsed" | "partial" | "failed";
 
@@ -66,7 +65,7 @@ export interface ExplorerPageData<T> {
   items: T[];
   nextCursor?: string;
   hasMore: boolean;
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface DirectoryFilterOptions {
@@ -81,7 +80,7 @@ export interface HomeDashboardData {
   mostSearchedMembers: DashboardItem[];
   trendingVotes: DashboardItem[];
   trendingBills: DashboardItem[];
-  sourceKind: "database" | "demo";
+  sourceKind: "database";
 }
 
 export interface DashboardItem {
@@ -161,14 +160,7 @@ export async function getDirectoryFilterOptions(filters: Pick<ExplorerFilters, "
 }
 
 async function getDirectoryFilterOptionsUncached(filters: Pick<ExplorerFilters, "chamber" | "legislature"> = {}): Promise<DirectoryFilterOptions> {
-  requireDatabaseOrExplicitDemo();
-  if (!process.env.DATABASE_URL) {
-    return {
-      groups: filterGroupsForPeriod(demoDataset.groups, demoDataset.mandates, demoDataset.groupMemberships, demoDataset.legislatures, filters),
-      legislatures: demoDataset.legislatures
-    };
-  }
-
+  requireDatabase();
   const session = createWebDbSession();
   try {
     const [groupRows, legislatureRows] = await Promise.all([
@@ -197,9 +189,8 @@ export async function getVoteExplorerData(query: ExplorerQuery = {}): Promise<Ex
 }
 
 async function getVoteExplorerDataUncached(query: ExplorerQuery = {}): Promise<ExplorerPageData<VoteExplorerItem>> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const limit = normalizedLimit(query.limit);
-  if (!process.env.DATABASE_URL) return demoVoteExplorerData(limit, query.cursor);
 
   const session = createWebDbSession();
   try {
@@ -310,9 +301,8 @@ export async function getBillExplorerData(query: ExplorerQuery = {}): Promise<Ex
 }
 
 async function getBillExplorerDataUncached(query: ExplorerQuery = {}): Promise<ExplorerPageData<BillExplorerItem>> {
-  requireDatabaseOrExplicitDemo();
+  requireDatabase();
   const limit = normalizedLimit(query.limit);
-  if (!process.env.DATABASE_URL) return demoBillExplorerData(limit, query.cursor);
 
   const session = createWebDbSession();
   try {
@@ -408,7 +398,7 @@ async function getHomeDashboardDataUncached(locale: string): Promise<HomeDashboa
       mostSearchedMembers: [],
       trendingVotes: [],
       trendingBills: [],
-      sourceKind: votes.sourceKind === "database" || bills.sourceKind === "database" ? "database" : "demo"
+      sourceKind: "database"
     };
   }
 
@@ -476,7 +466,7 @@ async function getHomeDashboardDataUncached(locale: string): Promise<HomeDashboa
       mostSearchedMembers: [],
       trendingVotes: [],
       trendingBills: [],
-      sourceKind: votes.sourceKind === "database" || bills.sourceKind === "database" ? "database" : "demo"
+      sourceKind: "database"
     };
   } finally {
     await session.close();
@@ -591,69 +581,6 @@ async function resolveDashboardItem(db: DbClient, row: AggregateRow, locale: str
     return { entityType: "party", entityId: row.entity_id, title: records[0]?.short_name ?? records[0]?.name ?? row.entity_id, href: `/${locale}/parties/${records[0]?.slug ?? row.entity_id}`, count: row.count };
   }
   return { entityType: "search", entityId: row.entity_id ?? undefined, title: row.entity_id ?? "-", count: row.count };
-}
-
-function demoVoteExplorerData(limit: number, cursor?: string): ExplorerPageData<VoteExplorerItem> {
-  const decoded = decodeCursor(cursor);
-  const sorted = [...demoDataset.votes].sort((a, b) => b.heldOn.localeCompare(a.heldOn) || b.id.localeCompare(a.id));
-  const startIndex = decoded ? sorted.findIndex((vote) => vote.heldOn === decoded.date && vote.id === decoded.id) + 1 : 0;
-  const rows = sorted.slice(Math.max(0, startIndex), Math.max(0, startIndex) + limit + 1);
-  const visible = rows.slice(0, limit).map((vote) => ({
-    vote,
-    bill: demoDataset.bills.find((bill) => bill.id === vote.billId),
-    source: demoDataset.sourceSnapshots.find((source) => source.id === vote.sourceSnapshotId),
-    hotCount: 0,
-    groupBreakdown: demoDataset.groupVoteTotals
-      .filter((total) => total.voteId === vote.id)
-      .map((total) => {
-        const group = demoDataset.groups.find((candidate) => candidate.id === total.groupId);
-        return {
-          groupId: total.groupId,
-          shortName: group?.shortName ?? total.groupId,
-          name: group?.name ?? total.groupId,
-          color: group?.color ?? "#64748b",
-          for: total.for,
-          against: total.against,
-          abstention: total.abstention,
-          presentNotVoting: total.presentNotVoting
-        };
-      })
-  }));
-  const last = visible.at(-1);
-  return {
-    items: visible,
-    nextCursor: rows.length > limit && last ? encodeCursor(last.vote.heldOn, last.vote.id) : undefined,
-    hasMore: rows.length > limit,
-    sourceKind: "demo"
-  };
-}
-
-function demoBillExplorerData(limit: number, cursor?: string): ExplorerPageData<BillExplorerItem> {
-  const decoded = decodeCursor(cursor);
-  const sorted = demoDataset.bills
-    .map((bill) => {
-      const events = demoDataset.billEvents.filter((event) => event.billId === bill.id).sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
-      return {
-        bill,
-        submittedOn: events[0]?.occurredOn,
-        latestEventOn: events.at(-1)?.occurredOn,
-        source: demoDataset.sourceSnapshots.find((source) => bill.sourceSnapshotIds.includes(source.id)),
-        voteCount: demoDataset.votes.filter((vote) => vote.billId === bill.id).length,
-        hotCount: 0
-      };
-    })
-    .sort((a, b) => (b.submittedOn ?? b.latestEventOn ?? "").localeCompare(a.submittedOn ?? a.latestEventOn ?? "") || b.bill.id.localeCompare(a.bill.id));
-  const startIndex = decoded ? sorted.findIndex((item) => (item.submittedOn ?? item.latestEventOn) === decoded.date && item.bill.id === decoded.id) + 1 : 0;
-  const rows = sorted.slice(Math.max(0, startIndex), Math.max(0, startIndex) + limit + 1);
-  const visible = rows.slice(0, limit);
-  const last = visible.at(-1);
-  const cursorDate = last?.submittedOn ?? last?.latestEventOn;
-  return {
-    items: visible,
-    nextCursor: rows.length > limit && last && cursorDate ? encodeCursor(cursorDate, last.bill.id) : undefined,
-    hasMore: rows.length > limit,
-    sourceKind: "demo"
-  };
 }
 
 function normalizedLimit(limit = DEFAULT_LIMIT): number {
