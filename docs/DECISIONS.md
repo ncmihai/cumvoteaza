@@ -36,6 +36,15 @@ Each Open question has a recommendation; the owner decides.
 - When a batch is held (a check failed) or the updater itself fails, how should you hear about it: email, Telegram, Discord, or a GitHub issue opened automatically?
 - **Recommended:** an automatic GitHub issue. It's free, has a history, and you and the tester both see it.
 
+### Q12 — How do we store a date we only know to the month?
+- CDEP gives group and party changes as "până în iun. 2025": a month, not a day. senat.ro sometimes gives the exact day (PACE from 2025-09-03).
+- **Recommended:** add a precision field (`day` / `month`) next to start and end dates, show "iun. 2025" in the UI, and use the exact day when an official source provides one.
+- Rejected: storing the 1st or last day of the month. That invents a day (Principle 2).
+
+### Q13 — When may two person records be merged automatically?
+- **Recommended:** auto-merge only when names match after normalization (word order, diacritics, hyphens) **and** at least one official signal agrees: a CDEP career link between the profiles, the same senat.ro/CDEP ID, or the same chamber and constituency with non-overlapping mandates. Everything else goes to a review list you confirm by hand. Every merge is logged and reversible.
+- Alternative: name match alone. Faster, but it will merge real namesakes (Romania has many "Ion Popescu").
+
 ---
 
 ## Decided
