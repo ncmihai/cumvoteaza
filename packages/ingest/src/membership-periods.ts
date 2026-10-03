@@ -104,3 +104,19 @@ function clampEnd(date: string, mandate: { startsOn: string; endsOn?: string }):
   if (date < mandate.startsOn) return { date: mandate.startsOn, precision: "day" };
   return { date, precision: "month" };
 }
+
+export type DatedBounds = { startsOn: string; startsOnPrecision?: DatePrecision; endsOn?: string; endsOnPrecision?: DatePrecision };
+
+/**
+ * One row placed on its own inside its bounds (a mandate, or a committee membership for a role inside it).
+ * Committees can overlap, so unlike membershipPeriods there is no neighbour inference: a missing boundary is the bound's.
+ */
+export function periodWithin(row: { startMonth?: string | null; endMonth?: string | null }, bounds: DatedBounds) {
+  const fromBound = (date: string, precision?: DatePrecision) => ({ date, precision: precision ?? ("day" as DatePrecision) });
+  let start = row.startMonth ? clampStart(monthDate(row.startMonth), bounds) : fromBound(bounds.startsOn, bounds.startsOnPrecision);
+  if (start.date === bounds.startsOn) start = fromBound(bounds.startsOn, bounds.startsOnPrecision);
+  let end = row.endMonth ? clampEnd(monthDate(row.endMonth), bounds) : bounds.endsOn ? fromBound(bounds.endsOn, bounds.endsOnPrecision) : undefined;
+  if (end && bounds.endsOn && end.date === bounds.endsOn) end = fromBound(bounds.endsOn, bounds.endsOnPrecision);
+  if (end && end.date < start.date) end = { date: start.date, precision: start.precision };
+  return { startsOn: start.date, startsOnPrecision: start.precision, endsOn: end?.date, endsOnPrecision: end?.precision ?? ("day" as DatePrecision) };
+}

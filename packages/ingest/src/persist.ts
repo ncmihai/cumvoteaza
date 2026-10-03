@@ -1073,7 +1073,9 @@ async function upsertMemberCommitteeMembership(db: Db, membership: MemberCommitt
         chamber: membership.chamber,
         role: membership.role,
         startsOn: membership.startsOn,
+        startsOnPrecision: membership.startsOnPrecision ?? "day",
         endsOn: membership.endsOn,
+        endsOnPrecision: membership.endsOnPrecision ?? "day",
         sourceSnapshotId: membership.sourceSnapshotId
       }
     });
@@ -1093,7 +1095,9 @@ async function upsertMemberCommitteeMemberships(db: Db, memberships: MemberCommi
           chamber: sql`excluded.chamber`,
           role: sql`excluded.role`,
           startsOn: sql`excluded.starts_on`,
+          startsOnPrecision: sql`excluded.starts_on_precision`,
           endsOn: sql`excluded.ends_on`,
+          endsOnPrecision: sql`excluded.ends_on_precision`,
           sourceSnapshotId: sql`excluded.source_snapshot_id`
         }
       });

@@ -408,7 +408,9 @@ export interface MemberCommitteeMembership {
   committeeName: string;
   chamber: ChamberId;
   startsOn: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
   role?: string;
   sourceSnapshotId?: string;
 }

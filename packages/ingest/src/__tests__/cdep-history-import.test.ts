@@ -24,4 +24,29 @@ describe("CDEP history roster", () => {
     const roster = buildParsedRoster([profile("3 februarie 2005")], legislatureFromFlag("2004"), "senate");
     expect(roster.mandates[0]!.startsOn).toBe("2005-02-03");
   });
+
+  it("keeps CDEP's committee dates and dated roles instead of the whole mandate (D19)", () => {
+    const legislature = legislatureFromFlag("1996");
+    const roster = buildParsedRoster([{
+      ...profile("22 noiembrie 1996"),
+      profileKey: "leg1996:cam2:idm1",
+      identity: { officialId: "1", legislature: "1996", chamber: "deputies" as const },
+      committeeMemberships: [
+        { label: "Comisia pentru industrii şi servicii", url: "https://cdep.ro/co?idc=3", startMonth: null, endMonth: "1997-02", roles: [] },
+        { label: "Comisia pentru Integrare Europeană", url: "https://cdep.ro/co?idc=16", startMonth: "1997-11", endMonth: null, roles: [{ role: "Secretar" }] },
+        { label: "Comisia specială X", url: "https://cdep.ro/co?idc=40", startMonth: "1998-02", endMonth: "1998-06", roles: [
+          { role: "Secretar", startMonth: null, endMonth: "1998-03" },
+          { role: "Vicepreşedinte", startMonth: "1998-03", endMonth: null }
+        ] }
+      ]
+    }], legislature, "deputies");
+    const rows = roster.committeeMemberships.map((row) => [row.committeeName.slice(0, 18), row.role, row.startsOn, row.startsOnPrecision, row.endsOn, row.endsOnPrecision]);
+    expect(rows).toEqual([
+      ["Comisia pentru ind", "Membru", "1996-11-22", "day", "1997-02-01", "month"],
+      ["Comisia pentru Int", "Secretar", "1997-11-01", "month", undefined, "day"],
+      ["Comisia specială X", "Membru", "1998-02-01", "month", "1998-06-01", "month"],
+      ["Comisia specială X", "Secretar", "1998-02-01", "month", "1998-03-01", "month"],
+      ["Comisia specială X", "Vicepreşedinte", "1998-03-01", "month", "1998-06-01", "month"]
+    ]);
+  });
 });

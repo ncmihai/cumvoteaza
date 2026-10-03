@@ -486,6 +486,7 @@ def parse_profile_page(html_text: str, source_url: str, snapshot: dict[str, Any]
         "partyMemberships": parse_dated_memberships(html_text, source_url, "Formatiunea politica:", "structura.fp"),
         "groupMemberships": parse_dated_memberships(html_text, source_url, "Grupul parlamentar:", "structura.gp"),
         "committeeLinks": committees,
+        "committeeMemberships": parse_dated_committees(html_text, source_url),
         "constituencyLinks": constituencies,
         "activityLinks": action_links,
     }
@@ -611,6 +612,68 @@ def parse_dated_memberships(html_text: str, source_url: str, header: str, path_p
             "roles": roles,
             "raw": after,
         })
+    return rows
+
+
+COMMITTEE_SECTIONS = (
+    "Comisii permanente", "Comisii permanente comune", "Comisii speciale", "Comisii speciale comune",
+    "Comisii de ancheta", "Comisii de ancheta comune", "Alte comisii",
+    "Grupuri parlamentare de lucru", "Grupuri parlamentare de lucru comune",
+)
+_MONTH_ONLY = r"(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|noi|dec)\.?"
+
+
+def parse_committee_period(text: str) -> tuple[str | None, str | None]:
+    """'din feb. 1997', 'până în feb. 1997', 'feb. 1997 - iun. 1998', 'feb. - iun. 2005', 'feb. 1997' -> (start, end)."""
+    value = clean_text(text)
+    if match := re.fullmatch(rf"din\s+{_MONTH}", value, re.I):
+        return month_value(*match.groups()), None
+    if match := re.fullmatch(rf"până\s+în\s+{_MONTH}", value, re.I):
+        return None, month_value(*match.groups())
+    if match := re.fullmatch(rf"{_MONTH}\s*-\s*{_MONTH}", value, re.I):
+        return month_value(match.group(1), match.group(2)), month_value(match.group(3), match.group(4))
+    if match := re.fullmatch(rf"{_MONTH_ONLY}\s*-\s*{_MONTH}", value, re.I):
+        return month_value(match.group(1), match.group(3)), month_value(match.group(2), match.group(3))
+    if match := re.fullmatch(_MONTH, value, re.I):
+        month = month_value(*match.groups())
+        return month, month
+    return None, None
+
+
+def parse_dated_committees(html_text: str, source_url: str) -> list[dict[str, Any]]:
+    """Committee memberships with CDEP's own month dates and roles.
+
+    CDEP lists each committee as a link followed by an optional period in parentheses and optional
+    roles after ' - ', each role with its own period: 'Comisia X (din feb. 1997) - Secretar (până în iun. 1998), Vicepreşedinte'.
+    """
+    rows: list[dict[str, Any]] = []
+    for header in COMMITTEE_SECTIONS:
+        section = profile_section(html_text, header)
+        for piece in re.split(r"<br\s*/?>", section, flags=re.I):
+            anchor = re.search(r"<a[^>]+href=\"([^\"]*structura\.co[^\"]*)\"[^>]*>(.*?)</a>(.*)", piece, re.I | re.S)
+            if not anchor:
+                continue
+            tail = clean_text(strip_tags(re.split(r"</td>", anchor.group(3), maxsplit=1, flags=re.I)[0]))
+            period = re.match(r"^\(([^)]*)\)\s*", tail)
+            start, end = parse_committee_period(period.group(1)) if period else (None, None)
+            rest = tail[period.end():] if period else tail
+            roles: list[dict[str, Any]] = []
+            role_text = re.sub(r"^-\s*", "", rest.strip())
+            for part in re.split(r",\s*(?![^()]*\))", role_text) if role_text else []:
+                role_match = re.match(r"^([^()]+?)\s*(?:\(([^)]*)\))?$", part.strip())
+                if not role_match:
+                    continue
+                role_start, role_end = parse_committee_period(role_match.group(2) or "")
+                roles.append({"role": clean_text(role_match.group(1)), "startMonth": role_start, "endMonth": role_end})
+            rows.append({
+                "url": canonical_url(absolute_url(anchor.group(1), source_url)),
+                "label": clean_text(strip_tags(anchor.group(2))),
+                "section": header,
+                "startMonth": start,
+                "endMonth": end,
+                "roles": roles,
+                "raw": tail,
+            })
     return rows
 
 

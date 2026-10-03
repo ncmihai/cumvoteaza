@@ -23,8 +23,15 @@ import {
   type ParsedRoster
 } from "./parsers/roster";
 import { cleanText, slugify } from "./parsers/utils";
-import { membershipPeriods, type DatedMembershipRow, type MembershipPeriod } from "./membership-periods";
+import { membershipPeriods, periodWithin, type DatedMembershipRow, type MembershipPeriod } from "./membership-periods";
 import { CDEP_PROFILE_POLICY, persistRoster } from "./persist";
+
+type CdepCommitteeRow = CdepLink & {
+  section?: string;
+  startMonth?: string | null;
+  endMonth?: string | null;
+  roles?: Array<{ role: string; startMonth?: string | null; endMonth?: string | null }>;
+};
 
 type CdepLink = {
   label: string;
@@ -65,6 +72,8 @@ type CdepProfile = {
   partyMemberships?: DatedMembershipRow[];
   groupMemberships?: DatedMembershipRow[];
   committeeLinks?: CdepLink[];
+  /** Written by the probe since D19: each committee with its own month dates and roles. */
+  committeeMemberships?: CdepCommitteeRow[];
   constituencyLinks?: CdepLink[];
 };
 
@@ -228,20 +237,30 @@ export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislat
       groupMemberships.set(membership.id, membership);
     });
 
-    for (const committee of profile.committeeLinks ?? []) {
+    // D19: CDEP dates each committee ("din feb. 1997", "feb. - iun. 1998") and each role inside it.
+    // Profiles parsed before the probe read those dates fall back to the bare links (whole mandate).
+    const committeeRows: CdepCommitteeRow[] = profile.committeeMemberships
+      ?? (profile.committeeLinks ?? []).map((link) => ({ ...link, roles: [] }));
+    for (const committee of committeeRows) {
       const name = cleanText(committee.label);
       if (!name) continue;
-      const membership: MemberCommitteeMembership = {
-        id: `committee-membership-${member.id}-${slugify(name)}-${startsOn}`,
-        memberId: member.id,
-        committeeName: name,
-        chamber,
-        startsOn,
-        endsOn,
-        role: "Membru",
-        sourceSnapshotId: sourceSnapshot.id
+      const period = periodWithin(committee, mandate);
+      const roles = committee.roles ?? [];
+      const undatedSingleRole = roles.length === 1 && !roles[0]!.startMonth && !roles[0]!.endMonth ? roles[0]!.role : undefined;
+      const add = (role: string, dates: ReturnType<typeof periodWithin>) => {
+        const membership: MemberCommitteeMembership = {
+          id: `committee-membership-${member.id}-${slugify(name)}-${role === "Membru" ? "" : `${slugify(role)}-`}${dates.startsOn}`,
+          memberId: member.id,
+          committeeName: name,
+          chamber,
+          ...dates,
+          role,
+          sourceSnapshotId: sourceSnapshot.id
+        };
+        committeeMemberships.set(membership.id, membership);
       };
-      committeeMemberships.set(membership.id, membership);
+      add(undatedSingleRole ?? "Membru", period);
+      if (!undatedSingleRole) for (const role of roles) add(cleanText(role.role), periodWithin(role, period));
     }
 
     const relation = mandateRelationFromProfile(profile, mandate, sourceSnapshot.id, memberIdByProfileKey);

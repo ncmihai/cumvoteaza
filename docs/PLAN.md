@@ -70,7 +70,7 @@ Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is 
 | D16 | P2 | ✅ **Fixed 2026-10-03.** 12 current Chamber leaders have their office stored in their name (Sorin Grindeanu's last name was "Deputaţilor"). | DB |
 | D17 | P2 | ✅ **Fixed 2026-10-03.** The member page fell back to the first profile whose URL *starts with* the requested name, which could show a namesake. | code |
 | D18 | P3 | ✅ **Fixed 2026-10-03.** Dates are formatted in the viewer's time zone, so a calendar date can shift to the previous day west of UTC. | code |
-| D19 | P2 | Committee memberships also get whole-mandate dates although CDEP gives "(din … / până în …)". Follow-up. | code |
+| D19 | P2 | Committee memberships also get whole-mandate dates although CDEP gives "(din … / până în …)". **Code fixed 2026-10-03; re-import pending.** | code |
 | D20 | P2 | 9 Senate votes of 2025 have one fewer nominal "for" row than the official total. **Source discrepancy, fixed in presentation 2026-10-03**: senat.ro lists one name fewer than it announces. | DB, 2026-10-03 |
 | D21 | P3 | Joint Chamber–Senate sitting votes are skipped (parser unsupported); 2 Chamber votes (idv 37367, 37387) have no nominal rows. | rehearsal import |
 | D22 | P2 | **Duplicate bill records**: the same bill can exist as a Senate record (`bill-l122-2026`, which also carries PL-x 196/2026) and a Chamber placeholder (`bill-pl-x-196-2026`) holding the votes. Bill-level identity, like D11 for people. | DB, 2026-10-03 |
@@ -154,7 +154,8 @@ Then the audit fixes (2026-10-03, branch `phase-2/fixes`):
 - [ ] D22 duplicate bills: code done (merge command `bills:merge-duplicates`, import-time dossier resolver, retired-slug redirects, blocking check `duplicate_bill_dossier`). 510 merges rehearsed on Neon branch `rehearsal-d22-bill-merge`: all blocking checks pass, outcomes unchanged. 4 different dossiers share a Senate B-number (reported, not merged). **Production run pending.**
 - [x] D23 html lang: `[locale]/layout.tsx` is the root layout with `lang={locale}`; `/` redirects in next.config; localized not-found inside the locale, bilingual `global-not-found` for unknown sections. Unknown locale prefixes (`/xx`) still get Next's built-in 404.
 - [x] D20 (2026-10-03): not our bug. On all 9 pages senat.ro announces one more "for" than it lists by name (e.g. L181/2025: 109 announced, 108 named, group table 108). Vote pages now state the gap per choice; nothing is filled in. Phase 3 gate: compare imported rows with the page's own name list, and treat headline-vs-list gaps as a source discrepancy, not an import failure.
-- [ ] D19 committee dates, D21 joint sittings.
+- [ ] D19 committee dates: code done (probe `parse_dated_committees` for all 9 committee sections, roles with their own dates, month precision in `member_committee_memberships`, migration `0030` applied). Reparsed locally: 3,657 of 10,178 committee rows carry CDEP dates. **Production re-import pending** (`cdep-history:import --persist` per legislature).
+- [ ] D21 joint sittings.
 
 Earlier:
 - [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.

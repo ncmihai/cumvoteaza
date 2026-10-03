@@ -1671,7 +1671,9 @@ function mapMemberCommitteeMembership(row: typeof schema.memberCommitteeMembersh
     chamber: row.chamber,
     role: row.role ?? undefined,
     startsOn: row.startsOn,
+    startsOnPrecision: row.startsOnPrecision === "month" ? "month" : "day",
     endsOn: row.endsOn ?? undefined,
+    endsOnPrecision: row.endsOnPrecision === "month" ? "month" : "day",
     sourceSnapshotId: row.sourceSnapshotId ?? undefined
   };
 }
@@ -2595,7 +2597,9 @@ function buildMemberHistory(input: {
       return {
         id: `history-${committee.id}`,
         startsOn: committee.startsOn,
+        startsOnPrecision: committee.startsOnPrecision,
         endsOn: displayEndsOn(committee.endsOn, mandate, legislature),
+        endsOnPrecision: committee.endsOn ? committee.endsOnPrecision : "day",
         legislatureId: mandate?.legislatureId,
         chamber: committee.chamber,
         type: "committee" as const,

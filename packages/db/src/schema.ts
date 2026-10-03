@@ -608,7 +608,9 @@ export const memberCommitteeMemberships = pgTable("member_committee_memberships"
   chamber: chamberEnum("chamber").notNull(),
   role: text("role"),
   startsOn: date("starts_on").notNull(),
+  startsOnPrecision: text("starts_on_precision").notNull().default("day"),
   endsOn: date("ends_on"),
+  endsOnPrecision: text("ends_on_precision").notNull().default("day"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
 });
 

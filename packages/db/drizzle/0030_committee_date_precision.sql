@@ -1,0 +1,2 @@
+ALTER TABLE "member_committee_memberships" ADD COLUMN "starts_on_precision" text DEFAULT 'day' NOT NULL;--> statement-breakpoint
+ALTER TABLE "member_committee_memberships" ADD COLUMN "ends_on_precision" text DEFAULT 'day' NOT NULL;
