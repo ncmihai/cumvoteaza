@@ -55,11 +55,15 @@ export const checks: Check[] = [
   {
     name: "same_seat_recorded_twice",
     severity: "error",
-    description: "Two member records hold the same chamber and legislature for the same person (one seat imported twice).",
+    description: "Two member records of the same person hold the same chamber and legislature at the same time (one seat imported twice).",
+    // Consecutive mandates in one legislature are legitimate (Ovidiu Silaghi: 2012-2013, then again from 2014).
     query: sql`
-      select m.person_id, mm.legislature_id, mm.chamber, count(*)::int as records, string_agg(m.id, ', ') as members
-      from member_mandates mm join members m on m.id = mm.member_id
-      group by m.person_id, mm.legislature_id, mm.chamber having count(*) > 1`
+      select m1.person_id, a.legislature_id, a.chamber, a.member_id, b.member_id as other_member
+      from member_mandates a join members m1 on m1.id = a.member_id
+      join member_mandates b on b.legislature_id = a.legislature_id and b.chamber = a.chamber and b.member_id > a.member_id
+      join members m2 on m2.id = b.member_id and m2.person_id = m1.person_id
+      join legislatures l on l.id = a.legislature_id
+      where a.starts_on < coalesce(b.ends_on, l.ends_on) and b.starts_on < coalesce(a.ends_on, l.ends_on)`
   },
   {
     name: "member_with_mandate_without_person",

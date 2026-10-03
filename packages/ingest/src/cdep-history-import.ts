@@ -100,7 +100,7 @@ export type CdepHistoryImportResult = {
 };
 
 export type CdepHistoryWarningItem = {
-  type: "missing_constituency" | "unresolved_membership_order";
+  type: "missing_constituency" | "unresolved_membership_order" | "impossible_validation_date";
   legislature: string;
   chamber: ChamberId;
   memberName: string;
@@ -172,7 +172,7 @@ export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislat
   for (const profile of selected) {
     const sourceSnapshot = sourceSnapshotFromProfile(profile);
     const member = memberFromProfile(profile, legislature);
-    const startsOn = parseRomanianDate(profile.validationDateRaw ?? "") ?? legislature.startsOn;
+    const startsOn = mandateStart(profile, legislature);
     const endsOn = parseRomanianDate(profile.mandateEndRaw ?? "");
     const mandate: MemberMandate = {
       id: `mandate-${member.id}-${legislature.label}-${chamber}`,
@@ -285,6 +285,20 @@ function memberFromProfile(profile: CdepProfile, legislature: Legislature): Memb
       ...(profile.photoUrls?.[0] ? { profilePhoto: profile.photoUrls[0] } : {})
     }
   };
+}
+
+/**
+ * Mandate start = CDEP's validation date. A validation date more than a month before the legislature began
+ * is a source error (all 136 senators of 2004 show "17 februarie 2004", before the November 2004 election),
+ * so the legislature's start is used instead and the profile is reported (see invalidValidationDateItems).
+ */
+function mandateStart(profile: CdepProfile, legislature: Legislature): string {
+  const validated = parseRomanianDate(profile.validationDateRaw ?? "");
+  return validated && !validationDateIsImpossible(validated, legislature) ? validated : legislature.startsOn;
+}
+
+function validationDateIsImpossible(date: string, legislature: Legislature): boolean {
+  return Date.parse(legislature.startsOn) - Date.parse(date) > 31 * 86_400_000;
 }
 
 function careerKeys(profile: CdepProfile): string {
@@ -431,7 +445,33 @@ function diagnoseRoster(roster: ParsedRoster): {
 }
 
 function warningItemsForProfiles(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): CdepHistoryWarningItem[] {
-  return [...missingConstituencyItems(profiles, legislature, chamber), ...unresolvedMembershipItems(profiles, legislature, chamber)];
+  return [
+    ...missingConstituencyItems(profiles, legislature, chamber),
+    ...unresolvedMembershipItems(profiles, legislature, chamber),
+    ...impossibleValidationDateItems(profiles, legislature, chamber)
+  ];
+}
+
+function impossibleValidationDateItems(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): CdepHistoryWarningItem[] {
+  return profiles
+    .filter((profile) => profile.identity?.legislature === legislature.label.slice(0, 4) && profile.identity?.chamber === chamber && profile.name)
+    .filter((profile) => {
+      const validated = parseRomanianDate(profile.validationDateRaw ?? "");
+      return Boolean(validated && validationDateIsImpossible(validated, legislature));
+    })
+    .map((profile) => ({
+      type: "impossible_validation_date" as const,
+      legislature: legislature.label,
+      chamber,
+      memberName: profile.name,
+      officialId: profile.identity.officialId,
+      profileKey: profile.profileKey,
+      profileUrl: profile.url,
+      validationDateRaw: profile.validationDateRaw,
+      partyLabels: [],
+      groupLabels: [],
+      note: `CDEP gives a validation date before the legislature began; the mandate starts on ${legislature.startsOn} instead.`
+    }));
 }
 
 function unresolvedMembershipItems(profiles: CdepProfile[], legislature: Legislature, chamber: ChamberId): CdepHistoryWarningItem[] {
@@ -439,7 +479,7 @@ function unresolvedMembershipItems(profiles: CdepProfile[], legislature: Legisla
     .filter((profile) => profile.identity?.legislature === legislature.label.slice(0, 4) && profile.identity?.chamber === chamber && profile.name)
     .flatMap((profile) => {
       const mandate = {
-        startsOn: parseRomanianDate(profile.validationDateRaw ?? "") ?? legislature.startsOn,
+        startsOn: mandateStart(profile, legislature),
         endsOn: parseRomanianDate(profile.mandateEndRaw ?? "")
       };
       const unresolved = [

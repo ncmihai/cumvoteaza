@@ -41,6 +41,9 @@ export function MemberHistoryTable({
           .filter(Boolean)
           .sort()
           .at(-1);
+        // A month-only date is shown as a month unless another row gives the same date exactly.
+        const firstPrecision = section.rows.some((row) => row.startsOn === firstDate && row.startsOnPrecision !== "month") ? "day" : "month";
+        const lastPrecision = section.rows.some((row) => row.endsOn === lastDate && row.endsOnPrecision !== "month") ? "day" : "month";
 
         return (
           <section key={section.id} className="border border-slate-300 bg-white">
@@ -51,9 +54,9 @@ export function MemberHistoryTable({
                 </div>
                 <h3 className="mt-1 text-2xl font-semibold text-slate-950">{section.label}</h3>
                 <div className="mt-1 text-sm text-slate-600">
-                  {firstDate ? formatDate(firstDate, locale) : "-"}
+                  {firstDate ? formatDate(firstDate, locale, firstPrecision) : "-"}
                   {" - "}
-                  {lastDate ? formatDate(lastDate, locale) : locale === "ro" ? "prezent" : "present"}
+                  {lastDate ? formatDate(lastDate, locale, lastPrecision) : locale === "ro" ? "prezent" : "present"}
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -96,9 +99,9 @@ export function MemberHistoryTable({
                   {section.rows.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50">
                       <td className="px-3 py-3 font-medium">
-                        {formatDate(row.startsOn, locale)}
+                        {formatDate(row.startsOn, locale, row.startsOnPrecision)}
                         {" - "}
-                        {row.endsOn ? formatDate(row.endsOn, locale) : locale === "ro" ? "prezent" : "present"}
+                        {row.endsOn ? formatDate(row.endsOn, locale, row.endsOnPrecision) : locale === "ro" ? "prezent" : "present"}
                       </td>
                       <td className="px-3 py-3">{chamberLabels[locale][row.chamber]}</td>
                       <td className="px-3 py-3">{historyTypeLabels[locale][row.type]}</td>

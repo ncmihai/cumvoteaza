@@ -34,6 +34,7 @@ import type { ParsedDeputiesBill } from "./parsers/deputies-bill";
 import type { ParsedChamberVote } from "./parsers/chamber-vote";
 import { classifyVote } from "./vote-classification";
 import { resolveVoters, type SittingMember, type VoterResolution } from "./identity/resolve-voters";
+import { hasOfficeTitle } from "./identity/names";
 
 const defaultLegislature = {
   id: "leg-2024-2028",
@@ -529,9 +530,13 @@ async function upsertMembers(db: Db, members: Member[]) {
   const byId = new Map(known.map((member) => [member.id, member]));
   members = members.map((member) => {
     const previous = byId.get(member.id);
+    // Keep enriched names, except a stored name that wrongly contains a parliamentary office.
+    const keepName = !hasOfficeTitle(previous?.displayName ?? "");
     return previous ? { ...member, personId: previous.personId ?? member.personId,
-      slug: previous.slug, firstName: previous.firstName, lastName: previous.lastName,
-      displayName: previous.displayName,
+      slug: keepName ? previous.slug : member.slug,
+      firstName: keepName ? previous.firstName : member.firstName,
+      lastName: keepName ? previous.lastName : member.lastName,
+      displayName: keepName ? previous.displayName : member.displayName,
       // Existing source keys win, except the CDEP career links, which must follow the latest official page.
       sourceIds: { ...member.sourceIds, ...previous.sourceIds, ...pick(member.sourceIds, "cdepCareerKeys") } } : member;
   });

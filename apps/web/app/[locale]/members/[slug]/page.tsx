@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Building2, CalendarDays, ExternalLink, FileText, Landmark, MapPin, UserRound, UsersRound } from "lucide-react";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
-import { getMemberPageData } from "@/lib/data";
+import { getCurrentMemberSlug, getMemberPageData } from "@/lib/data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { presentMemberActivity, presentMemberCareer, presentMemberIdentity, presentMemberProfileContext, presentVote } from "@/lib/public-presentation";
 import { placeForDisplay } from "@/lib/presentation";
@@ -19,7 +19,12 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const { legislature, fromVote } = await searchParams;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const data = await getMemberPageData(slug, { legislature });
-  if (!data) notFound();
+  if (!data) {
+    // Profiles merged or renamed by the identity repair keep their old URLs working.
+    const currentSlug = await getCurrentMemberSlug(slug);
+    if (currentSlug && currentSlug !== slug) permanentRedirect(`/${rawLocale}/members/${currentSlug}${legislature ? `?legislature=${encodeURIComponent(legislature)}` : ""}`);
+    notFound();
+  }
   const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);

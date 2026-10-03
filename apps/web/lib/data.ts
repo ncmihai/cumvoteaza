@@ -1,4 +1,4 @@
-import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import type { DbClient } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
@@ -436,6 +436,24 @@ async function getMemberDirectoryDataUncached(filters?: MemberDirectoryFilters):
 
 export async function getMemberPageData(slug: string, options: { legislature?: string } = {}): Promise<MemberPageData | undefined> {
   return getCachedMemberPageData(slug, options);
+}
+
+/**
+ * Current slug for a retired profile URL: a slug or member ID replaced when duplicate records were merged
+ * or a name was cleaned (id_aliases). Exact lookups only; a URL is never guessed from a similar name.
+ */
+export async function getCurrentMemberSlug(slugOrId: string): Promise<string | undefined> {
+  if (!process.env.DATABASE_URL) return undefined;
+  const session = createWebDbSession();
+  try {
+    const [row] = await session.db.execute<{ slug: string }>(sql`
+      select m.slug from id_aliases a join members m on m.id = a.canonical_id
+      where (a.kind = 'member-slug' and a.alias_id = ${`slug:${slugOrId}`}) or (a.kind = 'member' and a.alias_id = ${slugOrId})
+      limit 1`);
+    return row?.slug;
+  } finally {
+    await session.close();
+  }
 }
 
 async function getMemberPageDataUncached(slug: string, options: { legislature?: string } = {}): Promise<MemberPageData | undefined> {
@@ -904,9 +922,6 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       .from(schema.members)
       .where(or(eq(schema.members.slug, slug), eq(schema.members.id, slug)))
       .limit(1);
-    if (!memberRow) {
-      memberRow = await findMemberByLegacySlug(session.db, slug);
-    }
     if (!memberRow) return undefined;
 
     const relatedMemberRows = memberRow.personId
@@ -1746,7 +1761,9 @@ function mapMemberGroupMembership(row: typeof schema.memberGroupMemberships.$inf
     memberId: row.memberId,
     groupId: row.groupId,
     startsOn: row.startsOn,
+    startsOnPrecision: row.startsOnPrecision === "month" ? "month" : "day",
     endsOn: row.endsOn ?? undefined,
+    endsOnPrecision: row.endsOnPrecision === "month" ? "month" : "day",
     logoUrl: row.logoUrl ?? undefined,
     sourceSnapshotId: row.sourceSnapshotId ?? undefined
   };
@@ -1758,7 +1775,9 @@ function mapMemberPartyAffiliation(row: typeof schema.memberPartyAffiliations.$i
     memberId: row.memberId,
     partyId: row.partyId,
     startsOn: row.startsOn,
+    startsOnPrecision: row.startsOnPrecision === "month" ? "month" : "day",
     endsOn: row.endsOn ?? undefined,
+    endsOnPrecision: row.endsOnPrecision === "month" ? "month" : "day",
     logoUrl: row.logoUrl ?? undefined,
     sourceSnapshotId: row.sourceSnapshotId ?? undefined
   };
@@ -2562,6 +2581,7 @@ function buildMemberCareerSegments(
       datesTouch(previous.endsOn, row.startsOn)
     ) {
       previous.endsOn = row.endsOn;
+      previous.endsOnPrecision = row.endsOnPrecision;
       previous.events = [...(previous.events ?? []), ...careerEventsForRow(row, partyIdByLabel, formationEvents)];
       continue;
     }
@@ -2571,7 +2591,9 @@ function buildMemberCareerSegments(
     segments.push({
       id: `career-${row.id}`,
       startsOn: row.startsOn,
+      startsOnPrecision: row.startsOnPrecision,
       endsOn: row.endsOn,
+      endsOnPrecision: row.endsOnPrecision,
       legislatureId: row.legislatureId,
       chamber: row.chamber,
       label: row.label,
@@ -2648,7 +2670,10 @@ function buildMemberHistory(input: {
       return {
         id: `history-${membership.id}`,
         startsOn: membership.startsOn,
+        startsOnPrecision: membership.startsOnPrecision,
         endsOn: displayEndsOn(membership.endsOn, mandate, legislature),
+        // A substituted mandate/legislature end is an exact date.
+        endsOnPrecision: membership.endsOn ? membership.endsOnPrecision : "day",
         legislatureId: mandate?.legislatureId,
         chamber: mandate?.chamber ?? group?.chamber ?? "senate",
         type: "group" as const,
@@ -2667,7 +2692,9 @@ function buildMemberHistory(input: {
       return {
         id: `history-${affiliation.id}`,
         startsOn: affiliation.startsOn,
+        startsOnPrecision: affiliation.startsOnPrecision,
         endsOn: displayEndsOn(affiliation.endsOn, mandate, legislature),
+        endsOnPrecision: affiliation.endsOn ? affiliation.endsOnPrecision : "day",
         legislatureId: mandate?.legislatureId,
         chamber: mandate?.chamber ?? chamberForMemberPeriod(input.mandates, affiliation.memberId, affiliation.startsOn),
         type: "party" as const,
@@ -2745,9 +2772,11 @@ function normalizeCareerRows(
       );
       if (absorbedLabels.includes(row.label) && row.startsOn < event.date && (!row.endsOn || row.endsOn >= event.date)) {
         row.endsOn = previousDay(event.date);
+        row.endsOnPrecision = "day";
       }
       if (absorberLabels.includes(row.label) && hasOverlappingAbsorbedRow && row.startsOn < event.date && (!row.endsOn || row.endsOn >= event.date)) {
         row.startsOn = event.date;
+        row.startsOnPrecision = "day";
       }
     }
   }
@@ -2968,25 +2997,6 @@ function nextDay(value: string): string {
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-async function findMemberByLegacySlug(
-  db: DbClient,
-  slug: string
-): Promise<typeof schema.members.$inferSelect | undefined> {
-  const baseSlug = slug.replace(/-(deputies|senate)-[a-z0-9-]+$/i, "");
-  if (!baseSlug || baseSlug === slug) return undefined;
-  const rows = await db.select().from(schema.members).where(ilike(schema.members.slug, `${baseSlug}%`));
-  return rows
-    .filter((row) => row.slug === baseSlug || row.slug.startsWith(`${baseSlug}-`))
-    .sort((a, b) => memberLegislatureRank(b) - memberLegislatureRank(a) || a.slug.length - b.slug.length)[0];
-}
-
-function memberLegislatureRank(row: typeof schema.members.$inferSelect): number {
-  const sourceIds = row.sourceIds && typeof row.sourceIds === "object" && !Array.isArray(row.sourceIds) ? row.sourceIds : {};
-  const key = Object.keys(sourceIds).find((item) => item.startsWith("deputies:") || item.startsWith("senate:"));
-  const year = key?.match(/:(\d{4})$/)?.[1];
-  return year ? Number(year) : row.id.includes("-2020-") ? 2020 : 2024;
 }
 
 function cleanHistoryDetail(value?: string): string | undefined {

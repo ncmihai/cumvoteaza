@@ -162,6 +162,7 @@ async function mergeMember(db: DbClient, from: string, into: string, reason: str
 
   // Keep the senat.ro GUID as an official ID, and keep the cleaner public slug (no "-senate-81" suffix).
   const [fromRow] = await db.execute<{ slug: string; source_ids: Record<string, string> }>(sql`select slug, source_ids from members where id = ${from}`);
+  const [intoRow] = await db.execute<{ slug: string }>(sql`select slug from members where id = ${into}`);
   const guid = fromRow?.source_ids?.senate && /^[0-9a-f]{8}-/i.test(fromRow.source_ids.senate) ? fromRow.source_ids.senate.toLowerCase() : undefined;
   await db.execute(sql`delete from members where id = ${from}`);
   if (guid) await db.execute(sql`update members set source_ids = source_ids || jsonb_build_object('senatRoGuid', ${guid}::text) where id = ${into}`);
@@ -173,6 +174,18 @@ async function mergeMember(db: DbClient, from: string, into: string, reason: str
   }
   await db.execute(sql`
     insert into id_aliases (alias_id, canonical_id, kind, reason) values (${from}, ${into}, 'member', ${reason})
+    on conflict (alias_id) do update set canonical_id = excluded.canonical_id`);
+  // Old public URLs keep working: both previous slugs redirect to the surviving member.
+  for (const slug of [fromRow?.slug, intoRow?.slug]) await recordRetiredSlug(db, slug, into);
+}
+
+/** Records a profile slug that no longer exists so /members/<slug> can redirect to the member's current page. */
+export async function recordRetiredSlug(db: DbClient, slug: string | undefined, memberId: string) {
+  if (!slug) return;
+  await db.execute(sql`
+    insert into id_aliases (alias_id, canonical_id, kind, reason)
+    select ${`slug:${slug}`}, ${memberId}, 'member-slug', 'profile URL retired by identity repair'
+    where not exists (select 1 from members where slug = ${slug})
     on conflict (alias_id) do update set canonical_id = excluded.canonical_id`);
 }
 

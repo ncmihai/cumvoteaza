@@ -1,4 +1,4 @@
-import type { ChamberId, Locale, VoteChoice } from "./types";
+import type { ChamberId, DatePrecision, Locale, VoteChoice } from "./types";
 
 export const chamberLabels: Record<Locale, Record<ChamberId, string>> = {
   ro: {
@@ -39,10 +39,15 @@ export const voteChoiceColors: Record<VoteChoice, string> = {
   unknown: "#94a3b8"
 };
 
-export function formatDate(date: string, locale: Locale): string {
+/**
+ * Formats a stored date. precision "month" means the source gave only the month ("din iun. 2025"),
+ * so no day is shown. Dates are calendar dates: format in UTC so no time zone can shift the day or month.
+ */
+export function formatDate(date: string, locale: Locale, precision: DatePrecision = "day"): string {
   return new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", {
-    day: "2-digit",
+    ...(precision === "day" ? { day: "2-digit" as const } : {}),
     month: "short",
-    year: "numeric"
+    year: "numeric",
+    timeZone: "UTC"
   }).format(new Date(date));
 }

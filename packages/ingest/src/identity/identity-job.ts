@@ -2,6 +2,10 @@ import { readFile } from "node:fs/promises";
 import { createDbSession, type DbClient } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import { sql } from "drizzle-orm";
+import { splitDisplayName } from "../parsers/roster";
+import { slugify } from "../parsers/utils";
+import { withoutOfficeTitle } from "./names";
+import { recordRetiredSlug } from "./member-merge";
 import { resolvePeople, type IdentityDecisions, type IdentityMember, type ResolveResult } from "./resolve-people";
 
 export const DEFAULT_DECISIONS_PATH = new URL("../../../../data/curated/identity-decisions.json", import.meta.url);
@@ -101,7 +105,32 @@ function planPeopleChanges(members: IdentityMember[], result: ResolveResult, all
   return { aliases, orphanPeople };
 }
 
+/** Removes parliamentary offices from stored member and person names (and their slugs, when the clean slug is free). */
+async function cleanOfficeTitlesInNames(db: DbClient) {
+  const pattern = ",\\s*(pre[sşș]edinte(le)?|vicepre[sşș]edinte|chestor|secretar)\\y";
+  const members = await db.execute<{ id: string; display_name: string; slug: string }>(sql`select id, display_name, slug from members where display_name ~* ${pattern}`);
+  for (const member of members) {
+    const clean = splitDisplayName(withoutOfficeTitle(member.display_name));
+    const slug = slugify(clean.displayName);
+    await db.execute(sql`
+      update members set display_name = ${clean.displayName}, first_name = ${clean.firstName}, last_name = ${clean.lastName},
+        slug = case when exists (select 1 from members other where other.slug = ${slug} and other.id <> ${member.id}) then slug else ${slug} end
+      where id = ${member.id}`);
+    await recordRetiredSlug(db, member.slug, member.id);
+  }
+  const people = await db.execute<{ id: string; display_name: string }>(sql`select id, display_name from people where display_name ~* ${pattern}`);
+  for (const person of people) {
+    const displayName = withoutOfficeTitle(person.display_name);
+    const slug = slugify(displayName);
+    await db.execute(sql`
+      update people set display_name = ${displayName},
+        slug = case when exists (select 1 from people other where other.slug = ${slug} and other.id <> ${person.id}) then slug else ${slug} end
+      where id = ${person.id}`);
+  }
+}
+
 async function applyIdentityPlan(db: DbClient, plan: IdentityPlan) {
+  await cleanOfficeTitlesInNames(db);
   for (const person of plan.newPeople) {
     await db.insert(schema.people).values({
       id: person.id,

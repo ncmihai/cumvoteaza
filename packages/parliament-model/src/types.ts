@@ -533,7 +533,9 @@ export interface IndividualVote {
 export interface MemberHistoryRow {
   id: string;
   startsOn: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
   legislatureId?: string;
   chamber: ChamberId;
   type: "mandate" | "group" | "party" | "committee" | "role" | "relation";
@@ -551,7 +553,9 @@ export interface MemberHistoryRow {
 export interface MemberCareerSegment {
   id: string;
   startsOn: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
   legislatureId?: string;
   chamber: ChamberId;
   label: string;

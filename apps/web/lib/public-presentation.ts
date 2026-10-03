@@ -1,6 +1,7 @@
 import type {
   Bill,
   ChamberId,
+  DatePrecision,
   GovernanceAlignment,
   Government,
   Legislature,
@@ -70,7 +71,9 @@ export interface MemberCareerPresentation {
   hasChanges: boolean;
   hasAmbiguousDates: boolean;
   startsOn?: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
 }
 
 export interface MemberProfileContextPresentation {
@@ -258,7 +261,9 @@ export function presentMemberCareer(
       previous.legislatureId === segment.legislatureId &&
       periodsTouch(previous.endsOn, segment.startsOn)
     ) {
-      previous.endsOn = laterDate(previous.endsOn, segment.endsOn);
+      const endsOn = laterDate(previous.endsOn, segment.endsOn);
+      previous.endsOnPrecision = endsOn === segment.endsOn ? segment.endsOnPrecision : previous.endsOnPrecision;
+      previous.endsOn = endsOn;
       previous.events = mergeById(previous.events, segment.events);
       previous.governance = mergeGovernanceContexts(previous.governance, segment.governance);
       previous.logoUrl ??= segment.logoUrl;
@@ -282,7 +287,9 @@ export function presentMemberCareer(
     hasChanges: normalized.length > 1 || affiliationCount > 1 || legislatureCount > 1,
     hasAmbiguousDates,
     startsOn: normalized[0]?.startsOn,
-    endsOn: normalized.at(-1)?.endsOn
+    startsOnPrecision: normalized[0]?.startsOnPrecision,
+    endsOn: normalized.at(-1)?.endsOn,
+    endsOnPrecision: normalized.at(-1)?.endsOnPrecision
   };
 }
 
