@@ -37,6 +37,8 @@
     "roster:crosscheck:all": "tsx src/cli.ts roster:crosscheck:all",
     "identity:resolve": "tsx src/cli.ts identity:resolve",
     "integrity:check": "tsx src/cli.ts integrity:check",
+    "urls:snapshot": "tsx src/cli.ts urls:snapshot",
+    "urls:check": "tsx src/cli.ts urls:check",
     "identity:merge-members": "tsx src/cli.ts identity:merge-members",
     "governments:skeleton": "tsx src/cli.ts governments:skeleton",
     "audit:government-cabinets": "tsx src/cli.ts audit:government-cabinets",

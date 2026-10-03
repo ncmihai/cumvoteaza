@@ -433,8 +433,9 @@ function periodsTouch(endsOn: string | undefined, startsOn: string): boolean {
   return start <= end + 86_400_000;
 }
 
+/** Periods that only share a boundary (one ends in June, the next starts in June) hand over; they do not overlap. */
 function periodsOverlap(leftStart: string, leftEnd: string | undefined, rightStart: string, rightEnd: string | undefined): boolean {
-  return leftStart <= (rightEnd ?? "9999-12-31") && rightStart <= (leftEnd ?? "9999-12-31");
+  return leftStart < (rightEnd ?? "9999-12-31") && rightStart < (leftEnd ?? "9999-12-31");
 }
 
 function laterDate(left?: string, right?: string): string | undefined {

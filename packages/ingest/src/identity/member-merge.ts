@@ -180,7 +180,7 @@ async function mergeMember(db: DbClient, from: string, into: string, reason: str
 }
 
 /** Records a profile slug that no longer exists so /members/<slug> can redirect to the member's current page. */
-export async function recordRetiredSlug(db: DbClient, slug: string | undefined, memberId: string) {
+export async function recordRetiredSlug(db: Pick<DbClient, "execute">, slug: string | undefined, memberId: string) {
   if (!slug) return;
   await db.execute(sql`
     insert into id_aliases (alias_id, canonical_id, kind, reason)

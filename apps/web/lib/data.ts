@@ -2552,6 +2552,25 @@ function firstSourceId(members: Member[], key: string): string | undefined {
   return members.map((member) => member.sourceIds[key]).find(Boolean);
 }
 
+/**
+ * Which dated affiliation tells a mandate's story: per legislature and chamber, the source that documents more
+ * changes. CDEP dates every group change, while the official party field often keeps only the list the member
+ * was elected on (Ninel Peia: party "SOS" all along, groups SOS -> unaffiliated -> PACE). When both document the
+ * same number of periods, parties win because their labels are cleaner.
+ */
+function careerSourceRows(history: MemberHistoryRow[]): MemberHistoryRow[] {
+  const buckets = new Map<string, { parties: MemberHistoryRow[]; groups: MemberHistoryRow[] }>();
+  for (const row of history) {
+    if (row.type !== "party" && row.type !== "group") continue;
+    const key = `${row.legislatureId ?? "?"}|${row.chamber}`;
+    const bucket = buckets.get(key) ?? { parties: [], groups: [] };
+    (row.type === "party" ? bucket.parties : bucket.groups).push(row);
+    buckets.set(key, bucket);
+  }
+  return [...buckets.values()].flatMap(({ parties, groups }) =>
+    groups.length > parties.length || parties.length === 0 ? groups : parties);
+}
+
 function buildMemberCareerSegments(
   history: MemberHistoryRow[],
   groups: ParliamentaryGroup[],
@@ -2564,11 +2583,7 @@ function buildMemberCareerSegments(
   const partyByLabel = new Map(parties.map((party) => [party.shortName, party]));
   const partyById = new Map(parties.map((party) => [party.id, party]));
   const partyIdByLabel = new Map(parties.map((party) => [party.shortName, party.id]));
-  const partyRows = history.filter((row) => row.type === "party");
-  const groupFallbackRows = history.filter((row) => row.type === "group" && !partyRows.some((partyRow) =>
-    partyRow.chamber === row.chamber && rangesOverlap(partyRow.startsOn, partyRow.endsOn, row.startsOn, row.endsOn)
-  ));
-  const rows = [...partyRows, ...groupFallbackRows]
+  const rows = careerSourceRows(history)
     .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.label.localeCompare(b.label));
   const segments: MemberCareerSegment[] = [];
   for (const row of normalizeCareerRows(rows, partyIdByLabel, formationEvents)) {

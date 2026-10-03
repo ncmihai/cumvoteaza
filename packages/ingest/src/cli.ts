@@ -503,6 +503,35 @@ async function main() {
     return;
   }
 
+  if (command === "urls:snapshot" || command === "urls:check") {
+    // Profile URL continuity: every member slug that existed before a repair must still resolve afterwards,
+    // either directly or through a retired-slug alias (the site redirects those).
+    const file = flag("file");
+    if (!file) throw new Error("--file=<path> is required");
+    const session = createDbSession();
+    try {
+      if (command === "urls:snapshot") {
+        // Public profiles: members with a mandate or recorded votes (others were never linked from the site).
+        const rows = await session.db.execute<{ slug: string }>(sql`
+          select slug from members m
+          where exists (select 1 from member_mandates x where x.member_id = m.id) or exists (select 1 from individual_votes x where x.member_id = m.id)
+          order by slug`);
+        await writeFile(file, rows.map((row) => row.slug).join("\n") + "\n");
+        console.log(JSON.stringify({ snapshot: file, slugs: rows.length }));
+      } else {
+        const before = (await readFile(file, "utf8")).split("\n").filter(Boolean);
+        const rows = await session.db.execute<{ slug: string }>(sql`
+          select slug from members union select substring(alias_id from 6) from id_aliases where kind = 'member-slug'`);
+        const resolvable = new Set(rows.map((row) => row.slug));
+        const broken = before.filter((slug) => !resolvable.has(slug));
+        console.log(JSON.stringify({ before: before.length, broken: broken.length, sample: broken.slice(0, 20) }, null, 2));
+      }
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
   if (command === "integrity:check") {
     const results = await runIntegrityChecks();
     for (const result of results) {

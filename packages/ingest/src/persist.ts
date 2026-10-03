@@ -35,6 +35,7 @@ import type { ParsedChamberVote } from "./parsers/chamber-vote";
 import { classifyVote } from "./vote-classification";
 import { resolveVoters, type SittingMember, type VoterResolution } from "./identity/resolve-voters";
 import { hasOfficeTitle } from "./identity/names";
+import { recordRetiredSlug } from "./identity/member-merge";
 
 const defaultLegislature = {
   id: "leg-2024-2028",
@@ -571,6 +572,11 @@ async function upsertMembers(db: Db, members: Member[]) {
           sourceIds: sql`excluded.source_ids`
         }
       });
+  }
+  // A profile URL changed (e.g. an office title removed from the name): keep the old URL working.
+  for (const value of values) {
+    const previousSlug = byId.get(value.id)?.slug;
+    if (previousSlug && previousSlug !== value.slug) await recordRetiredSlug(db, previousSlug, value.id);
   }
 }
 

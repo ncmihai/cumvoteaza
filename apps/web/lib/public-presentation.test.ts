@@ -119,6 +119,18 @@ describe("public presentation contracts", () => {
     expect(result.hasAmbiguousDates).toBe(true);
   });
 
+  it("treats a month-precision hand-over as a dated change, not an ambiguous overlap (Ninel Peia, 2024 Senate)", () => {
+    const result = presentMemberCareer([
+      { ...career("sos", "SOS RO", "2024-12-21", "2025-06-01", "sos-ro"), endsOnPrecision: "month" },
+      { ...career("neaf", "Neafiliați", "2025-06-01", "2025-09-01", undefined as unknown as string), startsOnPrecision: "month", endsOnPrecision: "month" },
+      { ...career("pace", "PACE", "2025-09-01", undefined, "pace"), startsOnPrecision: "month" }
+    ]);
+    expect(result.segments.map((segment) => segment.label)).toEqual(["SOS RO", "Neafiliați", "PACE"]);
+    expect(result.hasAmbiguousDates).toBe(false);
+    expect(result.startsOnPrecision).toBeUndefined();
+    expect(result.segments[2]!.startsOnPrecision).toBe("month");
+  });
+
   it("builds member context from sourced roles before weaker evidence", () => {
     const role: MemberHistoryRow = { id: "r", startsOn: "2025-01-01", legislatureId: "leg", chamber: "deputies", type: "role", label: "Vicepreședinte al Camerei Deputaților", details: "", votesFor: 0, votesAgainst: 0, abstentions: 0, proposals: 0 };
     const result = presentMemberProfileContext({ identity: { name: "Ana Exemplu" }, chamberLabel: "Camera Deputaților", partyLabel: "PNL", legislatureId: "leg", legislatureLabel: "2024–2028", history: [role], sponsoredBillCount: 12, locale: "ro", asOf: "2026-01-01" });

@@ -17,6 +17,9 @@ log_dir="data/imports/identity-repair-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$log_dir"
 step() { echo; echo "== $1"; }
 
+step "0/7 snapshot public profile URLs"
+npm run --silent ingest:urls:snapshot -- --file="$PWD/$log_dir/0-urls-before.txt" | tee "$log_dir/0-urls.log"
+
 step "1/7 migrations"
 npm run db:migrate >"$log_dir/1-migrate.log" 2>&1
 
@@ -38,6 +41,10 @@ npm run --silent ingest:identity:resolve -- --persist | tee "$log_dir/5-identity
 step "6/7 read models"
 npm run --silent ingest:refresh-read-models >"$log_dir/6-read-models.log" 2>&1
 
-step "7/7 integrity checks (blocking)"
+step "7/7 integrity checks (blocking) and URL continuity"
 npm run --silent ingest:integrity:check | tee "$log_dir/7-integrity.log"
+npm run --silent ingest:urls:check -- --file="$PWD/$log_dir/0-urls-before.txt" | tee "$log_dir/7-urls.log"
+grep -q '"broken": 0' "$log_dir/7-urls.log" || { echo "Some public profile URLs no longer resolve (see 7-urls.log)." >&2; exit 1; }
 echo; echo "Done. Logs: $log_dir"
+echo "Next: deploy the matching code, then revalidate the site's data cache (profile pages are cached):"
+echo "  curl -H \"Authorization: Bearer \$CRON_SECRET\" 'https://cumvoteaza.vercel.app/api/cron/daily-import?revalidateOnly=1'"

@@ -49,6 +49,8 @@
     "ingest:roster:crosscheck:all": "npm --workspace @cumsevoteaza/ingest run roster:crosscheck:all --",
     "ingest:identity:resolve": "npm --workspace @cumsevoteaza/ingest run identity:resolve --",
     "ingest:integrity:check": "npm --workspace @cumsevoteaza/ingest run integrity:check --",
+    "ingest:urls:snapshot": "npm --workspace @cumsevoteaza/ingest run urls:snapshot --",
+    "ingest:urls:check": "npm --workspace @cumsevoteaza/ingest run urls:check --",
     "ingest:identity:merge-members": "npm --workspace @cumsevoteaza/ingest run identity:merge-members --",
     "ingest:governments:skeleton": "npm --workspace @cumsevoteaza/ingest run governments:skeleton --",
     "ingest:audit:government-cabinets": "npm --workspace @cumsevoteaza/ingest run audit:government-cabinets --",
