@@ -8,6 +8,170 @@
       ],
       "personId": "person-ion-iliescu",
       "reason": "Former president Ion Iliescu: Bucharest senator 1996-2000 and 2004-2008. The Hunedoara deputy (1990) / senator (2000) of the same name is a different person (CDEP links his two mandates to each other, not to these)."
+    },
+    {
+      "members": [
+        "member-deputies-106",
+        "member-deputies-2020-107",
+        "member-senate-2012-64",
+        "member-senate-2016-54"
+      ],
+      "reason": "Mihai-Viorel Fifor: official CDEP CV evidence: CV leg2024:cam2:idm106 names mandate leg2012:cam1:idm64, leg2016:cam1:idm54; CV leg2020:cam2:idm107 names mandate leg2012:cam1:idm64, leg2016:cam1:idm54. Review row 1, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-1990-183",
+        "member-deputies-1992-161"
+      ],
+      "reason": "Carol-Matei Ivanciov: official CDEP CV evidence: CV leg1992:cam2:idm161 names mandate leg1990:cam2:idm183. Review row 3, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2004-359",
+        "member-senate-2012-16"
+      ],
+      "reason": "Marius Bălu: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 16, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-103",
+        "member-senate-2016-50"
+      ],
+      "reason": "Nicu Fălcoi: official CDEP CV evidence: CV leg2020:cam2:idm103 names mandate leg2016:cam1:idm50. Review row 18, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-174",
+        "member-senate-2008-68"
+      ],
+      "reason": "Ioan Mang: official CDEP CV evidence: CV leg2020:cam2:idm174 names mandate leg2008:cam1:idm68. Review row 19, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-249",
+        "member-senate-2008-109"
+      ],
+      "reason": "Marian-Iulian Rasaliu: owner accepted the recommendation (likely same): same constituency/rare name, no contrary evidence. Review row 20, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-257",
+        "member-senate-2016-109"
+      ],
+      "reason": "Viorel Salan: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 21, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-272",
+        "member-senate-2016-120"
+      ],
+      "reason": "George-Cătălin Stângă: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 22, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-296",
+        "member-senate-2012-158"
+      ],
+      "reason": "Nelu Tătaru: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 23, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-2020-306",
+        "member-senate-2016-127"
+      ],
+      "reason": "Vasilică Toma: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 24, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-137",
+        "member-senate-2012-120",
+        "member-senate-2016-90",
+        "member-senate-2020-88"
+      ],
+      "reason": "Ştefan Radu Oprea: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 25, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-1990-66",
+        "member-senate-1992-98",
+        "member-senate-2012-126"
+      ],
+      "reason": "Teiu Păunescu: owner accepted the recommendation (likely same): same constituency/rare name, no contrary evidence. Review row 27, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-1992-22",
+        "member-senate-1996-1028"
+      ],
+      "reason": "Aristotel Adrian Câncescu: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 28, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-1996-1095",
+        "member-senate-2008-99",
+        "member-senate-2012-121"
+      ],
+      "reason": "Liviu Titus Paşca: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 29, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-20",
+        "member-senate-2020-22",
+        "member-senate-2016-22"
+      ],
+      "reason": "Robert-Marius Cazanciuc: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 30, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-2008-86",
+        "member-senate-2012-105",
+        "member-senate-2020-81"
+      ],
+      "reason": "Gabriel Mutu: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 31, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-2012-66",
+        "member-senate-2020-50"
+      ],
+      "reason": "Gabriela Firea: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 32, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-2016-121",
+        "member-senate-2020-117"
+      ],
+      "reason": "Cristina-Mariana Stocheci: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 33, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-2016-128",
+        "member-senate-2020-125"
+      ],
+      "reason": "Lucian Trufin: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 34, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-2016-46",
+        "member-senate-2020-45",
+        "member-senate-37"
+      ],
+      "reason": "Eugen Dogariu: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 35, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-senate-2016-49",
+        "member-senate-2020-47",
+        "member-senate-38"
+      ],
+      "reason": "Marius-Alexandru Dunca: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 36, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-1990-46",
+        "member-senate-1992-6"
+      ],
+      "reason": "Griguţă-Augustin Botiş: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 37, 2026-10-03."
     }
   ],
   "different": [
@@ -17,6 +181,20 @@
         "member-senate-2004-50"
       ],
       "reason": "Ion Iliescu the former president was President of Romania in 1990 and from December 2000 to December 2004, so he cannot be the Hunedoara deputy of 1990 or the Hunedoara senator of 2000-2004. CDEP links those two mandates to each other and the president's Bucharest Senate mandates (1996, 2004) to each other, never across."
+    },
+    {
+      "members": [
+        "member-deputies-1990-419",
+        "member-deputies-2008-261"
+      ],
+      "reason": "Gheorghe Roman: official CDEP CVs show different birth dates 1949-03-27 vs 1972-02-06. Review row 9, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-1992-327",
+        "member-deputies-2000-315"
+      ],
+      "reason": "Valentin. Vasilescu: official CDEP CVs show different birth dates 1935-11-06 vs 1961-06-16. Review row 13, 2026-10-03."
     }
   ]
 }

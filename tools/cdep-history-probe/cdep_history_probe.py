@@ -136,6 +136,12 @@ def main() -> None:
     preview.add_argument("--profiles", type=Path, default=DEFAULT_OUT_DIR / "parsed" / "profiles.jsonl")
     preview.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR / "parsed" / "import-preview.json")
 
+    cvs = sub.add_parser("cvs", help="Fetch and parse CDEP CV pages (birth date/place) for given profile keys. Polite and cached.")
+    cvs.add_argument("--profile-keys", type=Path, required=True, help="File with one profile key per line, e.g. leg2004:cam2:idm111.")
+    cvs.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
+    cvs.add_argument("--delay", type=float, default=2.0, help="Seconds between live fetches.")
+    cvs.add_argument("--insecure", action="store_true")
+
     reparse = sub.add_parser("reparse", help="Re-parse cached raw profile pages into profiles.jsonl. Never touches the network.")
     reparse.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
 
@@ -164,6 +170,81 @@ def main() -> None:
     if args.command == "reparse":
         run_reparse(args)
         return
+    if args.command == "cvs":
+        run_cvs(args)
+        return
+
+
+def cv_url(profile_key: str) -> str:
+    match = re.fullmatch(r"leg(\d{4}):cam(\d):idm(\d+)", profile_key)
+    if not match:
+        raise ValueError(f"Not a CDEP profile key: {profile_key}")
+    year, cam, idm = match.groups()
+    # www host directly: urllib turns the cdep.ro -> www.cdep.ro redirect into an HTTP 500 for these pages.
+    return canonical_url(f"https://www.cdep.ro/ords/pls/parlam/structura.mp?idm={idm}&cam={cam}&leg={year}&pag=0&idl=1")
+
+
+RO_MONTHS_FULL = {
+    "ianuarie": 1, "februarie": 2, "martie": 3, "aprilie": 4, "mai": 5, "iunie": 6,
+    "iulie": 7, "august": 8, "septembrie": 9, "octombrie": 10, "noiembrie": 11, "decembrie": 12,
+}
+_BIRTH_LABEL = re.compile(
+    r"(?:Data\s+(?:si|şi|și)\s+locul\s+na[sşș]terii|Data\s+na[sşș]terii|Locul\s+(?:si|şi|și)\s+data\s+na[sşș]terii|Date\s+biografice\s+n\.|N[ăa]scut[ăa]?\s+(?:la|în|in))\s*:?\s*",
+    re.I,
+)
+_BIRTH_STOP = re.compile(r"\s*(?:;|Stare[a]?\s+civil|Sex\b|Studii|Profesia|Na[tţț]ionalitate|E-mail|Experien[tţț])", re.I)
+
+
+def parse_cv_date(text: str) -> tuple[str | None, str]:
+    """'16 aprilie 1953, Horezu' / '07.10.69 Brastavatu' -> (ISO date, rest). Two-digit years are 19xx (20xx up to 05)."""
+    numeric = re.match(r"(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\s*,?\s*(.*)", text)
+    if numeric:
+        day, month, year, rest = numeric.groups()
+        year_value = int(year) + ((2000 if int(year) <= 5 else 1900) if len(year) == 2 else 0)
+        return f"{year_value:04d}-{int(month):02d}-{int(day):02d}", rest
+    words = re.match(r"(\d{1,2})\s+([A-Za-zăâîşșţțĂÂÎŞȘŢȚ]+)\.?\s+(\d{4})\s*,?\s*(.*)", text)
+    if words:
+        day, month_name, year, rest = words.groups()
+        month = RO_MONTHS_FULL.get(normalize_for_regex(month_name)) or ROMANIAN_MONTHS.get(normalize_for_regex(month_name)[:3])
+        if month:
+            return f"{int(year):04d}-{month:02d}-{int(day):02d}", rest
+    return None, text
+
+
+def parse_cv_page(html_text: str) -> dict[str, Any]:
+    """Birth date/place and update date from a CDEP 'Curriculum Vitae' page (several historical formats)."""
+    text = clean_text(strip_tags(html_text))
+    label = _BIRTH_LABEL.search(text)
+    raw = ""
+    if label:
+        tail = text[label.end(): label.end() + 200]
+        stop = _BIRTH_STOP.search(tail)
+        raw = clean_text(tail[: stop.start()] if stop else tail[:120])
+    birth_date, place = parse_cv_date(raw)
+    updated = re.search(r"Data\s+actualizare:\s*(\d{1,2}\.\d{1,2}\.\d{4})", text)
+    # The CV body (after the second "Curriculum Vitae" heading) also documents the career, e.g. "1990-1992, deputat".
+    first = text.find("Curriculum Vitae")
+    second = text.find("Curriculum Vitae", first + 1) if first >= 0 else -1
+    body = text[second:] if second >= 0 else text
+    return {"birthDateRaw": raw, "birthDate": birth_date, "birthPlace": clean_text(place).strip(" ,.") or None,
+            "updatedRaw": updated.group(1) if updated else None, "text": body[:6000]}
+
+
+def run_cvs(args: argparse.Namespace) -> None:
+    raw_dir = args.out / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    keys = [line.strip() for line in args.profile_keys.read_text(encoding="utf-8").splitlines() if line.strip()]
+    out_path = args.out / "parsed" / "cvs.jsonl"
+    existing = {json.loads(line)["profileKey"]: json.loads(line) for line in out_path.read_text(encoding="utf-8").splitlines() if line.strip()} if out_path.exists() else {}
+    for index, key in enumerate(keys, 1):
+        url = cv_url(key)
+        try:
+            html_text, snapshot = fetch_or_read(url, raw_dir, args.delay, False, args.insecure)
+            existing[key] = {"profileKey": key, "url": url, "fetchedAt": snapshot.get("fetchedAt"), **parse_cv_page(html_text)}
+        except Exception as error:  # keep going; one failure must not lose the batch
+            existing[key] = {"profileKey": key, "url": url, "error": str(error)}
+        print(f"{index}/{len(keys)} {key} {existing[key].get('birthDate') or existing[key].get('error') or 'no birth date'}", flush=True)
+    write_jsonl(out_path, existing.values())
 
 
 def run_reparse(args: argparse.Namespace) -> None:
