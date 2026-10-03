@@ -5,11 +5,10 @@ import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
 import { createDbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
-import { dataHealthIssueKey, type ChamberId } from "@cumsevoteaza/parliament-model";
-import { deleteStoredAssets, importStoredAssetsFromInventory, type AssetType } from "./asset-import";
+import { dataHealthIssueKey } from "@cumsevoteaza/parliament-model";
+import { importStoredAssetsFromInventory, type AssetType } from "./asset-import";
 import { importBillText, importBillTextBatch } from "./bill-text";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
-import { cleanupSupersededCdepHistoryRows } from "./cdep-history-cleanup";
 import { runIdentityJob } from "./identity/identity-job";
 import { runIntegrityChecks } from "./integrity/checks";
 import { applyMemberMergePlan, planMemberMerges } from "./identity/member-merge";
@@ -22,22 +21,15 @@ import { backfillVoteClassifications } from "./vote-classification-backfill";
 import { parseChamberNominalVote } from "./parsers/chamber-vote";
 import { classifyDeputiesDocumentKind, parseDeputiesBill } from "./parsers/deputies-bill";
 import { parseDeputiesMemberProfile, parseDeputiesRosterGroup, parseDeputiesRosterIndex } from "./parsers/deputies-roster";
-import { legislatureCatalog, legislatureFromFlag, partyCatalog, uniqueBy, type ParsedMemberProfile, type ParsedRoster } from "./parsers/roster";
+import { legislatureFromFlag, partyCatalog, uniqueBy, type ParsedMemberProfile, type ParsedRoster } from "./parsers/roster";
 import { parseSenateBill } from "./parsers/senate-bill";
 import { parseSenateMemberProfile, parseSenateRosterGroup, parseSenateRosterIndex } from "./parsers/senate-roster";
 import { parseSenateVote } from "./parsers/senate-vote";
-import {
-  defaultWikipediaRosterUrls,
-  mergeWikipediaRosterPages,
-  parseWikipediaElectionRoster,
-  parseWikipediaRosterIndex
-} from "./parsers/wikipedia-roster";
 import { fetchOfficialSource } from "./fetch-source";
 import { governmentSkeletonData } from "./government-skeleton";
 import { auditCabinetManifests } from "./government-cabinet-manifests";
 import { ministryCatalog } from "./ministry-catalog";
 import { classifyBillMinistryRelations } from "./ministry-relations";
-import { cleanupLocalData } from "./local-data-cleanup";
 import { canonicalizeOfficialUrl } from "./official-urls";
 import {
   persistChamberVote,
@@ -51,18 +43,14 @@ import {
 } from "./persist";
 import { snapshotFor } from "./parsers/utils";
 import { refreshReadModels } from "./read-models";
-import { resetRosterData } from "./roster-reset";
-import { crosscheckWikipediaRoster } from "./roster-crosscheck";
 import { writePoliticalEntityCandidates } from "./political-entity-candidates";
 import { seedPoliticalFormationEvents } from "./political-formation-events";
-import { wikipediaRosterToParsedRoster } from "./wikipedia-roster-import";
 import {
   discoverDeputiesSources,
   discoverDeputiesVoteSources,
   discoverSenateVoteSources,
   discoverSenateSources,
   importPendingDiscoveries,
-  runBackfill2024,
   runDailySync
 } from "./sync";
 
@@ -152,7 +140,6 @@ async function main() {
       insecure: hasFlag("insecure"),
       persist: hasFlag("persist")
     });
-    if (process.env.COCKPIT_DATABASE_ROLE && hasFlag("persist") && result.status !== "stored") process.exitCode = 1;
     await writeImport("bill-text", result, JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("persist")) {
@@ -274,16 +261,6 @@ async function main() {
     return;
   }
 
-  if (command === "official-careers") {
-    const parsed = await importOfficialCareers();
-    await writeImport("official-careers", parsed, JSON.stringify(parsed, null, 2));
-    logRosterSummary(parsed);
-    if (hasFlag("persist")) {
-      throw new Error("official-careers can no longer persist: it writes undated group history. Use the CDEP probe + cdep-history:import.");
-    }
-    return;
-  }
-
   if (command === "cdep-history:import") {
     const result = await importCdepHistoryProfiles({
       profilesPath: flag("profiles") ?? path.join(repoRoot, "data/cdep-history/parsed/profiles.jsonl"),
@@ -296,20 +273,6 @@ async function main() {
     console.log(JSON.stringify(compactCdepHistoryImportResult(result), null, 2));
     if (!hasFlag("persist")) {
       console.log("Dry run only. Re-run with --persist to write these official CDEP roster rows.");
-    }
-    return;
-  }
-
-  if (command === "cdep-history:cleanup") {
-    const result = await cleanupSupersededCdepHistoryRows({
-      legislature: flag("legislature"),
-      chamber: chamberFlag(),
-      confirm: hasFlag("confirm")
-    });
-    await writeImport("cdep-history-cleanup", result, JSON.stringify(result, null, 2));
-    console.log(JSON.stringify(result, null, 2));
-    if (!hasFlag("confirm")) {
-      console.log("Dry run only. Re-run with --confirm to delete superseded non-CDEP mandate/profile rows.");
     }
     return;
   }
@@ -339,62 +302,6 @@ async function main() {
     return;
   }
 
-  if (command === "assets:delete-stored") {
-    const result = await deleteStoredAssets({
-      assetType: assetTypeFlag(),
-      legislature: flag("legislature"),
-      minByteSize: numberFlag("min-byte-size"),
-      limit: numberFlag("limit"),
-      confirm: hasFlag("confirm"),
-      markPending: !hasFlag("keep-db-state")
-    });
-    await writeImport("assets-delete-stored", result, JSON.stringify(result, null, 2));
-    console.log(JSON.stringify(result, null, 2));
-    if (!hasFlag("confirm")) {
-      console.log("Dry run only. Re-run with --confirm to delete matching Blob objects and mark rows pending.");
-    }
-    return;
-  }
-
-  if (command === "data:clean") {
-    const result = await cleanupLocalData({
-      repoRoot,
-      confirm: hasFlag("confirm"),
-      includeSystemJunk: !hasFlag("no-system-junk"),
-      includeImports: hasFlag("imports") || hasFlag("all-generated"),
-      includeSnapshots: hasFlag("snapshots") || hasFlag("all-generated"),
-      includeCdepRaw: hasFlag("cdep-raw") || hasFlag("all-generated"),
-      includePipelineRaw: hasFlag("pipeline-raw") || hasFlag("all-generated"),
-      includeParsed: hasFlag("parsed"),
-      keepDays: numberFlag("keep-days"),
-      keepLatest: numberFlag("keep-latest")
-    });
-    const wroteReport = await writeJsonReport("data-clean", result);
-    const selectedCandidates = result.candidates.filter((candidate) => candidate.selected);
-    const previewSource = selectedCandidates.length > 0 ? selectedCandidates : result.candidates;
-    const previewLimit = selectedCandidates.length > 0 ? 50 : 20;
-    console.log(
-      JSON.stringify(
-        {
-          ...result,
-          candidatePreview: selectedCandidates.length > 0 ? "selected" : "first_unselected",
-          candidates: previewSource.slice(0, previewLimit)
-        },
-        null,
-        2
-      )
-    );
-    if (wroteReport && result.candidates.length > previewLimit) {
-      console.log(`Showing ${Math.min(previewLimit, previewSource.length)} of ${result.candidates.length} cleanup candidates. Full report was written to data/imports.`);
-    }
-    if (!hasFlag("confirm")) {
-      console.log(
-        "Dry run only. Re-run with --confirm plus explicit flags such as --imports, --snapshots, --cdep-raw, --pipeline-raw, or --all-generated to delete selected files."
-      );
-    }
-    return;
-  }
-
   if (command === "roster:all") {
     const senate = await importSenateRoster();
     const deputies = await importDeputiesRoster();
@@ -412,94 +319,6 @@ async function main() {
         )
       );
     }
-    return;
-  }
-
-  if (command === "roster:reset") {
-    const confirm = hasFlag("confirm");
-    const summary = await resetRosterData({ dryRun: !confirm });
-    console.log(JSON.stringify(summary, null, 2));
-    if (!confirm) {
-      console.log("Dry run only. Re-run with --confirm to delete roster-derived rows.");
-    }
-    return;
-  }
-
-  if (command === "wikipedia:roster") {
-    const parsed = await importWikipediaRosterPage();
-    await writeImport("wikipedia-roster", parsed, JSON.stringify(parsed, null, 2));
-    console.log(JSON.stringify(wikipediaRosterSummary(parsed), null, 2));
-    return;
-  }
-
-  if (command === "wikipedia:roster:all") {
-    const summaries = [];
-    for (const legislature of allLegislaturesNewestFirst()) {
-      const parsed = await importWikipediaRosterPage(legislature);
-      await writeImport(`wikipedia-roster-${legislature.label}`, parsed, JSON.stringify(parsed, null, 2));
-      summaries.push(wikipediaRosterSummary(parsed));
-    }
-    console.log(JSON.stringify(summaries, null, 2));
-    return;
-  }
-
-  if (command === "wikipedia:roster:import") {
-    const chamber = chamberFlag() ?? "senate";
-    const imports = [];
-    for (const legislature of hasFlag("all") ? allLegislaturesNewestFirst() : [rosterLegislature()]) {
-      const parsedPage = await importWikipediaRosterPage(legislature);
-      const parsedRoster = wikipediaRosterToParsedRoster(parsedPage, chamber);
-      const existingMandates = await existingMandateCount(parsedRoster.legislature.id, chamber);
-      const shouldSkip = hasFlag("skip-existing") && existingMandates > 0;
-      await writeImport(`wikipedia-roster-import-${chamber}-${parsedRoster.legislature.label}`, parsedRoster, JSON.stringify(parsedRoster, null, 2));
-      if (hasFlag("persist")) throw new Error("wikipedia:roster:import can no longer persist: Wikipedia is not an official source (see docs/PLAN.md D11).");
-      const persisted = undefined;
-      imports.push({
-        chamber,
-        legislature: parsedRoster.legislature.label,
-        existingMandates,
-        skipped: shouldSkip,
-        sources: parsedRoster.sourceSnapshots.length,
-        members: parsedRoster.members.length,
-        mandates: parsedRoster.mandates.length,
-        groups: parsedRoster.groups.length,
-        persisted
-      });
-    }
-    console.log(JSON.stringify(imports, null, 2));
-    return;
-  }
-
-  if (command === "wikipedia:roster-index") {
-    const chamber = chamberFlag() ?? "deputies";
-    const url =
-      flag("url") ??
-      (chamber === "senate"
-        ? "https://ro.wikipedia.org/wiki/List%C4%83_de_senatori_rom%C3%A2ni"
-        : "https://ro.wikipedia.org/wiki/List%C4%83_de_deputa%C8%9Bi_rom%C3%A2ni");
-    const parsed = parseWikipediaRosterIndex(await loadHtml(url), url, chamber);
-    await writeImport("wikipedia-roster-index", parsed, JSON.stringify(parsed, null, 2));
-    console.log(JSON.stringify({ chamber, links: parsed.links.length, rows: parsed.links }, null, 2));
-    return;
-  }
-
-  if (command === "roster:crosscheck") {
-    const parsed = await importWikipediaRosterPage();
-    const result = await crosscheckWikipediaRoster(parsed);
-    await writeImport("roster-crosscheck", result, JSON.stringify(result, null, 2));
-    console.log(JSON.stringify(hasFlag("full") ? result : compactCrosscheckResult(result), null, 2));
-    return;
-  }
-
-  if (command === "roster:crosscheck:all") {
-    const results = [];
-    for (const legislature of allLegislaturesNewestFirst()) {
-      const parsed = await importWikipediaRosterPage(legislature);
-      const result = await crosscheckWikipediaRoster(parsed);
-      await writeImport(`roster-crosscheck-${legislature.label}`, result, JSON.stringify(result, null, 2));
-      results.push(hasFlag("full") ? result : compactCrosscheckResult(result));
-    }
-    console.log(JSON.stringify(results, null, 2));
     return;
   }
 
@@ -639,11 +458,6 @@ async function main() {
   }
   if (command === "discover:senate-votes") {
     logSyncResult(await discoverSenateVoteSources(syncOptions()));
-    return;
-  }
-
-  if (command === "backfill:2024") {
-    logSyncResult(await runBackfill2024(syncOptions()));
     return;
   }
 
@@ -1272,80 +1086,6 @@ async function importDeputiesRosterByMemberIds(
   };
 }
 
-async function importOfficialCareers(): Promise<ParsedRoster> {
-  const seedUrls = listFlag("urls") ?? (flag("url") ? [flag("url")!] : undefined);
-  const requestedChamber = chamberFlag();
-  const legislature = rosterLegislature();
-  const from = numberFlag("member-id-from");
-  const to = numberFlag("member-id-to");
-  const limit = Number(flag("limit") ?? "0");
-  const concurrency = Number(flag("concurrency") ?? "4");
-  const chamber = requestedChamber ?? (seedUrls?.[0] ? chamberFromCdepUrl(seedUrls[0]) : "deputies");
-  const seeds = seedUrls ?? (from && to ? Array.from({ length: Math.max(0, to - from + 1) }, (_, index) => defaultCdepMemberProfileUrl(legislature.label, from + index, chamber)) : []);
-  if (seeds.length === 0) throw new Error("official-careers requires --url=... or --member-id-from/--member-id-to");
-
-  const profilesByUrl = new Map<string, ParsedMemberProfile>();
-  const queue = [...seeds.map(canonicalizeOfficialUrl)];
-  const seen = new Set<string>();
-
-  while (queue.length > 0 && (limit <= 0 || profilesByUrl.size < limit)) {
-    const batch = queue.splice(0, concurrency).filter((url) => {
-      if (seen.has(url)) return false;
-      seen.add(url);
-      return true;
-    });
-    const profiles = await mapLimit(batch, concurrency, async (url) => {
-      const profileLegislature = legislatureFromProfileUrl(url) ?? legislature;
-      const html = await fetchOptional(url, "deputies-member-profile");
-      if (!html) return undefined;
-      const profile = parseDeputiesMemberProfile(html, url, { legislature: profileLegislature, chamber: chamberFromCdepUrl(url) });
-      return looksLikeParsedDeputiesMember(profile) ? profile : undefined;
-    });
-    for (const profile of profiles) {
-      profilesByUrl.set(profile.sourceSnapshot.sourceUrl, profile);
-      for (const link of profile.careerLinks ?? []) {
-        const url = canonicalizeOfficialUrl(link.url);
-        if (!seen.has(url)) queue.push(url);
-      }
-    }
-  }
-
-  const profiles = [...profilesByUrl.values()];
-  const primaryLegislature = profiles[0]?.mandate ? legislatureFromFlag(profiles[0].mandate.legislatureId.replace(/^leg-/, "")) : legislature;
-  return {
-    chamber,
-    legislature: primaryLegislature,
-    sourceSnapshots: uniqueBy(profiles.map((profile) => profile.sourceSnapshot), (source) => source.id),
-    parties: uniqueBy(
-      [...profiles.flatMap((profile) => profile.parties ?? []), ...partiesFromGroups(profiles.flatMap((profile) => profile.groups ?? []))],
-      (party) => party.id
-    ),
-    groups: uniqueBy(profiles.flatMap((profile) => profile.groups ?? []), (group) => group.id),
-    members: uniqueBy(profiles.map((profile) => profile.member), (member) => member.id),
-    mandates: uniqueBy(profiles.flatMap((profile) => (profile.mandate ? [profile.mandate] : [])), (mandate) => mandate.id),
-    mandateRelations: uniqueBy(profiles.flatMap((profile) => profile.mandateRelations ?? []), (relation) => relation.id),
-    groupMemberships: uniqueBy(profiles.flatMap((profile) => profile.groupMemberships), (membership) => membership.id),
-    partyAffiliations: uniqueBy(profiles.flatMap((profile) => profile.partyAffiliations), (affiliation) => affiliation.id),
-    committeeMemberships: uniqueBy(profiles.flatMap((profile) => profile.committeeMemberships), (membership) => membership.id),
-    roles: uniqueBy(profiles.flatMap((profile) => profile.roles), (role) => role.id),
-    groupCounts: []
-  };
-}
-
-function defaultCdepMemberProfileUrl(label: string, officialId: number, chamber: ChamberId): string {
-  const cam = chamber === "senate" ? 1 : 2;
-  return `https://www.cdep.ro/ords/pls/parlam/structura.mp?idm=${officialId}&cam=${cam}&leg=${label.slice(0, 4)}&pag=1&idl=1`;
-}
-
-function chamberFromCdepUrl(url: string): ChamberId {
-  return /[?&]cam=1\b/i.test(url) ? "senate" : "deputies";
-}
-
-function legislatureFromProfileUrl(url: string): ParsedRoster["legislature"] | undefined {
-  const year = url.match(/[?&]leg=(\d{4})/i)?.[1];
-  return year ? legislatureFromFlag(year) : undefined;
-}
-
 function flag(name: string): string | undefined {
   const prefix = `--${name}=`;
   return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
@@ -1421,95 +1161,12 @@ function looksLikeParsedDeputiesMember(profile: ParsedMemberProfile): boolean {
   ].includes(profile.member.slug);
 }
 
-async function importWikipediaRosterPage(overrideLegislature?: ReturnType<typeof rosterLegislature>) {
-  const legislature = overrideLegislature ?? rosterLegislature();
-  const explicitUrl = overrideLegislature ? undefined : flag("url");
-  const urls = explicitUrl ? [explicitUrl] : defaultWikipediaRosterUrls(legislature.label);
-  const pages = [];
-  for (const url of urls) {
-    const html = await loadHtml(url);
-    pages.push(parseWikipediaElectionRoster(html, url, { legislature }));
-  }
-  return pages.length === 1 ? pages[0]! : mergeWikipediaRosterPages(pages);
-}
-
-function wikipediaRosterSummary(parsed: Awaited<ReturnType<typeof importWikipediaRosterPage>>) {
-  const byChamber = {
-    deputies: parsed.rows.filter((row) => row.chamber === "deputies").length,
-    senate: parsed.rows.filter((row) => row.chamber === "senate").length
-  };
-  const unknownParties = [...new Set(parsed.rows.filter((row) => row.partyLabel && !row.partyId).map((row) => row.partyLabel))].sort();
-  return {
-    sourceUrl: parsed.sourceUrl,
-    legislature: parsed.legislatureLabel,
-    rows: parsed.rows.length,
-    expectedCounts: parsed.counts,
-    byChamber,
-    unknownParties
-  };
-}
-
-function compactCrosscheckResult(result: Awaited<ReturnType<typeof crosscheckWikipediaRoster>>) {
-  return {
-    source: result.source,
-    legislature: result.legislatureLabel,
-    totals: result.totals,
-    byChamber: Object.fromEntries(
-      Object.entries(result.byChamber).map(([chamber, value]) => [
-        chamber,
-        {
-          wikipediaRows: value.wikipediaRows,
-          officialRows: value.officialRows,
-          expectedCount: value.expectedCount,
-          matched: value.matched,
-          missingOfficial: value.missingOfficial.length,
-          missingWikipedia: value.missingWikipedia.length,
-          partyMismatches: value.partyMismatches.length,
-          examples: {
-            missingOfficial: value.missingOfficial.slice(0, 5).map((row) => ({
-              name: row.displayName,
-              party: row.partyLabel,
-              constituency: row.constituency
-            })),
-            missingWikipedia: value.missingWikipedia.slice(0, 5).map((row) => ({
-              name: row.displayName,
-              party: row.partyShortName,
-              constituency: row.constituency
-            })),
-            partyMismatches: value.partyMismatches.slice(0, 5)
-          }
-        }
-      ])
-    )
-  };
-}
-
-function allLegislaturesNewestFirst() {
-  return uniqueBy(Object.values(legislatureCatalog), (legislature) => legislature.id).sort((a, b) => b.startsOn.localeCompare(a.startsOn));
-}
-
 async function loadHtml(url: string): Promise<string> {
   const fixture = flag("fixture");
   if (fixture) {
     return readFile(path.join(repoRoot, "packages/ingest/src/fixtures", fixture), "utf8");
   }
   return fetchOfficialSource(url);
-}
-
-async function existingMandateCount(legislatureId: string, chamber: "senate" | "deputies"): Promise<number> {
-  if (!process.env.DATABASE_URL) return 0;
-  const session = createDbSession();
-  try {
-    const rows = await session.db.execute<{ count: number }>(sql`
-      select count(*)::int as count
-      from member_mandates
-      where legislature_id = ${legislatureId}
-        and chamber = ${chamber}
-    `);
-    return Number(rows[0]?.count ?? 0);
-  } finally {
-    await session.close();
-  }
 }
 
 async function fetchWithFailureSnapshot(url: string, parser: string): Promise<string> {
@@ -1560,19 +1217,6 @@ async function writeImport(name: string, payload: unknown, raw: string) {
   await writeFile(path.join(importDir, `${now}-${name}.json`), JSON.stringify(payload, null, 2));
   await writeFile(path.join(snapshotDir, `${now}-${name}.html`), raw);
   console.log(`Wrote ${name} import at ${now}`);
-}
-
-async function writeJsonReport(name: string, payload: unknown): Promise<boolean> {
-  if (hasFlag("no-files") || process.env.VERCEL === "1") {
-    console.log(`Skipped local file output for ${name}`);
-    return false;
-  }
-  const now = new Date().toISOString().replace(/[:.]/g, "-");
-  const importDir = path.join(repoRoot, "data/imports");
-  await mkdir(importDir, { recursive: true });
-  await writeFile(path.join(importDir, `${now}-${name}.json`), JSON.stringify(payload, null, 2));
-  console.log(`Wrote ${name} report at ${now}`);
-  return true;
 }
 
 async function writeGovernmentHistoryAudit(payload: unknown, markdown: string) {
@@ -1663,7 +1307,6 @@ function csvCell(value: string): string {
 
 function logSyncResult(result: { failed: number; partial: number; errors: string[] }) {
   console.log(JSON.stringify(result, null, 2));
-  if (process.env.COCKPIT_DATABASE_ROLE && (result.failed > 0 || result.partial > 0 || result.errors.length > 0)) process.exitCode = 1;
 }
 
 function syncOptions() {
@@ -1821,7 +1464,6 @@ function resolveRepoPath(value: string): string {
 }
 
 function loadLocalEnv() {
-  if (process.env.COCKPIT_DATABASE_ROLE) return;
   for (const file of [path.join(repoRoot, ".env"), path.join(repoRoot, ".env.local"), path.join(repoRoot, "apps/web/.env.local")]) {
     if (!existsSync(file)) continue;
     for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {

@@ -1,4 +1,3 @@
-import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import { VoteExplanation } from "@/app/[locale]/_components/VoteExplanation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -52,7 +51,7 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
   const presentation = presentVote(vote, { locale, bill, source });
 
   return <main className="mx-auto max-w-[1600px] bg-[#fbfaf6] px-4 py-5 md:px-8 lg:px-10">
-    <EditorialSections page="vote" locale={locale} entityId={id}/><EngagementTracker entityType="vote" entityId={vote.id} locale={locale}/>
+    <EngagementTracker entityType="vote" entityId={vote.id} locale={locale}/>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d2e0f1] pb-4 text-xs text-[#4b608a]"><Link href={`/${locale}/votes`} className="inline-flex items-center gap-2 font-semibold text-[#075fc6]"><ArrowLeft size={15}/>{locale === "ro" ? "Înapoi la voturi" : "Back to votes"}</Link><ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 bg-transparent text-[#4b608a]"/></div>
     <div className="grid min-w-0 gap-6 pt-5 lg:grid-cols-[minmax(285px,.38fr)_minmax(0,1fr)] xl:gap-8">
       <div className="min-w-0 border-b border-[#d2e0f1] pb-6 lg:border-b-0 lg:border-r lg:pr-7">

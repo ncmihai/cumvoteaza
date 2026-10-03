@@ -41,7 +41,7 @@ export async function explainVote(voteId: string, generate: boolean) {
   if (existing && ["unreviewed", "reviewed", "hidden"].includes(String(existing.status))) return publicResult(existing);
   if (!generate) return { status: existing?.status ?? "missing" };
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (process.env.GEMINI_EXPLANATIONS_ENABLED !== "1" || !apiKey || process.env.COCKPIT_DATABASE_ROLE) return { status: "unavailable" };
+  if (process.env.GEMINI_EXPLANATIONS_ENABLED !== "1" || !apiKey ) return { status: "unavailable" };
   const model = process.env.GEMINI_EXPLANATION_MODEL ?? "gemini-3.5-flash";
   if (!/^gemini-[a-z0-9.-]+$/.test(model)) return { status: "unavailable" };
   const configuredLimit = Number(process.env.GEMINI_EXPLANATIONS_DAILY_LIMIT ?? "100");

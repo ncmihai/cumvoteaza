@@ -1,4 +1,3 @@
-import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
@@ -51,7 +50,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
 
   return (
     <main className="mx-auto max-w-[1440px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
-      <EditorialSections page="bill" locale={locale} entityId={bill.id} billId={bill.id} />
+      
       <EngagementTracker entityType="bill" entityId={bill.id} locale={locale} />
       <nav className="mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
         <Link href={`/${locale}/bills`} className="inline-flex items-center gap-2 font-semibold text-[#075fc6]"><ArrowLeft size={17}/>{locale === "ro" ? "Înapoi la proiecte" : "Back to bills"}</Link>

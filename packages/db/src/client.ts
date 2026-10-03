@@ -36,7 +36,6 @@ export function createPooledDbSession(databaseUrl = process.env.DATABASE_URL) {
 
   const client = postgres(resolvedUrl, {
     max,
-    ...previewConnectionOptions(),
     idle_timeout: 20,
     connect_timeout: 10
   });
@@ -53,24 +52,8 @@ export function createPooledDbSession(databaseUrl = process.env.DATABASE_URL) {
 export type DbSession = ReturnType<typeof createDbSession>;
 export type DbClient = DbSession["db"];
 
-function previewConnectionOptions() {
-  return process.env.COCKPIT_DATABASE_ROLE === "release"
-    ? { connection: { default_transaction_read_only: true } }
-    : {};
-}
-
 function resolveDatabaseUrl(databaseUrl = process.env.DATABASE_URL): string {
-  const strict = process.env.COCKPIT_DATABASE_ROLE;
-  const resolvedUrl = strict ? databaseUrl : databaseUrl ?? readRootEnv().DATABASE_URL;
-  if (strict) {
-    if (!resolvedUrl) throw new Error("An explicit local cockpit database URL is required.");
-    const target = new URL(resolvedUrl);
-    if (!["working", "release", "baseline"].includes(strict) ||
-        !["127.0.0.1", "localhost", "[::1]"].includes(target.hostname) ||
-        target.pathname !== `/cockpit_${strict}` || target.search) {
-      throw new Error("Cockpit processes may only access their assigned local database.");
-    }
-  }
+  const resolvedUrl = databaseUrl ?? readRootEnv().DATABASE_URL;
   if (!resolvedUrl) {
     throw new Error("DATABASE_URL is required to create the database client.");
   }

@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { and, eq, gte, isNotNull } from "drizzle-orm";
-import { del, put } from "@vercel/blob";
 import sharp from "sharp";
 import { createDbSession, storedAssets } from "@cumsevoteaza/db";
 import type { ChamberId } from "@cumsevoteaza/parliament-model";
@@ -46,15 +45,6 @@ export type AssetImportOptions = {
   force?: boolean;
 };
 
-export type AssetDeleteOptions = {
-  assetType?: AssetType;
-  legislature?: string;
-  minByteSize?: number;
-  limit?: number;
-  confirm?: boolean;
-  markPending?: boolean;
-};
-
 export type AssetImportSummary = {
   source: string;
   persist: boolean;
@@ -68,16 +58,7 @@ export type AssetImportSummary = {
   failures: Array<{ id: string; officialUrl: string; status: StoredAssetStatus; error?: string }>;
 };
 
-export type AssetDeleteSummary = {
-  selected: number;
-  confirm: boolean;
-  deleted: number;
-  failed: number;
-  candidates: Array<{ id: string; legislatureId: string | null; blobUrl: string | null; byteSize: number | null }>;
-  failures: Array<{ id: string; blobUrl: string | null; error: string }>;
-};
-
-type AssetStorageProviderName = "vercel_blob" | "ftp" | "digi_storage" | "local";
+type AssetStorageProviderName = "digi_storage";
 type AssetStorageProviderResult = {
   storageProvider: "digi_storage" | "vercel_blob" | "external" | "local";
   storagePath: string;
@@ -171,84 +152,6 @@ export async function importStoredAssetsFromInventory(options: AssetImportOption
   }
 
   return summary;
-}
-
-export async function deleteStoredAssets(options: AssetDeleteOptions): Promise<AssetDeleteSummary> {
-  const session = createDbSession();
-  try {
-    const conditions = [eq(storedAssets.fetchStatus, "stored"), isNotNull(storedAssets.blobUrl)];
-    if (options.assetType) conditions.push(eq(storedAssets.assetType, options.assetType));
-    if (options.legislature) {
-      const normalized = options.legislature.startsWith("leg-") ? options.legislature : `leg-${options.legislature}`;
-      conditions.push(eq(storedAssets.legislatureId, normalized));
-    }
-    if (options.minByteSize && options.minByteSize > 0) {
-      conditions.push(gte(storedAssets.byteSize, Math.floor(options.minByteSize)));
-    }
-
-    const rows = await session.db.query.storedAssets.findMany({
-      where: and(...conditions),
-      limit: options.limit && options.limit > 0 ? options.limit : undefined
-    });
-    const summary: AssetDeleteSummary = {
-      selected: rows.length,
-      confirm: Boolean(options.confirm),
-      deleted: 0,
-      failed: 0,
-      candidates: rows.slice(0, 20).map((row) => ({
-        id: row.id,
-        legislatureId: row.legislatureId,
-        blobUrl: row.blobUrl,
-        byteSize: row.byteSize
-      })),
-      failures: []
-    };
-
-    if (!options.confirm) return summary;
-
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!token) {
-      throw new Error("BLOB_READ_WRITE_TOKEN is required for assets:delete-stored --confirm.");
-    }
-
-    for (const row of rows) {
-      try {
-        if (!row.blobUrl) continue;
-        await del(row.blobUrl, { token });
-        summary.deleted += 1;
-        if (options.markPending !== false) {
-          await session.db
-            .update(storedAssets)
-            .set({
-              blobUrl: null,
-              storageProvider: null,
-              storagePath: null,
-              publicUrl: null,
-              width: null,
-              height: null,
-              variant: null,
-              contentHash: null,
-              mimeType: null,
-              byteSize: null,
-              fetchStatus: "pending",
-              updatedAt: new Date()
-            })
-            .where(eq(storedAssets.id, row.id));
-        }
-      } catch (error) {
-        summary.failed += 1;
-        summary.failures.push({
-          id: row.id,
-          blobUrl: row.blobUrl,
-          error: errorMessageWithCause(error)
-        });
-      }
-    }
-
-    return summary;
-  } finally {
-    await session.close();
-  }
 }
 
 function logAssetImportProgress(processed: number, total: number, summary: AssetImportSummary) {
@@ -381,53 +284,9 @@ async function fetchAndStoreAsset(item: AssetInventoryItem, storage: AssetStorag
   }
 }
 
+/** All stored assets live on Digi Storage (the Vercel Blob, FTP and local cockpit routes were removed, 2026-10). */
 function createAssetStorageProvider(): AssetStorageProvider {
-  if (process.env.COCKPIT_DATABASE_ROLE) {
-    const root = process.env.COCKPIT_ASSET_DIR;
-    if (process.env.COCKPIT_DATABASE_ROLE !== "working" || !root) {
-      throw new Error("Only the local working importer can prepare assets.");
-    }
-    return {
-      name: "local",
-      async upload(input) {
-        const destination = path.resolve(root, input.objectPath);
-        if (!destination.startsWith(path.resolve(root) + path.sep)) throw new Error("Invalid asset path");
-        await mkdir(path.dirname(destination), { recursive: true });
-        await writeFile(destination, input.bytes);
-        return { storageProvider: "local", storagePath: input.objectPath };
-      }
-    };
-  }
-  const provider = (process.env.ASSET_STORAGE_PROVIDER || "vercel_blob").trim().toLowerCase();
-  if (provider === "digi_storage") return createDigiStorageAssetProvider();
-  if (provider === "ftp") return createFtpAssetStorageProvider();
-  if (provider !== "vercel_blob") {
-    throw new Error(`Unsupported ASSET_STORAGE_PROVIDER "${provider}". Use "vercel_blob", "ftp", or "digi_storage".`);
-  }
-
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    throw new Error("BLOB_READ_WRITE_TOKEN is required for assets:import --persist when ASSET_STORAGE_PROVIDER is vercel_blob.");
-  }
-
-  return {
-    name: "vercel_blob",
-    async upload(input) {
-      const blob = await put(input.objectPath, input.bytes, {
-        access: "public",
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: input.mimeType,
-        token
-      });
-      return {
-        storageProvider: "vercel_blob",
-        storagePath: input.objectPath,
-        publicUrl: blob.url,
-        blobUrl: blob.url
-      };
-    }
-  };
+  return createDigiStorageAssetProvider();
 }
 
 function createDigiStorageAssetProvider(): AssetStorageProvider {
@@ -628,54 +487,6 @@ async function readJsonResponse<T>(response: Response, message: string): Promise
   return JSON.parse(text) as T;
 }
 
-function createFtpAssetStorageProvider(): AssetStorageProvider {
-  const host = requiredEnv("ASSET_FTP_HOST");
-  const username = requiredEnv("ASSET_FTP_USERNAME");
-  const password = requiredEnv("ASSET_FTP_PASSWORD");
-  const publicBaseUrl = requiredEnv("ASSET_FTP_PUBLIC_BASE_URL").replace(/\/+$/, "");
-  const basePath = trimSlashes(process.env.ASSET_FTP_BASE_PATH || "cumvoteaza-assets");
-  const port = numberFromEnv("ASSET_FTP_PORT", 21);
-  const secure = process.env.ASSET_FTP_SECURE !== "false";
-  const timeoutMs = numberFromEnv("ASSET_FTP_TIMEOUT_MS", 60_000);
-
-  return {
-    name: "ftp",
-    async upload(input) {
-      const remotePath = [basePath, input.objectPath].filter(Boolean).map(trimSlashes).join("/");
-      const tempDir = await mkdtemp(path.join(tmpdir(), "cumvoteaza-asset-"));
-      const tempPath = path.join(tempDir, path.basename(input.objectPath));
-      const netrcPath = path.join(tempDir, ".netrc");
-      try {
-        await writeFile(tempPath, input.bytes);
-        await writeFile(netrcPath, `machine ${host}\nlogin ${username}\npassword ${password}\n`, { mode: 0o600 });
-        const args = [
-          "--fail",
-          "--silent",
-          "--show-error",
-          "--ftp-create-dirs",
-          "--upload-file",
-          tempPath,
-          "--netrc-file",
-          netrcPath,
-          ftpUrlFor(host, port, remotePath)
-        ];
-        if (secure) args.splice(3, 0, "--ssl-reqd");
-        await execFileAsync("curl", args, { timeout: timeoutMs, maxBuffer: 1024 * 1024 });
-        const publicUrl = `${publicBaseUrl}/${remotePath.split("/").map(encodeURIComponent).join("/")}`;
-        return {
-          storageProvider: "external",
-          storagePath: remotePath,
-          publicUrl,
-          blobUrl: publicUrl
-        };
-      } finally {
-        await unlink(tempPath).catch(() => undefined);
-        await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
-      }
-    }
-  };
-}
-
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required when ASSET_STORAGE_PROVIDER=ftp.`);
@@ -696,11 +507,6 @@ function numberFromEnv(name: string, fallback: number): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`${name} must be a positive number.`);
   return parsed;
-}
-
-function ftpUrlFor(host: string, port: number, remotePath: string): string {
-  const encodedPath = remotePath.split("/").map(encodeURIComponent).join("/");
-  return `ftp://${host}:${port}/${encodedPath}`;
 }
 
 function trimSlashes(value: string): string {

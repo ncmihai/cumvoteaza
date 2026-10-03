@@ -1,4 +1,3 @@
-import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import { getDirectoryFilterOptions, getVoteExplorerData, parseExplorerFilters } from "@/lib/explorer-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
@@ -24,7 +23,7 @@ export default async function VotesPage({
 
   return (
     <EditorialPage>
-      <EditorialSections page="votes" locale={locale} />
+      
       <SearchEngagementTracker entityType="vote" query={filters.q} locale={locale} />
       <EditorialPageHeader eyebrow={new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date())} title={labels.title} subtitle={labels.subtitle} />
       <div>

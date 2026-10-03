@@ -3,7 +3,6 @@ import { ArrowRight, BookOpen, Building2, CalendarRange, Clock3, ExternalLink, I
 import { chamberLabels, formatDate, type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
 import { getCompositionTimelineData, type CompositionMode, type CompositionTimelineStop } from "@/lib/composition-data";
 import { type AppLocale } from "@/lib/i18n";
-import { EditorialSections } from "../_components/EditorialSections";
 import { CompositionTimeline } from "../_components/CompositionTimeline";
 import { CompositionSeatMap } from "../_components/CompositionSeatMap";
 import { presentMemberIdentity } from "@/lib/public-presentation";
@@ -21,7 +20,7 @@ export default async function CompositionsPage({ params, searchParams }: { param
 
   return <main className="mx-auto grid min-h-[calc(100vh-76px)] max-w-[1440px] grid-cols-1 bg-[#fbfaf6] lg:grid-cols-[minmax(0,1fr)_400px]">
     <div className="min-w-0 px-4 py-7 md:px-8 lg:px-10">
-      <EditorialSections page="composition" locale={locale}/>
+      
       <p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${data.asOf}T12:00:00`))}</p>
       <h1 className="mt-2 font-serif text-5xl font-semibold leading-[.96] tracking-[-.045em] text-[#050e2c] md:text-6xl">{isHistory ? (locale === "ro" ? "Istoricul Parlamentului" : "Parliament through time") : (locale === "ro" ? "Cum arată Parlamentul acum" : "What Parliament looks like now")}</h1>
       <p className="mt-3 max-w-4xl font-serif text-lg leading-7 text-[#4b608a]">{isHistory ? (locale === "ro" ? "Explorează legislatura actuală și mandatele încheiate, guvernele lor, prim-miniștrii și oamenii care au ocupat funcțiile publice." : "Explore the current and completed legislatures, their governments, prime ministers and the people who held public office.") : (locale === "ro" ? "Componența actuală a Camerei Deputaților și Senatului, distribuția mandatelor între grupuri și raportarea lor la Guvern." : "The current Chamber and Senate composition, seat distribution by group and relationship to Government.")}</p>

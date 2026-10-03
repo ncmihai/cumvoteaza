@@ -7,7 +7,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const nextConfig: NextConfig = {
-  distDir: process.env.PHASE3A_ISOLATED_TEST === "1" ? ".next-reliability" : process.env.COCKPIT_DATABASE_ROLE === "release" ? ".next-cockpit" : ".next",
+  distDir: process.env.PHASE3A_ISOLATED_TEST === "1" ? ".next-reliability" : ".next",
   outputFileTracingRoot: workspaceRoot,
   turbopack: {
     root: workspaceRoot

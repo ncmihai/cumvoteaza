@@ -1,4 +1,3 @@
-import { EditorialSections } from "@/app/[locale]/_components/EditorialSections";
 import Link from "next/link";
 import { chamberLabels } from "@cumsevoteaza/parliament-model";
 import { getMemberDirectoryData } from "@/lib/data";
@@ -40,7 +39,7 @@ export default async function MembersPage({
 
   return (
     <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum găsești parlamentarul tău?" : "How to find your representative"} body={locale === "ro" ? "Introdu numele, partidul sau județul și folosește filtrele pentru camera și legislatura potrivită." : "Enter a name, party or county and use filters for the right chamber and legislature."} items={locale === "ro" ? ["Caută după nume, partid sau județ.", "Alege camera și legislatura.", "Intră în profil pentru voturi și inițiative."] : ["Search by name, party or county.", "Choose chamber and legislature.", "Open a profile for votes and initiatives."]} />}>
-      <EditorialSections page="members" locale={locale} />
+      
       <SearchEngagementTracker entityType="member" query={filters.q} locale={locale} />
       <EditorialPageHeader eyebrow={new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date())} title={messages.nav.members} subtitle={locale === "ro" ? "Află cine te reprezintă și cum votează." : "See who represents you and how they vote."} />
 

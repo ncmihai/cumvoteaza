@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ error: "Direct production imports are retired. Use the local cockpit and a reviewed release." }, { status: 410 });
+  return NextResponse.json({ error: "Direct production imports are retired. Imports run through the worker and the integrity checks." }, { status: 410 });
 }
 
 function revalidatePublicReadTags() {

@@ -220,33 +220,6 @@ export async function runDailySync(options: SyncOptions = {}): Promise<SyncSumma
   }
 }
 
-export async function runBackfill2024(options: SyncOptions = {}): Promise<SyncSummary> {
-  if (options.dryRun) {
-    const summary = syncSummary(true);
-    const years = options.years ?? defaultYears;
-    addSummary(summary, await discoverSenateSources({ ...options, years }));
-    addSummary(summary, await discoverDeputiesSources({ ...options, years }));
-    addSummary(summary, await importPendingDiscoveries({ ...options, maxImports: options.maxImports ?? 100, maxRetries: options.maxRetries ?? 4 }));
-    return summary;
-  }
-
-  const run = await startIngestionRun("backfill-2024-present");
-  const summary: SyncSummary = { ...syncSummary(false), runId: run.id };
-  try {
-    const years = options.years ?? defaultYears;
-    addSummary(summary, await discoverSenateSources({ ...options, years }));
-    addSummary(summary, await discoverDeputiesSources({ ...options, years }));
-    addSummary(summary, await importPendingDiscoveries({ maxImports: options.maxImports ?? 100, maxRetries: options.maxRetries ?? 4 }));
-    await finishIngestionRun(run.id, statusFromSummary(summary), summary);
-    return summary;
-  } catch (error) {
-    const message = errorMessage(error);
-    summary.errors.push(message);
-    await finishIngestionRun(run.id, "failed", summary, message);
-    return summary;
-  }
-}
-
 export async function importPendingDiscoveries(options: SyncOptions = {}): Promise<SyncSummary> {
   validateDateRange(options);
   const session = createDbSession();
@@ -682,19 +655,6 @@ function chamberFromUrl(url: string): ChamberId | undefined {
   if (/senat\.ro/i.test(url)) return "senate";
   if (/cdep\.ro/i.test(url)) return "deputies";
   return undefined;
-}
-
-function senateSeedUrls(years: number[]): string[] {
-  return uniqueBy(
-    [
-      "https://www.senat.ro/Legis/Lista.aspx",
-      ...years.flatMap((year) => [
-        `https://www.senat.ro/Legis/Lista.aspx?an_cls=${year}`,
-        `https://www.senat.ro/Legis/Lista.aspx?nr_cls=&an_cls=${year}`
-      ])
-    ],
-    (url) => url
-  );
 }
 
 async function discoverGeneratedSenateBills(

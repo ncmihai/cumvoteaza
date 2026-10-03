@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import * as schema from "@cumsevoteaza/db";
@@ -30,14 +28,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       });
     }
 
-    if (asset.storageProvider === "local") {
-      const root = process.env.COCKPIT_ASSET_DIR;
-      if (process.env.COCKPIT_DATABASE_ROLE !== "release" || !root || !asset.storagePath) return new NextResponse("Not found", {status:404});
-      const file = path.resolve(root, asset.storagePath);
-      if (!file.startsWith(path.resolve(root)+path.sep)) return new NextResponse("Not found", {status:404});
-      return new Response(new Uint8Array(await readFile(file)), {headers: responseHeadersForAsset(asset)});
-    }
-
     if (asset.storageProvider === "digi_storage") {
       if (!asset.storagePath) return new NextResponse("Not found", { status: 404 });
       const downloadLink = await getDigiStorageDownloadLink(asset.storagePath);
@@ -50,14 +40,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       return new Response(download.body, {
         status: 200,
         headers
-      });
-    }
-
-    const legacyUrl = asset.publicUrl || asset.blobUrl;
-    if (legacyUrl) {
-      return NextResponse.redirect(legacyUrl, {
-        status: 302,
-        headers: responseHeadersForAsset(asset)
       });
     }
 
