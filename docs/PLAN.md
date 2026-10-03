@@ -62,7 +62,15 @@ Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is 
 | --- | --- | --- | --- |
 | D1 | P1 | **Senators exist twice as member records**: CDEP numeric ID (photo, groups, party history) and senat.ro GUID (all 35,504 nominal votes, roles, committees). On 13 Sept, `closeStaleCurrentMandates` (`packages/ingest/src/persist.ts`) matched the senat.ro roster by member ID, so it **ended all 134 CDEP-ID mandates on 2026-09-12**. Live: [the PM's profile](https://cumvoteaza.vercel.app/ro/members/ilie-gavril-bolojan) says his mandate ended. It will recur on the next Senate roster import. | DB + code, 2026-10-03 |
 | D10 | P1 | **Group history dates thrown away for every MP since 1990.** The CDEP pages state "din / până în <month>", but `tools/cdep-history-probe` keeps only the group name and link, and the import gives every group the mandate start with no end. **About 1,030 member-legislature records** show impossible overlapping groups (e.g. Peia: SOS, unaffiliated and PACE all at once). The raw pages are saved locally (`data/cdep-history/raw`), so no new crawl is needed. | DB + local snapshots |
-| D11 | P1 | **Duplicate people from name order and diacritics.** "Predoiu Marian-Catalin" / "Marian-Cătălin Predoiu", "Ilie-Gavril Bolojan" / "Ilie Bolojan" (the PM). Upper bound: **2,410 name groups covering 4,824 of 5,861 people**; some are real namesakes. Careers are split across two profile pages. | DB |
+| D11 | P1 | **Duplicate people from name order and diacritics.** "Predoiu Marian-Catalin" / "Marian-Cătălin Predoiu", "Ilie-Gavril Bolojan" / "Ilie Bolojan" (the PM). Upper bound: **2,410 name groups covering 4,824 of 5,861 people**; some are real namesakes. Careers are split across two profile pages. Resolved: most were orphan copies; 7 real splits; 3 namesake pairs wrongly merged (the ex-president Ion Iliescu carried a Hunedoara namesake's mandates). | DB |
+| D12 | P1 | **~32,400 Chamber votes of the 2020–2024 legislature credited to the wrong people.** The vote importer used the current-legislature ID scheme; CDEP numbers deputies per legislature, so e.g. Ringo Dămureanu's 2022–2024 votes show on Cristina Dascălu's profile. Verified: 100% of rows match the 2020 deputy's group, 20% the current one. | DB, 2026-10-03 |
+| D13 | P1 | **Vote imports create members, open-ended mandates and open-ended group memberships** from vote rows (204 "ghost voters", more overlapping groups). | code |
+| D14 | P1 | **The senat.ro and CDEP importers delete each other's group/party/committee rows** on every run. | code |
+| D15 | P2 | CDEP gives all 136 senators of 2004–2008 the validation date "17 februarie 2004", before the election (a source typo), creating false overlaps. | local snapshots |
+| D16 | P2 | 12 current Chamber leaders have their office stored in their name (Sorin Grindeanu's last name was "Deputaţilor"). | DB |
+| D17 | P2 | The member page fell back to the first profile whose URL *starts with* the requested name, which could show a namesake. | code |
+| D18 | P3 | Dates are formatted in the viewer's time zone, so a calendar date can shift to the previous day west of UTC. | code |
+| D19 | P2 | Committee memberships also get whole-mandate dates although CDEP gives "(din … / până în …)". Follow-up. | code |
 | D2 | P1 | Data stale since 2026-09-09; no unattended updater. | DB query |
 | D3 | P1 | Vote seat map turns *missing* nominal records into "absent" and silently trims roster conflicts. | archive/review-2026-09-24 R2 |
 | D4 | P1 | Seat-map reconciliation compares the map to its own counts, so it can never fail. | review R3 |
@@ -114,11 +122,16 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 
 ### Phase 2 — Data trust fixes
 
-**First (pulled forward because it is the core of "what did X do"): identity and group history.**
-- [ ] Probe parser keeps the "din / până în" dates for groups and parties; re-parse the local raw snapshots (no crawling). Store month precision honestly → Q12.
-- [ ] Identity resolution: one person per human, one member record per person per chamber. Auto-merge only with corroboration (official CDEP career links, matching mandates and constituency, no overlapping mandates); everything else goes to a short review list (D-014).
-- [ ] Fix `closeStaleCurrentMandates` to match on resolved identity, not member ID, so D1 cannot recur.
-- [ ] Dry-run diff → owner review → apply to production. Regression checks: no overlapping groups, no duplicate name keys without a recorded "distinct people" decision, no mandate ended by a roster run for someone still on that roster.
+**First (pulled forward because it is the core of "what did X do"): identity and group history.** Branch `fix/member-identity-and-group-history`.
+- [x] Probe parser keeps the "din / până în" dates for groups and parties; offline `reparse` of the 5,289 saved pages; month precision stored and shown as "iun. 2025" (D-013, D18).
+- [x] Identity resolver from official evidence only (D-014): CDEP career links, same seat seen by two sources, owner decisions in `data/curated/identity-decisions.json`; simultaneous seats split namesakes. Replaces the name-slug `people:backfill`.
+- [x] One member record per mandate: senat.ro records folded into CDEP records, ghost voters re-attached, D12 votes re-attributed; `id_aliases` so no importer can recreate a retired ID; retired profile URLs redirect (D17).
+- [x] Importers: votes never create members/mandates/memberships (D13); only CDEP owns group/party history and each importer deletes only its own rows (D14); mass mandate closure refused (D1); `official-careers` and `wikipedia:roster:import` can no longer persist.
+- [x] `integrity:check`: 10 blocking + 3 warning checks. Production today: 8 blocking checks fail. Rehearsal copy after repair: all 13 pass, 226,093 votes preserved.
+- [x] Runbook `tools/identity-repair/run.sh` (refuses to run without confirming the target host).
+- [ ] Owner: answer the 37-row review in `data/curated/identity-review.md` (not blocking; undecided rows stay as today).
+- [ ] Owner approval → run the runbook on production → verify the live site.
+- [ ] Follow-up: committee dates (D19).
 
 Then:
 - [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
@@ -161,6 +174,7 @@ Each item gets its own exit criteria when started.
 
 | Date | Entry |
 | --- | --- |
+| 2026-10-03 | Identity and group-history repair built and rehearsed on a Neon copy of production (all integrity checks pass). Found and fixed D12–D18 on the way. Awaiting owner approval to apply. |
 | 2026-10-03 | Senate repair investigation found the problem is systemic (D1, D10, D11), not Senate-only. A quick patch would swap one false claim for another, so it was not applied. Identity and group-history rebuild pulled to the front of Phase 2. |
 | 2026-10-03 | Owner decisions: updater on the BC250, auto-publish behind checks, local data stays local for now. Phase 0 merged to `main`. |
 | 2026-10-03 | Took over from Codex. Phase 0 started: 3B parked, network-dependent test fixed, docs consolidated, D1 (Senate mandate churn) and D2 (stale data) found in production. |
