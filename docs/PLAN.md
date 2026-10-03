@@ -83,9 +83,9 @@ Goal: a clean `main`, green tests, one plan.
 - [x] Park the uncommitted Codex 3B work on branch `wip/codex-3b-cabinet-evidence` (local, not pushed). Captures remain in `data/cabinet-evidence/`.
 - [x] Fix `discovery-empty-source.test.ts`, which silently hit the live senat.ro. Suite green.
 - [x] Write `PLAN.md`, `DECISIONS.md` and `CLAUDE.md`; archive old docs.
-- [ ] Back up local data → Q3.
+- [x] Back up local data: deferred; stays local for now (D-009).
 - [ ] Set up bug intake for the tester → Q4.
-- [ ] Merge `phase-0-stabilize` into `main` (owner approves).
+- [x] Merge `phase-0-stabilize` into `main` (approved 2026-10-03).
 
 **Exit:** `main` clean and green, this plan merged.
 
@@ -100,8 +100,12 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
   - 50 DB tables (which are read by the site, which are orphaned);
   - three asset-storage backends.
 - [ ] **Data integrity checks.** Write repeatable SQL checks against production: duplicate people and members, impossible or fabricated dates (D1), votes without nominal rows, nominal totals ≠ official totals, mandates over seat capacity, orphans. These become the updater's health gate in Phase 3.
-- [ ] **Live spot-check.** About 20 records (votes, MPs, ministers) compared on the live site against the official source.
+- [ ] **Source vs stored.** A script that re-fetches a sample of official pages (votes, MP profiles, rosters) and diffs them against what we stored: totals, nominal rows, names, dates, affiliations. It runs offline against saved snapshots, and becomes an updater check in Phase 3 (D-008).
+- [ ] **Live spot-check.** About 20 records (votes, MPs, ministers) compared on the live site against the official source, by hand.
+- [ ] **UI walkthrough.** Every public route on desktop and mobile: what it shows, where the data comes from, what is broken or confusing, and what is missing.
+- [ ] **Missing-info brainstorm.** For each entity (MP, vote, bill, party, cabinet, minister, president, ambassador), what a citizen would want to know and we don't have yet, ranked by value and effort.
 - [ ] **Re-verify D3–D8.**
+- [ ] Inventory local `data/` (~2.5 GB): keep or delete (D-009).
 - [ ] Output: `docs/audit-2026-10.md` with findings and the agreed cut list. Decisions go into `DECISIONS.md`.
 
 **Exit:** audit written, cut list agreed, cuts made.
@@ -118,8 +122,8 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 
 Goal: new votes for this legislature appear on the site without manual work.
 
-- Proposed: a scheduled job on the **BC250**. It has a residential Romanian IP (CDEP blocks some networks, see `docs/cdep-access.md`), is always on, and is the same box that will run the local model. → Q1
-- Job flow: discover new sittings → import → run integrity checks → publish if they pass, otherwise hold and notify. → Q2
+- Runs on the **BC250** (CachyOS) from a systemd timer (D-007). Every run catches up from the last successful run, because the box is only *almost* always on.
+- Job flow: discover new sittings → import → integrity checks plus source-vs-stored comparison → **auto-publish if all pass**, otherwise hold and notify (D-008, Q11).
 - The site shows a visible "data updated on …" date per chamber.
 
 **Exit:** two consecutive weeks of sitting days imported with zero manual intervention.
@@ -148,4 +152,5 @@ Each item gets its own exit criteria when started.
 
 | Date | Entry |
 | --- | --- |
+| 2026-10-03 | Owner decisions: updater on the BC250, auto-publish behind checks, local data stays local for now. Phase 0 merged to `main`. |
 | 2026-10-03 | Took over from Codex. Phase 0 started: 3B parked, network-dependent test fixed, docs consolidated, D1 (Senate mandate churn) and D2 (stale data) found in production. |
