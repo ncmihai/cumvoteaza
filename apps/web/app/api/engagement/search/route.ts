@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import * as schema from "@cumsevoteaza/db";
 import {
   analyticsEnabled,
+  anonymousMarker,
+  clearLegacyVisitorCookie,
   hashValue,
   isEngagementEntityType,
   isLocaleValue,
-  normalizeTrackedQuery,
-  setVisitorCookie,
-  visitorHashForRequest
+  normalizeTrackedQuery
 } from "@/lib/engagement";
 import { createWebDbSession } from "@/lib/server-db";
 
@@ -25,8 +25,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid search event" }, { status: 400 });
   }
 
-  const visitor = visitorHashForRequest(request);
-  if (!visitor) return NextResponse.json({ ok: false, disabled: true }, { status: 202 });
 
   const session = createWebDbSession();
   try {
@@ -37,7 +35,7 @@ export async function POST(request: NextRequest) {
       queryHash: hashValue(query),
       queryText: query,
       locale: isLocaleValue(body.locale) ? body.locale : "ro",
-      visitorHash: visitor.visitorHash,
+      visitorHash: anonymousMarker(),
       occurredAt: new Date()
     });
   } finally {
@@ -45,6 +43,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true });
-  if (visitor.shouldSetCookie) setVisitorCookie(response, visitor.visitorId);
+  clearLegacyVisitorCookie(request, response);
   return response;
 }

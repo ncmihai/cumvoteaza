@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import * as schema from "@cumsevoteaza/db";
-import { analyticsEnabled, hashValue, isReactionEntityType, setVisitorCookie, visitorHashForRequest } from "@/lib/engagement";
+import { analyticsEnabled, anonymousMarker, clearLegacyVisitorCookie, isReactionEntityType } from "@/lib/engagement";
 import { createWebDbSession } from "@/lib/server-db";
 
 export const runtime = "nodejs";
@@ -17,10 +17,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
   }
 
-  const visitor = visitorHashForRequest(request);
-  if (!visitor) return NextResponse.json({ ok: false, disabled: true }, { status: 202 });
 
-  const reactionId = `hot-${hashValue(`${body.entityType}:${body.entityId}:${visitor.visitorHash}`).slice(0, 40)}`;
+  const reactionId = `hot-${crypto.randomUUID()}`;
   const session = createWebDbSession();
   let count = 0;
   try {
@@ -31,7 +29,7 @@ export async function POST(request: NextRequest) {
         entityType: body.entityType,
         entityId: body.entityId,
         reaction: "hot",
-        visitorHash: visitor.visitorHash,
+        visitorHash: anonymousMarker(),
         createdAt: new Date()
       })
       .onConflictDoNothing({
@@ -54,6 +52,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true, hot: true, count });
-  if (visitor.shouldSetCookie) setVisitorCookie(response, visitor.visitorId);
+  clearLegacyVisitorCookie(request, response);
   return response;
 }

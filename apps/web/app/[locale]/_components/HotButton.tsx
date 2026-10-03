@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { TrendingUp } from "lucide-react";
 
 export function HotButton({
@@ -17,6 +17,11 @@ export function HotButton({
   const [count, setCount] = useState(initialCount);
   const [active, setActive] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // The server does not identify visitors (D-015); this browser remembers its own click, only after the visitor clicks.
+  const storageKey = `cumsevoteaza:hot:${entityType}:${entityId}`;
+  useEffect(() => {
+    try { if (window.localStorage.getItem(storageKey)) setActive(true); } catch { /* storage unavailable */ }
+  }, [storageKey]);
 
   return (
     <button
@@ -34,6 +39,7 @@ export function HotButton({
           if (payload?.disabled) return;
           if (typeof payload?.count === "number") setCount(payload.count);
           setActive(true);
+          try { window.localStorage.setItem(storageKey, "1"); } catch { /* storage unavailable */ }
         });
       }}
       className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold ${

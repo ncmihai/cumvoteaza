@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as schema from "@cumsevoteaza/db";
-import { analyticsEnabled, isEngagementEntityType, isLocaleValue, setVisitorCookie, visitorHashForRequest } from "@/lib/engagement";
+import { analyticsEnabled, anonymousMarker, clearLegacyVisitorCookie, isEngagementEntityType, isLocaleValue } from "@/lib/engagement";
 import { createWebDbSession } from "@/lib/server-db";
 
 export const runtime = "nodejs";
@@ -16,8 +16,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid engagement event" }, { status: 400 });
   }
 
-  const visitor = visitorHashForRequest(request);
-  if (!visitor) return NextResponse.json({ ok: false, disabled: true }, { status: 202 });
 
   const session = createWebDbSession();
   try {
@@ -27,7 +25,7 @@ export async function POST(request: NextRequest) {
       entityType: body.entityType,
       entityId: body.entityId,
       locale: isLocaleValue(body.locale) ? body.locale : "ro",
-      visitorHash: visitor.visitorHash,
+      visitorHash: anonymousMarker(),
       occurredAt: new Date()
     });
   } finally {
@@ -35,6 +33,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true });
-  if (visitor.shouldSetCookie) setVisitorCookie(response, visitor.visitorId);
+  clearLegacyVisitorCookie(request, response);
   return response;
 }

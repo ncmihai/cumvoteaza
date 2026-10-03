@@ -4,33 +4,25 @@ import type { NextRequest, NextResponse } from "next/server";
 export type EngagementEntityType = "member" | "bill" | "vote" | "party" | "search";
 export type ReactionEntityType = "bill" | "vote";
 
-export const VISITOR_COOKIE = "cumsevoteaza_visitor";
+/** Cookie set by earlier versions to identify visitors; it is deleted when seen (D-015). */
+export const LEGACY_VISITOR_COOKIE = "cumsevoteaza_visitor";
 
 export function analyticsEnabled(): boolean {
-  return Boolean(process.env.DATABASE_URL && process.env.ANALYTICS_SALT);
+  return Boolean(process.env.DATABASE_URL);
 }
 
-export function visitorHashForRequest(request: NextRequest): { visitorId: string; visitorHash: string; shouldSetCookie: boolean } | undefined {
-  const salt = process.env.ANALYTICS_SALT;
-  if (!salt) return undefined;
-
-  const existing = request.cookies.get(VISITOR_COOKIE)?.value;
-  const visitorId = existing && /^[a-f0-9-]{36}$/i.test(existing) ? existing : randomUUID();
-  return {
-    visitorId,
-    visitorHash: hashValue(`${salt}:${visitorId}`),
-    shouldSetCookie: !existing
-  };
+/**
+ * Popularity is counted without identifying visitors: no cookie, no IP, no fingerprint (D-015).
+ * Each stored event gets a random marker that cannot be linked to a person or to other events.
+ */
+export function anonymousMarker(): string {
+  return `anon-${randomUUID()}`;
 }
 
-export function setVisitorCookie(response: NextResponse, visitorId: string) {
-  response.cookies.set(VISITOR_COOKIE, visitorId, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365
-  });
+export function clearLegacyVisitorCookie(request: NextRequest, response: NextResponse) {
+  if (request.cookies.get(LEGACY_VISITOR_COOKIE)) {
+    response.cookies.set(LEGACY_VISITOR_COOKIE, "", { path: "/", maxAge: 0 });
+  }
 }
 
 export function hashValue(value: string): string {
