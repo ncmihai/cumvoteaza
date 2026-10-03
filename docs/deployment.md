@@ -57,7 +57,7 @@ store that value only in Vercel/local env.
 For anonymous first-party engagement counts:
 
 ```text
-ANALYTICS_SALT=<private-random-token>
+# ANALYTICS_SALT is no longer used (cookieless counts since 2026-10, D-015); it can be removed from Vercel.
 ```
 
 Use a separate random value from the site password and cron secret. The app uses
@@ -137,9 +137,9 @@ already stored legacy rows to the currently configured provider.
 - Web app deploys with Neon through `DATABASE_URL`.
 - Bill and vote directory pages read Postgres first and fall back to demo data
   only when the database is unavailable.
-- Vote and project directory pages use SQL pagination and anonymous first-party
-  engagement counts when `ANALYTICS_SALT` is configured.
-- Vercel Cron is configured for daily incremental imports.
+- Vote and project directory pages use SQL pagination and cookieless, non-identifying
+  engagement counts (D-015).
+- Vercel Cron only revalidates caches; imports run through the worker (Phase 3).
 - Historical 2024-present backfill remains a manual CLI workflow because it can
   run longer than a serverless request should.
 
