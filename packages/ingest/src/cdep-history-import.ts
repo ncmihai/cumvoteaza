@@ -24,7 +24,7 @@ import {
 } from "./parsers/roster";
 import { cleanText, slugify } from "./parsers/utils";
 import { membershipPeriods, type DatedMembershipRow, type MembershipPeriod } from "./membership-periods";
-import { persistRoster } from "./persist";
+import { CDEP_PROFILE_POLICY, persistRoster } from "./persist";
 
 type CdepLink = {
   label: string;
@@ -125,7 +125,7 @@ export async function importCdepHistoryProfiles(options: CdepHistoryImportOption
   for (const roster of parsed) {
     const diagnostics = diagnoseRoster(roster);
     const warningItems = warningItemsForProfiles(profiles, legislature, roster.chamber);
-    const persisted = options.persist ? await persistRoster(roster) : undefined;
+    const persisted = options.persist ? await persistRoster(roster, CDEP_PROFILE_POLICY) : undefined;
     summaries.push({
       chamber: roster.chamber,
       sources: roster.sourceSnapshots.length,
@@ -280,9 +280,15 @@ function memberFromProfile(profile: CdepProfile, legislature: Legislature): Memb
       [`${profile.identity.chamber}:${legislatureYear}`]: profile.identity.officialId,
       cdepProfile: profile.url,
       cdepProfileKey: profile.profileKey,
+      // CDEP's links to the same person's other legislatures: the identity resolver's main evidence.
+      ...(careerKeys(profile) ? { cdepCareerKeys: careerKeys(profile) } : {}),
       ...(profile.photoUrls?.[0] ? { profilePhoto: profile.photoUrls[0] } : {})
     }
   };
+}
+
+function careerKeys(profile: CdepProfile): string {
+  return [...new Set((profile.careerLinks ?? []).map((link) => link.profileKey).filter(Boolean))].sort().join(",");
 }
 
 function cdepMemberId(profile: CdepProfile): string {

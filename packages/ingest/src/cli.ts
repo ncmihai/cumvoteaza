@@ -10,6 +10,9 @@ import { deleteStoredAssets, importStoredAssetsFromInventory, type AssetType } f
 import { importBillText, importBillTextBatch } from "./bill-text";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { cleanupSupersededCdepHistoryRows } from "./cdep-history-cleanup";
+import { runIdentityJob } from "./identity/identity-job";
+import { runIntegrityChecks } from "./integrity/checks";
+import { applyMemberMergePlan, planMemberMerges } from "./identity/member-merge";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
 import { auditCurrentLegislature } from "./current-legislature-audit";
 import { auditGovernmentHistory, governmentHistoryAuditMarkdown } from "./government-history-audit";
@@ -37,11 +40,12 @@ import { classifyBillMinistryRelations } from "./ministry-relations";
 import { cleanupLocalData } from "./local-data-cleanup";
 import { canonicalizeOfficialUrl } from "./official-urls";
 import {
-  backfillPeopleFromMembers,
   persistChamberVote,
   persistDeputiesBill,
   persistGovernmentSkeleton,
   persistRoster,
+  SENATE_ROSTER_POLICY,
+  DEPUTIES_ROSTER_POLICY,
   persistSenateBill,
   persistSenateVote
 } from "./persist";
@@ -255,7 +259,7 @@ async function main() {
     await writeImport("senate-roster", parsed, JSON.stringify(parsed, null, 2));
     logRosterSummary(parsed);
     if (hasFlag("persist")) {
-      console.log(JSON.stringify(await persistRoster(parsed), null, 2));
+      console.log(JSON.stringify(await persistRoster(parsed, SENATE_ROSTER_POLICY), null, 2));
     }
     return;
   }
@@ -265,7 +269,7 @@ async function main() {
     await writeImport("deputies-roster", parsed, JSON.stringify(parsed, null, 2));
     logRosterSummary(parsed);
     if (hasFlag("persist")) {
-      console.log(JSON.stringify(await persistRoster(parsed), null, 2));
+      console.log(JSON.stringify(await persistRoster(parsed, DEPUTIES_ROSTER_POLICY), null, 2));
     }
     return;
   }
@@ -275,7 +279,7 @@ async function main() {
     await writeImport("official-careers", parsed, JSON.stringify(parsed, null, 2));
     logRosterSummary(parsed);
     if (hasFlag("persist")) {
-      console.log(JSON.stringify(await persistRoster(parsed), null, 2));
+      throw new Error("official-careers can no longer persist: it writes undated group history. Use the CDEP probe + cdep-history:import.");
     }
     return;
   }
@@ -400,8 +404,8 @@ async function main() {
       console.log(
         JSON.stringify(
           {
-            senate: await persistRoster(senate),
-            deputies: await persistRoster(deputies)
+            senate: await persistRoster(senate, SENATE_ROSTER_POLICY),
+            deputies: await persistRoster(deputies, DEPUTIES_ROSTER_POLICY)
           },
           null,
           2
@@ -448,7 +452,8 @@ async function main() {
       const existingMandates = await existingMandateCount(parsedRoster.legislature.id, chamber);
       const shouldSkip = hasFlag("skip-existing") && existingMandates > 0;
       await writeImport(`wikipedia-roster-import-${chamber}-${parsedRoster.legislature.label}`, parsedRoster, JSON.stringify(parsedRoster, null, 2));
-      const persisted = hasFlag("persist") && !shouldSkip ? await persistRoster(parsedRoster) : undefined;
+      if (hasFlag("persist")) throw new Error("wikipedia:roster:import can no longer persist: Wikipedia is not an official source (see docs/PLAN.md D11).");
+      const persisted = undefined;
       imports.push({
         chamber,
         legislature: parsedRoster.legislature.label,
@@ -498,8 +503,53 @@ async function main() {
     return;
   }
 
-  if (command === "people:backfill") {
-    console.log(JSON.stringify(await backfillPeopleFromMembers(), null, 2));
+  if (command === "integrity:check") {
+    const results = await runIntegrityChecks();
+    for (const result of results) {
+      const mark = result.count === 0 ? "PASS" : result.severity === "error" ? "FAIL" : "WARN";
+      console.log(`${mark.padEnd(4)} ${result.name.padEnd(36)} ${String(result.count >= 1000 ? "1000+" : result.count).padStart(6)}  ${result.description}`);
+    }
+    await writeImport("integrity-check", results, JSON.stringify(results, null, 2));
+    if (results.some((result) => result.severity === "error" && result.count > 0)) process.exitCode = 1;
+    return;
+  }
+
+  if (command === "identity:merge-members") {
+    const session = createDbSession();
+    try {
+      const plan = await planMemberMerges(session.db);
+      if (hasFlag("persist")) await session.db.transaction((tx) => applyMemberMergePlan(tx as unknown as typeof session.db, plan));
+      await writeImport("identity-merge-members", plan, JSON.stringify(plan, null, 2));
+      console.log(JSON.stringify({
+        persisted: hasFlag("persist"),
+        reattributedVotes: plan.reattributions.reduce((total, row) => total + row.votes, 0),
+        merges: plan.merges.length,
+        deletions: plan.deletions.length,
+        unresolved: plan.unresolved
+      }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Run identity:resolve --persist first, then re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "identity:resolve") {
+    const plan = await runIdentityJob({ persist: hasFlag("persist"), decisionsPath: flag("decisions") });
+    const report = {
+      persisted: hasFlag("persist"),
+      membersConsidered: plan.membersConsidered,
+      peopleBefore: plan.peopleBefore,
+      peopleAfter: new Set(plan.personByMember.values()).size,
+      changes: plan.changes,
+      newPeople: plan.newPeople,
+      aliases: plan.aliases,
+      orphanPeople: plan.orphanPeople.length,
+      review: plan.review
+    };
+    await writeImport("identity-resolve", report, JSON.stringify(report, null, 2));
+    console.log(JSON.stringify({ ...report, changes: report.changes.length, review: report.review.length }, null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to apply person assignments.");
     return;
   }
 

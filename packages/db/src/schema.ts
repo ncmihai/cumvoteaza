@@ -821,7 +821,8 @@ export const individualVotes = pgTable("individual_votes", {
 }, (table) => ({
   voteIdx: index("individual_votes_vote_idx").on(table.voteId),
   memberIdx: index("individual_votes_member_idx").on(table.memberId),
-  memberVoteIdx: index("individual_votes_member_vote_idx").on(table.memberId, table.voteId),
+  // One recorded choice per member per vote; also guards merges and re-imports against duplicates.
+  memberVoteIdx: uniqueIndex("individual_votes_member_vote_idx").on(table.memberId, table.voteId),
   groupIdx: index("individual_votes_group_idx").on(table.groupId)
 }));
 

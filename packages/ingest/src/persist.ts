@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { createDbSession, type DbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import type {
@@ -33,6 +33,7 @@ import { legislatureCatalog, type ParsedRoster } from "./parsers/roster";
 import type { ParsedDeputiesBill } from "./parsers/deputies-bill";
 import type { ParsedChamberVote } from "./parsers/chamber-vote";
 import { classifyVote } from "./vote-classification";
+import { resolveVoters, type SittingMember, type VoterResolution } from "./identity/resolve-voters";
 
 const defaultLegislature = {
   id: "leg-2024-2028",
@@ -85,18 +86,19 @@ export async function persistSenateVote(parsed: ParsedSenateVote, suppliedSessio
     }
 
     await Promise.all(parsed.groups.map((group) => upsertGroup(db, group)));
-    await Promise.all(parsed.members.map((member) => upsertMember(db, member)));
-    await Promise.all(parsed.individualVotes.map((vote) => upsertDerivedMandateAndMembership(db, vote, parsed)));
+    // Votes attach to existing members only; rosters own members, mandates and group history.
+    const voters = await resolveVoteVoters(db, "senate", parsed.vote.heldOn, parsed.members);
     await upsertVote(db, parsed.vote);
     await Promise.all(parsed.groupVoteTotals.map((total) => upsertGroupVoteTotal(db, total)));
-    await Promise.all(parsed.individualVotes.map((vote) => upsertIndividualVote(db, vote)));
+    await Promise.all(canonicalIndividualVotes(parsed.individualVotes, voters).map((vote) => upsertIndividualVote(db, vote)));
 
     return {
       voteId: parsed.vote.id,
       sourceSnapshotId: parsed.sourceSnapshot.id,
       members: parsed.members.length,
       groups: parsed.groups.length,
-      individualVotes: parsed.individualVotes.length
+      individualVotes: parsed.individualVotes.length - voters.unresolved.length,
+      unresolvedVoters: voters.unresolved
     };
     });
   } finally {
@@ -140,16 +142,17 @@ export async function persistChamberVote(parsed: ParsedChamberVote, suppliedSess
         sourceSnapshotIds: [parsed.sourceSnapshot.id]
       });
     }
-    await insertMissingMembers(db, parsed.members);
-    await upsertDerivedDeputiesMandates(db, parsed.members.map((member) => member.id), parsed.vote.heldOn);
+    // Votes attach to existing members only; rosters own members, mandates and group history.
+    const voters = await resolveVoteVoters(db, "deputies", parsed.vote.heldOn, parsed.members);
     await upsertVote(db, parsed.vote);
-    await upsertIndividualVotes(db, parsed.individualVotes);
+    await upsertIndividualVotes(db, canonicalIndividualVotes(parsed.individualVotes, voters));
 
     return {
       voteId: parsed.vote.id,
       sourceSnapshotId: parsed.sourceSnapshot.id,
       members: parsed.members.length,
-      individualVotes: parsed.individualVotes.length,
+      individualVotes: parsed.individualVotes.length - voters.unresolved.length,
+      unresolvedVoters: voters.unresolved,
       warnings: parsed.warnings
     };
     });
@@ -158,12 +161,35 @@ export async function persistChamberVote(parsed: ParsedChamberVote, suppliedSess
   }
 }
 
-export async function persistRoster(parsed: ParsedRoster, suppliedSession?: DbSession) {
-  const failures = parsed.sourceSnapshots.filter((source) => source.status === "failed");
+/**
+ * Who owns what (one source per fact):
+ * - "replace": this roster is the source of dated group/party history (CDEP profiles). Its rows replace all others.
+ * - "skip": this roster must not touch group/party history (senat.ro, CDEP current-roster pages).
+ * detailParsers: the committee/role rows this importer owns; rows from other sources are never deleted.
+ */
+export type RosterPersistPolicy = {
+  affiliations: "replace" | "skip";
+  detailParsers: string[];
+};
+
+export const CDEP_PROFILE_POLICY: RosterPersistPolicy = { affiliations: "replace", detailParsers: ["cdep-history-probe"] };
+export const SENATE_ROSTER_POLICY: RosterPersistPolicy = {
+  affiliations: "skip",
+  detailParsers: ["senate-roster-index", "senate-roster-group", "senate-member-profile"]
+};
+export const DEPUTIES_ROSTER_POLICY: RosterPersistPolicy = {
+  affiliations: "skip",
+  detailParsers: ["deputies-roster-index", "deputies-roster-group", "deputies-member-profile"]
+};
+
+export async function persistRoster(input: ParsedRoster, policy: RosterPersistPolicy, suppliedSession?: DbSession) {
+  const failures = input.sourceSnapshots.filter((source) => source.status === "failed");
   if (failures.length) throw new Error(`Roster contains ${failures.length} failed sources; refusing to replace existing member histories`);
   const session = suppliedSession ?? createDbSession();
   try {
     return await session.db.transaction(async (db) => {
+    // Retired member IDs (e.g. a senat.ro GUID merged into the CDEP record) resolve to the surviving member.
+    const parsed = await canonicalRosterMembers(db, input);
     await upsertLegislature(db, parsed.legislature);
     await upsertSourceSnapshots(db, parsed.sourceSnapshots);
     await upsertParties(db, parsed.parties);
@@ -177,12 +203,13 @@ export async function persistRoster(parsed: ParsedRoster, suppliedSession?: DbSe
     );
     await upsertMemberMandateRelations(db, parsed.mandateRelations ?? []);
     await applyReplacementEndDates(db, parsed);
-    await deleteRosterMemberDetails(
-      db,
-      parsed.members.map((member) => member.id)
-    );
-    await upsertMemberGroupMemberships(db, parsed.groupMemberships);
-    await upsertMemberPartyAffiliations(db, parsed.partyAffiliations);
+    const memberIds = parsed.members.map((member) => member.id);
+    if (policy.affiliations === "replace") {
+      await deleteMemberAffiliations(db, memberIds);
+      await upsertMemberGroupMemberships(db, parsed.groupMemberships);
+      await upsertMemberPartyAffiliations(db, parsed.partyAffiliations);
+    }
+    await deleteOwnMemberDetails(db, memberIds, policy.detailParsers);
     await upsertMemberCommitteeMemberships(db, parsed.committeeMemberships);
     await upsertMemberRoles(db, parsed.roles);
 
@@ -213,6 +240,10 @@ async function persistEach<T>(items: T[], task: (item: T) => Promise<void>) {
   }
 }
 
+function pick(source: Record<string, string>, key: string): Record<string, string> {
+  return source[key] ? { [key]: source[key] } : {};
+}
+
 function chunks<T>(items: T[], size = 250): T[][] {
   const result: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
@@ -221,12 +252,43 @@ function chunks<T>(items: T[], size = 250): T[][] {
   return result;
 }
 
-async function deleteRosterMemberDetails(db: Db, memberIds: string[]) {
-  if (memberIds.length === 0) return;
-  await db.delete(schema.memberGroupMemberships).where(inArray(schema.memberGroupMemberships.memberId, memberIds));
-  await db.delete(schema.memberPartyAffiliations).where(inArray(schema.memberPartyAffiliations.memberId, memberIds));
-  await db.delete(schema.memberCommitteeMemberships).where(inArray(schema.memberCommitteeMemberships.memberId, memberIds));
-  await db.delete(schema.memberRoles).where(inArray(schema.memberRoles.memberId, memberIds));
+async function deleteMemberAffiliations(db: Db, memberIds: string[]) {
+  for (const batch of chunks(memberIds)) {
+    await db.delete(schema.memberGroupMemberships).where(inArray(schema.memberGroupMemberships.memberId, batch));
+    await db.delete(schema.memberPartyAffiliations).where(inArray(schema.memberPartyAffiliations.memberId, batch));
+  }
+}
+
+/** Deletes only the committee/role rows this importer wrote earlier, so two sources never erase each other. */
+async function deleteOwnMemberDetails(db: Db, memberIds: string[], parsers: string[]) {
+  if (parsers.length === 0) return;
+  const ownSources = sql`(select id from source_snapshots where parser in (${sql.join(parsers.map((parser) => sql`${parser}`), sql`, `)}))`;
+  for (const batch of chunks(memberIds)) {
+    const members = sql.join(batch.map((id) => sql`${id}`), sql`, `);
+    await db.execute(sql`delete from member_committee_memberships where member_id in (${members}) and (source_snapshot_id in ${ownSources} or source_snapshot_id is null)`);
+    await db.execute(sql`delete from member_roles where member_id in (${members}) and (source_snapshot_id in ${ownSources} or source_snapshot_id is null)`);
+  }
+}
+
+/** Rewrites retired member IDs in a parsed roster to the surviving member, using id_aliases. */
+async function canonicalRosterMembers(db: Db, parsed: ParsedRoster): Promise<ParsedRoster> {
+  const ids = parsed.members.map((member) => member.id);
+  if (ids.length === 0) return parsed;
+  const rows = await db.select().from(schema.idAliases).where(and(eq(schema.idAliases.kind, "member"), inArray(schema.idAliases.aliasId, ids)));
+  if (rows.length === 0) return parsed;
+  const aliases = new Map(rows.map((row) => [row.aliasId, row.canonicalId]));
+  // IDs embed the member ID (mandate-<member>-..., group-membership-<member>-...), so rewrite whole tokens.
+  const pattern = new RegExp(`(${[...aliases.keys()].map(escapeRegExp).join("|")})(?![0-9a-z])`, "g");
+  const rewritten = JSON.parse(JSON.stringify(parsed).replace(pattern, (id) => aliases.get(id)!)) as ParsedRoster;
+  return { ...rewritten, members: uniqueBy(rewritten.members, (member) => member.id) };
+}
+
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+  return [...new Map(items.map((item) => [key(item), item])).values()];
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function deleteRosterMandateRelations(db: Db, mandateIds: string[]) {
@@ -246,6 +308,21 @@ async function closeStaleCurrentMandates(db: Db, parsed: ParsedRoster): Promise<
   if (!completeRoster || !snapshotOn || parsed.members.length === 0) return 0;
 
   const activeMemberIds = parsed.members.map((member) => member.id);
+  const candidates = await db.execute<{ id: string; member_id: string }>(sql`
+    select id, member_id from member_mandates
+    where legislature_id = ${parsed.legislature.id} and chamber = ${parsed.chamber}
+      and starts_on <= ${snapshotOn} and (ends_on is null or ends_on >= ${snapshotOn})
+      and member_id not in (${sql.join(activeMemberIds.map((id) => sql`${id}`), sql`, `)})
+  `);
+  // Real departures arrive a few at a time. Ending many mandates in one run means the roster's IDs
+  // do not match ours (2026-09-12: all 134 senators were "ended" this way), so refuse instead.
+  const limit = Math.max(3, Math.ceil(parsed.members.length * 0.05));
+  if (candidates.length > limit) {
+    throw new Error(
+      `Refusing to end ${candidates.length} ${parsed.chamber} mandates in one roster run (limit ${limit}). ` +
+      `This usually means member IDs differ between sources; check id_aliases. First: ${candidates.slice(0, 5).map((row) => row.member_id).join(", ")}`
+    );
+  }
   const closed = await db
     .update(schema.memberMandates)
     .set({ endsOn: previousDay(snapshotOn), status: "ended" })
@@ -454,7 +531,9 @@ async function upsertMembers(db: Db, members: Member[]) {
     const previous = byId.get(member.id);
     return previous ? { ...member, personId: previous.personId ?? member.personId,
       slug: previous.slug, firstName: previous.firstName, lastName: previous.lastName,
-      displayName: previous.displayName, sourceIds: { ...member.sourceIds, ...previous.sourceIds } } : member;
+      displayName: previous.displayName,
+      // Existing source keys win, except the CDEP career links, which must follow the latest official page.
+      sourceIds: { ...member.sourceIds, ...previous.sourceIds, ...pick(member.sourceIds, "cdepCareerKeys") } } : member;
   });
   const slugs = uniqueStrings(members.map((member) => member.slug));
   const existingRows =
@@ -494,98 +573,6 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values)];
 }
 
-async function insertMissingMembers(db: Db, members: Member[]) {
-  if (members.length === 0) return;
-  for (const member of members) {
-    await insertMissingMember(db, member);
-  }
-}
-
-async function insertMissingMember(db: Db, member: Member) {
-  const slugOwner = await db.select({ id: schema.members.id }).from(schema.members).where(eq(schema.members.slug, member.slug)).limit(1);
-  const slug = slugOwner[0] && slugOwner[0].id !== member.id ? `${member.slug}-${member.id.replace(/^member-/, "")}` : member.slug;
-  await db
-    .insert(schema.members)
-    .values({ ...member, slug })
-    .onConflictDoNothing({
-      target: schema.members.id
-    });
-}
-
-export async function backfillPeopleFromMembers() {
-  const session = createDbSession();
-  try {
-    const memberRows = await session.db.select().from(schema.members);
-    const peopleById = new Map<
-      string,
-      {
-        id: string;
-        slug: string;
-        displayName: string;
-        normalizedName: string;
-        sourceIds: Record<string, string>;
-      }
-    >();
-
-    for (const member of memberRows) {
-      const normalizedName = normalizePersonName(member.displayName);
-      if (!normalizedName) continue;
-      const id = `person-${normalizedName}`;
-      const existing = peopleById.get(id);
-      peopleById.set(id, {
-        id,
-        slug: id.replace(/^person-/, ""),
-        displayName: existing?.displayName ?? member.displayName,
-        normalizedName,
-        sourceIds: {
-          ...(existing?.sourceIds ?? {}),
-          ...personSourceIds(member.id, member.sourceIds)
-        }
-      });
-    }
-
-    const people = [...peopleById.values()];
-    for (const batch of chunks(people)) {
-      await session.db
-        .insert(schema.people)
-        .values(batch)
-        .onConflictDoUpdate({
-          target: schema.people.id,
-          set: {
-            slug: sql`excluded.slug`,
-            displayName: sql`excluded.display_name`,
-            normalizedName: sql`excluded.normalized_name`,
-            sourceIds: sql`excluded.source_ids`
-          }
-        });
-    }
-
-    let linkedMembers = 0;
-    const memberLinks = memberRows.flatMap((member) => {
-      const normalizedName = normalizePersonName(member.displayName);
-      return normalizedName ? [{ id: member.id, personId: `person-${normalizedName}` }] : [];
-    });
-    for (const batch of chunks(memberLinks)) {
-      const values = sql.join(batch.map((member) => sql`(${member.id}, ${member.personId})`), sql`,`);
-      await session.db.execute(sql`
-        update ${schema.members} as m
-        set person_id = v.person_id
-        from (values ${values}) as v(id, person_id)
-        where m.id = v.id
-      `);
-      linkedMembers += batch.length;
-    }
-
-    return {
-      membersRead: memberRows.length,
-      peopleUpserted: people.length,
-      membersLinked: linkedMembers
-    };
-  } finally {
-    await session.close();
-  }
-}
-
 export async function persistGovernmentSkeleton(input: {
   sourceSnapshots?: SourceSnapshot[];
   ministries?: import("@cumsevoteaza/parliament-model").Ministry[];
@@ -605,6 +592,8 @@ export async function persistGovernmentSkeleton(input: {
 }) {
   const session = createDbSession();
   try {
+    // Person IDs here are derived from names; merged people must resolve to the surviving ID.
+    input = await canonicalGovernmentPeople(session.db, input);
     await deleteObsoleteGovernments(session.db, input.obsoleteGovernmentIds ?? []);
     if (input.obsoleteEventIds?.length) {
       await session.db.delete(schema.compositionEvents).where(inArray(schema.compositionEvents.id, input.obsoleteEventIds));
@@ -862,23 +851,6 @@ async function upsertGovernmentPartyAlignment(db: Db, alignment: GovernmentParty
         sourceSnapshotId: alignment.sourceSnapshotId
       }
     });
-}
-
-function normalizePersonName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function personSourceIds(memberId: string, sourceIds: Record<string, string>): Record<string, string> {
-  const ids: Record<string, string> = { [`member:${memberId}`]: memberId };
-  for (const [key, value] of Object.entries(sourceIds)) {
-    ids[`member:${memberId}:${key}`] = value;
-  }
-  return ids;
 }
 
 async function upsertMemberMandate(db: Db, mandate: MemberMandate) {
@@ -1428,54 +1400,63 @@ async function upsertIndividualVotes(db: Db, votes: IndividualVote[]) {
     });
 }
 
-async function upsertDerivedMandateAndMembership(db: Db, vote: IndividualVote, parsed: ParsedSenateVote) {
-  if (!vote.groupId) return;
-  const startsOn = parsed.vote.heldOn;
-  const legislature = legislatureForDate(startsOn);
-  await db
-    .insert(schema.memberMandates)
-    .values({
-      id: `mandate-${vote.memberId}-${legislature.label}-senate`,
-      memberId: vote.memberId,
-      legislatureId: legislature.id,
-      chamber: "senate",
-      startsOn: legislature.startsOn,
-      status: "active"
-    })
-    .onConflictDoNothing();
+async function resolveVoteVoters(db: Db, chamber: "senate" | "deputies", heldOn: string, voters: Member[]): Promise<VoterResolution> {
+  const legislature = legislatureForDate(heldOn);
+  const ids = voters.map((voter) => voter.id);
+  const aliasRows = ids.length
+    ? await db.select().from(schema.idAliases).where(and(eq(schema.idAliases.kind, "member"), inArray(schema.idAliases.aliasId, ids)))
+    : [];
+  const sitting = await db.execute<{ id: string; display_name: string; source_ids: Record<string, string> }>(sql`
+    select distinct m.id, m.display_name, m.source_ids
+    from members m join member_mandates mm on mm.member_id = m.id
+    where mm.legislature_id = ${legislature.id} and mm.chamber = ${chamber}
+      and mm.starts_on <= ${heldOn} and coalesce(mm.ends_on, '9999-12-31') >= ${heldOn}
+  `);
+  const resolution = resolveVoters({
+    chamber,
+    legislatureYear: legislature.label.slice(0, 4),
+    voters,
+    aliases: new Map(aliasRows.map((row) => [row.aliasId, row.canonicalId])),
+    sitting: sitting.map((row): SittingMember => ({ id: row.id, displayName: row.display_name, sourceIds: row.source_ids ?? {} }))
+  });
+  for (const alias of resolution.learnedAliases) {
+    await db.insert(schema.idAliases)
+      .values({ ...alias, kind: "member", reason: `vote voter matched by name among ${chamber} members sitting on ${heldOn}` })
+      .onConflictDoNothing();
+  }
+  return resolution;
+}
 
-  const membershipId = `group-membership-${vote.memberId}-${vote.groupId}`;
-  const existing = await db
-    .select({ id: schema.memberGroupMemberships.id })
-    .from(schema.memberGroupMemberships)
-    .where(eq(schema.memberGroupMemberships.id, membershipId))
-    .limit(1);
-  if (existing.length > 0) return;
-
-  await db.insert(schema.memberGroupMemberships).values({
-    id: membershipId,
-    memberId: vote.memberId,
-    groupId: vote.groupId,
-    startsOn,
-    sourceSnapshotId: parsed.sourceSnapshot.id
+/** Individual vote rows keyed by the canonical member; voters that could not be resolved are left out. */
+function canonicalIndividualVotes(votes: IndividualVote[], voters: VoterResolution): IndividualVote[] {
+  return votes.flatMap((vote) => {
+    const memberId = voters.canonicalByParsedId.get(vote.memberId);
+    return memberId ? [{ ...vote, memberId, id: `iv-${vote.voteId}-${memberId}` }] : [];
   });
 }
 
-async function upsertDerivedDeputiesMandates(db: Db, memberIds: string[], heldOn: string) {
-  const legislature = legislatureForDate(heldOn);
-  const uniqueMemberIds = [...new Set(memberIds)];
-  if (uniqueMemberIds.length === 0) return;
-  await db
-    .insert(schema.memberMandates)
-    .values(
-      uniqueMemberIds.map((memberId) => ({
-        id: `mandate-${memberId}-${legislature.label}-deputies`,
-        memberId,
-        legislatureId: legislature.id,
-        chamber: "deputies" as const,
-        startsOn: legislature.startsOn,
-        status: "active" as const
-      }))
-    )
-    .onConflictDoNothing();
+async function canonicalGovernmentPeople<T extends { people: Person[]; governments: Government[]; roles: GovernmentRole[]; events: CompositionEvent[] }>(
+  db: Db,
+  input: T
+): Promise<T> {
+  const ids = [
+    ...input.people.map((person) => person.id),
+    ...input.roles.map((role) => role.personId),
+    ...input.governments.flatMap((government) => (government.primeMinisterPersonId ? [government.primeMinisterPersonId] : [])),
+    ...input.events.flatMap((event) => (event.personId ? [event.personId] : []))
+  ];
+  if (ids.length === 0) return input;
+  const rows = await db.select().from(schema.idAliases)
+    .where(and(eq(schema.idAliases.kind, "person"), inArray(schema.idAliases.aliasId, [...new Set(ids)])));
+  if (rows.length === 0) return input;
+  const canonical = new Map(rows.map((row) => [row.aliasId, row.canonicalId]));
+  const map = (id: string) => canonical.get(id) ?? id;
+  return {
+    ...input,
+    // A retired person row is not recreated; the surviving person already exists.
+    people: input.people.filter((person) => !canonical.has(person.id)),
+    roles: input.roles.map((role) => ({ ...role, personId: map(role.personId) })),
+    governments: input.governments.map((government) => (government.primeMinisterPersonId ? { ...government, primeMinisterPersonId: map(government.primeMinisterPersonId) } : government)),
+    events: input.events.map((event) => (event.personId ? { ...event, personId: map(event.personId) } : event))
+  };
 }
