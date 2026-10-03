@@ -12,7 +12,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: workspaceRoot
   },
-  transpilePackages: ["@cumsevoteaza/parliament-model", "@cumsevoteaza/db", "@cumsevoteaza/ingest"]
+  transpilePackages: ["@cumsevoteaza/parliament-model", "@cumsevoteaza/db", "@cumsevoteaza/ingest"],
+  // The root layout lives under [locale] (D23), so "/" and unmatched URLs are handled here and in global-not-found.
+  experimental: { globalNotFound: true },
+  async redirects() {
+    return [{ source: "/", destination: "/ro", permanent: false }];
+  }
 };
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");

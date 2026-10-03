@@ -152,7 +152,8 @@ Then the audit fixes (2026-10-03, branch `phase-2/fixes`):
 - [x] A3 wide-screen scaling (tester #6/#7), A4 no party events on vote pages (tester #8), A5 no badge overlap (tester #3), A6 English headings and marked official titles (tester #4), A7 profile header (PM role, own party vs group), A8 honest wording.
 - [x] Deploy, then `repair:senate-untitled-votes --persist`, refresh read models, revalidate. Close tester issues #3–#8.
 - [ ] D22 duplicate bills: code done (merge command `bills:merge-duplicates`, import-time dossier resolver, retired-slug redirects, blocking check `duplicate_bill_dossier`). 510 merges rehearsed on Neon branch `rehearsal-d22-bill-merge`: all blocking checks pass, outcomes unchanged. 4 different dossiers share a Senate B-number (reported, not merged). **Production run pending.**
-- [ ] D19 committee dates, D20 Senate off-by-one, D21 joint sittings, D23 html lang (plan: make `[locale]/layout.tsx` the root layout with `lang={locale}`, redirect `/` in next.config).
+- [x] D23 html lang: `[locale]/layout.tsx` is the root layout with `lang={locale}`; `/` redirects in next.config; localized not-found inside the locale, bilingual `global-not-found` for unknown sections. Unknown locale prefixes (`/xx`) still get Next's built-in 404.
+- [ ] D19 committee dates, D20 Senate off-by-one, D21 joint sittings.
 
 Earlier:
 - [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
