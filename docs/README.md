@@ -1,38 +1,21 @@
 # Documentation map
 
-Start with [current-state.md](current-state.md). It is the authoritative snapshot of what works, what is incomplete, and what should happen next.
+- **[PLAN.md](PLAN.md)** — the roadmap and current verified state. Start here.
+- **[DECISIONS.md](DECISIONS.md)** — decisions made and open questions.
 
-## Operate the project
+## Reference
 
-- [../README.md](../README.md) — setup, commands, repository layout and safety rules.
+These describe how things work. They are not re-verified until the Phase 1 audit; PLAN.md wins on any conflict.
+
 - [deployment.md](deployment.md) — Vercel and database deployment.
-- [collaboration-workflow.md](collaboration-workflow.md) — branch and contributor workflow.
 - [sources.md](sources.md) — official sources, provenance and source-specific limits.
 - [cdep-access.md](cdep-access.md) — Chamber of Deputies access behavior.
-
-## Product and methods
-
-- [public-ui-contract.md](public-ui-contract.md) — active route/control matrix, public presentation contracts and UI release gates; reconciled through the September member-profile completion pass.
-- [editorial-ui-reference.md](editorial-ui-reference.md) — public design system and approved visual references.
-- [political-scale-methodology.md](political-scale-methodology.md) — planned evidence-linked political analysis.
 - [parliament-how-it-works.md](parliament-how-it-works.md) — domain model and parliamentary process.
-- [vote-explanations.md](vote-explanations.md) — explanation design, review and disabled Gemini path.
-- [vote-classification.md](vote-classification.md) — semantic vote categories, confidence rules and safe archive backfill.
-- [cockpit-planning.md](cockpit-planning.md) — cockpit architecture and intended workflow.
+- [public-ui-contract.md](public-ui-contract.md) — route/control matrix and UI contracts.
+- [editorial-ui-reference.md](editorial-ui-reference.md) — design system; mockups in [design/](design/).
+- [vote-classification.md](vote-classification.md), [vote-explanations.md](vote-explanations.md) — vote categories and the (disabled) explanation path.
+- [political-scale-methodology.md](political-scale-methodology.md) — proposed methodology for the future political compass.
 
-## Completed work and evidence
+## Archive
 
-- [data-trust-phase-1.md](data-trust-phase-1.md) — 25 September data-trust safeguards, tests and remaining acceptance work.
-- [review-2026-09-24.md](review-2026-09-24.md) — latest code/test review, fresh browser evidence, open defects and verification limits.
-- [ui-audit-2026-09-13.md](ui-audit-2026-09-13.md) — historical production journey audit and repair backlog.
-- [ui-redesign-plan.md](ui-redesign-plan.md) — implemented public UI redesign plan.
-- [ui-audit-2026-09-11.md](ui-audit-2026-09-11.md) — earlier route, responsive and data-binding verification, with a 13 September completion addendum.
-- [../design-qa.md](../design-qa.md) — mockup comparison notes.
-- [may-september-refresh.md](may-september-refresh.md) — 2026 vote refresh and release record.
-- [cockpit-sprint-progress.md](cockpit-sprint-progress.md) — detailed cockpit implementation record.
-
-## Historical logs
-
-- [progress.md](progress.md) and [../tasks.md](../tasks.md) are append-only engineering history. They contain valuable evidence and old open items, but they are not the current roadmap.
-- [planning.md](planning.md) is the original project plan and should be read as historical context.
-- JSON files in this directory are retained validation artifacts.
+[archive/](archive/) holds the Codex-era logs, phase records, audits and plans (`progress.md`, `tasks.md`, `current-state.md`, `review-2026-09-24.md`, …). They are evidence, not instructions.

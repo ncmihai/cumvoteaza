@@ -5,7 +5,7 @@ and parliamentary careers.
 
 Public app: <https://cumvoteaza.vercel.app>
 
-**Current status and roadmap:** [`docs/current-state.md`](docs/current-state.md)
+**Roadmap and current state:** [`docs/PLAN.md`](docs/PLAN.md) · **Decisions / open questions:** [`docs/DECISIONS.md`](docs/DECISIONS.md)
 
 **Documentation index:** [`docs/README.md`](docs/README.md)
 
@@ -98,7 +98,7 @@ git commit -m "Describe the change"
 git push origin main
 ```
 
-For concurrent contributor work, follow [`docs/collaboration-workflow.md`](docs/collaboration-workflow.md) and merge the reviewed `dev` preview into `main`.
+For concurrent contributor work, use a feature branch (or `dev`) and merge it into `main` once reviewed.
 
 ## Dev Review Checklist
 
@@ -109,7 +109,7 @@ Before merging `dev` into `main`, check:
 - migrations are intentional and documented
 - repair commands are dry-run by default
 - CDEP import commands are capped and polite
-- `tasks.md` and `docs/progress.md` updated for meaningful workflow changes
+- `docs/PLAN.md` updated (state, checkboxes, log)
 - Vercel `dev` preview works
 - `npm run typecheck`, `npm test`, and `npm run build`
   pass

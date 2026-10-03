@@ -26,3 +26,6 @@ output/playwright/
 apps/web/test-results/
 apps/web/playwright-report/
 .vercel
+
+# Local-only cabinet evidence captures (parked Codex 3B work)
+data/cabinet-evidence/

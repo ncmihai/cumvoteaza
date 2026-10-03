@@ -1,0 +1,151 @@
+# CumVoteaza — Plan
+
+**This is the single source of truth for what we are doing and why.**
+Decisions and open questions live in [DECISIONS.md](DECISIONS.md). Everything in
+[archive/](archive/) is history: useful evidence, never instructions.
+
+Last updated: 2026-10-03 · Branch `phase-0-stabilize` (from `main` @ `486cb03`)
+
+---
+
+## Vision
+
+A factual, source-linked record of Romania's legislative and executive power:
+presidents, prime ministers, cabinets, ministers, MPs, ambassadors, votes and
+bills. Anyone can look up a politician and see what they actually did, with a
+link to the official source for every fact. The data is kept fresh by an
+unattended updater, not by hand. Analysis (for example a vote-based political
+compass) comes later and is built only on data that has already earned trust.
+
+## Principles
+
+1. **Official sources are the source of truth.** Every public fact links to where it came from.
+2. **Unknown stays unknown.** Missing ≠ zero ≠ absent ≠ ended. When we don't know, the UI says so.
+3. **Everything political is temporal.** Affiliations, roles, mandates and offices have start and end dates.
+4. **No AI-generated facts on the public site.** Models may *suggest*; a human approves. Facts come from official sources.
+5. **Simple beats clever.** A hand-curated file with source URLs beats a pipeline until the volume genuinely needs one.
+6. **Fix trust before features.** No new feature work while a P1 data-trust defect is open.
+7. **Done means done.** Tests green, merged, deployed and checked on the live site. "Implemented internally, validation pending" means *not done*.
+
+## Scope
+
+| Horizon | What |
+| --- | --- |
+| **Now** | Stabilize, audit, fix data trust, build an unattended updater. |
+| **Next** | Complete the **2024–2028 legislature**: fresh votes in both chambers, MP profiles and affiliations, cabinets of this legislature with full reshuffle history, presidents (including the 2025 interim), ambassadors. |
+| **Later** | History backfill (1990–2024), party and legislature wiki, political compass (local model on the BC250 suggests, human labels), rebuilding the cockpit if it is still needed. |
+| **Not doing** | Fine-tuning models, paid AI APIs (Gemini explanations), legal text diffs, the parked Codex "3B/3C" evidence and political-state pipelines (unless the audit says otherwise), multi-database release-preview machinery. |
+
+---
+
+## Verified state — 2026-10-03
+
+Checked today against the code and the production Neon DB (read-only).
+
+| Area | State |
+| --- | --- |
+| Site | Public at <https://cumvoteaza.vercel.app> (Vercel Hobby). Friends are testing it. |
+| Tests | `npm run typecheck` ✅. `npm test` ✅ on this branch: 38 web, 86 ingest, 6 model, 8 Python. Browser end-to-end tests are stale and not run. |
+| CI | GitHub Actions: typecheck, test and build on push/PR to `main`/`dev`. Last 8 runs on `main` green. |
+| DB | Neon project `cumsevoteaza`, 279 MB of the 1 GB branch limit. 5,861 people · 1,051 votes · 226k individual votes. |
+| Votes, 2024–2028 | Deputies 586 (2025-02-05 → **2026-09-09**), Senate 332 (2025-02-19 → **2026-09-08**). **Nothing newer: the data is ~3.5 weeks stale and no updater is running.** |
+| Cabinets, 2024–2028 | Ciolacu II (18 roles), Predoiu interim (1), Bolojan (33). Cabinets before this legislature have only one PM row each. |
+| Presidents, ambassadors | **No tables exist.** |
+| Code size | ~53k lines. Cockpit (Python and React) ~21k > TypeScript ingest ~14k > website ~12.7k. Two overlapping ingestion stacks (TypeScript and Python). |
+| Local-only data | ~2.5 GB under `data/` (cockpit SQLite, jobs, backups, CDEP history captures). **Not backed up.** |
+
+### Known defects
+
+Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is polish.
+
+| ID | Sev | Defect | Source |
+| --- | --- | --- | --- |
+| D1 | P1 | **All 134 sitting senators have a fake mandate "ended 2026-09-12"** plus a duplicate member row. A re-import created new member IDs and closed the old mandates. Persons are linked, but mandate history is false. | DB query, 2026-10-03 |
+| D2 | P1 | Data stale since 2026-09-09; no unattended updater. | DB query |
+| D3 | P1 | Vote seat map turns *missing* nominal records into "absent" and silently trims roster conflicts. | archive/review-2026-09-24 R2 |
+| D4 | P1 | Seat-map reconciliation compares the map to its own counts, so it can never fail. | review R3 |
+| D5 | P1 | Cabinet page labels the viewing date as "verified". | review R4 |
+| D6 | P2 | Browser end-to-end tests assert a vote layout that no longer exists. | review R5 |
+| D7 | P2 | Map search: diacritics and constituency; filter panel ignores Escape. | review R6–R7 |
+| D8 | P2 | Ministry directory cache not invalidated with the rest; profile query scans all snapshots. | review R8 |
+| D9 | P3 | Optional site password gate: password accepted in the URL and stored as the cookie value. Currently unused. | `apps/web/proxy.ts` |
+
+D3–D8 have not been re-verified since 24 Sept. Commits after that review touch some of them; the audit confirms which are still open.
+
+---
+
+## Phases
+
+### Phase 0 — Stabilize ← *in progress*
+
+Goal: a clean `main`, green tests, one plan.
+
+- [x] Park the uncommitted Codex 3B work on branch `wip/codex-3b-cabinet-evidence` (local, not pushed). Captures remain in `data/cabinet-evidence/`.
+- [x] Fix `discovery-empty-source.test.ts`, which silently hit the live senat.ro. Suite green.
+- [x] Write `PLAN.md`, `DECISIONS.md` and `CLAUDE.md`; archive old docs.
+- [ ] Back up local data → Q3.
+- [ ] Set up bug intake for the tester → Q4.
+- [ ] Merge `phase-0-stabilize` into `main` (owner approves).
+
+**Exit:** `main` clean and green, this plan merged.
+
+### Phase 1 — Audit and cut list
+
+Goal: know what exists, what works, what is used, and what to delete or rewrite.
+
+- [ ] **Module review.** For every package, tool, route and table: purpose, used?, works?, then **keep / rewrite / delete**. Includes:
+  - the two ingestion stacks (pick one → Q5);
+  - the cockpit (→ Q6);
+  - `apps/web/lib/data.ts` (3,171 lines);
+  - 50 DB tables (which are read by the site, which are orphaned);
+  - three asset-storage backends.
+- [ ] **Data integrity checks.** Write repeatable SQL checks against production: duplicate people and members, impossible or fabricated dates (D1), votes without nominal rows, nominal totals ≠ official totals, mandates over seat capacity, orphans. These become the updater's health gate in Phase 3.
+- [ ] **Live spot-check.** About 20 records (votes, MPs, ministers) compared on the live site against the official source.
+- [ ] **Re-verify D3–D8.**
+- [ ] Output: `docs/audit-2026-10.md` with findings and the agreed cut list. Decisions go into `DECISIONS.md`.
+
+**Exit:** audit written, cut list agreed, cuts made.
+
+### Phase 2 — Data trust fixes
+
+- [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
+- [ ] Repair production data through scripts that are dry-run by default and reviewed before `--persist`.
+- [ ] Rewrite the stale browser tests (D6) so they assert data, not just layout.
+
+**Exit:** all integrity checks pass on production; spot-checks match the sources.
+
+### Phase 3 — Unattended updater
+
+Goal: new votes for this legislature appear on the site without manual work.
+
+- Proposed: a scheduled job on the **BC250**. It has a residential Romanian IP (CDEP blocks some networks, see `docs/cdep-access.md`), is always on, and is the same box that will run the local model. → Q1
+- Job flow: discover new sittings → import → run integrity checks → publish if they pass, otherwise hold and notify. → Q2
+- The site shows a visible "data updated on …" date per chamber.
+
+**Exit:** two consecutive weeks of sitting days imported with zero manual intervention.
+
+### Phase 4 — Complete the 2024–2028 legislature
+
+Each item gets its own exit criteria when started.
+
+- [ ] **MPs:** current group and party affiliation changes, replacements and mandate ends, all source-linked.
+- [ ] **Cabinets:** Ciolacu II, Predoiu (interim), Bolojan, with every appointment, resignation, interim and reshuffle. Approach: a curated data file with a decree or Monitorul Oficial link per row (see Principle 5).
+  - Acceptance case, Defence under Bolojan: Moșteanu → Miruță interim (Decree 1111/2025) → Miruță full appointment (Decree 1166/2025).
+- [ ] **Presidents:** new model. Covers the 2025 succession, including the interim period; dates verified against official sources.
+- [ ] **Ambassadors:** new model. Source: presidential appointment and recall decrees. Scope → Q7.
+- [ ] Candidates, decided when we get there: no-confidence motions and their votes, standing committees, Senate/Chamber leadership.
+
+---
+
+## Working agreement
+
+- One branch per phase or feature. Before merging: `npm run typecheck && npm test && npm run build`, plus a live check after deploy.
+- At the end of each session, update **this file** (checkboxes, verified state, log). Decisions and questions go in `DECISIONS.md`. **No new planning docs.**
+- Tests never touch the network or the production DB.
+- Production writes (DB or live crawls) only with explicit owner approval in the session.
+
+## Log
+
+| Date | Entry |
+| --- | --- |
+| 2026-10-03 | Took over from Codex. Phase 0 started: 3B parked, network-dependent test fixed, docs consolidated, D1 (Senate mandate churn) and D2 (stale data) found in production. |
