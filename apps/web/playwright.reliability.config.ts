@@ -10,7 +10,7 @@ export default defineConfig({
     url: "http://127.0.0.1:3119/icon.svg", reuseExistingServer: false, timeout: 180_000,
     env: {
       DATABASE_URL: "postgres://postgres:phase3a-local@127.0.0.1:55439/phase3a_test",
-      CRON_SECRET: "phase3a-local-test", CUMSEVOTEAZA_DEMO_MODE: "0",
+      CRON_SECRET: "phase3a-local-test",
       COCKPIT_DATABASE_ROLE: "", DATABASE_MAX_CONNECTIONS: "1", PHASE3A_ISOLATED_TEST: "1"
     }
   }
