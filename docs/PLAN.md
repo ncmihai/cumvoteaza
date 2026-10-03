@@ -73,6 +73,8 @@ Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is 
 | D19 | P2 | Committee memberships also get whole-mandate dates although CDEP gives "(din … / până în …)". Follow-up. | code |
 | D20 | P2 | 9 Senate votes of 2025 have one fewer nominal "for" row than the official total (pre-existing; probably one voter not parsed on those senat.ro pages). | DB, 2026-10-03 |
 | D21 | P3 | Joint Chamber–Senate sitting votes are skipped (parser unsupported); 2 Chamber votes (idv 37367, 37387) have no nominal rows. | rehearsal import |
+| D22 | P2 | **Duplicate bill records**: the same bill can exist as a Senate record (`bill-l122-2026`, which also carries PL-x 196/2026) and a Chamber placeholder (`bill-pl-x-196-2026`) holding the votes. Bill-level identity, like D11 for people. | DB, 2026-10-03 |
+| D23 | P3 | The root `<html lang="ro">` is fixed, so English pages declare Romanian to screen readers. | code |
 | D2 | P1 | ◐ **Caught up by hand 2026-10-03 (to 23/30 Sept); updater still missing.** Data stale since 2026-09-09; no unattended updater. | DB query |
 | D3 | P1 | Vote seat map turns *missing* nominal records into "absent" and silently trims roster conflicts. | archive/review-2026-09-24 R2 |
 | D4 | P1 | Seat-map reconciliation compares the map to its own counts, so it can never fail. | review R3 |
@@ -143,7 +145,15 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [x] Missing votes imported into production (2026-10-03): 122 new votes (Chamber 35 to 23 Sept, Senate 87 to 30 Sept), every new vote's totals match the official ones, all blocking checks pass. 3 joint sittings skipped, 2 Chamber votes without name lists (D21).
 - [ ] Follow-up: committee dates (D19); Senate off-by-one (D20); joint sittings (D21); store CV birth dates in `people.birth_date` and use them as resolver evidence.
 
-Then:
+Then the audit fixes (2026-10-03, branch `phase-2/fixes`):
+- [x] **A1 vote outcomes** from official counts plus the Constitution's majority rules, with the rule and threshold shown; law type read from official titles when stated. 1,072 of 1,173 votes determined, 19 attendance checks, 82 honestly "depends on the type of law". Cross-checked against CDEP's own "nu a fost întrunită majoritatea calificată".
+- [ ] A1b: read the law type ("Caracterul legii") from Senate and CDEP bill pages to resolve the remaining 82.
+- [x] A2 real titles for 25 untitled Senate items (repair command, blocking check); no "today" date fallback.
+- [x] A3 wide-screen scaling (tester #6/#7), A4 no party events on vote pages (tester #8), A5 no badge overlap (tester #3), A6 English headings and marked official titles (tester #4), A7 profile header (PM role, own party vs group), A8 honest wording.
+- [ ] Deploy, then `repair:senate-untitled-votes --persist`, refresh read models, revalidate. Close tester issues #3–#8.
+- [ ] D22 duplicate bills, D19 committee dates, D20 Senate off-by-one, D21 joint sittings, D23 html lang.
+
+Earlier:
 - [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
 - [ ] Repair production data through scripts that are dry-run by default and reviewed before `--persist`.
 - [ ] Rewrite the stale browser tests (D6) so they assert data, not just layout.
