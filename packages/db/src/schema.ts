@@ -241,6 +241,20 @@ export const people = pgTable("people", {
   normalizedNameIdx: index("people_normalized_name_idx").on(table.normalizedName)
 }));
 
+/**
+ * Retired person/member IDs and the ID that replaced them. Every importer resolves IDs through this
+ * table, so a merge is never undone by re-running an old import that still derives the old ID.
+ */
+export const idAliases = pgTable("id_aliases", {
+  aliasId: text("alias_id").primaryKey(),
+  canonicalId: text("canonical_id").notNull(),
+  kind: text("kind").notNull(), // "person" | "member"
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => ({
+  canonicalIdx: index("id_aliases_canonical_idx").on(table.canonicalId)
+}));
+
 export const members = pgTable("members", {
   id: text("id").primaryKey(),
   personId: text("person_id").references(() => people.id),

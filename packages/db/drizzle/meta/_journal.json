@@ -183,6 +183,13 @@
       "when": 1790994967799,
       "tag": "0025_membership_date_precision",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790995245753,
+      "tag": "0026_id_aliases",
+      "breakpoints": true
     }
   ]
 }

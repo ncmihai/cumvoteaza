@@ -1,0 +1,11 @@
+{
+  "_readme": "Owner decisions for the identity resolver (packages/ingest/src/identity). 'same': these member records are one person (optional personId pins the ID the group keeps). 'different': these two records are different people. Official evidence (CDEP career links, simultaneous seats) is applied automatically and does not need an entry here. See docs/DECISIONS.md D-014.",
+  "same": [
+    {
+      "members": ["member-senate-1996-1068", "member-senate-2004-50"],
+      "personId": "person-ion-iliescu",
+      "reason": "Former president Ion Iliescu: Bucharest senator 1996-2000 and 2004-2008. The Hunedoara deputy (1990) / senator (2000) of the same name is a different person (CDEP links his two mandates to each other, not to these)."
+    }
+  ],
+  "different": []
+}
