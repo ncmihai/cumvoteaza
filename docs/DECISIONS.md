@@ -8,10 +8,6 @@ Each Open question has a recommendation; the owner decides.
 
 ## Open
 
-### Q4 — Bug intake from the tester
-- **Recommended:** GitHub Issues with a short bug template (URL, what you expected, what you saw, screenshot).
-- If the repo goes private again, the tester must be added as a collaborator.
-
 ### Q5 — One ingestion stack: TypeScript or Python?
 - Today: TypeScript `packages/ingest` (~14k lines, writes the DB) plus Python `tools/parliament-pipeline`, `cdep-history-probe` and the workbench (~24k lines).
 - **Leaning TypeScript.** It shares the schema, types and DB client with the site. Decide after the Phase 1 audit.
@@ -32,19 +28,6 @@ Each Open question has a recommendation; the owner decides.
 ### Q10 — Vercel Hobby is non-commercial
 - Fine for now. Any donations or ads would require a paid plan or another host.
 
-### Q11 — How does the updater notify you?
-- When a batch is held (a check failed) or the updater itself fails, how should you hear about it: email, Telegram, Discord, or a GitHub issue opened automatically?
-- **Recommended:** an automatic GitHub issue. It's free, has a history, and you and the tester both see it.
-
-### Q12 — How do we store a date we only know to the month?
-- CDEP gives group and party changes as "până în iun. 2025": a month, not a day. senat.ro sometimes gives the exact day (PACE from 2025-09-03).
-- **Recommended:** add a precision field (`day` / `month`) next to start and end dates, show "iun. 2025" in the UI, and use the exact day when an official source provides one.
-- Rejected: storing the 1st or last day of the month. That invents a day (Principle 2).
-
-### Q13 — When may two person records be merged automatically?
-- **Recommended:** auto-merge only when names match after normalization (word order, diacritics, hyphens) **and** at least one official signal agrees: a CDEP career link between the profiles, the same senat.ro/CDEP ID, or the same chamber and constituency with non-overlapping mandates. Everything else goes to a review list you confirm by hand. Every merge is logged and reversible.
-- Alternative: name match alone. Faster, but it will merge real namesakes (Romania has many "Ion Popescu").
-
 ---
 
 ## Decided
@@ -60,4 +43,8 @@ Each Open question has a recommendation; the owner decides.
 | D-007 | 2026-10-03 | The unattended updater runs on the **BC250** (CachyOS, almost always on, can reach cdep.ro and senat.ro). Because it is *almost* always on, every run catches up from the last successful run rather than assuming a fixed window. | Residential IP avoids source blocking; same box as the local model. |
 | D-008 | 2026-10-03 | **Auto-publish** official data when every check passes; hold and notify otherwise. Checks include comparing what the source page says against what we stored (totals, nominal rows, names, dates). Model output never auto-publishes. | Approval-per-batch is how the data went stale (D2). |
 | D-009 | 2026-10-03 | Local `data/` (~2.5 GB) stays local for now, with no backup. The Phase 1 audit lists what is worth keeping and what can be deleted. | Owner: not a problem yet. |
-
+| D-010 | 2026-10-03 | Bug intake: GitHub Issues on the repo plus the owner's GitHub Project board (the tester already uses them, #3–#8). | Already in use. |
+| D-011 | 2026-10-03 | The updater reports held batches and failures by opening a GitHub issue automatically. | Free, has history, visible to owner and tester. |
+| D-012 | 2026-10-03 | **Identity and group history across all legislatures come first**, before the rest of the audit and before anything new. | Owner: nothing can be built on top until every person is right and nothing overlaps. |
+| D-013 | 2026-10-03 | Dates known only to the month are stored with a precision field (`day` / `month`) and shown as "iun. 2025". No invented days. | Principle 2. |
+| D-014 | 2026-10-03 | Person merges are automatic only when the normalized name matches **and** an official signal agrees (CDEP career link, same official ID, or same chamber and constituency with non-overlapping mandates). Everything else goes to a review list. Every merge is logged and reversible. | Name-only matching would merge real namesakes. |

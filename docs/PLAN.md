@@ -86,7 +86,7 @@ Goal: a clean `main`, green tests, one plan.
 - [x] Fix `discovery-empty-source.test.ts`, which silently hit the live senat.ro. Suite green.
 - [x] Write `PLAN.md`, `DECISIONS.md` and `CLAUDE.md`; archive old docs.
 - [x] Back up local data: deferred; stays local for now (D-009).
-- [ ] Set up bug intake for the tester → Q4.
+- [x] Bug intake: GitHub Issues and the Project board, already used by the tester (D-010).
 - [x] Merge `phase-0-stabilize` into `main` (approved 2026-10-03).
 
 **Exit:** `main` clean and green, this plan merged.
@@ -104,7 +104,7 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [ ] **Data integrity checks.** Write repeatable SQL checks against production: duplicate people and members, impossible or fabricated dates (D1), votes without nominal rows, nominal totals ≠ official totals, mandates over seat capacity, orphans. These become the updater's health gate in Phase 3.
 - [ ] **Source vs stored.** A script that re-fetches a sample of official pages (votes, MP profiles, rosters) and diffs them against what we stored: totals, nominal rows, names, dates, affiliations. It runs offline against saved snapshots, and becomes an updater check in Phase 3 (D-008).
 - [ ] **Live spot-check.** About 20 records (votes, MPs, ministers) compared on the live site against the official source, by hand.
-- [ ] **UI walkthrough.** Every public route on desktop and mobile: what it shows, where the data comes from, what is broken or confusing, and what is missing.
+- [ ] **UI walkthrough.** Include tester issues #3–#8. Every public route on desktop and mobile: what it shows, where the data comes from, what is broken or confusing, and what is missing.
 - [ ] **Missing-info brainstorm.** For each entity (MP, vote, bill, party, cabinet, minister, president, ambassador), what a citizen would want to know and we don't have yet, ranked by value and effort.
 - [ ] **Re-verify D3–D8.**
 - [ ] Inventory local `data/` (~2.5 GB): keep or delete (D-009).
@@ -116,7 +116,7 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 
 **First (pulled forward because it is the core of "what did X do"): identity and group history.**
 - [ ] Probe parser keeps the "din / până în" dates for groups and parties; re-parse the local raw snapshots (no crawling). Store month precision honestly → Q12.
-- [ ] Identity resolution: one person per human, one member record per person per chamber. Auto-merge only with corroboration (official CDEP career links, matching mandates and constituency, no overlapping mandates); everything else goes to a short review list → Q13.
+- [ ] Identity resolution: one person per human, one member record per person per chamber. Auto-merge only with corroboration (official CDEP career links, matching mandates and constituency, no overlapping mandates); everything else goes to a short review list (D-014).
 - [ ] Fix `closeStaleCurrentMandates` to match on resolved identity, not member ID, so D1 cannot recur.
 - [ ] Dry-run diff → owner review → apply to production. Regression checks: no overlapping groups, no duplicate name keys without a recorded "distinct people" decision, no mandate ended by a roster run for someone still on that roster.
 
