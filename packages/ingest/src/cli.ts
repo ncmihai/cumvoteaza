@@ -14,6 +14,7 @@ import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
 import { runIntegrityChecks } from "./integrity/checks";
 import { applyMemberMergePlan, planMemberMerges } from "./identity/member-merge";
+import { applyBillMergePlan, loadBillRecords, planBillMerges } from "./identity/bill-merge";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
 import { auditCurrentLegislature } from "./current-legislature-audit";
 import { auditGovernmentHistory, governmentHistoryAuditMarkdown } from "./government-history-audit";
@@ -424,6 +425,27 @@ async function main() {
         unresolved: plan.unresolved
       }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Run identity:resolve --persist first, then re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "bills:merge-duplicates") {
+    // D22: one bill record per dossier. Dry run by default.
+    const session = createDbSession();
+    try {
+      const plan = planBillMerges(await loadBillRecords(session.db));
+      if (hasFlag("persist")) await session.db.transaction((tx) => applyBillMergePlan(tx as unknown as typeof session.db, plan));
+      await writeImport("bills-merge-duplicates", plan, JSON.stringify(plan, null, 2));
+      console.log(JSON.stringify({
+        persisted: hasFlag("persist"),
+        merges: plan.merges.length,
+        retired: plan.merges.reduce((total, merge) => total + merge.from.length, 0),
+        sample: plan.merges.slice(0, 5),
+        sharedRegistrationNumbers: plan.sharedRegistrationNumbers
+      }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist, then npm run ingest:refresh-read-models and ingest:site:revalidate.");
     } finally {
       await session.close();
     }

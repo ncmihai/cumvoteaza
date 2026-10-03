@@ -380,6 +380,21 @@ export async function getCurrentMemberSlug(slugOrId: string): Promise<string | u
   }
 }
 
+/** The current slug of a bill merged into another record of the same dossier (D22). */
+export async function getCurrentBillSlug(slugOrId: string): Promise<string | undefined> {
+  if (!process.env.DATABASE_URL) return undefined;
+  const session = createWebDbSession();
+  try {
+    const [row] = await session.db.execute<{ slug: string }>(sql`
+      select b.slug from id_aliases a join bills b on b.id = a.canonical_id
+      where (a.kind = 'bill-slug' and a.alias_id = ${`slug:${slugOrId}`}) or (a.kind = 'bill' and a.alias_id = ${slugOrId})
+      limit 1`);
+    return row?.slug;
+  } finally {
+    await session.close();
+  }
+}
+
 async function getMemberPageDataUncached(slug: string, options: { legislature?: string } = {}): Promise<MemberPageData | undefined> {
   requireDatabase();
   const dbData = await tryDatabaseMember(slug, options);

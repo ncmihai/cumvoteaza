@@ -36,6 +36,7 @@ import { classifyVote } from "./vote-classification";
 import { resolveVoters, type SittingMember, type VoterResolution } from "./identity/resolve-voters";
 import { hasOfficeTitle } from "./identity/names";
 import { recordRetiredSlug } from "./identity/member-merge";
+import { billDossierKeys } from "./identity/bill-merge";
 
 const defaultLegislature = {
   id: "leg-2024-2028",
@@ -51,16 +52,17 @@ export async function persistSenateBill(parsed: ParsedSenateBill, suppliedSessio
   try {
     return await session.db.transaction(async (db) => {
     await upsertSourceSnapshot(db, parsed.sourceSnapshot);
-    await upsertBill(db, parsed.bill);
-    await Promise.all(parsed.events.map((event) => upsertBillEvent(db, event)));
-    await Promise.all(parsed.sponsors.map((sponsor) => upsertBillSponsor(db, sponsor)));
-    await Promise.all(parsed.documents.map((document) => upsertDocument(db, document)));
+    const { bill, events, sponsors, documents } = onExistingBill(await existingBillFor(db, parsed.bill), parsed);
+    await upsertBill(db, bill);
+    await Promise.all(events.map((event) => upsertBillEvent(db, event)));
+    await Promise.all(sponsors.map((sponsor) => upsertBillSponsor(db, sponsor)));
+    await Promise.all(documents.map((document) => upsertDocument(db, document)));
 
     return {
-      billId: parsed.bill.id,
+      billId: bill.id,
       sourceSnapshotId: parsed.sourceSnapshot.id,
-      events: parsed.events.length,
-      documents: parsed.documents.length
+      events: events.length,
+      documents: documents.length
     };
     });
   } finally {
@@ -75,22 +77,26 @@ export async function persistSenateVote(parsed: ParsedSenateVote, suppliedSessio
     await db.insert(schema.legislatures).values(legislatureForDate(parsed.vote.heldOn)).onConflictDoNothing();
     await upsertSourceSnapshot(db, parsed.sourceSnapshot);
 
-    if (parsed.vote.billId) {
-      await ensurePlaceholderBill(db, {
-        id: parsed.vote.billId,
-        slug: parsed.vote.billId.replace(/^bill-/, ""),
-        title: parsed.vote.title,
-        identifiers: { senate: parsed.vote.title.split(" ")[0] ?? parsed.vote.billId },
+    let vote = parsed.vote;
+    if (vote.billId) {
+      const placeholder: Bill = {
+        id: vote.billId,
+        slug: vote.billId.replace(/^bill-/, ""),
+        title: vote.title,
+        identifiers: { senate: vote.title.split(" ")[0] ?? vote.billId },
         chamberOfOrigin: "senate",
         status: "unknown",
         sourceSnapshotIds: [parsed.sourceSnapshot.id]
-      });
+      };
+      const existing = await existingBillFor(db, placeholder);
+      if (existing) vote = { ...vote, billId: existing.id };
+      else await ensurePlaceholderBill(db, placeholder);
     }
 
     await Promise.all(parsed.groups.map((group) => upsertGroup(db, group)));
     // Votes attach to existing members only; rosters own members, mandates and group history.
-    const voters = await resolveVoteVoters(db, "senate", parsed.vote.heldOn, parsed.members);
-    await upsertVote(db, parsed.vote);
+    const voters = await resolveVoteVoters(db, "senate", vote.heldOn, parsed.members);
+    await upsertVote(db, vote);
     await Promise.all(parsed.groupVoteTotals.map((total) => upsertGroupVoteTotal(db, total)));
     await Promise.all(canonicalIndividualVotes(parsed.individualVotes, voters).map((vote) => upsertIndividualVote(db, vote)));
 
@@ -113,18 +119,19 @@ export async function persistDeputiesBill(parsed: ParsedDeputiesBill, suppliedSe
   try {
     return await session.db.transaction(async (db) => {
     await upsertSourceSnapshot(db, parsed.sourceSnapshot);
-    await upsertBill(db, parsed.bill);
-    await Promise.all(parsed.events.map((event) => upsertBillEvent(db, event)));
-    await Promise.all(parsed.sponsors.map((sponsor) => upsertBillSponsor(db, sponsor)));
-    await Promise.all(parsed.documents.map((document) => upsertDocument(db, document)));
-    await upsertBillProcedureSteps(db, parsed.procedureSteps);
+    const { bill, events, sponsors, documents, procedureSteps } = onExistingBill(await existingBillFor(db, parsed.bill), parsed);
+    await upsertBill(db, bill);
+    await Promise.all(events.map((event) => upsertBillEvent(db, event)));
+    await Promise.all(sponsors.map((sponsor) => upsertBillSponsor(db, sponsor)));
+    await Promise.all(documents.map((document) => upsertDocument(db, document)));
+    await upsertBillProcedureSteps(db, procedureSteps);
 
     return {
-      billId: parsed.bill.id,
+      billId: bill.id,
       sourceSnapshotId: parsed.sourceSnapshot.id,
-      events: parsed.events.length,
-      procedureSteps: parsed.procedureSteps.length,
-      documents: parsed.documents.length
+      events: events.length,
+      procedureSteps: procedureSteps.length,
+      documents: documents.length
     };
     });
   } finally {
@@ -138,15 +145,15 @@ export async function persistChamberVote(parsed: ParsedChamberVote, suppliedSess
     return await session.db.transaction(async (db) => {
     await db.insert(schema.legislatures).values(legislatureForDate(parsed.vote.heldOn)).onConflictDoNothing();
     await upsertSourceSnapshot(db, parsed.sourceSnapshot);
+    let vote = parsed.vote;
     if (parsed.bill) {
-      await ensurePlaceholderBill(db, {
-        ...parsed.bill,
-        sourceSnapshotIds: [parsed.sourceSnapshot.id]
-      });
+      const existing = await existingBillFor(db, parsed.bill);
+      if (existing) vote = { ...vote, billId: existing.id };
+      else await ensurePlaceholderBill(db, { ...parsed.bill, sourceSnapshotIds: [parsed.sourceSnapshot.id] });
     }
     // Votes attach to existing members only; rosters own members, mandates and group history.
-    const voters = await resolveVoteVoters(db, "deputies", parsed.vote.heldOn, parsed.members);
-    await upsertVote(db, parsed.vote);
+    const voters = await resolveVoteVoters(db, "deputies", vote.heldOn, parsed.members);
+    await upsertVote(db, vote);
     await upsertIndividualVotes(db, canonicalIndividualVotes(parsed.individualVotes, voters));
 
     return {
@@ -1149,15 +1156,54 @@ async function upsertBill(db: Db, bill: Bill) {
       set: {
         slug: bill.slug,
         title: bill.title,
-        identifiers: bill.identifiers,
         chamberOfOrigin: bill.chamberOfOrigin,
         decisionChamber: bill.decisionChamber,
         status: bill.status,
+        // The other chamber's page of the same dossier adds identifiers and sources; it never removes them.
+        identifiers: sql`excluded.identifiers || ${schema.bills.identifiers}`,
         // A page that does not state the law type never erases one read earlier.
         lawType: sql`coalesce(excluded.law_type, ${schema.bills.lawType})`,
-        sourceSnapshotIds: bill.sourceSnapshotIds
+        sourceSnapshotIds: sql`(select coalesce(jsonb_agg(distinct x), '[]'::jsonb) from jsonb_array_elements(${schema.bills.sourceSnapshotIds} || excluded.source_snapshot_ids) x)`
       }
     });
+}
+
+/**
+ * The stored bill of the same dossier (D22): the bill itself, a bill it was merged into, or a bill with the
+ * same Senate L-number or CDEP PL-x number. Senate B-numbers are registration numbers and never match.
+ */
+async function existingBillFor(db: Db, bill: Pick<Bill, "id" | "identifiers">): Promise<{ id: string; slug: string } | undefined> {
+  const keys = billDossierKeys(bill.identifiers);
+  const senateL = keys.find((key) => key.startsWith("senate:"))?.slice("senate:".length) ?? null;
+  const deputies = keys.find((key) => key.startsWith("deputies:"))?.slice("deputies:".length).replace(/\s+/g, "").toLowerCase() ?? null;
+  const rows = await db.execute<{ id: string; slug: string }>(sql`
+    select b.id, b.slug from bills b
+    where b.id = ${bill.id}
+       or b.id = (select canonical_id from id_aliases where alias_id = ${bill.id} and kind = 'bill')
+       or (${senateL}::text is not null and upper(replace(coalesce(b.identifiers->>'senate_l', b.identifiers->>'senate'), ' ', '')) = ${senateL})
+       or (${deputies}::text is not null and lower(regexp_replace(b.identifiers->>'deputies', '\s+', '', 'g')) = ${deputies})
+    order by (b.id = ${bill.id}) desc, (b.id like 'bill-l%') desc, b.id
+    limit 1
+  `);
+  return rows[0];
+}
+
+/** Re-points a parsed bill page and its rows to the stored bill of the same dossier. */
+function onExistingBill<T extends { bill: Bill; events: BillEvent[]; sponsors: BillSponsor[]; documents: DocumentSource[]; procedureSteps?: BillProcedureStep[] }>(
+  existing: { id: string; slug: string } | undefined,
+  parsed: T
+): T & { procedureSteps: BillProcedureStep[] } {
+  const procedureSteps = parsed.procedureSteps ?? [];
+  if (!existing || existing.id === parsed.bill.id) return { ...parsed, procedureSteps };
+  const billId = existing.id;
+  return {
+    ...parsed,
+    bill: { ...parsed.bill, id: billId, slug: existing.slug },
+    events: parsed.events.map((event) => ({ ...event, billId })),
+    sponsors: parsed.sponsors.map((sponsor) => ({ ...sponsor, billId })),
+    documents: parsed.documents.map((document) => ({ ...document, billId })),
+    procedureSteps: procedureSteps.map((step) => ({ ...step, billId }))
+  };
 }
 
 async function ensurePlaceholderBill(db: Db, bill: Bill) {

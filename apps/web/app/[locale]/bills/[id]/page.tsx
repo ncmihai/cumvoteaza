@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
 import { getBillTextComparisons } from "@/lib/bill-text-features";
-import { getBillPageData } from "@/lib/data";
+import { getBillPageData, getCurrentBillSlug } from "@/lib/data";
 import { getDocumentConfidenceMap } from "@/lib/document-confidence";
 import { getHotCount } from "@/lib/explorer-data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
@@ -26,7 +26,11 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
   const messages = messagesFor(locale);
   const labels = billPageLabels[locale];
   const data = await getBillPageData(id);
-  if (!data) notFound();
+  if (!data) {
+    const currentSlug = await getCurrentBillSlug(id);
+    if (currentSlug && currentSlug !== id) permanentRedirect(`/${rawLocale}/bills/${currentSlug}`);
+    notFound();
+  }
   const { bill, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts } = data;
   const [hotCount, comparisons, documentConfidence] = await Promise.all([
     getHotCount("bill", bill.id),

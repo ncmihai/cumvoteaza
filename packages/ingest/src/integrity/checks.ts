@@ -118,6 +118,20 @@ export const checks: Check[] = [
     query: sql`select id, held_on::text, vote_type from votes where title in ('Senate vote', 'Chamber vote', 'Vot Senat', 'Vot Camera')`
   },
   {
+    name: "duplicate_bill_dossier",
+    severity: "error",
+    description: "Two bill records share a Senate L-number or a CDEP PL-x number (one dossier, D22).",
+    query: sql`
+      with keys as (
+        select id, 'senate:' || upper(replace(coalesce(identifiers->>'senate_l', identifiers->>'senate'), ' ', '')) as key from bills
+        where coalesce(identifiers->>'senate_l', identifiers->>'senate') ~* '^L\s*\d+/\d{4}$'
+        union all
+        select id, 'deputies:' || lower(regexp_replace(identifiers->>'deputies', '\s+', '', 'g')) from bills
+        where identifiers->>'deputies' ~* '^PL-?x\s*\d+/\d{4}$'
+      )
+      select key, array_agg(id order by id) as bills from keys group by key having count(distinct id) > 1`
+  },
+  {
     name: "vote_nominal_totals_mismatch",
     severity: "warning",
     description: "A vote's nominal for/against/abstention rows differ from the official totals (source vs stored).",
