@@ -119,7 +119,8 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [ ] **Re-verify D3–D8.**
 - [ ] Inventory local `data/` (~2.5 GB): keep or delete (D-009).
 - [ ] Noted during the identity repair: profile header shows an interim minister role instead of Prime Minister (Bolojan); header labels a parliamentary group as "Partid"; local `.env` and the cockpit write straight to the production DB (use a Neon dev branch for local work); CI passes a Jest-only `--runInBand` flag.
-- [ ] Output: `docs/audit-2026-10.md` with findings and the agreed cut list. Decisions go into `DECISIONS.md`.
+- [x] Output: [`docs/audit-2026-10.md`](audit-2026-10.md) (2026-10-03): module verdicts, cut list, fix list A1–A8, privacy items, ranked missing information, local data inventory.
+- [ ] Owner decisions on the audit's §7, then the cuts.
 
 **Exit:** audit written, cut list agreed, cuts made.
 
