@@ -845,7 +845,18 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
           )
         : latestMembership(memberships.filter((membership) => !mandate || membership.memberId === mandate.memberId));
     const group = groups.find((item) => item.id === currentMembership?.groupId);
-    const party = parties.find((item) => item.id === group?.partyId);
+    // The member's own party affiliation, not the party behind their parliamentary group (a member can sit in a
+    // group of another party: Ninel Peia, party SOS, group PACE).
+    const affiliations = partyAffiliationRows.map(mapMemberPartyAffiliation);
+    const currentAffiliation =
+      mandate && selectedLegislature
+        ? latestMembershipDuring(
+            affiliations.filter((affiliation) => affiliation.memberId === mandate.memberId),
+            mandate.startsOn,
+            earliestDate(mandate.endsOn, selectedLegislature.endsOn)
+          )
+        : undefined;
+    const party = parties.find((item) => item.id === currentAffiliation?.partyId);
     const sourceId =
       currentMembership?.sourceSnapshotId ??
       mandate?.sourceSnapshotId ??
@@ -2072,7 +2083,7 @@ function latestMembershipOn(memberships: MemberGroupMembership[], date: string):
   return [...(active.length > 0 ? active : [])].sort((a, b) => b.startsOn.localeCompare(a.startsOn)).at(0);
 }
 
-function latestMembershipDuring(memberships: MemberGroupMembership[], startsOn: string, endsOn: string | undefined): MemberGroupMembership | undefined {
+function latestMembershipDuring<T extends { startsOn: string; endsOn?: string }>(memberships: T[], startsOn: string, endsOn: string | undefined): T | undefined {
   const active = memberships.filter((membership) => {
     const membershipEndsOn = membership.endsOn ?? "9999-12-31";
     const periodEndsOn = endsOn ?? "9999-12-31";

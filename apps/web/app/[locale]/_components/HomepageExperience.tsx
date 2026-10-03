@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialText } from "./OfficialText";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, LoaderCircle, Search, Users, X } from "lucide-react";
@@ -106,13 +107,13 @@ export function HomepageExperience({ locale, votes }: { locale: Locale; votes: V
 
       <section className={styles.otherVotes}>
         <div className={styles.sectionHeading}><h2>{copy.recent}</h2><Link href={`/${locale}/votes`}>{copy.allVotes} <ArrowRight size={16} /></Link></div>
-        <div className={styles.voteList}>{filtered.slice(0, 5).map((item) => <button type="button" className={`${styles.voteRow} ${navigatingId === item.vote.id ? styles.navigating : ""}`} key={item.vote.id} onClick={() => selectVote(item.vote.id)} aria-pressed={item.vote.id === selected.vote.id} disabled={Boolean(navigatingId)}>
+        <div className={styles.voteList}>{filtered.slice(0, 5).map((item) => { const row = presentVote(item.vote, { locale, bill: item.bill, source: item.source }); return <button type="button" className={`${styles.voteRow} ${navigatingId === item.vote.id ? styles.navigating : ""}`} key={item.vote.id} onClick={() => selectVote(item.vote.id)} aria-pressed={item.vote.id === selected.vote.id} disabled={Boolean(navigatingId)}>
           <time>{formatDate(item.vote.heldOn, locale)}</time>
-          <strong>{shortTitle(item.vote.title)}</strong>
-          <span>{item.vote.title}</span>
-          <Outcome outcome={presentVote(item.vote, { locale, bill: item.bill, source: item.source }).outcome} label={presentVote(item.vote, { locale, bill: item.bill, source: item.source }).outcomeLabel} compact />
+          <strong>{row.heading}</strong>
+          <span lang="ro">{row.subject ?? row.officialTitle}</span>
+          <Outcome outcome={row.outcome} label={row.outcomeLabel} compact />
           {navigatingId === item.vote.id ? <LoaderCircle className={styles.spinner} size={17}/> : <ArrowRight size={17} />}
-        </button>)}</div>
+        </button>; })}</div>
       </section>
     </div>
     <VotePreview locale={locale} item={selected} />
@@ -126,7 +127,7 @@ function FeaturedVote({ locale, item }: { locale: Locale; item: VoteExplorerItem
   return <article className={styles.featuredVote}>
     <div className={styles.voteKicker}><span>{copy.hotWindow} · {vote.voteType} · {chamberLabel(vote.chamber, locale)}</span><time>{formatDate(vote.heldOn, locale)}</time></div>
     <div className={styles.voteTitleRow}><h2>{presentation.heading}</h2><div className={styles.titleActions}><Outcome outcome={presentation.outcome} label={presentation.outcomeLabel} /><HotButton entityType="vote" entityId={vote.id} initialCount={item.hotCount} label={copy.hot} /></div></div>
-    <p>{presentation.subject ?? presentation.officialTitle}</p>
+    <OfficialText text={presentation.subject ?? presentation.officialTitle} locale={locale}/>
     <div className={styles.why}><Users size={29} /><div><h3>{copy.why}</h3><p>{copy.whyCopy}</p><Link href={`/${locale}/votes/${vote.id}`}>{copy.readBrief} <ArrowRight size={16} /></Link></div></div>
     <div className={styles.counts}>
       <Count number={vote.totals.for} label={voteChoiceLabels[locale].for} tone="for" />
@@ -144,7 +145,6 @@ function Outcome({ outcome, label, compact = false }: { outcome: VoteOutcome; la
 }
 
 function Count({ number, label, tone }: { number: number; label: string; tone: string }) { return <div className={`${styles.count} ${styles[tone]}`}><strong>{number}</strong><span>{label}</span></div>; }
-function shortTitle(title: string) { return title.split(" - ").slice(0, 2).join(" — "); }
 function chamberLabel(chamber: string, locale: Locale) { return chamber === "senate" ? (locale === "ro" ? "Senat" : "Senate") : (locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies"); }
 
 const labels = {

@@ -28,7 +28,10 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
-  const currentGovernmentRole = governmentRoles.find((role) => role.startsOn <= today && (!role.endsOn || role.endsOn >= today));
+  // Several roles can be active at once (a Prime Minister may also hold interim ministries): show the most senior.
+  const currentGovernmentRole = governmentRoles
+    .filter((role) => role.startsOn <= today && (!role.endsOn || role.endsOn >= today))
+    .sort((a, b) => governmentRoleRank(a) - governmentRoleRank(b))[0];
   const identity = presentMemberIdentity(member, history, asOf);
   const career = presentMemberCareer(careerSegments, legislatures);
   const activityPresentation = presentMemberActivity({ for: activity?.votesFor ?? 0, against: activity?.votesAgainst ?? 0, abstention: activity?.abstentions ?? 0, presentNotVoting: activity?.presentNotVoting ?? 0, absent: activity?.absent, unknown: activity?.unknown }, locale);
@@ -39,7 +42,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const chronologicalVotes = votes.flatMap((item) => { const vote = votesById.get(item.voteId); return vote ? [{ item, vote }] : []; }).sort((a, b) => b.vote.heldOn.localeCompare(a.vote.heldOn));
   const importantVote = chronologicalVotes.find(({ vote }) => vote.prominence === "major" && (vote.classificationConfidence === "verified" || vote.classificationConfidence === "high"));
   const recent = importantVote ? [importantVote, ...chronologicalVotes.filter(({ item }) => item.id !== importantVote.item.id)].slice(0, 6) : chronologicalVotes.slice(0, 6);
-  const shortParty = party?.shortName ?? group?.shortName ?? (locale === "ro" ? "Neafiliat" : "Unaffiliated");
+  const shortParty = party?.shortName ?? (locale === "ro" ? "Fără partid declarat" : "No declared party");
   const contextualVote = fromVote && voteRecords.some((vote) => vote.id === fromVote) ? fromVote : undefined;
   const context = presentMemberProfileContext({ identity, chamberLabel: mandate ? chamberLabels[locale][mandate.chamber] : undefined, constituency: placeForDisplay(mandate?.constituency), partyLabel: shortParty, legislatureId: selectedLegislature?.id, legislatureLabel: selectedLegislature?.label, history, sponsoredBillCount: sponsoredBills.length, locale, asOf, currentMandate: isActive });
   const featured = recent[0] ? { ...recent[0], presentation: presentVote(recent[0].vote, { locale }) } : undefined;
@@ -72,6 +75,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
     <DetailPageHeader className="pb-1" media={<div className="relative h-[200px] w-[160px] overflow-hidden rounded-md border border-slate-300 bg-[#e9eef5] lg:h-[250px] lg:w-[210px]"><ImageWithFallback src={profilePhotoUrl} alt={identity.name} className="h-full w-full object-cover"><span className="grid h-full place-items-center font-serif text-4xl font-bold text-[#4b608a]">{initials(identity.name)}</span></ImageWithFallback>{currentLogoUrl ? <img src={currentLogoUrl} alt="" className="absolute bottom-2 right-2 h-11 w-11 border border-slate-300 bg-white object-contain p-1"/> : null}</div>} title={identity.name} subtitle={identity.office || currentGovernmentRole ? <strong className="block text-xl leading-tight text-[#061a47] lg:text-2xl">{identity.office ?? currentGovernmentRole?.title}</strong> : undefined}>
         <div className="mt-5 flex flex-wrap items-stretch gap-y-3 text-sm text-[#4b608a]">
           <IdentityFact label={locale === "ro" ? "Partid" : "Party"}>{party ? <Link href={`/${locale}/parties/${party.slug}`} className="flex items-center gap-2 font-semibold text-[#061a47]"><i className="h-4 w-4 rounded-full" style={{ background: party.color ?? group?.color ?? "#8996a9" }}/>{shortParty}</Link> : <span className="flex items-center gap-2 font-semibold text-[#061a47]"><i className="h-4 w-4 rounded-full bg-slate-400"/>{shortParty}</span>}</IdentityFact>
+          {group && group.partyId !== party?.id ? <IdentityFact label={locale === "ro" ? "Grup parlamentar" : "Parliamentary group"}><span className="flex items-center gap-2 font-semibold text-[#061a47]"><i className="h-4 w-4 rounded-full" style={{ background: group.color ?? "#8996a9" }}/>{group.shortName}</span></IdentityFact> : null}
           {mandate ? <IdentityFact label={locale === "ro" ? "Cameră" : "Chamber"}><span className="flex items-center gap-2 font-semibold text-[#061a47]"><Building2 size={20}/>{chamberLabels[locale][mandate.chamber]}</span></IdentityFact> : null}
           {mandate?.constituency ? <IdentityFact label={locale === "ro" ? "Circumscripție" : "Constituency"}><span className="flex items-center gap-2 font-semibold text-[#061a47]"><MapPin size={20}/>{placeForDisplay(mandate.constituency)}</span></IdentityFact> : null}
           <IdentityFact label={locale === "ro" ? "Statut" : "Status"}><span className={`flex items-center gap-2 font-semibold ${isActive ? "text-emerald-700" : "text-[#4b608a]"}`}><i className={`h-4 w-4 rounded-full ${isActive ? "bg-emerald-600" : "bg-slate-400"}`}/>{statusLabel}</span></IdentityFact>
@@ -125,3 +129,10 @@ function ContextBlock({ icon, title, children }: { icon: React.ReactNode; title:
 function ChoiceBadge({ value, locale }: { value: string; locale: AppLocale }) { const tone = value === "for" ? "bg-emerald-100 text-emerald-800" : value === "against" ? "bg-rose-100 text-rose-700" : value === "abstention" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"; return <span className={`w-fit px-2 py-1 text-xs font-semibold ${tone}`}>{choice(value, locale)}</span>; }
 function initials(value: string) { return value.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
 function choice(value: string, locale: AppLocale) { const ro: Record<string, string> = { for: "Pentru", against: "Contra", abstention: "Abținere", present_not_voting: "Nu a votat", absent: "Absent" }; return locale === "ro" ? (ro[value] ?? value) : value.replaceAll("_", " "); }
+
+function governmentRoleRank(role: { title: string; interim?: boolean }): number {
+  const title = role.title.toLowerCase();
+  if (/prim-ministru|prim ministru/.test(title) && !/viceprim/.test(title)) return 0;
+  if (/viceprim/.test(title)) return role.interim ? 3 : 1;
+  return role.interim || /interimar/.test(title) ? 4 : 2;
+}

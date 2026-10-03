@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialText } from "./OfficialText";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -100,7 +101,7 @@ export function VoteDirectoryExplorer({
                 </div>
                 {locale === "en" ? <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Official title in Romanian</div> : null}
                 <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2"><h2 className="min-w-0 flex-1 font-serif text-xl font-semibold leading-tight text-[#071a3a]">{presentation.heading}</h2><span className="shrink-0 border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{vote.voteType}</span></div>
-                {presentation.subject ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{presentation.subject}</p> : null}
+                {presentation.subject ? <OfficialText className="mt-1 line-clamp-2 text-sm text-slate-600" text={presentation.subject} locale={locale}/> : null}
                 <div className="mt-2 flex flex-wrap items-center gap-3" onClick={(event) => event.stopPropagation()}>
                   <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.hot} />
                   <Link href={`/${locale}/votes/${vote.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-[#075fc6]">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={14}/></Link>
@@ -246,7 +247,7 @@ function DirectoryFilters({
         <Select name="year" label={labels.year} defaultValue={filters.year ?? ""} options={years.map((year) => [year, year])} />
         <Select name="month" label={labels.month} defaultValue={filters.month ?? ""} options={monthOptions(locale)} />
         <Select name="chamber" label={labels.chamber} defaultValue={filters.chamber ?? ""} options={[["senate", chamberLabels[locale].senate],["deputies", chamberLabels[locale].deputies]]} />
-        <Select name="sourceStatus" label={labels.sourceStatus} defaultValue={filters.sourceStatus ?? ""} options={[["parsed", locale === "ro" ? "Verificată" : "Verified"],["partial", locale === "ro" ? "Parțială" : "Partial"],["failed", locale === "ro" ? "Cu eroare" : "Failed"]]} />
+        <Select name="sourceStatus" label={labels.sourceStatus} defaultValue={filters.sourceStatus ?? ""} options={[["parsed", locale === "ro" ? "Preluată complet" : "Fully parsed"],["partial", locale === "ro" ? "Parțială" : "Partial"],["failed", locale === "ro" ? "Cu eroare" : "Failed"]]} />
         <Select name="group" label={labels.group} defaultValue={filters.group ?? ""} options={filterOptions.groups.map((group) => [group.id, `${group.shortName} · ${chamberLabels[locale][group.chamber]}`])} />
       </div><div className="mt-4 flex gap-2"><Link href={path} className="flex-1 border border-slate-300 px-4 py-2.5 text-center text-sm font-bold text-[#061a47]">{locale === "ro" ? "Resetează" : "Reset"}</Link><button className="flex-1 bg-[#061a47] px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></DismissibleDetails>
       {activeFilters.length ? <div className="flex flex-wrap gap-2 sm:col-span-2">{activeFilters.map(([key, value]) => <span key={key} className="border border-[#cbd5e1] bg-white px-2.5 py-1 text-xs text-[#4b608a]">{key}: <strong className="text-[#061a47]">{value}</strong></span>)}</div> : null}

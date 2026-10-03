@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialText } from "./OfficialText";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Landmark, Users } from "lucide-react";
 import { chamberLabels, formatDate, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
@@ -24,7 +25,7 @@ export function VotePreview({ locale, item, className = "" }: { locale: Locale; 
       <ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={copy.share} copiedLabel={copy.copied} errorLabel={copy.copyError} className="bg-transparent text-[#4b608a]" />
     </div>
     <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-[#061a47]">{presentation.heading}</h2>
-    {presentation.subject ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#4b608a]">{presentation.subject}</p> : null}
+    {presentation.subject ? <OfficialText className="mt-3 line-clamp-3 text-sm leading-6 text-[#4b608a]" text={presentation.subject} locale={locale}/> : null}
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-slate-200 py-3 text-xs text-[#4b608a]">
       <span className="inline-flex items-center gap-1.5"><CalendarDays size={15}/>{formatDate(vote.heldOn, locale)}</span>
       <span className="inline-flex items-center gap-1.5"><Landmark size={15}/>{vote.voteType}</span>

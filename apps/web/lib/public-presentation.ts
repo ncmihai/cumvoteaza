@@ -139,7 +139,7 @@ export function presentVote(
   return {
     id: vote.id,
     identifier,
-    heading: readableVoteHeading(vote.title, identifier),
+    heading: readableVoteHeading(vote.title, identifier, options.locale),
     officialTitle: vote.title,
     subject,
     chamber: vote.chamber,
@@ -460,11 +460,22 @@ function voteIdentifier(title: string, bill?: Bill): string {
   return title.match(/\b(?:PL-x|Pl-x|L|PH\s+CD)\s*\d+\/\d{4}\b/i)?.[0] ?? title;
 }
 
-function readableVoteHeading(title: string, identifier: string): string {
+const PROCEDURAL_EN: Record<string, string> = {
+  "vot final": "Final vote",
+  "raport de respingere": "Rejection report",
+  "timp dezbatere": "Debate time",
+  "verificare prezența": "Attendance check",
+  "verificare prezenta": "Attendance check"
+};
+
+function readableVoteHeading(title: string, identifier: string, locale: AppLocale = "ro"): string {
   const normalized = title.replace(/\s+/g, " ").trim();
   const procedural = normalized.match(/(?:vot final|raport de respingere|timp dezbatere|verificare prezen[țt]a)/i)?.[0];
   if (identifier === normalized) return normalized;
-  return procedural ? `${identifier} — ${sentenceCase(procedural)}` : identifier;
+  if (!procedural) return identifier;
+  // The procedural phrase is our label, so it is translated; official titles are not (see OfficialText).
+  const label = locale === "en" ? PROCEDURAL_EN[procedural.toLowerCase()] ?? sentenceCase(procedural) : sentenceCase(procedural);
+  return `${identifier} — ${label}`;
 }
 
 function cleanImportedText(value: string): string {
