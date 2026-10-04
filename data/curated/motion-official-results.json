@@ -1,0 +1,12 @@
+{
+  "_readme": "Official counts that CDEP's motion pages do not state, read from the proces-verbal of the joint sitting (Senate stenogram PDF). Merged over the imported motion; only verified entries.",
+  "results": [
+    {
+      "motionId": "motion-censure-joint-2026-1",
+      "votesVoid": 3,
+      "presentCount": 431,
+      "source": "https://www.senat.ro/PAGINI/Stenograme/Stenograme_2026/Plen/26.05.05%20comuna.pdf",
+      "note": "Proces-verbal, 5 May 2026: 464 members, 431 present, 288 votes cast, 3 void, 285 valid: 281 for, 4 against; 233 needed."
+    }
+  ]
+}

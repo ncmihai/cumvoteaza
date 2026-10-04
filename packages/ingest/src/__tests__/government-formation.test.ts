@@ -43,4 +43,24 @@ describe("government formation attempts", () => {
       ["Siegfried Mureșan", "770/2026", "failed"]
     ]);
   });
+
+  it("backs every investiture figure the Senate has published with its stenogram, and flags the rest as press reports", () => {
+    for (const attempt of formationAttemptSeeds.filter((item) => item.voteHeldOn)) {
+      const stenogram = attempt.sources.some((source) => source.kind === "official" && /Stenograme_\d{4}\/Plen\/.*comuna\.pdf/.test(source.url));
+      if (attempt.voteHeldOn === "2026-09-30") {
+        expect(stenogram, "stenogram not yet published on 2026-10-04").toBe(false);
+        expect(attempt.notes).toMatch(/stenograma/i);
+      } else {
+        expect(stenogram, attempt.id).toBe(true);
+      }
+    }
+  });
+
+  it("uses the official threshold of 233 (a majority of 464 or 465 members) and the proces-verbal figures", () => {
+    const byId = new Map(formationAttemptSeeds.map((item) => [item.id, item]));
+    expect(formationAttemptSeeds.every((item) => item.threshold === undefined || item.threshold === 233)).toBe(true);
+    expect(byId.get("formation-vestea-2026")).toEqual(expect.objectContaining({ presentCount: 287, votesFor: 189, votesAgainst: 23, votesVoid: 0 }));
+    expect(byId.get("formation-bolojan-2025")).toEqual(expect.objectContaining({ presentCount: 314, votesFor: 301, votesAgainst: 9, votesVoid: 0 }));
+    expect(byId.get("formation-ciolacu-ii-2024")).toEqual(expect.objectContaining({ presentCount: 450, votesFor: 240, votesAgainst: 143 }));
+  });
 });

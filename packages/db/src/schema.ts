@@ -508,6 +508,7 @@ export const parliamentaryMotions = pgTable("parliamentary_motions", {
   votesAgainst: integer("votes_against"),
   votesAbstain: integer("votes_abstain"),
   votesVoid: integer("votes_void"),
+  presentCount: integer("present_count"),
   signatoriesDeputies: integer("signatories_deputies"),
   signatoriesSenators: integer("signatories_senators"),
   targetGovernmentId: text("target_government_id").references(() => governments.id),

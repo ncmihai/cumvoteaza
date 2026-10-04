@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import type { DbClient } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
@@ -87,7 +90,20 @@ async function loadMembersBySourceId(db: DbClient): Promise<Map<string, string>>
   return map;
 }
 
+const officialResultsPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../data/curated/motion-official-results.json");
+
+/** Verified counts from the joint sitting's proces-verbal that the motion page itself does not state. */
+function officialResults(): Map<string, { votesVoid?: number; presentCount?: number }> {
+  try {
+    const file = JSON.parse(readFileSync(officialResultsPath, "utf8")) as { results: Array<{ motionId: string; votesVoid?: number; presentCount?: number }> };
+    return new Map(file.results.map((row) => [row.motionId, row]));
+  } catch {
+    return new Map();
+  }
+}
+
 async function persistMotions(db: DbClient, items: MotionImportItem[], memberBySource: Map<string, string>) {
+  const official = officialResults();
   await db.transaction(async (tx) => {
     for (const item of items) {
       const [legislature] = await tx.execute<{ id: string }>(sql`select id from legislatures where starts_on <= ${item.filedOn}::date and ends_on >= ${item.filedOn}::date limit 1`);
@@ -109,6 +125,8 @@ async function persistMotions(db: DbClient, items: MotionImportItem[], memberByS
         votesFor: item.votesFor ?? null,
         votesAgainst: item.votesAgainst ?? null,
         votesAbstain: item.detail.votesAbstain ?? null,
+        votesVoid: official.get(item.id)?.votesVoid ?? null,
+        presentCount: official.get(item.id)?.presentCount ?? null,
         signatoriesDeputies: item.detail.signatoriesDeputies ?? null,
         signatoriesSenators: item.detail.signatoriesSenators ?? null,
         targetGovernmentId: government?.id ?? null,

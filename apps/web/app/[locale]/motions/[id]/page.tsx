@@ -20,7 +20,7 @@ export default async function MotionPage({ params }: { params: Promise<{ locale:
     <p className="mt-5 text-xs font-bold uppercase tracking-wide text-[#075fc6]">{motion.kind === "censure" ? (ro ? "Moțiune de cenzură" : "Motion of censure") : (ro ? "Moțiune simplă" : "Simple motion")} · {motion.number}/{motion.filedOn.slice(0, 4)} · {voteChamberLabels[locale][motion.chamber]}</p>
     <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight text-[#061a47] [overflow-wrap:anywhere]">{motion.title}</h1>
     <div className={`mt-4 inline-block border px-3 py-2 text-sm font-bold ${motion.outcome === "adopted" ? "border-red-300 bg-red-50 text-red-800" : "border-slate-300 bg-white text-[#061a47]"}`}>
-      {outcome[locale][motion.outcome]}{motion.votesFor != null ? ` · ${motion.votesFor} ${ro ? "pentru" : "for"}` : ""}{motion.votesAgainst != null ? `, ${motion.votesAgainst} ${ro ? "împotrivă" : "against"}` : ""}
+      {outcome[locale][motion.outcome]}{motion.votesFor != null ? ` · ${motion.votesFor} ${ro ? "pentru" : "for"}` : ""}{motion.votesAgainst != null ? `, ${motion.votesAgainst} ${ro ? "împotrivă" : "against"}` : ""}{motion.votesVoid ? `, ${motion.votesVoid} ${ro ? "anulate" : "void"}` : ""}
     </div>
     <dl className="mt-4 grid gap-x-8 gap-y-1 text-sm text-[#4b608a] sm:grid-cols-2">
       <div><dt className="inline font-semibold">{ro ? "Depusă" : "Filed"}: </dt><dd className="inline">{formatDate(motion.filedOn, locale)}</dd></div>

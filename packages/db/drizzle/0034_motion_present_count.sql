@@ -1,0 +1,1 @@
+ALTER TABLE "parliamentary_motions" ADD COLUMN "present_count" integer;
