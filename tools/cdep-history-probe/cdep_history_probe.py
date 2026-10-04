@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 
 BASE_URL = "https://cdep.ro"
@@ -320,10 +320,14 @@ def run_crawl(args: argparse.Namespace) -> None:
                         if career_key not in seen_profile_keys and career_url not in seen_profile_urls:
                             profile_queue.append(career_url)
 
-    write_jsonl(parsed_dir / "rosters.jsonl", roster_records)
-    write_jsonl(parsed_dir / "profiles.jsonl", profile_records)
+    # A crawl adds to what is already parsed; it never replaces it (a one-profile crawl once overwrote 5,289 profiles).
+    # Existing files are backed up first and merged by key, so re-crawling a profile updates it and nothing else is lost.
+    merged_rosters = merge_into_jsonl(parsed_dir / "rosters.jsonl", roster_records, lambda row: row.get("source", {}).get("url", ""))
+    merged_profiles = merge_into_jsonl(parsed_dir / "profiles.jsonl", profile_records, lambda row: row.get("profileKey") or row.get("url", ""))
     write_jsonl(parsed_dir / "profile-failures.jsonl", profile_failures)
     summary = build_summary(roster_records, profile_records, profile_failures)
+    summary["mergedProfiles"] = merged_profiles
+    summary["mergedRosters"] = merged_rosters
     (reports_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
@@ -1296,6 +1300,39 @@ def build_official_profile_preview(profile: dict[str, Any]) -> dict[str, Any]:
 
 def first(values: list[Any]) -> Any:
     return values[0] if values else None
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def backup_file(path: Path, keep: int = 3) -> Path | None:
+    """Copies a file to `<name>.<UTC timestamp>.bak` before it is rewritten and keeps only the newest `keep` copies."""
+    if not path.exists():
+        return None
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    backup = path.with_name(f"{path.name}.{stamp}.bak")
+    backup.write_bytes(path.read_bytes())
+    for old in sorted(path.parent.glob(f"{path.name}.*.bak"))[:-keep]:
+        old.unlink()
+    return backup
+
+
+def merge_into_jsonl(path: Path, new_rows: list[dict[str, Any]], key: Callable[[dict[str, Any]], str]) -> int:
+    """Merges new rows into an existing JSONL file by key (new wins) after backing it up. Returns the row count written."""
+    existing = read_jsonl(path)
+    merged: dict[str, dict[str, Any]] = {}
+    for row in existing:
+        merged[key(row) or f"row-{len(merged)}"] = row
+    for row in new_rows:
+        merged[key(row) or f"new-{len(merged)}"] = row
+    if not new_rows and existing:
+        return len(existing)
+    backup_file(path)
+    write_jsonl(path, merged.values())
+    return len(merged)
 
 
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:

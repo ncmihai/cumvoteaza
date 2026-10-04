@@ -9,6 +9,7 @@ import { importStoredAssetsFromInventory, type AssetType } from "./asset-import"
 import { importBillText, importBillTextBatch } from "./bill-text";
 import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "./bill-law-type";
 import { importMotions } from "./motions-import";
+import { backupLocalData } from "./backup";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
@@ -65,6 +66,15 @@ type RosterGroupRef = {
 };
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+
+// Root .env values (Digi Storage, CRON_SECRET, ...) reach every command; anything already in the environment wins.
+for (const line of existsSync(path.join(repoRoot, ".env")) ? readFileSync(path.join(repoRoot, ".env"), "utf8").split("\n") : []) {
+  const trimmed = line.trim();
+  const index = trimmed.indexOf("=");
+  if (!trimmed || trimmed.startsWith("#") || index < 1) continue;
+  const key = trimmed.slice(0, index);
+  if (process.env[key] === undefined) process.env[key] = trimmed.slice(index + 1).replace(/^"|"$/g, "");
+}
 
 loadLocalEnv();
 
@@ -377,6 +387,14 @@ async function main() {
     } finally {
       await session.close();
     }
+    return;
+  }
+
+  if (command === "backup:local-data") {
+    // Sprint 1 (F0): the CDEP evidence and curated decisions exist only on this machine. Dry run lists what would be archived.
+    const result = await backupLocalData({ repoRoot, persist: hasFlag("persist") });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to upload to Digi Storage and verify the copy.");
     return;
   }
 

@@ -89,12 +89,12 @@ Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is 
 Goal: **everything the site claims is true and checkable, and stays true without hand work.** Order matters: protect the data (F0), measure the gap (F1), make room (F2), fill it (F3), explain it (F4), automate it (F5). F4 runs alongside F3. Sizes: S about one session, M two to three, L several.
 
 ### F0 — Safe ground (S)
-- [ ] **Backups.** Check whether the Neon plan allows scheduled snapshots; if not, a weekly manual branch `backup-YYYY-MM-DD` (keep the last two). Copy `data/cdep-history` and `data/curated` off the laptop (Digi Storage). Do one real restore test: restore into a scratch branch and run `integrity:check`.
-- [ ] **Dev branch (D-018).** A Neon `dev` branch refreshed from production; local `.env` points at it; production credentials only in the runbook and the updater. Delete `rehearsal-d22-bill-merge` (owner OK) to free 360 MB first.
-- [ ] Move the Digi Storage credentials into the root `.env`; delete `tools/parliament-workbench/`.
-- [ ] Guard the probe `crawl`: never overwrite `parsed/*.jsonl` (write to a new file and swap after validation, or require `--out`).
-- [ ] CI: remove the Jest-only `--runInBand` flag; one `npm run verify` that runs typecheck, tests and build.
-**Exit:** a restore has been tested and nothing local is unique.
+- [~] **Backups.** Done 2026-10-04: `data/cdep-history` and `data/curated` copied to Digi Storage and verified by re-download (`npm run ingest:backup:local-data`); Neon branch `backup-2026-10-04` (no compute); restore test passed (a `dev` branch made from it has identical row counts and clean integrity checks). Open: the Neon plan has no snapshots or schedule today (6 h point-in-time window only), so a weekly manual `backup-YYYY-MM-DD` branch is the routine (keep the last two); enabling a snapshot schedule needs the owner's OK.
+- [~] **Dev branch (D-018).** Done: Neon `dev` branch; `.env` and `apps/web/.env.local` point at it; production credentials only in `.env.production`; the CLI refuses the production host unless run through `npm run prod -- <script>` (banner plus typed confirmation; `packages/db/src/production-guard.ts`, `tools/prod.mjs`). Open: delete `rehearsal-d22-bill-merge` (owner OK, frees 360 MB); the identity-repair runbook scripts still say `--env-file .env` and need `.env.production` plus an explicit guard override (left to the owner, see log).
+- [x] Digi Storage credentials are in the root `.env`. Open: `tools/parliament-workbench/` still holds its old `.env` (owner decides whether to delete it).
+- [x] Probe `crawl` no longer overwrites `parsed/*.jsonl`: it merges by key and writes a dated backup first (`tools/cdep-history-probe/tests/test_crawl_safety.py`).
+- [x] CI runs `npm test`; `npm run verify` is typecheck, tests and build.
+**Exit:** a restore has been tested and nothing local is unique. Met on 2026-10-04; the two owner decisions above remain.
 
 ### F1 — Know what we have (M)
 - [ ] **Coverage report.** For every sitting day from 21 Dec 2024: the official list of votes against ours, per month and chamber, with the missing IDs. CDEP: the day's vote XML (`evot2015.xml?par1=1&par2=YYYYMMDD`, about 1 KB a day; the HTML twin `evot2015.data?dat=` lists sitting days); senat.ro: the "Voturi Plen" calendar. Offline-first: lists are saved locally, fetching is polite, capped and resumable. Joint sittings included.
@@ -178,7 +178,7 @@ F-1 shared plumbing (raw-page archive, revisions, open downloads with licence) �
 
 ## Working agreement
 
-- One branch per phase or feature. Before merging: `npm run typecheck && npm test && npm run build`, plus a live check after deploy.
+- One branch per phase or feature. Before merging: `npm run verify` (typecheck, tests, build), plus a live check after deploy. Local commands run on the Neon `dev` branch; production runs go through `npm run prod -- <script>` and are run by the owner.
 - At the end of each session, update **this file** (checkboxes, verified state, log). Decisions and questions go in `DECISIONS.md`. **No new planning docs.**
 - Tests never touch the network or the production DB.
 - Production writes (DB or live crawls) only with explicit owner approval in the session.
@@ -188,6 +188,7 @@ F-1 shared plumbing (raw-page archive, revisions, open downloads with licence) �
 | Date | Entry |
 | --- | --- |
 | 2026-10-04 | D19, D20, D22, D23 and joint sittings (Q13) live; remaining: roster freshness (deputy idm 336), then Phase 3. |
+| 2026-10-04 | **Sprint 1 (safe ground) built:** off-laptop backup of local evidence, Neon backup branch with a passing restore test, `dev` branch as the default database, production guard and `npm run prod` wrapper, crawl merge-and-backup, `npm run verify`. Owner decisions pending: delete the rehearsal branch, snapshot schedule, runbook scripts, old workbench folder. Production commands now need the wrapper. |
 | 2026-10-04 | Cabinet module live (formation attempts, motions, linking); investiture totals checked against the Senate's stenograms (two corrections); source research; feature priorities (D-021); sprint plan written. |
 | 2026-10-03 | Phase 2 fixes A1–A8 live, tester issues #3–#8 closed. A1b: law types from official bill pages; every decided vote now shows adopted/rejected with the rule used. |
 | 2026-10-03 | **Identity repair live in production**; 122 missing votes imported; owner + CV decisions for 24 of 37 review cases. Next: Phase 1 audit, then the Phase 3 updater. |

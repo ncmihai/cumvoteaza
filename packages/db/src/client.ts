@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { readFileSync } from "node:fs";
 import postgres from "postgres";
+import { assertNotProductionByAccident } from "./production-guard";
 import * as schema from "./schema";
 
 type ResolvedDbSession = ReturnType<typeof createDbSession>;
@@ -16,6 +17,7 @@ export function createDb(databaseUrl = process.env.DATABASE_URL) {
 
 export function createDbSession(databaseUrl = process.env.DATABASE_URL) {
   const resolvedUrl = resolveDatabaseUrl(databaseUrl);
+  assertNotProductionByAccident(resolvedUrl, { ...readRootEnv(), ...process.env });
 
   const client = postgres(resolvedUrl, { max: 1 });
   return {

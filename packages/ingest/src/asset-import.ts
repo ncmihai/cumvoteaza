@@ -289,12 +289,13 @@ function createAssetStorageProvider(): AssetStorageProvider {
   return createDigiStorageAssetProvider();
 }
 
-function createDigiStorageAssetProvider(): AssetStorageProvider {
+/** Digi Storage under a base folder: published assets use DIGI_STORAGE_BASE_PATH, backups their own folder. */
+export function createDigiStorageAssetProvider(basePathOverride?: string): AssetStorageProvider & { download(objectPath: string): Promise<Buffer> } {
   const email = firstEnv(["DIGI_STORAGE_EMAIL", "DIGI_EMAIL", "ASSET_FTP_USERNAME"]);
   const password = firstEnv(["DIGI_STORAGE_PASSWORD", "DIGI_PASSWORD", "ASSET_FTP_PASSWORD"]);
   const baseUrl = (process.env.DIGI_STORAGE_BASE_URL || "https://storage.rcs-rds.ro").replace(/\/+$/, "");
   const apiUrl = (process.env.DIGI_STORAGE_API_URL || `${baseUrl}/api/v2.1`).replace(/\/+$/, "");
-  const basePath = `/${trimSlashes(process.env.DIGI_STORAGE_BASE_PATH || "cumvoteaza-assets")}`;
+  const basePath = `/${trimSlashes(basePathOverride ?? (process.env.DIGI_STORAGE_BASE_PATH || "cumvoteaza-assets"))}`;
   const configuredMountId = process.env.DIGI_STORAGE_MOUNT_ID?.trim();
   let auth: Promise<{ token: string; mountId: string }> | undefined;
 
@@ -312,6 +313,14 @@ function createDigiStorageAssetProvider(): AssetStorageProvider {
         storageProvider: "digi_storage",
         storagePath: remotePath
       };
+    },
+    async download(objectPath) {
+      const { token, mountId } = await (auth ??= resolveDigiStorageAuth({ email, password, baseUrl, apiUrl, mountId: configuredMountId }));
+      const remotePath = `/${[trimSlashes(basePath), objectPath].filter(Boolean).map(trimSlashes).join("/")}`;
+      const link = await getDigiStorageDownloadLink({ apiUrl, token, mountId, remotePath });
+      const response = await fetch(link);
+      if (!response.ok) throw new Error(`Digi Storage download failed with HTTP ${response.status} for ${remotePath}`);
+      return Buffer.from(await response.arrayBuffer());
     }
   };
 }
