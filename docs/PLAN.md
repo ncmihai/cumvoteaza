@@ -150,6 +150,32 @@ Decisions behind it: [D-021](DECISIONS.md). Source research: [audit-2026-10.md �
 
 ---
 
+## Sprint plan
+
+A sprint is one coherent block of work with an exit check, sized by scope, not by calendar. **Your time per sprint** is the decisions and the production runs only (everything else is built, tested and rehearsed on a copy first). At about one sprint a week the fix track takes **10 to 12 weeks**, mostly because imports are polite (one request every 2 s) and the two-week hands-off trial is calendar time; it goes faster whenever you can run a step the same day. Rules for every sprint: dry run first, rehearsal on the dev branch, integrity checks must pass, PLAN.md updated, deployed and checked live.
+
+**Sprint 0 — done (3–4 Oct 2026).** Identity repair, bill merge, committee dates, joint sittings, language fix, law types, data-health removal, cabinets (formation attempts, motions with signatories, government people linked, investiture totals verified against the stenograms), source research, roadmap.
+
+| # | Sprint | Work | Needs from you | Exit check | Size |
+| --- | --- | --- | --- | --- | --- |
+| 1 | **Safe ground** (F0) | Snapshot schedule or weekly backup branch; copy `data/cdep-history` and `data/curated` off the laptop; dev branch and local `.env` on it; delete the rehearsal branch; Digi credentials into the root `.env`, delete the old cockpit folder; crawl guard; CI cleanup and one `npm run verify` | OK to delete the rehearsal branch and to schedule snapshots; move the Digi lines into `.env` (about 30 min) | A restore into a scratch branch passes `integrity:check`; nothing local is unique | S |
+| 2 | **Coverage truth** (F1) | `votes:coverage`: CDEP day XML for every sitting day since 21 Dec 2024 and the Senate calendar against our votes; coverage of bills (CDEP list) and MPs (rosters); source-vs-stored script for votes; spot-check pack of 20 records | About 25 min of crawling approved or run by you; then **Q14** (vote scope) | A table official / ours / % per month and chamber, for votes, bills and seats | M |
+| 3 | **Storage diet** (F2) | `individual_votes` to `(member_id, vote_id)` primary key, text id and redundant indexes dropped; rehearsal on dev; migration; every use of the old id updated | Run the migration in production (about 15 min); then **Q15** (shrink or pay) | At most 150 bytes a row; full legislature projected under 600 MB; sample pages unchanged | M |
+| 4 | **Votes gap I: Chamber and joint** (F3) | `votes:backfill` driven by the XML list, newest month first, stops at the first failed gate; procedural joint votes; coverage refreshed | Run it (one overnight command, about 1.5 h of requests) | Chamber coverage at least 99% for 2024–2028; gaps listed with reasons | L |
+| 5 | **Votes gap II: Senate and backlog** (F3) | Senate calendar import; triage of the 1,690 pending, 3 failed and 14 skipped discoveries (import or retire with a reason); link the 127 votes without a bill; explain the 12 totals warnings | Run the Senate batch | Senate coverage at least 99%; backlog at 0 | L |
+| 6 | **People: rosters and leadership** (F3, D27, D37) | Roster refresh (idm 336 and every change since May); leadership with dates from cached CDEP profiles, the Senate card and the bureau and leaders pages (`member_roles`); official activity counts and attendance stored beside ours; identity rows 1, 2, 8, 11 if evidence appears | Run the roster crawl; review the leadership page | 331 and 134 seats explained; every current leader and chair shown with dates | M |
+| 7 | **Bill dossiers, core** (F3, D36) | Re-parse cached pages: initiators linked to members, every step typed with committee verdicts and deadlines, urgency, registration numbers, **the bill's fate**; fetch the roughly 1,300 missing bills of the legislature; law types; bill page timeline | Run the fetch (1–2 h unattended); review the page | Steps for at least 95% of bills; sponsors linked; every promulgated law has its number and gazette | L |
+| 8 | **Trust surface** (F4) | Methodology and coverage page (partial labels per legislature, last update per chamber); UI walkthrough on desktop and mobile with the tester; rewrite browser tests; `/parties` and `/governments` indexes; selective cache purge | **Q16**, name and domain (Q9), repository (Q8), hosting (Q10) and the licence for open downloads | A visitor sees what is covered and what is not; browser tests green in CI | M |
+| 9 | **Updater v1 on your Mac** (F5a) | Job queue, heartbeat and a worker loop: discover (day XML, new bills, roster changes) → import → gates (integrity, totals, source-vs-stored) → publish or hold and open a GitHub issue; revision capture hook; decree watcher for cabinet changes | Let it run for three days and review the held batches | Three consecutive days of automatic catch-up with no manual step | L |
+| 10 | **BC250 and admin v1** (F5b) | Worker as a service on the BC250 (Romanian address); `/admin` with GitHub login: jobs and held batches; Linux OCR path | BC250 access, GitHub OAuth app, then two weeks of watching | Two consecutive weeks of sitting days imported with zero manual intervention | L |
+
+**Feature sprints (start after Sprint 10; the order is yours, D-021):**
+F-1 shared plumbing (raw-page archive, revisions, open downloads with licence) → F-2 bill extensions (opinions, amendments, priority list, ordinances) → F-3 MP enrichment (CVs and birth dates, questions and interpellations, official counts) → F-4 decrees and the presidency record from 2014 (appointments register) → F-5 party money and elections → F-6 law texts and diffs. The decree catalog can be pulled forward into Sprints 8–9 if the cabinet watcher needs it.
+
+**Decision gates:** Q14 vote scope (end of Sprint 2) · Q15 storage (end of Sprint 3) · Q16 older legislatures, Q8–Q10 and the licence (Sprint 8). The next government designation is added when you tell me; until then it is not recorded.
+
+---
+
 ## Working agreement
 
 - One branch per phase or feature. Before merging: `npm run typecheck && npm test && npm run build`, plus a live check after deploy.
@@ -162,6 +188,7 @@ Decisions behind it: [D-021](DECISIONS.md). Source research: [audit-2026-10.md �
 | Date | Entry |
 | --- | --- |
 | 2026-10-04 | D19, D20, D22, D23 and joint sittings (Q13) live; remaining: roster freshness (deputy idm 336), then Phase 3. |
+| 2026-10-04 | Cabinet module live (formation attempts, motions, linking); investiture totals checked against the Senate's stenograms (two corrections); source research; feature priorities (D-021); sprint plan written. |
 | 2026-10-03 | Phase 2 fixes A1–A8 live, tester issues #3–#8 closed. A1b: law types from official bill pages; every decided vote now shows adopted/rejected with the rule used. |
 | 2026-10-03 | **Identity repair live in production**; 122 missing votes imported; owner + CV decisions for 24 of 37 review cases. Next: Phase 1 audit, then the Phase 3 updater. |
 | 2026-10-03 | Identity and group-history repair built and rehearsed on a Neon copy of production (all integrity checks pass). Found and fixed D12–D18 on the way. Awaiting owner approval to apply. |
