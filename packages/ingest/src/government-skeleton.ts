@@ -1,6 +1,7 @@
-import type { CompositionEvent, Government, GovernmentPartyAlignment, GovernmentRole, Ministry, MinistryAlias, MinistryIncarnation, MinistryIncarnationPortfolio, MinistryLineage, Person, PolicyPortfolio, SourceSnapshot } from "@cumsevoteaza/parliament-model";
+import type { CompositionEvent, Government, GovernmentFormationAttempt, GovernmentPartyAlignment, GovernmentRole, Ministry, MinistryAlias, MinistryIncarnation, MinistryIncarnationPortfolio, MinistryLineage, Person, PolicyPortfolio, SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { partyAlignmentsForGovernment } from "./government-party-alignments";
 import { cabinetManifests } from "./government-cabinet-manifests";
+import { formationAttemptSeeds } from "./government-formation";
 import { ministryAliases, ministryCatalog, ministryIdByName } from "./ministry-catalog";
 import { incarnationIdByName, ministryIncarnationPortfolios, ministryIncarnations, ministryLineage, policyPortfolioCatalog } from "./ministry-institution-catalog";
 
@@ -259,6 +260,7 @@ export function governmentSkeletonData(): {
   governments: Government[];
   roles: GovernmentRole[];
   events: CompositionEvent[];
+  formationAttempts: GovernmentFormationAttempt[];
   partyAlignments: GovernmentPartyAlignment[];
   obsoleteGovernmentIds: string[];
   obsoleteEventIds: string[];
@@ -419,7 +421,7 @@ export function governmentSkeletonData(): {
     }
   ];
   const people = uniqueBy(
-    [...governments.map((item) => item.primeMinister), ...bolojanInvestitureCabinet.map((item) => item.person), ...bolojanCabinetChanges.map((item) => item.person), ...cabinetManifests.flatMap((manifest) => manifest.roles.map((role) => role.person))].map((displayName) => {
+    [...governments.map((item) => item.primeMinister), ...formationAttemptSeeds.map((item) => item.designee), ...bolojanInvestitureCabinet.map((item) => item.person), ...bolojanCabinetChanges.map((item) => item.person), ...cabinetManifests.flatMap((manifest) => manifest.roles.map((role) => role.person))].map((displayName) => {
       const slug = slugify(displayName);
       return {
         id: `person-${slug}`,
@@ -534,6 +536,7 @@ export function governmentSkeletonData(): {
       }));
       return [...(end ? [start, end] : [start]), ...extraEvents];
     }),
+    formationAttempts: formationAttemptSeeds.map(({ designee, ...attempt }) => ({ ...attempt, designeePersonId: `person-${slugify(designee)}` })),
     partyAlignments: governments.flatMap((item) =>
       [...(item.partyAlignments ?? []), ...partyAlignmentsForGovernment(item.slug, item.startsOn, item.endsOn)].map((alignment) => ({
         id: `government-party-alignment-${item.slug}-${alignment.partyId}-${alignment.startsOn ?? item.startsOn}`,

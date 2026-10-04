@@ -441,6 +441,32 @@ export interface Bill {
   sourceSnapshotIds: string[];
 }
 
+/** A candidate for prime minister: designation, investiture vote (secret ballot, totals only) and what came of it. */
+export interface GovernmentFormationAttempt {
+  id: string;
+  designeePersonId: string;
+  precedingGovernmentId?: string;
+  resultingGovernmentId?: string;
+  designatedOn: string;
+  designationDecree?: string;
+  designationDecreeUrl?: string;
+  revokedOn?: string;
+  revocationDecree?: string;
+  revocationDecreeUrl?: string;
+  voteHeldOn?: string;
+  presentCount?: number;
+  votesFor?: number;
+  votesAgainst?: number;
+  votesVoid?: number;
+  threshold?: number;
+  outcome: "invested" | "failed" | "revoked_before_vote";
+  parliamentDecision?: string;
+  parliamentDecisionUrl?: string;
+  appointmentDecree?: string;
+  sources: Array<{ label: string; url: string; kind: "official" | "reported" }>;
+  notes?: string;
+}
+
 export interface BillEvent {
   id: string;
   billId: string;

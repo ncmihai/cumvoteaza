@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
 import { dataUnavailable } from "./data-availability";
@@ -120,13 +120,15 @@ export async function getGovernmentView(slug: string) {
     const rows = await session.db.select().from(schema.governments).where(eq(schema.governments.slug, slug)).limit(1);
     const government = rows[0];
     if (!government) return undefined;
-    const [roles, people, ministries, incarnations, members, sources, events] = await Promise.all([
+    const [roles, people, ministries, incarnations, members, sources, events, attempts, motions] = await Promise.all([
       session.db.select().from(schema.governmentRoles).where(eq(schema.governmentRoles.governmentId, government.id)),
       session.db.select().from(schema.people), session.db.select().from(schema.ministries),
       session.db.select().from(schema.ministryIncarnations),
       session.db.select().from(schema.members),
       session.db.select().from(schema.sourceSnapshots),
-      session.db.select().from(schema.compositionEvents).where(eq(schema.compositionEvents.governmentId, government.id))
+      session.db.select().from(schema.compositionEvents).where(eq(schema.compositionEvents.governmentId, government.id)),
+      session.db.select().from(schema.governmentFormationAttempts).where(or(eq(schema.governmentFormationAttempts.resultingGovernmentId, government.id), eq(schema.governmentFormationAttempts.precedingGovernmentId, government.id))),
+      session.db.select().from(schema.parliamentaryMotions).where(eq(schema.parliamentaryMotions.targetGovernmentId, government.id))
     ]);
     const peopleById = new Map(people.map((item) => [item.id, item]));
     const memberByPersonId = new Map(members.filter((item) => item.personId).map((item) => [item.personId!, item]));
@@ -145,7 +147,14 @@ export async function getGovernmentView(slug: string) {
         const member = memberByPersonId.get(person.id);
         return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: member ? { slug: member.slug } : undefined, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined, sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined }];
       }).sort((a, b) => b.startsOn.localeCompare(a.startsOn)),
-      events: events.sort((a, b) => b.occurredOn.localeCompare(a.occurredOn))
+      events: events.sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)),
+      // How this government came to be, and the attempts to replace it while it served.
+      formation: attempts.map((attempt) => ({
+        ...attempt,
+        role: attempt.resultingGovernmentId === government.id ? ("formed" as const) : ("replacement" as const),
+        designee: { displayName: peopleById.get(attempt.designeePersonId)?.displayName ?? attempt.designeePersonId, memberSlug: memberByPersonId.get(attempt.designeePersonId)?.slug }
+      })).sort((a, b) => a.designatedOn.localeCompare(b.designatedOn)),
+      motions: motions.map((motion) => ({ id: motion.id, kind: motion.kind, number: motion.number, filedOn: motion.filedOn, title: motion.title, outcome: motion.outcome, votesFor: motion.votesFor, votesAgainst: motion.votesAgainst, votedOn: motion.votedOn })).sort((a, b) => b.filedOn.localeCompare(a.filedOn))
     };
   } finally {
     await session.close();

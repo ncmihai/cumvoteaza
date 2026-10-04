@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -453,6 +454,78 @@ export const ministryLineage = pgTable("ministry_lineage", {
   fromIdx: index("ministry_lineage_from_idx").on(table.fromIncarnationId),
   toIdx: index("ministry_lineage_to_idx").on(table.toIncarnationId),
   uniqueEdgeIdx: uniqueIndex("ministry_lineage_unique_idx").on(table.fromIncarnationId, table.toIncarnationId, table.relationship, table.effectiveOn)
+}));
+
+/**
+ * How a government came to be, or failed to: one row per candidate for prime minister (Constitution art. 103).
+ * Investiture votes are secret ballots, so only totals exist; every figure comes from a cited source.
+ */
+export const governmentFormationAttempts = pgTable("government_formation_attempts", {
+  id: text("id").primaryKey(),
+  designeePersonId: text("designee_person_id").notNull().references(() => people.id),
+  precedingGovernmentId: text("preceding_government_id").references(() => governments.id),
+  resultingGovernmentId: text("resulting_government_id").references(() => governments.id),
+  designatedOn: date("designated_on").notNull(),
+  designationDecree: text("designation_decree"),
+  designationDecreeUrl: text("designation_decree_url"),
+  revokedOn: date("revoked_on"),
+  revocationDecree: text("revocation_decree"),
+  revocationDecreeUrl: text("revocation_decree_url"),
+  voteHeldOn: date("vote_held_on"),
+  presentCount: integer("present_count"),
+  votesFor: integer("votes_for"),
+  votesAgainst: integer("votes_against"),
+  votesVoid: integer("votes_void"),
+  threshold: integer("threshold"),
+  /** invested | failed | revoked_before_vote */
+  outcome: text("outcome").$type<"invested" | "failed" | "revoked_before_vote">().notNull(),
+  parliamentDecision: text("parliament_decision"),
+  parliamentDecisionUrl: text("parliament_decision_url"),
+  appointmentDecree: text("appointment_decree"),
+  sources: jsonb("sources").$type<Array<{ label: string; url: string; kind: "official" | "reported" }>>().notNull().default([]),
+  notes: text("notes")
+}, (table) => ({
+  designatedIdx: index("government_formation_attempts_designated_idx").on(table.designatedOn)
+}));
+
+/** Censure and simple motions with their official result and signatories. */
+export const parliamentaryMotions = pgTable("parliamentary_motions", {
+  id: text("id").primaryKey(),
+  /** censure (joint sitting) | simple (one chamber) */
+  kind: text("kind").$type<"censure" | "simple">().notNull(),
+  chamber: voteChamberEnum("chamber").notNull(),
+  legislatureId: text("legislature_id").references(() => legislatures.id),
+  number: integer("number").notNull(),
+  filedOn: date("filed_on").notNull(),
+  /** Presented in the plenary, and the vote, when the source states them. */
+  presentedOn: date("presented_on"),
+  votedOn: date("voted_on"),
+  title: text("title").notNull(),
+  initiators: text("initiators"),
+  /** adopted | rejected | unknown (not yet decided or not stated) */
+  outcome: text("outcome").$type<"adopted" | "rejected" | "unknown">().notNull().default("unknown"),
+  votesFor: integer("votes_for"),
+  votesAgainst: integer("votes_against"),
+  votesAbstain: integer("votes_abstain"),
+  votesVoid: integer("votes_void"),
+  signatoriesDeputies: integer("signatories_deputies"),
+  signatoriesSenators: integer("signatories_senators"),
+  targetGovernmentId: text("target_government_id").references(() => governments.id),
+  sourceUrl: text("source_url").notNull(),
+  documentUrl: text("document_url"),
+  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
+}, (table) => ({
+  filedIdx: index("parliamentary_motions_filed_idx").on(table.filedOn),
+  kindIdx: index("parliamentary_motions_kind_idx").on(table.kind, table.chamber)
+}));
+
+export const motionSignatories = pgTable("motion_signatories", {
+  motionId: text("motion_id").notNull().references(() => parliamentaryMotions.id),
+  memberId: text("member_id").notNull().references(() => members.id),
+  groupLabel: text("group_label")
+}, (table) => ({
+  pk: primaryKey({ columns: [table.motionId, table.memberId] }),
+  memberIdx: index("motion_signatories_member_idx").on(table.memberId)
 }));
 
 export const governmentRoles = pgTable("government_roles", {

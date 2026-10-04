@@ -10,6 +10,7 @@ import type {
   CompositionEvent,
   DocumentSource,
   Government,
+  GovernmentFormationAttempt,
   GovernmentPartyAlignment,
   GovernmentRole,
   GroupVoteTotal,
@@ -613,6 +614,7 @@ export async function persistGovernmentSkeleton(input: {
   governments: Government[];
   roles: GovernmentRole[];
   events: CompositionEvent[];
+  formationAttempts?: GovernmentFormationAttempt[];
   partyAlignments?: GovernmentPartyAlignment[];
   obsoleteGovernmentIds?: string[];
   obsoleteEventIds?: string[];
@@ -640,6 +642,7 @@ export async function persistGovernmentSkeleton(input: {
     await Promise.all(input.governments.map((government) => upsertGovernment(session.db, government)));
     await Promise.all(input.roles.map((role) => upsertGovernmentRole(session.db, role)));
     await Promise.all(input.events.map((event) => upsertCompositionEvent(session.db, event)));
+    await Promise.all((input.formationAttempts ?? []).map((attempt) => upsertFormationAttempt(session.db, attempt)));
     const partyAlignments = await filterExistingPartyAlignments(session.db, input.partyAlignments ?? []);
     await Promise.all(partyAlignments.map((alignment) => upsertGovernmentPartyAlignment(session.db, alignment)));
     return {
@@ -654,6 +657,7 @@ export async function persistGovernmentSkeleton(input: {
       governments: input.governments.length,
       roles: input.roles.length,
       events: input.events.length,
+      formationAttempts: input.formationAttempts?.length ?? 0,
       partyAlignments: partyAlignments.length,
       skippedPartyAlignments: (input.partyAlignments ?? []).length - partyAlignments.length,
       obsoleteGovernmentsDeleted: input.obsoleteGovernmentIds?.length ?? 0,
@@ -663,6 +667,34 @@ export async function persistGovernmentSkeleton(input: {
   } finally {
     await session.close();
   }
+}
+
+async function upsertFormationAttempt(db: Db, attempt: GovernmentFormationAttempt) {
+  const values = {
+    id: attempt.id,
+    designeePersonId: attempt.designeePersonId,
+    precedingGovernmentId: attempt.precedingGovernmentId ?? null,
+    resultingGovernmentId: attempt.resultingGovernmentId ?? null,
+    designatedOn: attempt.designatedOn,
+    designationDecree: attempt.designationDecree ?? null,
+    designationDecreeUrl: attempt.designationDecreeUrl ?? null,
+    revokedOn: attempt.revokedOn ?? null,
+    revocationDecree: attempt.revocationDecree ?? null,
+    revocationDecreeUrl: attempt.revocationDecreeUrl ?? null,
+    voteHeldOn: attempt.voteHeldOn ?? null,
+    presentCount: attempt.presentCount ?? null,
+    votesFor: attempt.votesFor ?? null,
+    votesAgainst: attempt.votesAgainst ?? null,
+    votesVoid: attempt.votesVoid ?? null,
+    threshold: attempt.threshold ?? null,
+    outcome: attempt.outcome,
+    parliamentDecision: attempt.parliamentDecision ?? null,
+    parliamentDecisionUrl: attempt.parliamentDecisionUrl ?? null,
+    appointmentDecree: attempt.appointmentDecree ?? null,
+    sources: attempt.sources,
+    notes: attempt.notes ?? null
+  };
+  await db.insert(schema.governmentFormationAttempts).values(values).onConflictDoUpdate({ target: schema.governmentFormationAttempts.id, set: { ...values, id: undefined } });
 }
 
 async function upsertPerson(db: Db, person: Person) {
@@ -1517,7 +1549,7 @@ function canonicalIndividualVotes(votes: IndividualVote[], voters: VoterResoluti
   });
 }
 
-async function canonicalGovernmentPeople<T extends { people: Person[]; governments: Government[]; roles: GovernmentRole[]; events: CompositionEvent[] }>(
+async function canonicalGovernmentPeople<T extends { people: Person[]; governments: Government[]; roles: GovernmentRole[]; events: CompositionEvent[]; formationAttempts?: GovernmentFormationAttempt[] }>(
   db: Db,
   input: T
 ): Promise<T> {
@@ -1525,7 +1557,8 @@ async function canonicalGovernmentPeople<T extends { people: Person[]; governmen
     ...input.people.map((person) => person.id),
     ...input.roles.map((role) => role.personId),
     ...input.governments.flatMap((government) => (government.primeMinisterPersonId ? [government.primeMinisterPersonId] : [])),
-    ...input.events.flatMap((event) => (event.personId ? [event.personId] : []))
+    ...input.events.flatMap((event) => (event.personId ? [event.personId] : [])),
+    ...(input.formationAttempts ?? []).map((attempt) => attempt.designeePersonId)
   ];
   if (ids.length === 0) return input;
   const rows = await db.select().from(schema.idAliases)
@@ -1539,6 +1572,7 @@ async function canonicalGovernmentPeople<T extends { people: Person[]; governmen
     people: input.people.filter((person) => !canonical.has(person.id)),
     roles: input.roles.map((role) => ({ ...role, personId: map(role.personId) })),
     governments: input.governments.map((government) => (government.primeMinisterPersonId ? { ...government, primeMinisterPersonId: map(government.primeMinisterPersonId) } : government)),
-    events: input.events.map((event) => (event.personId ? { ...event, personId: map(event.personId) } : event))
+    events: input.events.map((event) => (event.personId ? { ...event, personId: map(event.personId) } : event)),
+    formationAttempts: input.formationAttempts?.map((attempt) => ({ ...attempt, designeePersonId: map(attempt.designeePersonId) }))
   };
 }

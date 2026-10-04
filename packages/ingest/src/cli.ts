@@ -8,12 +8,14 @@ import * as schema from "@cumsevoteaza/db";
 import { importStoredAssetsFromInventory, type AssetType } from "./asset-import";
 import { importBillText, importBillTextBatch } from "./bill-text";
 import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "./bill-law-type";
+import { importMotions } from "./motions-import";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
 import { runIntegrityChecks } from "./integrity/checks";
 import { applyMemberMergePlan, planMemberMerges } from "./identity/member-merge";
 import { applyBillMergePlan, loadBillRecords, planBillMerges } from "./identity/bill-merge";
+import { applyGovernmentPersonLinks, planGovernmentPersonLinks, readGovernmentPersonLinks } from "./identity/government-people";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
 import { auditCurrentLegislature } from "./current-legislature-audit";
 import { auditGovernmentHistory, governmentHistoryAuditMarkdown } from "./government-history-audit";
@@ -361,6 +363,23 @@ async function main() {
     return;
   }
 
+  if (command === "motions:import") {
+    // D35: censure and simple motions of the current legislature from CDEP, with results and named signatories.
+    // Live fetch (about 20 pages, sequential, --delay-ms apart); writes only with --persist.
+    const session = createDbSession();
+    try {
+      const items = await importMotions(session.db, { persist: hasFlag("persist"), delayMs: numberFlag("delay-ms") ?? 2000 });
+      console.log(JSON.stringify({
+        persisted: hasFlag("persist"),
+        motions: items.map(({ detail: _detail, ...item }) => ({ ...item, unresolved: item.unresolved.length, sampleUnresolved: item.unresolved.slice(0, 3) }))
+      }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
   if (command === "bills:law-type") {
     // Reads "Caracterul legii" from official bill pages for bills whose vote outcome depends on it (A1b).
     // Fetches live pages (sequential, --delay-ms, --limit); writes only with --persist.
@@ -487,6 +506,20 @@ async function main() {
     await writeImport("identity-resolve", report, JSON.stringify(report, null, 2));
     console.log(JSON.stringify({ ...report, changes: report.changes.length, review: report.review.length }, null, 2));
     if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to apply person assignments.");
+    return;
+  }
+
+  if (command === "identity:link-government-people") {
+    // Cabinet people who are also MPs become one person (data/curated/government-people-links.json). Dry run by default.
+    const session = createDbSession();
+    try {
+      const plans = await planGovernmentPersonLinks(session.db, readGovernmentPersonLinks(path.join(repoRoot, "data/curated/government-people-links.json")));
+      const applied = hasFlag("persist") ? await session.db.transaction((tx) => applyGovernmentPersonLinks(tx as unknown as typeof session.db, plans)) : 0;
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), applied, plans: plans.map((plan) => ({ pair: `${plan.link.governmentPersonId} -> ${plan.link.canonicalPersonId}`, status: plan.status, governmentService: plan.governmentService, mandates: plan.mandates, repoints: plan.references })) }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist, then governments:skeleton, refresh-read-models and site:revalidate.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

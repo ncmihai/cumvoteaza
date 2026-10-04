@@ -1,0 +1,15 @@
+{
+  "_readme": "Government people who are also MPs. The cabinet seed creates one person per name; the identity resolver creates one per MP. These pairs are the same human being, so the cabinet person is retired in favour of the MP person (id_aliases kind 'person'), and roles, prime-minister links, events and formation attempts are repointed. Every pair is a well-documented public figure; the dry run prints the government service next to the mandates so the pair can be checked. Added 2026-10-04.",
+  "links": [
+    { "governmentPersonId": "person-marcel-ciolacu", "canonicalPersonId": "person-ion-marcel-ciolacu", "reason": "Marcel Ciolacu is Ion-Marcel Ciolacu: prime minister 2023-2025 and deputy 2012-present (CDEP profile name 'Ion-Marcel Ciolacu')." },
+    { "governmentPersonId": "person-victor-ponta", "canonicalPersonId": "person-victor-viorel-ponta", "reason": "Victor Ponta is Victor-Viorel Ponta: prime minister 2012-2015 and deputy 2004-2016, 2024-present." },
+    { "governmentPersonId": "person-catalin-predoiu", "canonicalPersonId": "person-marian-catalin-predoiu", "reason": "Cătălin Predoiu is Marian-Cătălin Predoiu: minister and deputy prime minister, deputy 2016-2024, senator 2024-present." },
+    { "governmentPersonId": "person-theodor-stolojan", "canonicalPersonId": "person-theodor-dumitru-stolojan", "reason": "Theodor Stolojan is Theodor-Dumitru Stolojan: prime minister 1991-1992, deputy 2000-2004." },
+    { "governmentPersonId": "person-nicolae-ciuca", "canonicalPersonId": "person-nicolae-ionel-ciuca", "reason": "Nicolae Ciucă is Nicolae-Ionel Ciucă: prime minister 2021-2023, senator 2020-present." },
+    { "governmentPersonId": "person-mihai-fifor", "canonicalPersonId": "person-mihai-viorel-fifor", "reason": "Mihai Fifor is Mihai-Viorel Fifor: minister of defence and of foreign affairs, senator and deputy." },
+    { "governmentPersonId": "person-calin-popescu-tariceanu", "canonicalPersonId": "person-calin-constantin-anton-popescu-tariceanu", "reason": "Călin Popescu-Tăriceanu is Călin-Constantin-Anton Popescu-Tăriceanu: prime minister 2004-2008, deputy and senator." },
+    { "governmentPersonId": "person-sorin-grindeanu", "canonicalPersonId": "person-sorin-mihai-grindeanu", "reason": "Sorin Grindeanu is Sorin-Mihai Grindeanu: prime minister 2017, minister, deputy and President of the Chamber." },
+    { "governmentPersonId": "person-florin-citu", "canonicalPersonId": "person-florin-vasile-citu", "reason": "Florin Cîțu is Florin-Vasile Cîțu: prime minister 2020-2021, senator 2016-2024." },
+    { "governmentPersonId": "person-sorin-cimpeanu", "canonicalPersonId": "person-sorin-mihai-cimpeanu", "reason": "Sorin Cîmpeanu is Sorin-Mihai Cîmpeanu: minister of education, deputy 2016-2020, senator 2020-present." }
+  ]
+}

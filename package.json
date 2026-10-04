@@ -40,6 +40,8 @@
     "ingest:integrity:check": "npm --workspace @cumsevoteaza/ingest run integrity:check --",
     "ingest:site:revalidate": "npm --workspace @cumsevoteaza/ingest run site:revalidate --",
     "ingest:bills:law-type": "npm --workspace @cumsevoteaza/ingest run bills:law-type --",
+    "ingest:motions:import": "npm --workspace @cumsevoteaza/ingest run motions:import --",
+    "ingest:identity:link-government-people": "npm --workspace @cumsevoteaza/ingest run identity:link-government-people --",
     "ingest:votes:requeue-joint": "npm --workspace @cumsevoteaza/ingest run votes:requeue-joint --",
     "ingest:bills:merge-duplicates": "npm --workspace @cumsevoteaza/ingest run bills:merge-duplicates --",
     "repair:senate-untitled-votes": "npm --workspace @cumsevoteaza/ingest run repair:senate-untitled-votes --",

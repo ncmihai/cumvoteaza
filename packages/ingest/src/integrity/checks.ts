@@ -167,13 +167,14 @@ export const checks: Check[] = [
   {
     name: "orphan_people",
     severity: "warning",
-    description: "People with no member record and no government role.",
+    description: "People with no member record, no government role and no candidacy for prime minister.",
     query: sql`
       select p.id, p.display_name from people p
       where not exists (select 1 from members m where m.person_id = p.id)
         and not exists (select 1 from government_roles r where r.person_id = p.id)
         and not exists (select 1 from governments g where g.prime_minister_person_id = p.id)
-        and not exists (select 1 from composition_events e where e.person_id = p.id)`
+        and not exists (select 1 from composition_events e where e.person_id = p.id)
+        and not exists (select 1 from government_formation_attempts a where a.designee_person_id = p.id)`
   },
   {
     name: "members_without_mandate",
