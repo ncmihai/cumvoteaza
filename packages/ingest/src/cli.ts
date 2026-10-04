@@ -10,6 +10,10 @@ import { importBillText, importBillTextBatch } from "./bill-text";
 import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "./bill-law-type";
 import { importMotions } from "./motions-import";
 import { backupLocalData } from "./backup";
+import { runCoverageFetch } from "./coverage/run-fetch";
+import { runCoverageReport } from "./coverage/run-report";
+import { writeSpotCheckPack } from "./coverage/spot-check-pack";
+import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
@@ -387,6 +391,79 @@ async function main() {
     } finally {
       await session.close();
     }
+    return;
+  }
+
+  if (command === "votes:coverage:fetch") {
+    // Sprint 2 (F1): saves the official vote lists (CDEP day XML, Senate "Voturi Plen" days) as raw files under data/coverage/raw.
+    // Without --live it only prints the plan. Sequential, --delay-ms apart (default 2000), capped by --max-requests, resumable.
+    const sources = (flag("source") ?? "cdep,senate").split(",").map((item) => item.trim()).filter((item): item is "cdep" | "senate" => item === "cdep" || item === "senate");
+    const results = await runCoverageFetch({
+      repoRoot,
+      from: flag("from") ?? "2024-12-21",
+      to: flag("to") ?? new Date().toISOString().slice(0, 10),
+      sources,
+      live: hasFlag("live"),
+      maxRequests: numberFlag("max-requests") ?? 600,
+      delayMs: numberFlag("delay-ms") ?? 2000,
+      refreshSince: flag("refresh-since"),
+      allDays: hasFlag("all-days"),
+      log: (line) => console.log(line)
+    });
+    console.log(JSON.stringify(Object.fromEntries(Object.entries(results).map(([key, value]) => [key, { ...value, days: value.days.length }])), null, 2));
+    if (!hasFlag("live")) console.log("Plan only: \"planned\" counts the month pages still to ask for; each sitting day adds one more request once its month is known (about 300 to 350 requests for 2024-12-21 to today, 10 to 12 minutes). Re-run with --live to request the pages (2 s apart).");
+    return;
+  }
+
+  if (command === "votes:coverage") {
+    // Sprint 2 (F1): official vote lists saved by votes:coverage:fetch against the votes in the database. Offline and read-only.
+    const today = new Date().toISOString().slice(0, 10);
+    const result = await runCoverageReport({ repoRoot, from: flag("from") ?? "2024-12-21", to: flag("to") ?? today, today });
+    console.log(await readFile(result.files.markdown, "utf8"));
+    if (result.unreadable.length) console.log(`WARNING: ${result.unreadable.length} saved files could not be read:`, JSON.stringify(result.unreadable.slice(0, 5)));
+    console.log(`Wrote ${result.files.markdown} and ${result.files.json}`);
+    return;
+  }
+
+  if (command === "bills:coverage:fetch") {
+    // Sprint 2 (F1): yearly bill lists of both chambers, saved raw under data/coverage/raw. Plan only without --live.
+    const sources = (flag("source") ?? "cdep,senate").split(",").map((item) => item.trim()).filter((item): item is "cdep" | "senate" => item === "cdep" || item === "senate");
+    const result = await runBillListFetch({
+      repoRoot,
+      years: numberListFlag("years") ?? [2024, 2025, 2026],
+      sources,
+      live: hasFlag("live"),
+      maxRequests: numberFlag("max-requests") ?? 30,
+      delayMs: numberFlag("delay-ms") ?? 2000,
+      refresh: hasFlag("refresh"),
+      log: (line) => console.log(line)
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only (a lower bound when pages are not saved yet). Re-run with --live to request the pages (2 s apart).");
+    return;
+  }
+
+  if (command === "bills:coverage") {
+    // Sprint 2 (F1): saved yearly bill lists against the bills in the database. Offline and read-only.
+    const today = new Date().toISOString().slice(0, 10);
+    const result = await runBillCoverageReport({ repoRoot, years: numberListFlag("years") ?? [2024, 2025, 2026], today });
+    console.log(await readFile(result.files.markdown, "utf8"));
+    if (result.missingLists.length) console.log(`Lists not saved yet: ${result.missingLists.join(", ")} (run bills:coverage:fetch --live)`);
+    console.log(`Wrote ${result.files.markdown} and ${result.files.json}`);
+    return;
+  }
+
+  if (command === "members:coverage") {
+    // Sprint 2 (F1): seats against sitting members per legislature. Database only, read-only.
+    console.log(renderSeatCoverageMarkdown(await runSeatCoverage()));
+    return;
+  }
+
+  if (command === "spotcheck:pack") {
+    // Sprint 2 (F1): about 20 records with our page and the official page side by side. Database only, read-only.
+    const today = new Date().toISOString().slice(0, 10);
+    const result = await writeSpotCheckPack(repoRoot, today, flag("seed") ?? today);
+    console.log(`${result.items.length} records written to ${result.file}`);
     return;
   }
 

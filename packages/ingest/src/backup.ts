@@ -10,9 +10,11 @@ import { createDigiStorageAssetProvider } from "./asset-import";
 const execFileAsync = promisify(execFile);
 
 /** What cannot be rebuilt from the sources or the database: the CDEP evidence behind identity, and the curated decisions. */
-export const LOCAL_BACKUP_SETS = [
+export const LOCAL_BACKUP_SETS: Array<{ name: string; path: string; optional?: boolean }> = [
   { name: "cdep-history", path: "data/cdep-history" },
-  { name: "curated", path: "data/curated" }
+  { name: "curated", path: "data/curated" },
+  // Raw official vote and bill lists saved by the coverage commands (Sprint 2); absent until the first fetch.
+  { name: "coverage-raw", path: "data/coverage/raw", optional: true }
 ];
 
 export type LocalBackupResult = {
@@ -38,7 +40,10 @@ export async function backupLocalData(options: { repoRoot: string; persist: bool
     const storage = options.persist ? createDigiStorageAssetProvider("cumvoteaza-backups") : undefined;
     for (const set of LOCAL_BACKUP_SETS) {
       const source = path.join(options.repoRoot, set.path);
-      if (!existsSync(source)) throw new Error(`Cannot back up ${set.path}: it does not exist.`);
+      if (!existsSync(source)) {
+        if (set.optional) continue;
+        throw new Error(`Cannot back up ${set.path}: it does not exist.`);
+      }
       const archive = path.join(work, `${set.name}-${date}.tar.gz`);
       await execFileAsync("tar", ["-czf", archive, "-C", options.repoRoot, set.path]);
       const bytes = readFileSync(archive);

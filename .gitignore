@@ -2,7 +2,11 @@ node_modules
 .next
 out
 dist
-coverage
+# test-coverage output only; packages/ingest/src/coverage/ is source code
+/coverage
+/apps/*/coverage
+/packages/*/coverage
+/tools/*/coverage
 .turbo
 .env
 .env.*
@@ -16,6 +20,7 @@ __pycache__/
 data/imports/*.json
 data/snapshots/*.html
 data/cdep-history/
+data/coverage/
 data/parliament-pipeline/
 data/parliament-workbench/
 tools/parliament-workbench/.venv/
