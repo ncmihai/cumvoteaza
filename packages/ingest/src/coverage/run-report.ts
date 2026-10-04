@@ -5,6 +5,7 @@ import { createDbSession } from "@cumsevoteaza/db";
 import { COVERAGE_RAW_DIR } from "./run-fetch";
 import { loadOfficialVotes } from "./load-official-votes";
 import { RawCache } from "./raw-cache";
+import { readUnsupportedRegistry, unsupportedKeys } from "./unsupported-registry";
 import { buildVoteCoverage, renderCoverageMarkdown, type StoredVoteRow, type VoteCoverageReport } from "./vote-coverage";
 
 export async function loadStoredVotes(from: string, to: string): Promise<StoredVoteRow[]> {
@@ -52,7 +53,7 @@ export async function runCoverageReport(options: { repoRoot: string; from: strin
   const cache = new RawCache(COVERAGE_RAW_DIR(options.repoRoot));
   const official = await loadOfficialVotes(cache, options.from, options.to);
   const stored = await loadStoredVotes(options.from, options.to);
-  const report = buildVoteCoverage({ official: official.records, stored, range: { from: options.from, to: options.to }, daysFetched: official.daysFetched });
+  const report = buildVoteCoverage({ official: official.records, stored, range: { from: options.from, to: options.to }, daysFetched: official.daysFetched, unsupported: unsupportedKeys(await readUnsupportedRegistry(options.repoRoot)) });
   const dir = path.join(options.repoRoot, "data", "coverage", "reports");
   await mkdir(dir, { recursive: true });
   const base = path.join(dir, `votes-coverage-${options.from}_${options.to}`);

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year";
+export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page";
 
 export interface RawCacheEntry {
   kind: RawCacheKind;
@@ -20,7 +20,8 @@ const EXTENSIONS: Record<RawCacheKind, string> = {
   "senate-month": "html",
   "senate-day": "html",
   "cdep-bills-year": "html",
-  "senate-bills-year": "html"
+  "senate-bills-year": "html",
+  "vote-page": "html"
 };
 
 /**
@@ -82,6 +83,15 @@ const ENCODING_LABELS = /encoding\s*=\s*["']([A-Za-z0-9._-]+)["']/i;
 
 /** Decodes a raw response using the XML declaration when present (CDEP serves ISO-8859-2), UTF-8 otherwise. */
 export function decodeOfficialBytes(bytes: Buffer, contentType?: string): string {
+  // Some CDEP files declare ISO-8859-2 but are UTF-8 (observed from 2025-02-28); bytes that form valid UTF-8 with
+  // multibyte letters are almost never valid Latin-2 text, so UTF-8 wins when it decodes cleanly.
+  if (bytes.some((byte) => byte >= 0x80)) {
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      // not UTF-8: fall through to the declared encoding
+    }
+  }
   const head = bytes.subarray(0, 200).toString("latin1");
   const label = head.match(ENCODING_LABELS)?.[1] ?? contentType?.match(/charset\s*=\s*([A-Za-z0-9._-]+)/i)?.[1] ?? "utf-8";
   try {

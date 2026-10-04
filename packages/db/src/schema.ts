@@ -850,6 +850,24 @@ export const votes = pgTable("votes", {
   classificationIdx: index("votes_classification_idx").on(table.prominence, table.classificationConfidence, table.heldOn)
 }));
 
+/**
+ * D-022: votes the site does not store one by one. A joint sitting's article, annex and amendment votes become
+ * one row per sitting with a link to the official list.
+ */
+export const voteSittingSummaries = pgTable("vote_sitting_summaries", {
+  id: text("id").primaryKey(),
+  chamber: voteChamberEnum("chamber").notNull(),
+  heldOn: date("held_on").notNull(),
+  kind: text("kind").notNull(),
+  voteCount: integer("vote_count").notNull(),
+  firstOfficialId: text("first_official_id").notNull(),
+  lastOfficialId: text("last_official_id").notNull(),
+  officialUrl: text("official_url").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  heldOnIdx: index("vote_sitting_summaries_held_on_idx").on(table.heldOn)
+}));
+
 export const voteCoverageSummaries = pgTable("vote_coverage_summaries", {
   voteId: text("vote_id").primaryKey().references(() => votes.id),
   coverageLevel: text("coverage_level").notNull().default("source_only"),

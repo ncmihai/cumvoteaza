@@ -116,7 +116,7 @@ describe("buildVoteCoverage", () => {
 
   it("renders a table a person can read", () => {
     const markdown = renderCoverageMarkdown(report, "2026-10-04");
-    expect(markdown).toContain("| 2026-09 | Chamber | 2 | 1 | 1 | 50.0% | 1 |");
+    expect(markdown).toContain("| 2026-09 | Chamber | 2 | 1 | 1 | 50.0% |  |  | 1 |");
     expect(markdown).toContain("Votes held whose totals differ from the official list: **1**");
   });
 });

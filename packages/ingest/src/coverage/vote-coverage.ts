@@ -1,4 +1,5 @@
 import type { OfficialCdepVote } from "./cdep-official-votes";
+import { isJointAmendmentVote } from "./joint-amendments";
 import type { OfficialSenateVote } from "./senate-official-votes";
 
 export type CoverageChamber = "deputies" | "senate" | "joint" | "unknown";
@@ -26,6 +27,8 @@ export interface OfficialVoteRecord {
   totalsConsistent: boolean;
   /** The Senate's own verdict column. CDEP's list has none. */
   resolution?: string;
+  /** Joint amendment votes that D-022 keeps as one summary row per sitting instead of importing them. */
+  summarised?: boolean;
 }
 
 export interface StoredVoteRow {
@@ -49,7 +52,8 @@ export function officialFromCdep(vote: OfficialCdepVote): OfficialVoteRecord {
     label: vote.description,
     isTest: vote.isTest,
     totals: { present: vote.present, for: vote.for, against: vote.against, abstention: vote.abstention, notVoting: vote.notVoting },
-    totalsConsistent: vote.totalsConsistent
+    totalsConsistent: vote.totalsConsistent,
+    summarised: vote.chamber === "joint" && isJointAmendmentVote(vote.description)
   };
 }
 
@@ -83,6 +87,10 @@ export interface CoverageRow {
   /** Official votes on the lists, test ballots excluded. */
   official: number;
   tests: number;
+  /** Joint amendment votes kept as a sitting summary (D-022), not counted as missing. */
+  summarised: number;
+  /** Attendance checks: the source publishes totals but no per-member choices, so there is nothing to import. */
+  noNames: number;
   /** Official votes we hold. */
   held: number;
   missing: number;
@@ -136,6 +144,8 @@ export function buildVoteCoverage(input: {
   range: { from: string; to: string };
   /** Days a list was fetched for, per source: only those can confirm or contradict a stored vote. */
   daysFetched: { cdep: ReadonlySet<string>; senate: ReadonlySet<string> };
+  /** `source:id` keys of votes known to carry no per-member choices. */
+  unsupported?: ReadonlySet<string>;
 }): VoteCoverageReport {
   const { official, stored, range, daysFetched } = input;
   const inRange = (date: string) => date >= range.from && date <= range.to;
@@ -162,11 +172,19 @@ export function buildVoteCoverage(input: {
     if (record.chamber === "unknown") unknownChamber += 1;
     if (!record.totalsConsistent) officialInconsistent.push({ source: record.source, officialId: record.officialId, date: record.date });
     const cellKey = `${record.date.slice(0, 7)}|${record.chamber}`;
-    const cell = cells.get(cellKey) ?? { month: record.date.slice(0, 7), chamber: record.chamber, official: 0, tests: 0, held: 0, missing: 0, percent: null, missingIds: [] };
+    const cell = cells.get(cellKey) ?? { month: record.date.slice(0, 7), chamber: record.chamber, official: 0, tests: 0, summarised: 0, noNames: 0, held: 0, missing: 0, percent: null, missingIds: [] };
     cells.set(cellKey, cell);
     const held = storedByKey.get(key);
     if (record.isTest) {
       cell.tests += 1;
+      continue;
+    }
+    if (!held && input.unsupported?.has(key)) {
+      cell.noNames += 1;
+      continue;
+    }
+    if (record.summarised && !held) {
+      cell.summarised += 1;
       continue;
     }
     cell.official += 1;
@@ -233,8 +251,8 @@ export function renderCoverageMarkdown(report: VoteCoverageReport, generatedAt: 
   lines.push(`Generated ${generatedAt}. Official lists read: ${report.daysFetched.cdep} CDEP days, ${report.daysFetched.senate} Senate days. "Official" excludes CDEP's own test ballots.`, "");
   lines.push("## Totals", "", "| Chamber | Official | Held | Missing | Coverage |", "| --- | ---: | ---: | ---: | ---: |");
   for (const row of report.totals) lines.push(`| ${CHAMBER_LABEL[row.chamber]} | ${row.official} | ${row.held} | ${row.missing} | ${pct(row.percent)} |`);
-  lines.push("", "## By month", "", "| Month | Chamber | Official | Held | Missing | Coverage | Tests |", "| --- | --- | ---: | ---: | ---: | ---: | ---: |");
-  for (const row of report.rows) lines.push(`| ${row.month} | ${CHAMBER_LABEL[row.chamber]} | ${row.official} | ${row.held} | ${row.missing} | ${pct(row.percent)} | ${row.tests || ""} |`);
+  lines.push("", "## By month", "", "| Month | Chamber | Official | Held | Missing | Coverage | Summarised | No names | Tests |", "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+  for (const row of report.rows) lines.push(`| ${row.month} | ${CHAMBER_LABEL[row.chamber]} | ${row.official} | ${row.held} | ${row.missing} | ${pct(row.percent)} | ${row.summarised || ""} | ${row.noNames || ""} | ${row.tests || ""} |`);
   lines.push("", "## Source against stored", "");
   lines.push(`- Votes held whose totals differ from the official list: **${report.totalsMismatches.length}**`);
   for (const item of report.totalsMismatches.slice(0, 25)) {

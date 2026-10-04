@@ -253,6 +253,13 @@
       "when": 1791146323207,
       "tag": "0035_compact_individual_votes",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791147255073,
+      "tag": "0036_vote_sitting_summaries",
+      "breakpoints": true
     }
   ]
 }

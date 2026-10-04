@@ -12,6 +12,7 @@ import { importMotions } from "./motions-import";
 import { backupLocalData } from "./backup";
 import { runCoverageFetch } from "./coverage/run-fetch";
 import { runCoverageReport } from "./coverage/run-report";
+import { runVoteBackfill } from "./coverage/run-vote-backfill";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
 import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
@@ -464,6 +465,31 @@ async function main() {
     const today = new Date().toISOString().slice(0, 10);
     const result = await writeSpotCheckPack(repoRoot, today, flag("seed") ?? today);
     console.log(`${result.items.length} records written to ${result.file}`);
+    return;
+  }
+
+  if (command === "votes:backfill") {
+    // Sprint 4 (F3): imports the official votes we do not hold, newest first, from the lists saved by votes:coverage:fetch.
+    // Each page is saved raw and must agree with the official list (date, chamber, totals, name list) before it is written.
+    // Without --persist it fetches and checks but writes nothing. Stops when --max-held votes fail a gate or the integrity checks get worse.
+    const sources = (flag("source") ?? "cdep").split(",").map((item) => item.trim()).filter((item): item is "cdep" | "senate" => item === "cdep" || item === "senate");
+    const result = await runVoteBackfill({
+      repoRoot,
+      from: flag("from") ?? "2024-12-21",
+      to: flag("to") ?? new Date().toISOString().slice(0, 10),
+      sources,
+      limit: numberFlag("limit") ?? 50,
+      batch: numberFlag("batch") ?? 25,
+      maxHeld: numberFlag("max-held") ?? 3,
+      maxRequests: numberFlag("max-requests") ?? 400,
+      delayMs: numberFlag("delay-ms") ?? 2000,
+      persist: hasFlag("persist"),
+      offline: hasFlag("offline"),
+      log: (line) => console.log(line)
+    });
+    console.log(JSON.stringify({ ...result, held: result.held.length ? result.held : undefined }, null, 2));
+    if (!hasFlag("persist")) console.log("Nothing was written. Re-run with --persist once the held list looks right.");
+    if (result.stopped) process.exitCode = 1;
     return;
   }
 
