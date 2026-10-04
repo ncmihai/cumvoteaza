@@ -27,6 +27,20 @@ Each Open question has a recommendation; the owner decides.
 
 ---
 
+### Q14 — Vote scope for 2024–2028: every vote, or final and major votes only?
+- Every electronic vote (amendments, procedure, agenda, attendance) is what the official sites publish and what a "database of record" implies; it is also about four times what we hold.
+- Final votes, rejection reports, motions and joint sittings are what most visitors look for. Amendments tell who changed what, which matters for the later bill timeline and law diff.
+- **Leaning:** import everything for the current legislature once the storage diet (F2) is done, label every vote with its kind so lists can default to final and major votes. Decide with the F1 coverage numbers.
+
+### Q15 — Storage: shrink the data or pay for more space?
+- Neon branch limit is 1 GB; we use 321 MB, and `individual_votes` costs about 700 bytes a row. The diet (F2) targets 150 bytes a row, enough for the whole current legislature.
+- If the diet falls short, or when older legislatures and change history arrive: a paid Neon plan, or compact storage of old nominal lists outside the database.
+- **Leaning:** diet first, pay only when the numbers say so (Principle: near-zero cost).
+
+### Q16 — Older legislatures: show partial data or hide it?
+- 2020–2024 has 133 votes and earlier legislatures 1, but full member and career histories. Showing votes there without a label implies completeness.
+- **Leaning:** show the histories, label vote coverage per legislature ("partial") on the page, and say so on the methodology page (F4) until a backfill exists.
+
 ## Decided
 
 | ID | Date | Decision | Why |

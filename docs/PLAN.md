@@ -4,7 +4,7 @@
 Decisions and open questions live in [DECISIONS.md](DECISIONS.md). Everything in
 [archive/](archive/) is history: useful evidence, never instructions.
 
-Last updated: 2026-10-03 (evening) · `main` @ `fff211f` + docs
+Last updated: 2026-10-04 · `main` @ `0e29812` + docs
 
 ---
 
@@ -31,170 +31,104 @@ compass) comes later and is built only on data that has already earned trust.
 
 | Horizon | What |
 | --- | --- |
-| **Now** | Stabilize, audit, fix data trust, build an unattended updater. |
-| **Next** | Complete the **2024–2028 legislature**: fresh votes in both chambers, MP profiles and affiliations, cabinets of this legislature with full reshuffle history, presidents (including the 2025 interim), ambassadors. |
+| **Now** | **Fix roadmap** (below): make every claim the site makes true, then keep it true with an unattended updater. |
+| **Next** | **Feature roadmap** (written when the fix roadmap is done): complete the **2024–2028 legislature**: fresh votes in both chambers, MP profiles and affiliations, cabinets of this legislature with full reshuffle history, presidents (including the 2025 interim), ambassadors. |
 | **Later** | History backfill (1990–2024), party and legislature wiki, political compass (local model on the BC250 suggests, human labels), rebuilding the cockpit if it is still needed. |
-| **Not doing** | Fine-tuning models, paid AI APIs (Gemini explanations), legal text diffs, the parked Codex "3B/3C" evidence and political-state pipelines (unless the audit says otherwise), multi-database release-preview machinery. |
+| **Not doing** | Fine-tuning models, paid AI APIs (Gemini explanations), the parked Codex "3B/3C" evidence and political-state pipelines (unless the audit says otherwise), multi-database release-preview machinery. |
 
 ---
 
-## Verified state — 2026-10-03
+## Verified state — 2026-10-04
 
-Checked today against the code and the production Neon DB (read-only).
+Read-only checks against production and the live site, after the identity, bill, committee and joint-sitting repairs.
 
 | Area | State |
 | --- | --- |
-| Site | Public at <https://cumvoteaza.vercel.app> (Vercel Hobby). Friends are testing it. |
-| Tests | `npm run typecheck` ✅. `npm test` ✅ on this branch: 38 web, 86 ingest, 6 model, 8 Python. Browser end-to-end tests are stale and not run. |
-| CI | GitHub Actions: typecheck, test and build on push/PR to `main`/`dev`. Last 8 runs on `main` green. |
-| DB | Neon project `cumsevoteaza`, ~345 MB of the 1 GB branch limit. After the identity repair: 3,368 people · 5,289 member records = 5,289 mandates · 1,173 votes · 226k+ individual votes. `npm run ingest:integrity:check`: all blocking checks pass. |
-| Votes, 2024–2028 | Imported to **23 Sept (Chamber)** and **30 Sept (Senate)** on 2026-10-03, by hand. **No unattended updater yet (D2 → Phase 3).** |
-| Cabinets, 2024–2028 | Ciolacu II (18 roles), Predoiu interim (1), Bolojan (33). Cabinets before this legislature have only one PM row each. |
-| Presidents, ambassadors | **No tables exist.** |
-| Code size | ~53k lines. Cockpit (Python and React) ~21k > TypeScript ingest ~14k > website ~12.7k. Two overlapping ingestion stacks (TypeScript and Python). |
-| Local-only data | ~2.5 GB under `data/` (cockpit SQLite, jobs, backups, CDEP history captures). **Not backed up.** |
+| Site | <https://cumvoteaza.vercel.app> (Vercel Hobby), friends testing. Pages are fast when cached (under 1 s); the first hit after a cache purge takes 3–5 s. |
+| Code | Typecheck, tests (41 web, 121 ingest, 21 model, Python probe) and build green; CI green. 33 migrations. |
+| People and identity | 3,374 people, 5,289 members = 5,289 mandates. 33 of 37 name-collision rows decided; 4 open (rows 1, 2, 8, 11). **0 people have a birth date.** |
+| Integrity | All blocking checks pass; 2 warnings: `vote_nominal_totals_mismatch` (12: 9 senat.ro list gaps, 3 joint votes missing deputy idm 336), `final_vote_without_bill` (1). |
+| Votes, 2024–2028 | 1,069 votes (Senate 419, Chamber 644, joint 6) to 23/30 Sept. **Incomplete: we hold about 23% of the official Chamber vote IDs (34636–37401 → 650 held; first estimate); Senate months range from 0 to 93 votes; no joint sitting before May 2026 (the December 2024 investiture is missing).** |
+| Votes, earlier | 2020–2024: 133 votes. Earlier legislatures: 1. The site must not imply otherwise. |
+| Seats | 330 of 331 deputies and 134 of 134 senators active. Rosters were last crawled in May: deputy idm 336 (Badea) is missing, replacements and exits since May are unknown. |
+| Import backlog | 1,690 pending vote discoveries from the May crawl (1,599 undated), 3 failed, 14 skipped. Nothing imports them automatically. |
+| Database | Neon `cumsevoteaza`, 321 MB of the 1 GB branch limit. **`individual_votes` is 175 MB for 250,000 rows (about 700 bytes a row: a 90-character text key, a 56 MB primary key and a 42 MB second unique index).** Filling the vote gap as it is would break the limit. |
+| Backups | **None scheduled.** Neon history is 6 hours, no snapshots. One manual branch (`backup-before-identity-repair-2026-10-03`) and a rehearsal branch (`rehearsal-d22-bill-merge`, 360 MB, no longer needed). Local `data/cdep-history` (157 MB) is the only copy of the identity evidence. |
+| Cabinets, presidents, ambassadors | Cabinets of 2024–2028 only; no president or ambassador tables (feature roadmap). |
+| Local data | `data/` 252 MB after the cockpit cleanup. Digi Storage credentials live only in `tools/parliament-workbench/.env`. |
 
-### Known defects
+### Defects
 
 Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is polish.
 
-| ID | Sev | Defect | Source |
-| --- | --- | --- | --- |
-| D1 | P1 | ✅ **Fixed 2026-10-03.** **Senators exist twice as member records**: CDEP numeric ID (photo, groups, party history) and senat.ro GUID (all 35,504 nominal votes, roles, committees). On 13 Sept, `closeStaleCurrentMandates` (`packages/ingest/src/persist.ts`) matched the senat.ro roster by member ID, so it **ended all 134 CDEP-ID mandates on 2026-09-12**. Live: [the PM's profile](https://cumvoteaza.vercel.app/ro/members/ilie-gavril-bolojan) says his mandate ended. It will recur on the next Senate roster import. | DB + code, 2026-10-03 |
-| D10 | P1 | ✅ **Fixed 2026-10-03.** **Group history dates thrown away for every MP since 1990.** The CDEP pages state "din / până în <month>", but `tools/cdep-history-probe` keeps only the group name and link, and the import gives every group the mandate start with no end. **About 1,030 member-legislature records** show impossible overlapping groups (e.g. Peia: SOS, unaffiliated and PACE all at once). The raw pages are saved locally (`data/cdep-history/raw`), so no new crawl is needed. | DB + local snapshots |
-| D11 | P1 | ✅ **Fixed 2026-10-03.** **Duplicate people from name order and diacritics.** "Predoiu Marian-Catalin" / "Marian-Cătălin Predoiu", "Ilie-Gavril Bolojan" / "Ilie Bolojan" (the PM). Upper bound: **2,410 name groups covering 4,824 of 5,861 people**; some are real namesakes. Careers are split across two profile pages. Resolved: most were orphan copies; 7 real splits; 3 namesake pairs wrongly merged (the ex-president Ion Iliescu carried a Hunedoara namesake's mandates). | DB |
-| D12 | P1 | ✅ **Fixed 2026-10-03.** **~32,400 Chamber votes of the 2020–2024 legislature credited to the wrong people.** The vote importer used the current-legislature ID scheme; CDEP numbers deputies per legislature, so e.g. Ringo Dămureanu's 2022–2024 votes show on Cristina Dascălu's profile. Verified: 100% of rows match the 2020 deputy's group, 20% the current one. | DB, 2026-10-03 |
-| D13 | P1 | ✅ **Fixed 2026-10-03.** **Vote imports create members, open-ended mandates and open-ended group memberships** from vote rows (204 "ghost voters", more overlapping groups). | code |
-| D14 | P1 | ✅ **Fixed 2026-10-03.** **The senat.ro and CDEP importers delete each other's group/party/committee rows** on every run. | code |
-| D15 | P2 | ✅ **Fixed 2026-10-03.** CDEP gives all 136 senators of 2004–2008 the validation date "17 februarie 2004", before the election (a source typo), creating false overlaps. | local snapshots |
-| D16 | P2 | ✅ **Fixed 2026-10-03.** 12 current Chamber leaders have their office stored in their name (Sorin Grindeanu's last name was "Deputaţilor"). | DB |
-| D17 | P2 | ✅ **Fixed 2026-10-03.** The member page fell back to the first profile whose URL *starts with* the requested name, which could show a namesake. | code |
-| D18 | P3 | ✅ **Fixed 2026-10-03.** Dates are formatted in the viewer's time zone, so a calendar date can shift to the previous day west of UTC. | code |
-| D19 | P2 | Committee memberships also get whole-mandate dates although CDEP gives "(din … / până în …)". **Code fixed 2026-10-03; re-import pending.** | code |
-| D20 | P2 | 9 Senate votes of 2025 have one fewer nominal "for" row than the official total. **Source discrepancy, fixed in presentation 2026-10-03**: senat.ro lists one name fewer than it announces. | DB, 2026-10-03 |
-| D21 | P3 | Joint Chamber–Senate sitting votes are skipped (parser unsupported); 2 Chamber votes (idv 37367, 37387) have no nominal rows. | rehearsal import |
-| D22 | P2 | **Duplicate bill records**: the same bill can exist as a Senate record (`bill-l122-2026`, which also carries PL-x 196/2026) and a Chamber placeholder (`bill-pl-x-196-2026`) holding the votes. Bill-level identity, like D11 for people. | DB, 2026-10-03 |
-| D23 | P3 | The root `<html lang="ro">` is fixed, so English pages declare Romanian to screen readers. | code |
-| D2 | P1 | ◐ **Caught up by hand 2026-10-03 (to 23/30 Sept); updater still missing.** Data stale since 2026-09-09; no unattended updater. | DB query |
-| D3 | P1 | Vote seat map turns *missing* nominal records into "absent" and silently trims roster conflicts. | archive/review-2026-09-24 R2 |
-| D4 | P1 | Seat-map reconciliation compares the map to its own counts, so it can never fail. | review R3 |
-| D5 | P1 | Cabinet page labels the viewing date as "verified". | review R4 |
-| D6 | P2 | Browser end-to-end tests assert a vote layout that no longer exists. | review R5 |
-| D7 | P2 | Map search: diacritics and constituency; filter panel ignores Escape. | review R6–R7 |
-| D8 | P2 | Ministry directory cache not invalidated with the rest; profile query scans all snapshots. | review R8 |
-| D9 | P3 | Optional site password gate: password accepted in the URL and stored as the cookie value. Currently unused. | `apps/web/proxy.ts` |
+**Resolved** (details in git history and [audit-2026-10.md](audit-2026-10.md)): D1, D10–D18 (identity, group history, ghost voters, importer conflicts), D19–D23 (committee dates, Senate list gap, joint sittings, duplicate bills, page language), A1–A8 (vote outcomes with law type, titles, wide screens, profile header, wording), D3–D8 (re-verified fixed in code), D9 (password gate, unused), data-health page removed.
 
-D3–D8 have not been re-verified since 24 Sept. Commits after that review touch some of them; the audit confirms which are still open.
+| ID | Sev | Defect | Fixed by |
+| --- | --- | --- | --- |
+| D24 | P1 | **Votes are incomplete and the site does not say so**: about 23% of official Chamber vote IDs for 2024–2028, uneven Senate coverage, no early joint sittings (investiture of 23 Dec 2024), 133 votes for 2020–2024. | F1, F3, F4 |
+| D25 | P1 | **No backups.** 6-hour history, no snapshots; the identity evidence exists only on one laptop. | F0 |
+| D26 | P1 | **Vote storage is about 12 times larger than needed**; completeness does not fit in the database as it is. | F2 |
+| D27 | P2 | **Rosters are stale** (last crawl in May): new members (idm 336), replacements and mandate ends since then are missing or wrong. | F3 |
+| D28 | P2 | 1,690 pending discoveries, 3 failed and 14 skipped have never been triaged. | F3 |
+| D29 | P2 | The methodology and sources page disappeared with the data-health page; nothing explains coverage, sources or how outcomes are computed. | F4 |
+| D30 | P2 | Local `.env` and the importers write straight to production; one mistake (like the `crawl` that overwrote `profiles.jsonl`) has no safety net. | F0 |
+| D31 | P2 | Browser end-to-end tests are stale (old D6); no check covers the language switch, redirects, 404s or the joint chart. | F4 |
+| D32 | P3 | 127 votes have no linked bill (1 is a final vote); 2,042 of 2,115 bills have no law type yet; `/parties` and `/governments` return 404. | F3, F4 |
+| D33 | P3 | Cache purge makes the next visit slow (3–5 s) because every tag is purged at once. | F4 |
+| D2 | P1 | No unattended updater (data went stale before; caught up by hand). | F5 |
 
 ---
 
-## Phases
+## Fix roadmap
 
-### Phase 0 — Stabilize ← *in progress*
+Goal: **everything the site claims is true and checkable, and stays true without hand work.** Order matters: protect the data (F0), measure the gap (F1), make room (F2), fill it (F3), explain it (F4), automate it (F5). F4 runs alongside F3. Sizes: S about one session, M two to three, L several.
 
-Goal: a clean `main`, green tests, one plan.
+### F0 — Safe ground (S)
+- [ ] **Backups.** Check whether the Neon plan allows scheduled snapshots; if not, a weekly manual branch `backup-YYYY-MM-DD` (keep the last two). Copy `data/cdep-history` and `data/curated` off the laptop (Digi Storage). Do one real restore test: restore into a scratch branch and run `integrity:check`.
+- [ ] **Dev branch (D-018).** A Neon `dev` branch refreshed from production; local `.env` points at it; production credentials only in the runbook and the updater. Delete `rehearsal-d22-bill-merge` (owner OK) to free 360 MB first.
+- [ ] Move the Digi Storage credentials into the root `.env`; delete `tools/parliament-workbench/`.
+- [ ] Guard the probe `crawl`: never overwrite `parsed/*.jsonl` (write to a new file and swap after validation, or require `--out`).
+- [ ] CI: remove the Jest-only `--runInBand` flag; one `npm run verify` that runs typecheck, tests and build.
+**Exit:** a restore has been tested and nothing local is unique.
 
-- [x] Park the uncommitted Codex 3B work on branch `wip/codex-3b-cabinet-evidence` (local, not pushed). Captures remain in `data/cabinet-evidence/`.
-- [x] Fix `discovery-empty-source.test.ts`, which silently hit the live senat.ro. Suite green.
-- [x] Write `PLAN.md`, `DECISIONS.md` and `CLAUDE.md`; archive old docs.
-- [x] Back up local data: deferred; stays local for now (D-009).
-- [x] Bug intake: GitHub Issues and the Project board, already used by the tester (D-010).
-- [x] Merge `phase-0-stabilize` into `main` (approved 2026-10-03).
+### F1 — Know what we have (M)
+- [ ] **Coverage report.** For every sitting day from 21 Dec 2024: the official list of votes (CDEP per sitting day and senat.ro per date) against ours, per month and chamber, with the missing IDs. Offline-first: lists are saved locally, fetching is polite, capped and resumable. Joint sittings included.
+- [ ] **Spot-check pack:** about 20 records (votes, MPs, a minister, a bill) with our page and the official page side by side and the exact fields to compare; reviewed by the owner or by me with the browser.
+- [ ] **Source-vs-stored script** for imported pages: totals, name lists, names, dates, affiliations; reuses the saved snapshots (D-008, and a gate for F5).
+- [ ] Decide the vote scope (Q14) with the numbers from the report.
+**Exit:** a table "official / ours / % / missing" per month and chamber for 2024–2028.
 
-**Exit:** `main` clean and green, this plan merged.
+### F2 — Storage diet (M)
+- [ ] Measure first (done above), then rehearse on the dev branch: `individual_votes` gets `(member_id, vote_id)` as its primary key and loses the 90-character text id and the redundant indexes; if that is not enough, integer keys. Target: at most 150 bytes a row, so 100% of the current legislature fits under 600 MB. Update every use of `individual_votes.id`.
+- [ ] Fallback if the target is missed: Neon paid plan (Q15).
+**Exit:** projected size with full 2024–2028 votes is under 600 MB, integrity checks pass on the dev branch.
 
-### Phase 1 — Audit and cut list
+### F3 — Close the gaps, current legislature first (L, mostly waiting for imports)
+- [ ] **Votes:** import every missing vote of 2024–2028 in monthly batches (Chamber, Senate, joint), each batch gated by the integrity checks and the totals check, newest months first. Includes the investiture votes (Ciolacu II, Bolojan), motions of censure and other joint sittings.
+- [ ] **Rosters:** re-crawl the 2024 deputy and senator rosters (idm 336 and any other replacement), mandate ends, constituencies; explain the 330/331 seat gap.
+- [ ] **Backlog:** triage the 1,690 pending, 3 failed and 14 skipped discoveries: import, retire as out of scope, or fix the parser.
+- [ ] **Bills:** link the 127 unlinked votes, read the law type for new bills, `final_vote_without_bill` to zero.
+- [ ] Identity rows 1, 2, 8, 11: decide only if evidence appears (CVs, Wikipedia); otherwise they stay as they are.
+**Exit:** at least 99% of official votes for 2024–2028 imported, every remaining gap listed with its reason; integrity clean.
 
-Goal: know what exists, what works, what is used, and what to delete or rewrite.
+### F4 — Trust surface (M, alongside F3)
+- [ ] **Methodology and coverage page** replacing data-health: sources, how outcomes and absences are computed, coverage per legislature (an honest "partial" label on 2020–2024 and earlier), last update per chamber.
+- [ ] **UI walkthrough** of every public route, desktop and mobile, with the tester's issues; fix list.
+- [ ] **Rewrite the browser tests (D31):** smoke tests for language and redirects, 404s, a vote page, the joint chart, a member page.
+- [ ] `/parties` and `/governments`: add index pages or remove the dead routes; selective cache purge so only changed data is refreshed.
+**Exit:** a visitor can see what is covered and what is not; tests cover the routes that broke this month.
 
-- [ ] **Module review.** For every package, tool, route and table: purpose, used?, works?, then **keep / rewrite / delete**. Includes:
-  - the two ingestion stacks (pick one → Q5);
-  - the cockpit (→ Q6);
-  - `apps/web/lib/data.ts` (3,171 lines);
-  - 50 DB tables (which are read by the site, which are orphaned);
-  - three asset-storage backends.
-- [ ] **Data integrity checks.** Write repeatable SQL checks against production: duplicate people and members, impossible or fabricated dates (D1), votes without nominal rows, nominal totals ≠ official totals, mandates over seat capacity, orphans. These become the updater's health gate in Phase 3.
-- [ ] **Source vs stored.** A script that re-fetches a sample of official pages (votes, MP profiles, rosters) and diffs them against what we stored: totals, nominal rows, names, dates, affiliations. It runs offline against saved snapshots, and becomes an updater check in Phase 3 (D-008).
-- [ ] **Live spot-check.** About 20 records (votes, MPs, ministers) compared on the live site against the official source, by hand.
-- [ ] **UI walkthrough.** Include tester issues #3–#8. Every public route on desktop and mobile: what it shows, where the data comes from, what is broken or confusing, and what is missing.
-- [ ] **Missing-info brainstorm.** For each entity (MP, vote, bill, party, cabinet, minister, president, ambassador), what a citizen would want to know and we don't have yet, ranked by value and effort.
-- [ ] **Re-verify D3–D8.**
-- [x] Local `data/`: cockpit data (2.1 GB) and the cockpit's leftover code/venv deleted (2026-10-04, owner OK); `data/` is now 252 MB. Kept: `cdep-history` (identity evidence), `snapshots`, `curated`, `cabinet-evidence`, and `tools/parliament-workbench/.env` (the only copy of the Digi Storage credentials the asset importer needs; move them into the root `.env` when convenient).
-- [ ] Noted during the identity repair: profile header shows an interim minister role instead of Prime Minister (Bolojan); header labels a parliamentary group as "Partid"; local `.env` and the cockpit write straight to the production DB (use a Neon dev branch for local work); CI passes a Jest-only `--runInBand` flag.
-- [x] Output: [`docs/audit-2026-10.md`](audit-2026-10.md) (2026-10-03): module verdicts, cut list, fix list A1–A8, privacy items, ranked missing information, local data inventory.
-- [x] Owner decisions (D-015…D-018) and the cuts (2026-10-03): cockpit retired (archived on `archive/cockpit-2026-10`), `parliament-pipeline` and eleven one-off commands removed, demo-data mode removed, Digi-only storage, cookieless counts, dead components removed. About 27,000 lines gone. Gemini explanations kept (Q12); member/group alignment tables kept on review.
-- [x] Deploy the cuts, then apply migration `0028` (drops the three cockpit tables).
-- [x] Data-health page removed (2026-10-04, owner decision): page, API, review table (migration `0032`) and nav links gone; OCR scoring and `repair:link-vote-bill` kept; `final_vote_without_bill` added as an integrity warning.
+### F5 — Keep it true: worker, updater and admin v1 (L)
+Design (D-017): the BC250 is a worker, the admin lives at `/admin`, they talk only through the database.
+- [ ] Job queue and heartbeat (the admin shows whether the BC250 is connected; requests wait when it is off; every run catches up from the last successful one, D-007).
+- [ ] Updater job: discover new sittings (votes, rosters) → import → integrity checks plus source-vs-stored → publish if all pass, otherwise hold and open a GitHub issue (D-008, D-011). The site shows "data updated on …" per chamber.
+- [ ] Admin v1: jobs and held batches only; a screen is added when the previous one is used.
+- [ ] Revision capture: the updater records what changed (field, old value, new value, source) from day one, as the base of the later history feature.
+- [ ] Linux OCR path for scanned bill PDFs.
+**Exit:** two consecutive weeks of sitting days imported with no manual step, visible in the admin.
 
-**Exit:** audit written, cut list agreed, cuts made.
-
-### Phase 2 — Data trust fixes
-
-**First (pulled forward because it is the core of "what did X do"): identity and group history.** Branch `fix/member-identity-and-group-history`.
-- [x] Probe parser keeps the "din / până în" dates for groups and parties; offline `reparse` of the 5,289 saved pages; month precision stored and shown as "iun. 2025" (D-013, D18).
-- [x] Identity resolver from official evidence only (D-014): CDEP career links, same seat seen by two sources, owner decisions in `data/curated/identity-decisions.json`; simultaneous seats split namesakes. Replaces the name-slug `people:backfill`.
-- [x] One member record per mandate: senat.ro records folded into CDEP records, ghost voters re-attached, D12 votes re-attributed; `id_aliases` so no importer can recreate a retired ID; retired profile URLs redirect (D17).
-- [x] Importers: votes never create members/mandates/memberships (D13); only CDEP owns group/party history and each importer deletes only its own rows (D14); mass mandate closure refused (D1); `official-careers` and `wikipedia:roster:import` can no longer persist.
-- [x] `integrity:check`: 10 blocking + 3 warning checks. Production today: 8 blocking checks fail. Rehearsal copy after repair: all 13 pass, 226,093 votes preserved.
-- [x] Career timeline uses dated group memberships when they document more changes than the party field (Peia: SOS → unaffiliated → PACE); a hand-over month is not "ambiguous".
-- [x] URL continuity: retired profile URLs redirect; the runbook snapshots every public profile URL first and fails if any stops resolving (rehearsal: 5,569 checked, 0 broken).
-- [x] Runbook `tools/identity-repair/run.sh` (refuses to run without confirming the target host). Final rehearsal on a fresh copy of production: exit 0, all 13 checks pass.
-- [x] Identity review: 33 of 37 rows decided (2026-10-04, web research: Wikidata, ro.wikipedia, senat.ro; sources in `identity-decisions.json`). 4 remain (rows 1, 2, 8, 11), unchanged. **Pending in production:** `ingest:identity:resolve --persist` (dry run: 6 people split in two, nothing else changes).
-- [x] **Applied to production 2026-10-03**: backup branch `backup-before-identity-repair-2026-10-03`, runbook (all checks pass, 5,569 URLs, 0 broken), code deployed (`fff211f`), cache revalidated, live profiles verified, rehearsal branches deleted.
-- [x] Identity review: 24 of 37 decided (owner + CDEP CVs: birth dates, careers named in CVs; `cvs` probe command, `tools/identity-repair/cv_evidence.py`); 13 left unchanged for lack of evidence.
-- [x] Missing votes imported into production (2026-10-03): 122 new votes (Chamber 35 to 23 Sept, Senate 87 to 30 Sept), every new vote's totals match the official ones, all blocking checks pass. 3 joint sittings skipped, 2 Chamber votes without name lists (D21).
-- [ ] Follow-up: committee dates (D19); Senate off-by-one (D20); joint sittings (D21); store CV birth dates in `people.birth_date` and use them as resolver evidence.
-
-Then the audit fixes (2026-10-03, branch `phase-2/fixes`):
-- [x] **A1 vote outcomes** from official counts plus the Constitution's majority rules, with the rule and threshold shown; law type read from official titles when stated. 1,072 of 1,173 votes determined, 19 attendance checks, 82 honestly "depends on the type of law". Cross-checked against CDEP's own "nu a fost întrunită majoritatea calificată".
-- [x] A1b law type (2026-10-03): bill parsers read "Caracterul legii" / "Caracter" into `bills.law_type` (migration `0029`); chamber resolutions use art. 76(2) from the title. `bills:law-type` backfill read 73 official pages (68 + 5 via the CDEP vote page link): 62 ordinary, 11 organic. **1,152 of 1,154 decisions now have an outcome**; the other 2 are below quorum.
-- [x] A2 real titles for 25 untitled Senate items (repair command, blocking check); no "today" date fallback.
-- [x] A3 wide-screen scaling (tester #6/#7), A4 no party events on vote pages (tester #8), A5 no badge overlap (tester #3), A6 English headings and marked official titles (tester #4), A7 profile header (PM role, own party vs group), A8 honest wording.
-- [x] Deploy, then `repair:senate-untitled-votes --persist`, refresh read models, revalidate. Close tester issues #3–#8.
-- [x] D22 duplicate bills (applied in production 2026-10-03/04 by the owner: 2,092 bills, 1,020 retired IDs redirect): code done (merge command `bills:merge-duplicates`, import-time dossier resolver, retired-slug redirects, blocking check `duplicate_bill_dossier`). 510 merges rehearsed on Neon branch `rehearsal-d22-bill-merge`: all blocking checks pass, outcomes unchanged. 4 different dossiers share a Senate B-number (reported, not merged). **Production run pending.**
-- [x] D23 html lang: `[locale]/layout.tsx` is the root layout with `lang={locale}`; `/` redirects in next.config; localized not-found inside the locale, bilingual `global-not-found` for unknown sections. Unknown locale prefixes (`/xx`) still get Next's built-in 404.
-- [x] D20 (2026-10-03): not our bug. On all 9 pages senat.ro announces one more "for" than it lists by name (e.g. L181/2025: 109 announced, 108 named, group table 108). Vote pages now state the gap per choice; nothing is filled in. Phase 3 gate: compare imported rows with the page's own name list, and treat headline-vs-list gaps as a source discrepancy, not an import failure.
-- [x] D19 committee dates (applied in production 2026-10-04 by the owner): CDEP's own month dates and dated roles; 4,497 of 11,190 committee rows carry CDEP dates, the rest have none on the page and keep the mandate's; duplicate committee rows removed; blocking check `duplicate_committee_membership` passes.
-- [x] D21 / Q13 joint sittings (applied in production 2026-10-04): `vote_chamber` enum (`0031`), 6 joint votes imported (3 from 2026-05-05 incl. motion MC 1/2026, match official totals exactly; 3 from 2026-09-30 are each one "for" short because deputy Mihai-Alexandru Badea, CDEP idm 336, is not in our roster). Search entries of joint votes carry no chamber. Names-only attendance checks are skipped with that reason; attendance checks no longer count as votes cast or "for". **Finding for Phase 3:** the 2024 deputy profiles were last crawled in May (max idm 335), so anyone who joined since is missing and anyone who left still looks active; the updater must refresh rosters, and `crawl` overwrites `parsed/profiles.jsonl` and `rosters.jsonl` (always back them up or use `--out` elsewhere).
-
-Earlier:
-- [ ] Fix every P1 (D1, D3–D5, plus any the audit finds). Write a failing test or integrity check first, then fix.
-- [ ] Repair production data through scripts that are dry-run by default and reviewed before `--persist`.
-- [ ] Rewrite the stale browser tests (D6) so they assert data, not just layout.
-
-**Exit:** all integrity checks pass on production; spot-checks match the sources.
-
-### Product vision added 2026-10-04 (owner): the site as a database of record, like SteamDB
-
-Built on top of Phase 3's updater; each is its own design before code.
-- [ ] **Change history ("what changed and when").** Every update to a page, vote, bill or person is kept as a dated revision (field, old value, new value, source snapshot), visible on the entity's page. Needs: parsed-fact diffs per run (small), raw page versions kept off the database (Digi Storage), and the source-vs-stored check running on the same diffs.
-- [ ] **One bill page with every step.** A bill's presence vote, amendments votes, committee reports and final votes as one timeline, each step with its details (builds on D22's one record per dossier).
-- [ ] **Law diff, like git.** When a bill amends an existing law, show the changes against the current consolidated text and what they do. Needs a source for consolidated laws and a parser for amending articles ("La articolul 5 alineatul (2) se modifică..."). The site already compares bill document versions (`compareDocumentTexts`).
-- [ ] **CV tab on the person page.** Birth date, education, career, from the CDEP CVs (parser exists: `parse_cv_page`); birth dates also feed identity matching. Wikidata (3,483 Romanian MPs with birth dates) is a second source to cross-check.
-
-### Phase 3 — Worker and admin v1
-
-Design (D-017): one admin inside the website at `/admin` (GitHub login), and the BC250 as a **worker, not a server**. They talk only through the database.
-
-- [ ] **Job queue and heartbeat.** The admin writes job requests; the worker polls, runs them, writes progress and results, and records a heartbeat, so the admin shows whether the BC250 is connected. The worker need not be always on: requests wait. Every run catches up from the last successful run (D-007).
-- [ ] **Updater job.** Discover new sittings → import → integrity checks plus source-vs-stored comparison → auto-publish if all pass, otherwise hold and open a GitHub issue (D-008, D-011). The site shows "data updated on …" per chamber.
-- [ ] **Admin v1: Jobs and Review.** Worker status, run or schedule an import, held batches, identity questions. Add a screen only when the previous ones are used.
-- [ ] Linux OCR path for scanned bill PDFs (the macOS tool cannot run on the BC250).
-
-**Exit:** two consecutive weeks of sitting days imported with zero manual intervention, visible in the admin.
-
-Later, on the same base: the analysis studio for votes and political direction (internal until validated; [political-scale-methodology.md](political-scale-methodology.md)), and summaries (Q12).
-
-### Phase 4 — Complete the 2024–2028 legislature
-
-Each item gets its own exit criteria when started.
-
-- [ ] **MPs:** current group and party affiliation changes, replacements and mandate ends, all source-linked.
-- [ ] **Cabinets:** Ciolacu II, Predoiu (interim), Bolojan, with every appointment, resignation, interim and reshuffle. Approach: a curated data file with a decree or Monitorul Oficial link per row (see Principle 5).
-  - Acceptance case, Defence under Bolojan: Moșteanu → Miruță interim (Decree 1111/2025) → Miruță full appointment (Decree 1166/2025).
-- [ ] **Presidents:** new model. Covers the 2025 succession, including the interim period; dates verified against official sources.
-- [ ] **Ambassadors:** new model. Source: presidential appointment and recall decrees. Scope → Q7.
-- [ ] Candidates, decided when we get there: no-confidence motions and their votes, standing committees, Senate/Chamber leadership.
+### Feature roadmap — written when F0–F5 are done
+Ideas collected so far (not scheduled): cabinets with every reshuffle, presidents (2025 succession) and ambassadors (Q7); CV tab and birth dates (CDEP CVs, Wikidata); change history like SteamDB; one timeline per bill; law diff against the consolidated text; political compass and plain-language summaries (Q12); history backfill before 2024.
 
 ---
 
