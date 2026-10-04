@@ -74,12 +74,6 @@ async function loadSearchableDocumentTexts(billIdOrSlug: string): Promise<Docume
       .where(and(eq(schema.documents.billId, billId), eq(schema.documents.textStatus, "stored")));
     if (documentRows.length === 0) return [];
 
-    const reviewRows = await session.db
-      .select()
-      .from(schema.dataHealthReviews)
-      .where(inArray(schema.dataHealthReviews.entityId, documentRows.map((row) => row.id)))
-      .catch(() => []);
-    const acceptedDocumentIds = new Set(reviewRows.filter((row) => row.status === "accepted" || row.status === "reviewed").map((row) => row.entityId));
     const excludedDocumentIds = new Set<string>();
 
     const rows = await session.db.execute<DocumentTextRow>(sql`
@@ -97,7 +91,6 @@ async function loadSearchableDocumentTexts(billIdOrSlug: string): Promise<Docume
     `);
 
     for (const row of rows) {
-      if (acceptedDocumentIds.has(row.document_id)) continue;
       if (scoreOcrHealth({ text: row.text, chunkCount: 1 }).reasons.length > 0) excludedDocumentIds.add(row.document_id);
     }
     return rows.filter((row) => !excludedDocumentIds.has(row.document_id));

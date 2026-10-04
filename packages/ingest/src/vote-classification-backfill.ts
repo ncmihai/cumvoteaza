@@ -25,7 +25,6 @@ export interface VoteClassificationBackfillResult {
   candidates: number;
   classified: number;
   needsReview: number;
-  reviewsCreated: number;
   manualOverridesSkipped: number;
 }
 
@@ -46,7 +45,6 @@ export async function backfillVoteClassifications(
 
     let classified = 0;
     let needsReview = 0;
-    let reviewsCreated = 0;
     let manualOverridesSkipped = 0;
     const classifiedRows: Array<{ row: VoteRow; classification: VoteClassification }> = [];
 
@@ -87,22 +85,6 @@ export async function backfillVoteClassifications(
             and v.classification_basis <> 'manual_review'
         `);
       }
-
-      const reviewRows = classifiedRows.filter(({ classification }) => classification.motionKind === "unknown");
-      for (const batch of chunks(reviewRows, 250)) {
-        const values = sql.join(batch.map(({ row, classification }) => {
-          const issueKey = `vote-classification:${row.id}:${VOTE_CLASSIFIER_VERSION}`;
-          return sql`(${issueKey}, ${issueKey}, 'vote_classification_unknown', 'vote', ${row.id}, 'open', ${classification.reason})`;
-        }), sql`, `);
-        const inserted = await session.db.execute<Record<string, unknown>>(sql`
-          insert into data_health_reviews (
-            id, issue_key, issue_type, entity_type, entity_id, status, note
-          ) values ${values}
-          on conflict (issue_key) do nothing
-          returning id
-        `);
-        reviewsCreated += inserted.length;
-      }
     }
 
     return {
@@ -111,7 +93,6 @@ export async function backfillVoteClassifications(
       candidates: rows.length,
       classified,
       needsReview,
-      reviewsCreated,
       manualOverridesSkipped
     };
   } finally {

@@ -182,13 +182,6 @@ export const documentTextStatusEnum = pgEnum("document_text_status", [
   "failed",
   "unsupported"
 ]);
-export const dataHealthReviewStatusEnum = pgEnum("data_health_review_status", [
-  "open",
-  "reviewed",
-  "ignored",
-  "accepted",
-  "fixed"
-]);
 export const billProcedureStepTypeEnum = pgEnum("bill_procedure_step_type", [
   "registered",
   "sent_to_senate",
@@ -742,24 +735,6 @@ export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {
 }, (table) => ({
   documentChunkIdx: uniqueIndex("bill_document_text_chunks_document_chunk_idx").on(table.documentId, table.chunkIndex),
   billIdx: index("bill_document_text_chunks_bill_idx").on(table.billId)
-}));
-
-export const dataHealthReviews = pgTable("data_health_reviews", {
-  id: text("id").primaryKey(),
-  issueKey: text("issue_key").notNull(),
-  issueType: text("issue_type").notNull(),
-  entityType: text("entity_type").notNull(),
-  entityId: text("entity_id").notNull(),
-  status: dataHealthReviewStatusEnum("status").notNull().default("open"),
-  note: text("note"),
-  reviewer: text("reviewer"),
-  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
-}, (table) => ({
-  issueKeyIdx: uniqueIndex("data_health_reviews_issue_key_idx").on(table.issueKey),
-  statusIdx: index("data_health_reviews_status_idx").on(table.status, table.updatedAt),
-  entityIdx: index("data_health_reviews_entity_idx").on(table.entityType, table.entityId)
 }));
 
 export const votes = pgTable("votes", {

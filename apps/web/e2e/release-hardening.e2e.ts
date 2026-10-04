@@ -8,7 +8,7 @@ const entityRoutes = [
 ];
 
 test("representative bilingual release routes and icon resolve", async ({ request }) => {
-  const routes = ["", "/votes", "/bills", "/members", "/compozitii", "/data-health", ...entityRoutes];
+  const routes = ["", "/votes", "/bills", "/members", "/compozitii", ...entityRoutes];
   for (const locale of ["ro", "en"]) {
     for (const route of routes) {
       const response = await request.get(`/${locale}${route}`);
@@ -18,25 +18,6 @@ test("representative bilingual release routes and icon resolve", async ({ reques
   const icon = await request.get("/icon.svg");
   expect(icon.ok()).toBe(true);
   expect(icon.headers()["content-type"]).toContain("image/svg+xml");
-});
-
-test("data-health queues stay bounded and review controls mount on demand", async ({ page }) => {
-  await page.goto("/en/data-health");
-  const articles = page.locator("article");
-  const initialCount = await articles.count();
-  expect(initialCount).toBeLessThanOrEqual(104);
-  await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
-
-  const more = page.getByRole("button", { name: /Show \d+ more/ }).first();
-  if (await more.count()) {
-    await more.click();
-    await expect(articles).toHaveCount(initialCount + 20);
-  }
-
-  await page.locator("summary").filter({ hasText: "Review mode" }).click();
-  await page.getByRole("textbox", { name: "Review token" }).fill("local-verification-token");
-  await page.getByRole("textbox", { name: "Reviewer" }).fill("release-check");
-  await expect(page.getByRole("button", { name: "Save" }).first()).toBeVisible();
 });
 
 test("directory empty and incremental-load failures have explicit feedback", async ({ page }) => {
@@ -131,7 +112,7 @@ test("representative pages stay free of application console and network failures
     if (url.origin === "http://127.0.0.1:3101" && !expectedPrefetchCancellation) errors.push(`network: ${request.url()} ${request.failure()?.errorText ?? "failed"}`);
   });
 
-  for (const route of ["/ro", "/ro/votes", "/ro/bills/pl-x-159-2026", "/en/members", "/en/compozitii?view=history", "/en/data-health"]) {
+  for (const route of ["/ro", "/ro/votes", "/ro/bills/pl-x-159-2026", "/en/members", "/en/compozitii?view=history"]) {
     await page.goto(route);
     await page.locator("h1").waitFor();
   }

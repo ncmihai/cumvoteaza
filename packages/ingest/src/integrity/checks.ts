@@ -142,6 +142,14 @@ export const checks: Check[] = [
       select key, array_agg(id order by id) as bills from keys group by key having count(distinct id) > 1`
   },
   {
+    name: "final_vote_without_bill",
+    severity: "warning",
+    description: "A final adoption, final rejection or rejection report is not linked to a bill (fix with repair:link-vote-bill, reviewed).",
+    query: sql`
+      select id, held_on::text, title from votes
+      where bill_id is null and motion_kind in ('final_adoption', 'final_rejection', 'rejection_report')`
+  },
+  {
     name: "vote_nominal_totals_mismatch",
     severity: "warning",
     description: "A vote's nominal for/against/abstention rows differ from the official totals (source vs stored).",

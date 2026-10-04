@@ -17,16 +17,6 @@ export async function getDocumentConfidenceMap(documentIds: string[]): Promise<M
       })
       .from(schema.documents)
       .where(inArray(schema.documents.id, uniqueIds));
-    const reviewRows = await session.db
-      .select({
-        entityId: schema.dataHealthReviews.entityId,
-        status: schema.dataHealthReviews.status
-      })
-      .from(schema.dataHealthReviews)
-      .where(inArray(schema.dataHealthReviews.entityId, uniqueIds))
-      .catch(() => []);
-    const reviewedDocumentIds = new Set(reviewRows.filter((row) => row.status === "accepted" || row.status === "reviewed").map((row) => row.entityId));
-
     const chunkRows = await session.db
       .select({
         documentId: schema.billDocumentTextChunks.documentId,
@@ -43,12 +33,10 @@ export async function getDocumentConfidenceMap(documentIds: string[]): Promise<M
 
     for (const document of documents) {
       const text = textByDocument.get(document.id) ?? "";
-      const accepted = reviewedDocumentIds.has(document.id);
-      const hasOpenIssue = document.textStatus === "stored" && !accepted && hasTextHealthIssue(text);
+      const hasOpenIssue = document.textStatus === "stored" && hasTextHealthIssue(text);
       result.set(document.id, confidenceForDocument({
         textStatus: document.textStatus,
-        hasOpenIssue,
-        reviewStatus: accepted ? "accepted" : undefined
+        hasOpenIssue
       }));
     }
     return result;

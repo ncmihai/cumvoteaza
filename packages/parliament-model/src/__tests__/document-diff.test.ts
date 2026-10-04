@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { compareDocumentTexts, dataHealthIssueKey, isDataHealthReviewStatus, parseBillText, parseLegalSections, scoreOcrHealth } from "../index";
+import { compareDocumentTexts, parseBillText, parseLegalSections, scoreOcrHealth } from "../index";
 
 describe("data health helpers", () => {
-  it("creates deterministic issue keys and validates review status", () => {
-    expect(dataHealthIssueKey({ type: "ocr", entityId: "doc-1", reason: "very_short_text" })).toBe("ocr:doc-1:very_short_text");
-    expect(dataHealthIssueKey({ type: "vote-unlinked", entityId: "vote-1" })).toBe("vote-unlinked:vote-1");
-    expect(isDataHealthReviewStatus("accepted")).toBe(true);
-    expect(isDataHealthReviewStatus("delete")).toBe(false);
-  });
-
   it("scores suspicious OCR output with stable reasons", () => {
     const short = scoreOcrHealth({ text: "abc", chunkCount: 1 });
     expect(short.reasons).toContain("very_short_text");

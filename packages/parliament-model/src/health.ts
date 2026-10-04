@@ -1,26 +1,3 @@
-export type DataHealthReviewStatus = "open" | "reviewed" | "ignored" | "accepted" | "fixed";
-
-export type DataHealthIssueType =
-  | "ocr"
-  | "vote-unlinked"
-  | "duplicate-bill-identifier"
-  | "missing-procedure"
-  | "weak-vote-title"
-  | "weak-section-parse";
-
-export function dataHealthIssueKey(input: {
-  type: DataHealthIssueType;
-  entityId: string;
-  reason?: string;
-}): string {
-  if (input.type === "ocr") return `ocr:${input.entityId}:${input.reason ?? "needs_review"}`;
-  return `${input.type}:${input.entityId}`;
-}
-
-export function isDataHealthReviewStatus(value: unknown): value is DataHealthReviewStatus {
-  return value === "open" || value === "reviewed" || value === "ignored" || value === "accepted" || value === "fixed";
-}
-
 export interface OcrHealthScore {
   reasons: string[];
   metrics: {

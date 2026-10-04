@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
 import { createDbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
-import { dataHealthIssueKey } from "@cumsevoteaza/parliament-model";
 import { importStoredAssetsFromInventory, type AssetType } from "./asset-import";
 import { importBillText, importBillTextBatch } from "./bill-text";
 import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "./bill-law-type";
@@ -595,7 +594,7 @@ async function main() {
     await writeImport("repair-link-vote-bill", result, JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("persist")) {
-      console.log("Dry run only. Re-run with --persist to update vote.bill_id and mark the data-health issue fixed.");
+      console.log("Dry run only. Re-run with --persist to update vote.bill_id.");
     }
     return;
   }
@@ -819,39 +818,8 @@ async function repairLinkVoteBill(options: RepairLinkVoteBillOptions) {
       };
     }
 
-    const issueKey = dataHealthIssueKey({ type: "vote-unlinked", entityId: vote.id });
-    const now = new Date();
     if (options.persist) {
-      await session.db.transaction(async (tx) => {
-        await tx.update(schema.votes).set({ billId: bill.id }).where(eq(schema.votes.id, vote.id));
-        await tx
-          .insert(schema.dataHealthReviews)
-          .values({
-            id: `data-health-review-${issueKey.replace(/[^a-zA-Z0-9._-]+/g, "-")}`,
-            issueKey,
-            issueType: "vote-unlinked",
-            entityType: "vote",
-            entityId: vote.id,
-            status: "fixed",
-            note: options.note ?? `Linked to ${bill.id} via repair:link-vote-bill.`,
-            reviewer: options.reviewer ?? "cli",
-            reviewedAt: now,
-            updatedAt: now
-          })
-          .onConflictDoUpdate({
-            target: schema.dataHealthReviews.issueKey,
-            set: {
-              issueType: "vote-unlinked",
-              entityType: "vote",
-              entityId: vote.id,
-              status: "fixed",
-              note: options.note ?? `Linked to ${bill.id} via repair:link-vote-bill.`,
-              reviewer: options.reviewer ?? "cli",
-              reviewedAt: now,
-              updatedAt: now
-            }
-          });
-      });
+      await session.db.update(schema.votes).set({ billId: bill.id }).where(eq(schema.votes.id, vote.id));
       await refreshReadModels();
     }
 
@@ -873,9 +841,8 @@ async function repairLinkVoteBill(options: RepairLinkVoteBillOptions) {
         identifiers: bill.identifiers
       },
       evidence,
-      issueKey,
       nextAction: options.persist
-        ? "Read models refreshed and data-health issue marked fixed."
+        ? "Vote linked and read models refreshed."
         : "Review evidence, then re-run with --persist if the link is correct."
     };
   } finally {

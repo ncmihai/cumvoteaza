@@ -35,7 +35,7 @@ export default async function LocaleLayout({
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <div className="min-h-screen">
-            <SiteHeader locale={locale} labels={{ today: locale === "ro" ? "Astăzi" : "Today", votes: messages.nav.votes, bills: messages.nav.bills, members: messages.nav.members, compositions: messages.nav.compositions, health: messages.nav.dataHealth, tagline: locale === "ro" ? "Voturi. Oameni. Decizii care contează." : "Votes. People. Decisions that matter.", search: locale === "ro" ? "Caută" : "Search" }} />
+            <SiteHeader locale={locale} labels={{ today: locale === "ro" ? "Astăzi" : "Today", votes: messages.nav.votes, bills: messages.nav.bills, members: messages.nav.members, compositions: messages.nav.compositions, tagline: locale === "ro" ? "Voturi. Oameni. Decizii care contează." : "Votes. People. Decisions that matter.", search: locale === "ro" ? "Caută" : "Search" }} />
             {children}
           </div>
         </NextIntlClientProvider>
