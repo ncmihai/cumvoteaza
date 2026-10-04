@@ -24,11 +24,6 @@ Each Open question has a recommendation; the owner decides.
 
 ---
 
-### Q14 — Vote scope for 2024–2028: every vote, or final and major votes only?
-- Every electronic vote (amendments, procedure, agenda, attendance) is what the official sites publish and what a "database of record" implies; it is also about four times what we hold.
-- Final votes, rejection reports, motions and joint sittings are what most visitors look for. Amendments tell who changed what, which matters for the later bill timeline and law diff.
-- **Leaning:** import everything for the current legislature once the storage diet (F2) is done, label every vote with its kind so lists can default to final and major votes. Decide with the F1 coverage numbers.
-
 ### Q15 — Storage: shrink the data or pay for more space?
 - Neon branch limit is 1 GB; we use 321 MB, and `individual_votes` costs about 700 bytes a row. The diet (F2) targets 150 bytes a row, enough for the whole current legislature.
 - If the diet falls short, or when older legislatures and change history arrive: a paid Neon plan, or compact storage of old nominal lists outside the database.
@@ -60,6 +55,10 @@ Each Open question has a recommendation; the owner decides.
 | D-016 | 2026-10-03 | Keep working against production during the current build-out; create a Neon `dev` branch once the core is stable. | Owner: "we are in a dev-like working phase". |
 | D-017 | 2026-10-03 | **One admin inside the website (`/admin`, GitHub login), and the BC250 as a worker, not a server.** They communicate through the database: the admin writes job requests, the worker polls, runs, and reports progress and a heartbeat (the admin shows whether the worker is connected). The worker does not need to be always on; requests wait. | No home network exposure, one stack, analysis pages can graduate to public. |
 | D-018 | 2026-10-03 | Retire the cockpit (archived on a branch first) and do the audit cut list, **except Gemini/vote explanations**, which stay for a future summaries feature (Q12). Digi Storage stays; only the unused Vercel Blob and generic FTP upload routes go. | Owner, after the audit. |
+
+### D-022 — Vote scope for 2024–2028 (2026-10-04, closes Q14)
+
+Decided by the owner on the F1 coverage numbers: import **every Chamber and every Senate vote**, and every **joint** vote except per-article and amendment votes. For the joint sittings of 5 Feb 2025 (budget) and 19–20 Mar 2026 (about 614 amendment votes, about 400 voters each, roughly 245,000 individual-vote rows) the site keeps **one summary row per sitting with a link to the official list**, not the individual votes. Every vote carries its kind so lists can default to final and major votes. The storage target (Q15) is therefore sized for Chamber, Senate and the other joint votes only.
 
 ### D-019 — Joint sittings are a third vote chamber (2026-10-04)
 
