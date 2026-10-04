@@ -5,6 +5,8 @@
 set -euo pipefail
 
 # Usage: tools/identity-repair/run.sh --env-file .env --confirm-host <db host>
+# `.env` is the Neon dev branch: rehearse there as often as needed. For production use `--env-file .env.production`;
+# the CLI guard then refuses unless the owner sets ALLOW_PRODUCTION=1 on purpose (agents never do).
 #    or: DATABASE_URL=... CONFIRM_HOST=<db host> tools/identity-repair/run.sh
 while [ $# -gt 0 ]; do
   case "$1" in

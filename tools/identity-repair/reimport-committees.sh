@@ -2,6 +2,8 @@
 # D19: re-imports CDEP profiles for every legislature (committee dates and roles, one source per committee),
 # refreshes read models and runs the integrity checks. Logs every step to data/imports/ and prints the tail of a failure.
 # Usage: tools/identity-repair/reimport-committees.sh --env-file .env --confirm-host <db host>
+# `.env` is the Neon dev branch: rehearse there as often as needed. For production use `--env-file .env.production`;
+# the CLI guard then refuses unless the owner sets ALLOW_PRODUCTION=1 on purpose (agents never do).
 set -uo pipefail
 while [ $# -gt 0 ]; do
   case "$1" in
