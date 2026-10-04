@@ -119,12 +119,12 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [ ] **UI walkthrough.** Include tester issues #3–#8. Every public route on desktop and mobile: what it shows, where the data comes from, what is broken or confusing, and what is missing.
 - [ ] **Missing-info brainstorm.** For each entity (MP, vote, bill, party, cabinet, minister, president, ambassador), what a citizen would want to know and we don't have yet, ranked by value and effort.
 - [ ] **Re-verify D3–D8.**
-- [ ] Inventory local `data/` (~2.5 GB): keep or delete (D-009).
+- [x] Local `data/`: cockpit data (2.1 GB) and the cockpit's leftover code/venv deleted (2026-10-04, owner OK); `data/` is now 252 MB. Kept: `cdep-history` (identity evidence), `snapshots`, `curated`, `cabinet-evidence`, and `tools/parliament-workbench/.env` (the only copy of the Digi Storage credentials the asset importer needs; move them into the root `.env` when convenient).
 - [ ] Noted during the identity repair: profile header shows an interim minister role instead of Prime Minister (Bolojan); header labels a parliamentary group as "Partid"; local `.env` and the cockpit write straight to the production DB (use a Neon dev branch for local work); CI passes a Jest-only `--runInBand` flag.
 - [x] Output: [`docs/audit-2026-10.md`](audit-2026-10.md) (2026-10-03): module verdicts, cut list, fix list A1–A8, privacy items, ranked missing information, local data inventory.
 - [x] Owner decisions (D-015…D-018) and the cuts (2026-10-03): cockpit retired (archived on `archive/cockpit-2026-10`), `parliament-pipeline` and eleven one-off commands removed, demo-data mode removed, Digi-only storage, cookieless counts, dead components removed. About 27,000 lines gone. Gemini explanations kept (Q12); member/group alignment tables kept on review.
 - [x] Deploy the cuts, then apply migration `0028` (drops the three cockpit tables).
-- [ ] Data-health page: keep read-only or remove (audit §2.9, still open).
+- [x] Data-health page removed (2026-10-04, owner decision): page, API, review table (migration `0032`) and nav links gone; OCR scoring and `repair:link-vote-bill` kept; `final_vote_without_bill` added as an integrity warning.
 
 **Exit:** audit written, cut list agreed, cuts made.
 
@@ -139,7 +139,7 @@ Goal: know what exists, what works, what is used, and what to delete or rewrite.
 - [x] Career timeline uses dated group memberships when they document more changes than the party field (Peia: SOS → unaffiliated → PACE); a hand-over month is not "ambiguous".
 - [x] URL continuity: retired profile URLs redirect; the runbook snapshots every public profile URL first and fails if any stops resolving (rehearsal: 5,569 checked, 0 broken).
 - [x] Runbook `tools/identity-repair/run.sh` (refuses to run without confirming the target host). Final rehearsal on a fresh copy of production: exit 0, all 13 checks pass.
-- [ ] Owner: answer the 37-row review in `data/curated/identity-review.md` (not blocking; undecided rows stay as today).
+- [x] Identity review: 33 of 37 rows decided (2026-10-04, web research: Wikidata, ro.wikipedia, senat.ro; sources in `identity-decisions.json`). 4 remain (rows 1, 2, 8, 11), unchanged. **Pending in production:** `ingest:identity:resolve --persist` (dry run: 6 people split in two, nothing else changes).
 - [x] **Applied to production 2026-10-03**: backup branch `backup-before-identity-repair-2026-10-03`, runbook (all checks pass, 5,569 URLs, 0 broken), code deployed (`fff211f`), cache revalidated, live profiles verified, rehearsal branches deleted.
 - [x] Identity review: 24 of 37 decided (owner + CDEP CVs: birth dates, careers named in CVs; `cvs` probe command, `tools/identity-repair/cv_evidence.py`); 13 left unchanged for lack of evidence.
 - [x] Missing votes imported into production (2026-10-03): 122 new votes (Chamber 35 to 23 Sept, Senate 87 to 30 Sept), every new vote's totals match the official ones, all blocking checks pass. 3 joint sittings skipped, 2 Chamber votes without name lists (D21).
@@ -163,6 +163,14 @@ Earlier:
 - [ ] Rewrite the stale browser tests (D6) so they assert data, not just layout.
 
 **Exit:** all integrity checks pass on production; spot-checks match the sources.
+
+### Product vision added 2026-10-04 (owner): the site as a database of record, like SteamDB
+
+Built on top of Phase 3's updater; each is its own design before code.
+- [ ] **Change history ("what changed and when").** Every update to a page, vote, bill or person is kept as a dated revision (field, old value, new value, source snapshot), visible on the entity's page. Needs: parsed-fact diffs per run (small), raw page versions kept off the database (Digi Storage), and the source-vs-stored check running on the same diffs.
+- [ ] **One bill page with every step.** A bill's presence vote, amendments votes, committee reports and final votes as one timeline, each step with its details (builds on D22's one record per dossier).
+- [ ] **Law diff, like git.** When a bill amends an existing law, show the changes against the current consolidated text and what they do. Needs a source for consolidated laws and a parser for amending articles ("La articolul 5 alineatul (2) se modifică..."). The site already compares bill document versions (`compareDocumentTexts`).
+- [ ] **CV tab on the person page.** Birth date, education, career, from the CDEP CVs (parser exists: `parse_cv_page`); birth dates also feed identity matching. Wikidata (3,483 Romanian MPs with birth dates) is a second source to cross-check.
 
 ### Phase 3 — Worker and admin v1
 

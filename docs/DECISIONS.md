@@ -8,14 +8,6 @@ Each Open question has a recommendation; the owner decides.
 
 ## Open
 
-### Q5 — One ingestion stack: TypeScript or Python?
-- Today: TypeScript `packages/ingest` (~14k lines, writes the DB) plus Python `tools/parliament-pipeline`, `cdep-history-probe` and the workbench (~24k lines).
-- **Leaning TypeScript.** It shares the schema, types and DB client with the site. Decide after the Phase 1 audit.
-
-### Q6 — Cockpit: rebuild, shrink or drop?
-- Owner uses it only to add votes and finds it hard to navigate.
-- **Leaning:** replace it with the headless updater (Phase 3) plus a small review page for held batches and model suggestions. Decide after the audit.
-
 ### Q7 — Ambassadors scope
 - Current ambassadors only, or every appointment and recall during the legislature? Which official source (presidency decrees in Monitorul Oficial, MAE lists)?
 
@@ -61,3 +53,7 @@ Each Open question has a recommendation; the owner decides.
 ### D-019 — Joint sittings are a third vote chamber (2026-10-04)
 
 Decided by the owner (Q13, option A): a vote can be held in `joint` session, shown with its own tag and chart; majorities count deputies and senators together (465). Only votes have it (`vote_chamber`); mandates, committees and groups stay per chamber.
+
+### D-020 — Cleanup and product direction (2026-10-04)
+
+Owner decisions: the data-health page is removed (code worth keeping was kept); local cockpit data can be deleted; the site is to become a database of record with change history, one timeline per bill, law diffs and a CV tab (see PLAN.md, "Product vision"). Q5 (one ingestion stack: TypeScript) and Q6 (cockpit: replaced by the updater) are closed.

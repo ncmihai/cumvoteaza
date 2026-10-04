@@ -172,6 +172,28 @@
         "member-senate-1992-6"
       ],
       "reason": "Griguţă-Augustin Botiş: owner accepted the recommendation (same): same constituency/rare name, no contrary evidence. Review row 37, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-1990-233",
+        "member-deputies-2012-233"
+      ],
+      "reason": "Review row 3, web research 2026-10-04. Ioan Moldovan: Wikidata holds two items for the 1990-1992 and 2012-2016 (Cluj) deputy with the identical birth date, 26 January 1951 (Q12730678, Q21747025): one man entered twice."
+    },
+    {
+      "members": [
+        "member-deputies-1990-411",
+        "member-senate-1996-1005"
+      ],
+      "reason": "Review row 6, web research 2026-10-04. Ioan Ardelean: one Wikidata item (Q12730593, born 14 January 1945) carries both the deputy and senator positions, and CDEP's 1990 Salaj deputy page gives the same birth date."
+    },
+    {
+      "members": [
+        "member-deputies-1990-440",
+        "member-senate-1996-1009",
+        "member-senate-2000-123"
+      ],
+      "reason": "Review row 7, web research 2026-10-04. Dumitru Badea: one ro.wikipedia article (born 12 August 1939, PRM) lists deputy for Dambovita in 1992 (a May-October 1992 replacement) and senator for Neamt 1996-2004; Wikidata Q18537646 likewise."
     }
   ],
   "different": [
@@ -195,6 +217,48 @@
         "member-deputies-2000-315"
       ],
       "reason": "Valentin. Vasilescu: official CDEP CVs show different birth dates 1935-11-06 vs 1961-06-16. Review row 13, 2026-10-03."
+    },
+    {
+      "members": [
+        "member-deputies-1990-292",
+        "member-deputies-2000-245"
+      ],
+      "reason": "Review row 4, web research 2026-10-04. Virgil Popescu: ro.wikipedia 'Virgil Popescu (senator)' (born 20 June 1947) lists the 1996-2000 Dolj Senate seat and the 2000-2004 deputy seat as his earliest mandates; no 1990 Mehedinti deputy mandate, so that deputy is another man."
+    },
+    {
+      "members": [
+        "member-deputies-1990-348",
+        "member-deputies-2016-290"
+      ],
+      "reason": "Review row 5, web research 2026-10-04. Ion Stefan: Wikidata Q28193538 (born 22 January 1969, Vrancea deputy 2016-2024) was 21 in 1990, below the minimum age of a deputy, and the Braila deputy of 1990/2000 is another man."
+    },
+    {
+      "members": [
+        "member-senate-1990-59",
+        "member-deputies-2000-207"
+      ],
+      "reason": "Review row 9, web research 2026-10-04. Ion Neagu: ro.wikipedia 'Ion Neagu (senator)' (born 20 December 1951: senator 1990-1992, deputy 1992-1996 Calarasi) and a separate article 'Ion Neagu (politician)' for the Bucharest deputy of 2000."
+    },
+    {
+      "members": [
+        "member-deputies-2000-262",
+        "member-senate-1990-78"
+      ],
+      "reason": "Review row 10, web research 2026-10-04. Ioan Rus: ro.wikipedia 'Ioan Rus (senator)' (born 12 September 1950): Alba senator 1990-1992, later Alba prefect and PSD Alba president; no Hunedoara deputy mandate."
+    },
+    {
+      "members": [
+        "member-deputies-2004-360",
+        "member-senate-2012-136"
+      ],
+      "reason": "Review row 12, web research 2026-10-04. Corneliu Popescu: Wikidata holds two items with different birth dates, 10 April 1944 (deputy, Q12725756) and 8 September 1961 (senator, Q25468129)."
+    },
+    {
+      "members": [
+        "member-senate-1990-47",
+        "member-senate-2012-88"
+      ],
+      "reason": "Review row 13, web research 2026-10-04. Dragos Luchian: senat.ro and ro.wikipedia give birth dates 16 August 1932 (senator 1990-1992, Suceava) and 6 March 1968 (senator 2012-2016, Bacau)."
     }
   ]
 }
