@@ -75,7 +75,11 @@ Severity: **P1** breaks trust in the data, **P2** is wrong or broken, **P3** is 
 | D31 | P2 | Browser end-to-end tests are stale (old D6); no check covers the language switch, redirects, 404s or the joint chart. | F4 |
 | D32 | P3 | 127 votes have no linked bill (1 is a final vote); 2,042 of 2,115 bills have no law type yet; `/parties` and `/governments` return 404. | F3, F4 |
 | D33 | P3 | Cache purge makes the next visit slow (3–5 s) because every tag is purged at once. | F4 |
-| D2 | P1 | No unattended updater (data went stale before; caught up by hand). | F5 |
+| D34 | P1 | **Cabinet data is stale and wrong about the present**: Bolojan dismissed on 5 May 2026 (censure motion) and in caretaker office, PSD ministers replaced by interim ministers in April 2026, Mureșan government failed investiture on 30 Sept 2026; our table shows Bolojan as current with no end and no change after 25 April. | F3 |
+| D35 | P2 | **Motions, investitures and caretaker periods are not recorded**: 8 censure motions this legislature (one adopted), simple motions, investiture votes. | F3 |
+| D36 | P2 | **Bill dossiers are mostly unparsed**: 0 of 1,908 sponsors linked to a member, procedure steps for 57 of 2,115 bills, no law number / promulgation / Monitorul Oficial / Constitutional Court referral, about 60% of the legislature's bills held. | F3 |
+| D37 | P2 | **No leadership with dates** (Permanent Bureau, group leaders, chamber presidents); `member_roles` is empty. | F3 |
+| D2 | P1 | No unattended updater (data went stale before; caught up by hand). Must run from a Romanian address (cdep.ro blocks others): the BC250. | F5 |
 
 ---
 
@@ -92,7 +96,7 @@ Goal: **everything the site claims is true and checkable, and stays true without
 **Exit:** a restore has been tested and nothing local is unique.
 
 ### F1 — Know what we have (M)
-- [ ] **Coverage report.** For every sitting day from 21 Dec 2024: the official list of votes (CDEP per sitting day and senat.ro per date) against ours, per month and chamber, with the missing IDs. Offline-first: lists are saved locally, fetching is polite, capped and resumable. Joint sittings included.
+- [ ] **Coverage report.** For every sitting day from 21 Dec 2024: the official list of votes against ours, per month and chamber, with the missing IDs. CDEP: the day's vote XML (`evot2015.xml?par1=1&par2=YYYYMMDD`, about 1 KB a day; the HTML twin `evot2015.data?dat=` lists sitting days); senat.ro: the "Voturi Plen" calendar. Offline-first: lists are saved locally, fetching is polite, capped and resumable. Joint sittings included.
 - [ ] **Spot-check pack:** about 20 records (votes, MPs, a minister, a bill) with our page and the official page side by side and the exact fields to compare; reviewed by the owner or by me with the browser.
 - [ ] **Source-vs-stored script** for imported pages: totals, name lists, names, dates, affiliations; reuses the saved snapshots (D-008, and a gate for F5).
 - [ ] Decide the vote scope (Q14) with the numbers from the report.
@@ -105,6 +109,9 @@ Goal: **everything the site claims is true and checkable, and stays true without
 
 ### F3 — Close the gaps, current legislature first (L, mostly waiting for imports)
 - [ ] **Votes:** import every missing vote of 2024–2028 in monthly batches (Chamber, Senate, joint), each batch gated by the integrity checks and the totals check, newest months first. Includes the investiture votes (Ciolacu II, Bolojan), motions of censure and other joint sittings.
+- [ ] **Cabinets (D34):** bring the executive up to date from presidency.ro decrees and Monitorul Oficial (cross-check gov.ro and Wikidata): Bolojan's dismissal on 5 May 2026 and caretaker period, the April 2026 interim ministers, the Mureșan designation and failed investiture; every row with its decree link. Record the censure motions and investiture results (D35) from CDEP's motions pages and the stenograms.
+- [ ] **Bill dossiers (D36):** parse the full dossier from the pages we already fetch: initiators linked to members, every procedure step with committee verdicts and deadlines, urgency, registration numbers and dates, the bill's fate (law number, promulgation decree, Monitorul Oficial, Constitutional Court referral, rejected). Re-parse cached pages first; fetch only what is missing.
+- [ ] **Leadership with dates (D37):** Permanent Bureau per period, group leaders, chamber presidents, committee chairs from the bureau and leaders pages.
 - [ ] **Rosters:** re-crawl the 2024 deputy and senator rosters (idm 336 and any other replacement), mandate ends, constituencies; explain the 330/331 seat gap.
 - [ ] **Backlog:** triage the 1,690 pending, 3 failed and 14 skipped discoveries: import, retire as out of scope, or fix the parser.
 - [ ] **Bills:** link the 127 unlinked votes, read the law type for new bills, `final_vote_without_bill` to zero.
@@ -128,7 +135,7 @@ Design (D-017): the BC250 is a worker, the admin lives at `/admin`, they talk on
 **Exit:** two consecutive weeks of sitting days imported with no manual step, visible in the admin.
 
 ### Feature roadmap — written when F0–F5 are done
-Ideas collected so far (not scheduled): cabinets with every reshuffle, presidents (2025 succession) and ambassadors (Q7); CV tab and birth dates (CDEP CVs, Wikidata); change history like SteamDB; one timeline per bill; law diff against the consolidated text; political compass and plain-language summaries (Q12); history backfill before 2024.
+Source research is in [audit-2026-10.md §8](audit-2026-10.md) (what each site publishes and what we hold). Ideas collected so far (not scheduled): questions and interpellations, sanctions, declarations (links first), parliament expenses, MP sub-pages and CVs, committee documents, plenary agenda and stenograms, the Government's legislative priorities, older legislatures; cabinets with every reshuffle, presidents (2025 succession) and ambassadors (Q7); CV tab and birth dates (CDEP CVs, Wikidata); change history like SteamDB; one timeline per bill; law diff against the consolidated text; political compass and plain-language summaries (Q12); history backfill before 2024.
 
 ---
 
