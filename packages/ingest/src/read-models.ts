@@ -294,7 +294,8 @@ export async function refreshReadModels(): Promise<ReadModelRefreshSummary> {
             'ăâîșşțţĂÂÎȘŞȚŢ',
             'aaissttAAISSTT'
           )),
-          v.chamber,
+          -- A joint sitting belongs to neither chamber: its search entry has no chamber.
+          case when v.chamber in ('senate', 'deputies') then v.chamber::text::chamber else null end,
           l.id,
           v.held_on,
           now()
