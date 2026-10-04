@@ -135,8 +135,18 @@ Design (D-017): the BC250 is a worker, the admin lives at `/admin`, they talk on
 - [ ] Linux OCR path for scanned bill PDFs.
 **Exit:** two consecutive weeks of sitting days imported with no manual step, visible in the admin.
 
-### Feature roadmap — written when F0–F5 are done
-Source research is in [audit-2026-10.md §8](audit-2026-10.md) (what each site publishes and what we hold). Ideas collected so far (not scheduled): questions and interpellations, sanctions, declarations (links first), parliament expenses, MP sub-pages and CVs, committee documents, plenary agenda and stenograms, the Government's legislative priorities, older legislatures; cabinets with every reshuffle, presidents (2025 succession) and ambassadors (Q7); CV tab and birth dates (CDEP CVs, Wikidata); change history like SteamDB; one timeline per bill; law diff against the consolidated text; political compass and plain-language summaries (Q12); history backfill before 2024.
+### Feature roadmap — draft from the brainstorm of 2026-10-04 (starts when F0–F5 are done)
+
+Decisions behind it: [D-021](DECISIONS.md). Source research: [audit-2026-10.md §8](audit-2026-10.md). Each item gets its own design and exit criteria when started. All collectors run from a Romanian address, save raw pages before parsing, run as a dry run first, and feed the integrity checks.
+
+**Shared plumbing (first):** a raw-page archive (Digi Storage), revision capture (what changed, when), a source registry (last success, status per source), and open downloads (CSV and JSON with stable IDs and a stated licence).
+
+1. **Bill dossiers.** Fate (law number, promulgation decree, Monitorul Oficial, rejected, Constitutional Court referral); the full two-chamber timeline with committee verdicts and deadlines; initiators linked to members; urgency and tacit-adoption deadlines; registration numbers; opinions (Legislative Council, Economic and Social Council, others); amendments; placement in the Government's priority list; for emergency-ordinance approval bills, the ordinance. Re-parse cached pages first; discovery of every bill of the legislature.
+2. **MP profile enrichment.** Leadership roles with dates (Permanent Bureau, group leaders, committee chairs); official counts (initiatives, speeches, questions, interpellations, motions signed) and e-vote attendance as a cross-check of ours; the questions and interpellations themselves with minister and answer; CV (birth date and place, education, career); declaration filing record; sanctions; friendship groups and delegations.
+3. **Party money and elections.** AEP financing reports: totals by party, year and donor type; election results (BEC) by constituency; group leaders and history.
+4. **The President's record.** A classified catalog of presidential decrees from the legislative portal (36,677 listed; start at 2014): promulgations, returned laws, Constitutional Court referrals, designations, appointments (ministers, ambassadors, judges, prosecutors, Constitutional Court judges, military and services leadership), each linked to the law, person or government it concerns; agenda and consultations; statements and Supreme Defence Council decisions; advisers; the history of presidents (all since 1990 later).
+5. **Law texts and diffs.** The legislative portal API for texts and consolidated versions; diff of an amending bill against the current law.
+6. **Later:** change history per page, stenograms and speeches, committee documents, older legislatures, the analysis studio and summaries (Q12).
 
 ---
 

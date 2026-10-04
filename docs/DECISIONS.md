@@ -8,9 +8,6 @@ Each Open question has a recommendation; the owner decides.
 
 ## Open
 
-### Q7 — Ambassadors scope
-- Current ambassadors only, or every appointment and recall during the legislature? Which official source (presidency decrees in Monitorul Oficial, MAE lists)?
-
 ### Q8 — Repo visibility
 - Public today so it can be reviewed. If it goes private: GitHub Actions minutes become limited, and the tester needs access. Vercel Hobby works either way.
 
@@ -71,3 +68,15 @@ Decided by the owner (Q13, option A): a vote can be held in `joint` session, sho
 ### D-020 — Cleanup and product direction (2026-10-04)
 
 Owner decisions: the data-health page is removed (code worth keeping was kept); local cockpit data can be deleted; the site is to become a database of record with change history, one timeline per bill, law diffs and a CV tab (see PLAN.md, "Product vision"). Q5 (one ingestion stack: TypeScript) and Q6 (cockpit: replaced by the updater) are closed.
+
+### D-021 — Feature priorities and data policy, from the brainstorm of 2026-10-04
+
+Owner decisions, to be scheduled after the fix roadmap (F0–F5):
+- **Order of the data families:** bill dossiers, MP profile enrichment, party money and elections. The presidency record is wanted in full (below) and is sequenced right after them; its decree catalog is also needed earlier by the cabinet and updater work.
+- **Presidency tab = the President's record, the full office:** decrees by type (laws promulgated or returned, Constitutional Court referrals, appointments, designations), the agenda and consultations, statements, Supreme Defence Council decisions, advisers, and the history of presidents. Depth: Iohannis, Bolojan (acting) and Dan from 2014 first, every president since 1990 later.
+- **Appointments register (closes Q7):** ministers and prime-minister designations, ambassadors and diplomatic posts (appointments and recalls, full history in the depth above), judges, prosecutors and Constitutional Court judges, military and services leadership; all from presidential decrees, each linked to its decree on the legislative portal.
+- **Asset and interest declarations:** record only that a declaration was filed and when, and link to the official list; never download or read the content (Constitutional Court Decision 297/2025).
+- **CVs:** show birth date and place, education, and the professional, political and parliamentary career; marital status and children are not stored.
+- **Party money:** totals by party, year and donor type (subsidies, fees, donations, loans, campaign reimbursements); donors are summarised as companies and individuals, with no private names.
+- **Access:** web pages plus open downloads (CSV and JSON dumps with stable IDs and a stated licence), so journalists and researchers can reuse the data. A public API is not planned.
+
