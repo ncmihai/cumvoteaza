@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { fetchCdepLists, monthsBetween } from "../coverage/fetch-cdep-lists";
-import { FetchStoppedError, PoliteFetcher } from "../coverage/polite-fetcher";
+import { FetchStoppedError, isChallengePage, PoliteFetcher } from "../coverage/polite-fetcher";
 import { RawCache } from "../coverage/raw-cache";
 
 function fakeClock() {
@@ -44,6 +44,15 @@ describe("PoliteFetcher", () => {
     const fetcher = new PoliteFetcher({ maxRequests: 50, fetchImpl: async () => answer("no", 429), ...clock });
     await expect(fetcher.get("https://example.test/a")).rejects.toBeInstanceOf(FetchStoppedError);
     expect(fetcher.requests).toBe(1);
+  });
+
+  it("stops when the source answers with a captcha page instead of the content", async () => {
+    const clock = fakeClock();
+    const page = `<html><body><form><h1>Security check</h1><p>Please enter the above result to continue</p>Captcha Result: <input></form></body></html>`;
+    const fetcher = new PoliteFetcher({ maxRequests: 50, fetchImpl: async () => answer(page), ...clock });
+    await expect(fetcher.get("https://example.test/a")).rejects.toMatchObject({ reason: "blocked" });
+    expect(isChallengePage(Buffer.from(page))).toBe(true);
+    expect(isChallengePage(Buffer.from("<html>VOT ELECTRONIC</html>"))).toBe(false);
   });
 
   it("stops after too many failures in a row", async () => {

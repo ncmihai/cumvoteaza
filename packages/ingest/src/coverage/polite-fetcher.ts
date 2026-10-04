@@ -23,6 +23,13 @@ export interface PoliteFetcherOptions {
   now?: () => number;
 }
 
+/** A bot-protection page served in place of the content (CDEP answers HTTP 200 with "Security check ... Captcha" after many requests). */
+export function isChallengePage(body: Buffer): boolean {
+  if (body.byteLength > 60_000) return false;
+  const text = body.toString("latin1");
+  return /security check/i.test(text) && /captcha/i.test(text);
+}
+
 /** The run must end now: the budget is spent, the source pushed back, or failures piled up. */
 export class FetchStoppedError extends Error {
   constructor(message: string, readonly reason: "budget" | "blocked" | "failures") {
@@ -80,6 +87,9 @@ export class PoliteFetcher {
         }
         if (response.status >= 500) throw new Error(`HTTP ${response.status}`);
         const body = Buffer.from(await response.arrayBuffer());
+        if (isChallengePage(body)) {
+          throw new FetchStoppedError(`${new URL(url).host} answered with a security check (captcha) page: the source is limiting us, stopping. Wait before the next run and use a longer --delay-ms.`, "blocked");
+        }
         this.consecutiveFailures = 0;
         const cookies = (response.headers.getSetCookie?.() ?? []).map((cookie) => cookie.split(";", 1)[0]!);
         return { url, status: response.status, body, contentType: response.headers.get("content-type") ?? undefined, cookies };

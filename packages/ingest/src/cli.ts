@@ -481,8 +481,9 @@ async function main() {
       limit: numberFlag("limit") ?? 50,
       batch: numberFlag("batch") ?? 25,
       maxHeld: numberFlag("max-held") ?? 3,
-      maxRequests: numberFlag("max-requests") ?? 400,
-      delayMs: numberFlag("delay-ms") ?? 2000,
+      // CDEP started serving a captcha after about 440 vote pages at 2 s apart (2026-10-04): go slower and in smaller runs.
+      maxRequests: numberFlag("max-requests") ?? 250,
+      delayMs: numberFlag("delay-ms") ?? 5000,
       persist: hasFlag("persist"),
       offline: hasFlag("offline"),
       log: (line) => console.log(line)

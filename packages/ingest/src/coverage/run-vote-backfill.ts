@@ -48,10 +48,16 @@ export interface VoteBackfillResult {
   /** Pages that cannot be imported as votes because the source publishes no per-member choices (attendance checks). */
   unsupported: Array<{ source: string; officialId: string; date: string; url: string; reason: string; officialTotals: OfficialVoteRecord["totals"]; label: string }>;
   stopped?: string;
-  integrity?: { before: Record<string, number>; after: Record<string, number>; worse: string[] };
+  integrity?: { before: Record<string, number>; after: Record<string, number>; worse: string[]; grew: string[] };
   summaries: number;
   reportFile: string;
 }
+
+/**
+ * Checks that may grow during a backfill without meaning the data is wrong: a vote on a bill we do not hold yet
+ * (the bill gap closes in Sprint 7) is reported, not blocking. Every other check getting worse stops the run.
+ */
+const MAY_GROW = new Set(["final_vote_without_bill"]);
 
 const countsOf = (results: Array<{ name: string; count: number }>) => Object.fromEntries(results.map((result) => [result.name, result.count]));
 
@@ -87,8 +93,9 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
 
   const checkIntegrity = async () => {
     const after = countsOf(await runIntegrityChecks());
-    const worse = Object.keys(after).filter((name) => after[name]! > (integrityBefore?.[name] ?? 0));
-    result.integrity = { before: integrityBefore!, after, worse };
+    const grown = Object.keys(after).filter((name) => after[name]! > (integrityBefore?.[name] ?? 0));
+    const worse = grown.filter((name) => !MAY_GROW.has(name));
+    result.integrity = { before: result.integrity?.before ?? integrityBefore!, after, worse, grew: [...new Set([...(result.integrity?.grew ?? []), ...grown.filter((name) => MAY_GROW.has(name))])] };
     if (worse.length) result.stopped = `integrity checks got worse after ${result.written} writes: ${worse.join(", ")}`;
     integrityBefore = after;
     writtenSinceCheck = 0;
