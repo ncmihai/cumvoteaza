@@ -246,6 +246,13 @@
       "when": 1791127724472,
       "tag": "0034_motion_present_count",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791146323207,
+      "tag": "0035_compact_individual_votes",
+      "breakpoints": true
     }
   ]
 }

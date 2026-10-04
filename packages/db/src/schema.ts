@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  pgView,
   primaryKey,
   text,
   timestamp,
@@ -218,12 +219,15 @@ export const parties = pgTable("parties", {
 
 export const parliamentaryGroups = pgTable("parliamentary_groups", {
   id: text("id").primaryKey(),
+  num: integer("num").generatedAlwaysAsIdentity().notNull(),
   partyId: text("party_id").references(() => parties.id),
   chamber: chamberEnum("chamber").notNull(),
   shortName: text("short_name").notNull(),
   name: text("name").notNull(),
   color: varchar("color", { length: 16 }).notNull()
-});
+}, (table) => ({
+  numIdx: uniqueIndex("parliamentary_groups_num_idx").on(table.num)
+}));
 
 export const people = pgTable("people", {
   id: text("id").primaryKey(),
@@ -253,6 +257,8 @@ export const idAliases = pgTable("id_aliases", {
 
 export const members = pgTable("members", {
   id: text("id").primaryKey(),
+  /** Compact key used by individual_vote_rows (D-023); the text id stays the public identity. */
+  num: integer("num").generatedAlwaysAsIdentity().notNull(),
   personId: text("person_id").references(() => people.id),
   slug: text("slug").notNull(),
   firstName: text("first_name").notNull(),
@@ -260,7 +266,8 @@ export const members = pgTable("members", {
   displayName: text("display_name").notNull(),
   sourceIds: jsonb("source_ids").$type<Record<string, string>>().notNull().default({})
 }, (table) => ({
-  slugIdx: uniqueIndex("members_slug_idx").on(table.slug)
+  slugIdx: uniqueIndex("members_slug_idx").on(table.slug),
+  numIdx: uniqueIndex("members_num_idx").on(table.num)
 }));
 
 export const sourceSnapshots = pgTable("source_snapshots", {
@@ -813,6 +820,7 @@ export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {
 
 export const votes = pgTable("votes", {
   id: text("id").primaryKey(),
+  num: integer("num").generatedAlwaysAsIdentity().notNull(),
   billId: text("bill_id").references(() => bills.id),
   chamber: voteChamberEnum("chamber").notNull(),
   title: text("title").notNull(),
@@ -834,6 +842,7 @@ export const votes = pgTable("votes", {
   absent: integer("absent"),
   sourceSnapshotId: text("source_snapshot_id").notNull().references(() => sourceSnapshots.id)
 }, (table) => ({
+  numIdx: uniqueIndex("votes_num_idx").on(table.num),
   heldOnIdx: index("votes_held_on_id_idx").on(table.heldOn, table.id),
   chamberHeldOnIdx: index("votes_chamber_held_on_idx").on(table.chamber, table.heldOn),
   billIdx: index("votes_bill_id_idx").on(table.billId),
@@ -866,20 +875,31 @@ export const groupVoteTotals = pgTable("group_vote_totals", {
   groupIdx: index("group_vote_totals_group_idx").on(table.groupId)
 }));
 
-export const individualVotes = pgTable("individual_votes", {
-  id: text("id").primaryKey(),
-  voteId: text("vote_id").notNull().references(() => votes.id),
-  memberId: text("member_id").notNull().references(() => members.id),
-  groupId: text("group_id").references(() => parliamentaryGroups.id),
+/**
+ * One recorded choice per member per vote (D-023). Compact integer keys: about 80 bytes a row with its two
+ * indexes, against about 700 when the rows carried three text keys. Written by the importers; read through
+ * the `individual_votes` view, which gives back the text ids.
+ */
+export const individualVoteRows = pgTable("individual_vote_rows", {
+  voteNum: integer("vote_num").notNull().references(() => votes.num),
+  memberNum: integer("member_num").notNull().references(() => members.num),
+  groupNum: integer("group_num").references(() => parliamentaryGroups.num),
   choice: voteChoiceEnum("choice").notNull(),
   voteMethod: text("vote_method")
 }, (table) => ({
-  voteIdx: index("individual_votes_vote_idx").on(table.voteId),
-  memberIdx: index("individual_votes_member_idx").on(table.memberId),
-  // One recorded choice per member per vote; also guards merges and re-imports against duplicates.
-  memberVoteIdx: uniqueIndex("individual_votes_member_vote_idx").on(table.memberId, table.voteId),
-  groupIdx: index("individual_votes_group_idx").on(table.groupId)
+  pk: primaryKey({ columns: [table.voteNum, table.memberNum] }),
+  memberIdx: index("individual_vote_rows_member_idx").on(table.memberNum, table.voteNum)
 }));
+
+/** Read side of individual_vote_rows with the text ids; created in migration 0035. Not a table: write to individualVoteRows. */
+export const individualVotes = pgView("individual_votes", {
+  id: text("id").notNull(),
+  voteId: text("vote_id").notNull(),
+  memberId: text("member_id").notNull(),
+  groupId: text("group_id"),
+  choice: voteChoiceEnum("choice").notNull(),
+  voteMethod: text("vote_method")
+}).existing();
 
 export const memberLegislatureActivity = pgTable("member_legislature_activity", {
   id: text("id").primaryKey(),

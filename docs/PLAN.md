@@ -106,9 +106,10 @@ Built 2026-10-04 (Sprint 2); the crawl and the numbers are the owner's next step
 **Exit:** a table "official / ours / %" per month and chamber for 2024–2028.
 
 ### F2 — Storage diet (M)
-- [ ] Measure first (done above), then rehearse on the dev branch: `individual_votes` gets `(member_id, vote_id)` as its primary key and loses the 90-character text id and the redundant indexes; if that is not enough, integer keys. Target: at most 150 bytes a row, so 100% of the current legislature fits under 600 MB. Update every use of `individual_votes.id`.
-- [ ] Fallback if the target is missed: Neon paid plan (Q15).
-**Exit:** projected size with full 2024–2028 votes is under 600 MB, integrity checks pass on the dev branch.
+- [x] Built and rehearsed on the dev branch 2026-10-04 (D-023): migration `0035_compact_individual_votes`, `individual_vote_rows` with integer keys, `individual_votes` as a view, importers and member merge on the new table. Same data (253,130 rows, same checksum), table 175 MB → 22 MB (92 bytes a row, target 150), database 171 MB; read plans use indexes only (under 1 ms); integrity checks, read-model refresh and a real re-import all pass on dev.
+- [ ] **Production:** migration run by the owner (Neon backup branch `backup-2026-10-04-before-0035` exists), **then** the code is deployed (the new site code selects the new `num` columns; the old code works on both). Then check a vote page, a member page and `integrity:check`.
+- [x] Fallback (Q15, paid plan): not needed; a full legislature is about 90 MB.
+**Exit:** projected size with full 2024–2028 votes under 600 MB (about 250 MB), integrity checks pass on the dev branch. Met on dev; production pending.
 
 ### F3 — Close the gaps, current legislature first (L, mostly waiting for imports)
 - [ ] **Votes:** import every missing vote of 2024–2028 in monthly batches (Chamber, Senate, joint), each batch gated by the integrity checks and the totals check, newest months first. Includes the investiture votes (Ciolacu II, Bolojan), motions of censure and other joint sittings.
@@ -174,7 +175,7 @@ A sprint is one coherent block of work with an exit check, sized by scope, not b
 **Feature sprints (start after Sprint 10; the order is yours, D-021):**
 F-1 shared plumbing (raw-page archive, revisions, open downloads with licence) → F-2 bill extensions (opinions, amendments, priority list, ordinances) → F-3 MP enrichment (CVs and birth dates, questions and interpellations, official counts) → F-4 decrees and the presidency record from 2014 (appointments register) → F-5 party money and elections → F-6 law texts and diffs. The decree catalog can be pulled forward into Sprints 8–9 if the cabinet watcher needs it.
 
-**Decision gates:** Q14 vote scope (end of Sprint 2) · Q15 storage (end of Sprint 3) · Q16 older legislatures, Q8–Q10 and the licence (Sprint 8). The next government designation is added when you tell me; until then it is not recorded.
+**Decision gates:** Q14 vote scope (end of Sprint 2) · Q16 older legislatures, Q8–Q10 and the licence (Sprint 8). The next government designation is added when you tell me; until then it is not recorded.
 
 ---
 
@@ -190,6 +191,7 @@ F-1 shared plumbing (raw-page archive, revisions, open downloads with licence) �
 | Date | Entry |
 | --- | --- |
 | 2026-10-04 | D19, D20, D22, D23 and joint sittings (Q13) live; remaining: roster freshness (deputy idm 336), then Phase 3. |
+| 2026-10-04 | **Sprint 3 (storage diet) built and rehearsed on dev:** individual votes on integer keys, 175 MB → 22 MB, same data; production migration pending (D-023, Q15 closed). Vote scope decided (D-022, Q14 closed). |
 | 2026-10-04 | **Sprint 2 (coverage truth) built:** polite fetcher with raw-page cache, parsers for CDEP's day XML and the Senate's day pages, vote/bill/seat coverage reports, spot-check pack; 45 new tests. A first test on September 2026 found a real gap (Senate, 8 September: 14 of 15 votes missing). Crawl done the same day (132 CDEP days, 124 Senate days, no failures); numbers in F1. |
 | 2026-10-04 | **Sprint 1 (safe ground) done:** off-laptop backup of local evidence, Neon backup branch with a passing restore test, `dev` branch as the default database, production guard and `npm run prod` wrapper, crawl merge-and-backup, `npm run verify`; rehearsal and old backup branches deleted, old workbench folder removed, manual backups chosen over a snapshot schedule. The stenogram corrections are live in production (checked: Veștea 287 present, 0 void; Bolojan 0 void). |
 | 2026-10-04 | Cabinet module live (formation attempts, motions, linking); investiture totals checked against the Senate's stenograms (two corrections); source research; feature priorities (D-021); sprint plan written. |

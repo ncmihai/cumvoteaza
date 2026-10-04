@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { upsertIndividualVoteRows } from "./individual-vote-rows";
 import { createDbSession, type DbClient, type DbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import type {
@@ -100,7 +101,7 @@ export async function persistSenateVote(parsed: ParsedSenateVote, suppliedSessio
     const voters = await resolveVoteVoters(db, "senate", vote.heldOn, parsed.members);
     await upsertVote(db, vote);
     await Promise.all(parsed.groupVoteTotals.map((total) => upsertGroupVoteTotal(db, total)));
-    await Promise.all(canonicalIndividualVotes(parsed.individualVotes, voters).map((vote) => upsertIndividualVote(db, vote)));
+    await upsertIndividualVotes(db, canonicalIndividualVotes(parsed.individualVotes, voters));
 
     return {
       voteId: parsed.vote.id,
@@ -1473,37 +1474,8 @@ async function upsertGroupVoteTotal(db: Db, total: GroupVoteTotal) {
     });
 }
 
-async function upsertIndividualVote(db: Db, vote: IndividualVote) {
-  await db
-    .insert(schema.individualVotes)
-    .values(vote)
-    .onConflictDoUpdate({
-      target: schema.individualVotes.id,
-      set: {
-        voteId: vote.voteId,
-        memberId: vote.memberId,
-        groupId: vote.groupId,
-        choice: vote.choice,
-        voteMethod: vote.voteMethod
-      }
-    });
-}
-
 async function upsertIndividualVotes(db: Db, votes: IndividualVote[]) {
-  if (votes.length === 0) return;
-  await db
-    .insert(schema.individualVotes)
-    .values(votes)
-    .onConflictDoUpdate({
-      target: schema.individualVotes.id,
-      set: {
-        voteId: sql`excluded.vote_id`,
-        memberId: sql`excluded.member_id`,
-        groupId: sql`excluded.group_id`,
-        choice: sql`excluded.choice`,
-        voteMethod: sql`excluded.vote_method`
-      }
-    });
+  await upsertIndividualVoteRows(db, votes);
 }
 
 async function resolveVoteVoters(db: Db, chamber: "senate" | "deputies", heldOn: string, voters: Member[]): Promise<VoterResolution> {

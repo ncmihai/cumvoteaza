@@ -24,11 +24,6 @@ Each Open question has a recommendation; the owner decides.
 
 ---
 
-### Q15 — Storage: shrink the data or pay for more space?
-- Neon branch limit is 1 GB; we use 321 MB, and `individual_votes` costs about 700 bytes a row. The diet (F2) targets 150 bytes a row, enough for the whole current legislature.
-- If the diet falls short, or when older legislatures and change history arrive: a paid Neon plan, or compact storage of old nominal lists outside the database.
-- **Leaning:** diet first, pay only when the numbers say so (Principle: near-zero cost).
-
 ### Q16 — Older legislatures: show partial data or hide it?
 - 2020–2024 has 133 votes and earlier legislatures 1, but full member and career histories. Showing votes there without a label implies completeness.
 - **Leaning:** show the histories, label vote coverage per legislature ("partial") on the page, and say so on the methodology page (F4) until a backfill exists.
@@ -59,6 +54,10 @@ Each Open question has a recommendation; the owner decides.
 ### D-022 — Vote scope for 2024–2028 (2026-10-04, closes Q14)
 
 Decided by the owner on the F1 coverage numbers: import **every Chamber and every Senate vote**, and every **joint** vote except per-article and amendment votes. For the joint sittings of 5 Feb 2025 (budget) and 19–20 Mar 2026 (about 614 amendment votes, about 400 voters each, roughly 245,000 individual-vote rows) the site keeps **one summary row per sitting with a link to the official list**, not the individual votes. Every vote carries its kind so lists can default to final and major votes. The storage target (Q15) is therefore sized for Chamber, Senate and the other joint votes only.
+
+### D-023 — Individual votes use compact integer keys (2026-10-04, Sprint 3)
+
+`individual_votes` was 175 MB for 253,130 rows (about 700 bytes a row: a 90-character text id, a 67-character vote id and three more text keys per row, five indexes, two of them never used). It is now `individual_vote_rows(vote_num, member_num, group_num, choice, vote_method)` with primary key `(vote_num, member_num)` and one index on `(member_num, vote_num)`: **22 MB, 92 bytes a row**, identical data (same row count and checksum through the view). `votes`, `members` and `parliamentary_groups` gained an integer `num`; the text ids remain the public identity and URLs. `individual_votes` is now a **view** with the old columns (left joins on unique keys, so unused joins are dropped), so every read keeps working; importers and the member merge write to `individual_vote_rows` through `packages/ingest/src/individual-vote-rows.ts`. At this size a full legislature (about 1 million rows) is about 90 MB, so Q15 is answered: no paid plan needed for 2024–2028 or for older legislatures later.
 
 ### D-019 — Joint sittings are a third vote chamber (2026-10-04)
 

@@ -97,19 +97,20 @@ export async function planMemberMerges(db: DbClient): Promise<MemberMergePlan> {
 /** Rows of earlier-legislature Chamber votes whose recorded member was not sitting, with the deputy who was. */
 const misattributedChamberVotes = sql`
   with misattributed as (
-    select iv.id as vote_row_id, iv.vote_id, iv.member_id as from_id, left(l.label, 4) as year,
-           'member-deputies-' || left(l.label, 4) || '-' || substring(iv.member_id from '^member-deputies-([0-9]+)$') as to_id
-    from individual_votes iv
-    join votes v on v.id = iv.vote_id
+    select r.vote_num, r.member_num as from_num, v.id as vote_id, fm.id as from_id, left(l.label, 4) as year,
+           'member-deputies-' || left(l.label, 4) || '-' || substring(fm.id from '^member-deputies-([0-9]+)$') as to_id
+    from individual_vote_rows r
+    join votes v on v.num = r.vote_num
+    join members fm on fm.num = r.member_num
     join legislatures l on v.held_on between l.starts_on and l.ends_on
-    where v.chamber = 'deputies' and iv.member_id ~ '^member-deputies-[0-9]+$' and left(l.label, 4) <> '2024'
+    where v.chamber = 'deputies' and fm.id ~ '^member-deputies-[0-9]+$' and left(l.label, 4) <> '2024'
       and not exists (
         select 1 from member_mandates mm join legislatures ml on ml.id = mm.legislature_id
-        where mm.member_id = iv.member_id and mm.chamber = 'deputies'
+        where mm.member_id = fm.id and mm.chamber = 'deputies'
           and v.held_on >= mm.starts_on and v.held_on <= coalesce(mm.ends_on, ml.ends_on))
       and exists (
         select 1 from member_mandates mm join legislatures ml on ml.id = mm.legislature_id
-        where mm.member_id = 'member-deputies-' || left(l.label, 4) || '-' || substring(iv.member_id from '^member-deputies-([0-9]+)$')
+        where mm.member_id = 'member-deputies-' || left(l.label, 4) || '-' || substring(fm.id from '^member-deputies-([0-9]+)$')
           and mm.chamber = 'deputies' and v.held_on >= mm.starts_on and v.held_on <= coalesce(mm.ends_on, ml.ends_on))
   )`;
 
@@ -118,8 +119,9 @@ export async function applyMemberMergePlan(db: DbClient, plan: MemberMergePlan) 
   if (plan.reattributions.length > 0) {
     await db.execute(sql`
       ${misattributedChamberVotes}
-      update individual_votes iv set member_id = m.to_id, id = 'iv-' || m.vote_id || '-' || m.to_id
-      from misattributed m where iv.id = m.vote_row_id`);
+      update individual_vote_rows r set member_num = tm.num
+      from misattributed m join members tm on tm.id = m.to_id
+      where r.vote_num = m.vote_num and r.member_num = m.from_num`);
   }
   for (const merge of plan.merges) await mergeMember(db, merge.from, merge.into, merge.reason);
   for (let index = 0; index < plan.deletions.length; index += 500) {
@@ -136,8 +138,10 @@ async function mergeMember(db: DbClient, from: string, into: string, reason: str
     where a.member_id = ${from} and b.member_id = ${into}`);
   if (both!.shared > 0) throw new Error(`Cannot merge ${from} into ${into}: both voted in ${both!.shared} votes.`);
 
-  // Vote rows are keyed iv-<vote>-<member>; rename them so a re-import upserts instead of duplicating.
-  await db.execute(sql`update individual_votes set member_id = ${into}, id = 'iv-' || vote_id || '-' || ${into} where member_id = ${from}`);
+  // Vote rows are keyed (vote, member): point them at the surviving member so a re-import upserts instead of duplicating.
+  await db.execute(sql`
+    update individual_vote_rows set member_num = (select num from members where id = ${into})
+    where member_num = (select num from members where id = ${from})`);
   // Group/party history belongs to CDEP (one source per fact): the other source's copies are dropped, not moved.
   await db.execute(sql`delete from member_group_memberships where member_id = ${from}`);
   await db.execute(sql`delete from member_party_affiliations where member_id = ${from}`);
