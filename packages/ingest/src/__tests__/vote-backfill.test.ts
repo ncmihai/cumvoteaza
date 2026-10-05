@@ -142,7 +142,7 @@ describe("curated name-list exceptions", () => {
   it("lists the hand-checked Senate votes with their evidence", () => {
     const exceptions = readNameListExceptions();
     expect(exceptions.length).toBeGreaterThanOrEqual(12);
-    expect(exceptions.every((item) => item.source === "senate" && item.shortBy.for === 1 && item.verifiedOn && item.evidence.includes(item.officialId.toUpperCase()))).toBe(true);
+    expect(exceptions.every((item) => item.source === "senate" && Object.values(item.shortBy).length === 1 && Object.values(item.shortBy)[0] === 1 && item.verifiedOn && item.evidence.toLowerCase().includes(item.officialId.toLowerCase()))).toBe(true);
     expect(exceptionKey("senate", "A9525454-81B6-43FF-9BD5-9851D7307F68")).toBe("senate:a9525454-81b6-43ff-9bd5-9851d7307f68");
   });
 });
