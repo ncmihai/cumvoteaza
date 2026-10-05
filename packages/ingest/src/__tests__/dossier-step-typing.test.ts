@@ -139,7 +139,9 @@ describe("wording found in the full corpus of 2024-2026", () => {
     ["prezentare în Birourile Permanente reunite ale Senatului și Camerei Deputaților cu nr.L13", { type: "registered" }],
     ["trimis pentru avizarea competenţei de primă Cameră sesizată, la Comisia pentru constituţionalitate", { type: "competence_decision" }],
     ["plenul Senatului a aprobat trimiterea propunerii legislative la Camera Deputaţilor, ca primă Cameră sesizată, urmare a primirii avizului Comisiei pentru constituţionalitate nr.3381/23.10.2024", { type: "competence_decision" }],
-    ["dezbaterea Proiectului de Lege pentru aprobarea Ordonanţei de urgenţă a Guvernului nr. 7/2024", { type: "plenary_debate" }]
+    ["dezbaterea Proiectului de Lege pentru aprobarea Ordonanţei de urgenţă a Guvernului nr. 7/2024", { type: "plenary_debate" }],
+    ["legea este respinsa de catre Senat", { type: "rejected", chamber: "senate" }],
+    ["solicitarea iniţiatorilor de retragere a Propunerii legislative privind instituirea mecanismului permanent de audit extern", { type: "withdrawn" }]
   ];
   it.each(more)("%s", (sentence, expected) => {
     expect(typeStepWording(sentence)).toMatchObject({ recognised: true, ...expected });

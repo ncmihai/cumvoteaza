@@ -101,14 +101,14 @@ export function typeStepWording(original: string): TypedWording {
   if (/publicat(a)? in monitorul oficial/.test(f)) return base("published");
   if (/trimis(a)? la promulgare|trimitere la presedintele romaniei pentru promulgare/.test(f)) return base("sent_to_president");
   if (/(depunere|depus|depusa) la secretarul general.*(constitutionalitat)/.test(f)) return base("constitutional_window");
-  if (/retras de catre initiator|retragerea initiativei|solicita retragerea|retras(a)? de/.test(f)) return base("withdrawn");
+  if (/retras de catre initiator|retragerea initiativei|solicita retragerea|retras(a)? de|solicitarea initiatorilor de retragere|de retragere a (propunerii|proiectului)/.test(f)) return base("withdrawn");
   if (/incetarea procedurii legislative/.test(f)) return base("procedure_ended");
 
   // A chamber decides.
   if (/^respins in sedinta comuna/.test(f)) return base("rejected", { chamber: "joint", vote: voteCounts(f) });
   if (/^adoptat in sedinta comuna/.test(f)) return base("adopted", { chamber: "joint", vote: voteCounts(f) });
   if (/^vot final (adoptare|respingere)/.test(f)) return base("final_vote", { vote: voteCounts(f) });
-  if (/^respins(a)? (de|de catre) /.test(f)) return base("rejected", { chamber: chamberOfAdoption(f), vote: voteCounts(f) });
+  if (/^respins(a)? (de|de catre) /.test(f) || /^(legea|proiectul|propunerea)\b.*\brespins(a)? de catre /.test(f)) return base("rejected", { chamber: chamberOfAdoption(f.replace(/^.*?respins(a)? (de catre|de) /, "")), vote: voteCounts(f) });
   if (/^(legea|proiectul|propunerea)\b.*(adoptat|adoptata) (de|ca urmare)/.test(f) || /^adoptat(a)? de (catre )?(camera deputatilor|senat)/.test(f)) return base("adopted", { chamber: chamberOfAdoption(f.replace(/^.*?adoptat(a)? de (catre )?/, "")), vote: voteCounts(f) });
   if (/^dezbatere(a)? /.test(f)) return base("plenary_debate", { chamber: chamberOfAdoption(f) });
   if (/inscris pe ordinea de zi/.test(f)) return base("agenda_scheduled", { chamber: chamberOfAdoption(f) });
