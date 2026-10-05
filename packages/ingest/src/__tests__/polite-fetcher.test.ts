@@ -53,6 +53,7 @@ describe("PoliteFetcher", () => {
     await expect(fetcher.get("https://example.test/a")).rejects.toMatchObject({ reason: "blocked" });
     expect(isChallengePage(Buffer.from(page))).toBe(true);
     expect(isChallengePage(Buffer.from("<html>VOT ELECTRONIC</html>"))).toBe(false);
+    expect(isChallengePage(Buffer.from("<html><title>The URL you requested has been blocked</title>block Captcha Failed!</html>"))).toBe(true);
   });
 
   it("stops after too many failures in a row", async () => {

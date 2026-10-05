@@ -27,6 +27,8 @@ export interface PoliteFetcherOptions {
 export function isChallengePage(body: Buffer): boolean {
   if (body.byteLength > 60_000) return false;
   const text = body.toString("latin1");
+  // Two faces of the same protection: the challenge itself, and the page that follows a wrong or missing answer.
+  if (/the url you requested has been blocked/i.test(text)) return true;
   return /security check/i.test(text) && /captcha/i.test(text);
 }
 

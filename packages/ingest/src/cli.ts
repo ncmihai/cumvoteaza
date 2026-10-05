@@ -18,7 +18,7 @@ import { repairCrossLegislatureMembers } from "./identity/cross-legislature-repa
 import { fetchChamberBureau, importChamberBureau } from "./leadership/run-chamber-bureau";
 import { fetchSenateCards, importSenateCards } from "./leadership/run-senate-cards";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
-import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
+import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillDossierFetch, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
@@ -445,6 +445,28 @@ async function main() {
     });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only (a lower bound when pages are not saved yet). Re-run with --live to request the pages (2 s apart).");
+    return;
+  }
+
+  if (command === "bills:dossiers:fetch") {
+    // Sprint 7 (F3, D36): one page per bill dossier named by the saved yearly lists, saved raw under data/coverage/raw
+    // (cdep-bill, senate-bill), newest first, resumable. Plan only without --live. Stops on a captcha, a 403/429 or the request cap.
+    const sources = (flag("source") ?? "cdep,senate").split(",").map((item) => item.trim()).filter((item): item is "cdep" | "senate" => item === "cdep" || item === "senate");
+    const result = await runBillDossierFetch({
+      repoRoot,
+      years: numberListFlag("years") ?? [2024, 2025, 2026],
+      sources,
+      live: hasFlag("live"),
+      limit: numberFlag("limit"),
+      only: listFlag("only"),
+      maxRequests: numberFlag("max-requests") ?? 250,
+      delayMs: numberFlag("delay-ms") ?? 3000,
+      refresh: hasFlag("refresh"),
+      log: (line) => console.log(line)
+    });
+    console.log(JSON.stringify({ ...result, failures: result.failures.length ? result.failures : undefined }, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request the pages (3 s apart, newest first, at most --max-requests per run).");
+    if (result.stopped) process.exitCode = 1;
     return;
   }
 

@@ -55,6 +55,7 @@
     "ingest:leadership:senate-cards:import": "npm --workspace @cumsevoteaza/ingest run leadership:senate-cards:import --",
     "ingest:bills:coverage:fetch": "npm --workspace @cumsevoteaza/ingest run bills:coverage:fetch --",
     "ingest:bills:coverage": "npm --workspace @cumsevoteaza/ingest run bills:coverage --",
+    "ingest:bills:dossiers:fetch": "npm --workspace @cumsevoteaza/ingest run bills:dossiers:fetch --",
     "ingest:members:coverage": "npm --workspace @cumsevoteaza/ingest run members:coverage --",
     "ingest:spotcheck:pack": "npm --workspace @cumsevoteaza/ingest run spotcheck:pack --",
     "ingest:identity:link-government-people": "npm --workspace @cumsevoteaza/ingest run identity:link-government-people --",

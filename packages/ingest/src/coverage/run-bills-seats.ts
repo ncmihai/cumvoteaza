@@ -5,6 +5,7 @@ import { createDbSession } from "@cumsevoteaza/db";
 import { chamberSeatCountsByLegislature } from "@cumsevoteaza/parliament-model";
 import { parseDeputiesYearlyList, parseSenateYearlyList } from "../sync";
 import { buildBillCoverage, renderBillCoverageMarkdown, type BillCoverageReport, type OfficialBill } from "./bill-coverage";
+import { fetchBillDossiers, type DossierFetchResult, type DossierSource } from "./fetch-bill-dossiers";
 import { fetchBillLists, CDEP_BILLS_YEAR_URL, SENATE_BILLS_YEAR_URL } from "./fetch-bill-lists";
 import type { ListFetchResult } from "./fetch-cdep-lists";
 import { PoliteFetcher } from "./polite-fetcher";
@@ -28,6 +29,32 @@ export async function runBillListFetch(options: {
     sources: options.sources,
     cache: new RawCache(COVERAGE_RAW_DIR(options.repoRoot)),
     fetcher: new PoliteFetcher({ maxRequests: options.maxRequests, delayMs: options.delayMs }),
+    refresh: options.refresh,
+    dryRun: !options.live,
+    log: options.log
+  });
+}
+
+/** Sprint 7: one page per bill dossier named by the saved yearly lists, saved raw. Plan only unless `live`. */
+export async function runBillDossierFetch(options: {
+  repoRoot: string;
+  years: number[];
+  sources: DossierSource[];
+  live: boolean;
+  maxRequests: number;
+  delayMs: number;
+  limit?: number;
+  only?: string[];
+  refresh?: boolean;
+  log?: (line: string) => void;
+}): Promise<DossierFetchResult> {
+  return fetchBillDossiers({
+    cache: new RawCache(COVERAGE_RAW_DIR(options.repoRoot)),
+    fetcher: new PoliteFetcher({ maxRequests: options.maxRequests, delayMs: options.delayMs }),
+    years: options.years,
+    sources: options.sources,
+    limit: options.limit,
+    only: options.only,
     refresh: options.refresh,
     dryRun: !options.live,
     log: options.log
