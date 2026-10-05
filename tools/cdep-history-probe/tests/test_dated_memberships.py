@@ -22,7 +22,25 @@ ROLE_IN_GROUP = """
 """
 
 
+# Trimmed from the official CDEP profile of Diana Stoica (Chamber, 2024), structura.mp?cam=2&idm=287&leg=2024:
+# the second role of the group is on its own table row, with no link, and uses the feminine form.
+STOICA_GROUP = """
+<td colspan=2><b>Grupul parlamentar:</b></td> </tr> <tr valign="top"> <td><img src="/img/spacer.gif" border=0 width=25 height=1></td> <td bgcolor="#fffef2" width="100%"><table border=0><tr valign="top"><td><a href="/ords/pls/parlam/structura.gp?idg=4&leg=2024">Grupul parlamentar al Uniunii Salvaţi România</a></td><td nowrap>&nbsp;</td><td><img src="/img/spacer.gif" border=0 width=50 height=1></td><td>&nbsp;Vicelider</td><td colspan=2 nowrap>&nbsp;- până în feb. 2026</td></tr><tr valign="top"><td>&nbsp;</td><td nowrap>&nbsp;</td><td><img src="/img/spacer.gif" border=0 width=50 height=1></td><td>&nbsp;Lideră</td><td colspan=2 nowrap>&nbsp;- din feb. 2026</td></tr></table></td> </tr> </table>
+<td colspan=2><b>Comisii permanente</b></td>
+"""
+
+
 class DatedMembershipTests(unittest.TestCase):
+    def test_a_second_role_on_its_own_row_and_the_feminine_form_are_kept(self):
+        [row] = parse_dated_memberships(STOICA_GROUP, "https://cdep.ro/ords/pls/parlam/structura.mp?cam=2&idm=287&leg=2024", "Grupul parlamentar:", "structura.gp")
+        self.assertEqual(
+            row["roles"],
+            [
+                {"role": "Vicelider", "startMonth": None, "endMonth": "2026-02"},
+                {"role": "Lideră", "startMonth": "2026-02", "endMonth": None},
+            ],
+        )
+
     def test_keeps_cdep_group_dates(self):
         rows = parse_dated_memberships(PEIA_GROUPS, "https://cdep.ro/ords/pls/parlam/structura.mp?cam=1&idm=81&leg=2024", "Grupul parlamentar:", "structura.gp")
         self.assertEqual(

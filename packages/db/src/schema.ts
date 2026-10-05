@@ -695,10 +695,42 @@ export const memberRoles = pgTable("member_roles", {
   memberId: text("member_id").notNull().references(() => members.id),
   title: text("title").notNull(),
   chamber: chamberEnum("chamber").notNull(),
+  /** "group": leader, deputy leader or secretary of a parliamentary group; "bureau": the chamber's Permanent Bureau; "other": undated snapshot rows from before D37. */
+  kind: text("kind").notNull().default("other"),
+  /** The parliamentary group of a "group" role. */
+  groupId: text("group_id").references(() => parliamentaryGroups.id),
   startsOn: date("starts_on").notNull(),
+  // "month" when the official source only gives a month ("din feb. 2026"); the date is then the 1st of that month.
+  startsOnPrecision: text("starts_on_precision").notNull().default("day"),
   endsOn: date("ends_on"),
+  endsOnPrecision: text("ends_on_precision").notNull().default("day"),
   sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
-});
+}, (table) => ({
+  memberIdx: index("member_roles_member_idx").on(table.memberId),
+  kindPeriodIdx: index("member_roles_kind_period_idx").on(table.kind, table.chamber, table.startsOn)
+}));
+
+/**
+ * Counts the institutions publish about a member's own activity (initiatives, speeches, questions, motions signed,
+ * e-vote attendance), stored as published beside the figures we compute ourselves. One row per member, legislature and metric.
+ */
+export const memberOfficialActivity = pgTable("member_official_activity", {
+  id: text("id").primaryKey(),
+  memberId: text("member_id").notNull().references(() => members.id),
+  legislatureId: text("legislature_id").notNull().references(() => legislatures.id),
+  chamber: chamberEnum("chamber").notNull(),
+  metric: text("metric").notNull(),
+  value: integer("value").notNull(),
+  /** For attendance-like metrics: the total the value is counted against ("87 of 95 sittings"). */
+  outOf: integer("out_of"),
+  /** Secondary count shown in the same line ("43 initiatives, 6 of them promulgated"). */
+  detail: integer("detail"),
+  asOf: date("as_of").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
+}, (table) => ({
+  memberMetricIdx: uniqueIndex("member_official_activity_member_metric_idx").on(table.memberId, table.legislatureId, table.metric)
+}));
 
 export const bills = pgTable("bills", {
   id: text("id").primaryKey(),

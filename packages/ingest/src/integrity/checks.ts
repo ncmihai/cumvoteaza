@@ -169,6 +169,26 @@ export const checks: Check[] = [
       where n.f <> coalesce(v.for_count, -1) or n.a <> coalesce(v.against, -1) or n.ab <> coalesce(v.abstention, -1)`
   },
   {
+    name: "two_leaders_of_one_group",
+    severity: "warning",
+    description: "Two people lead the same parliamentary group at the same time (D37). Touching dates (one ends the month the next begins) are fine.",
+    query: sql`
+      select a.group_id, a.member_id, b.member_id as other_member, a.starts_on::text, a.ends_on::text, b.starts_on::text as other_start
+      from member_roles a join member_roles b on a.group_id = b.group_id and a.id < b.id
+      where a.kind = 'group' and b.kind = 'group' and a.title like 'Lider de grup%' and b.title like 'Lider de grup%'
+        and a.starts_on < coalesce(b.ends_on, '9999-12-31') and b.starts_on < coalesce(a.ends_on, '9999-12-31')`
+  },
+  {
+    name: "two_presidents_of_one_chamber",
+    severity: "warning",
+    description: "Two people are President of the same chamber at the same time (D37).",
+    query: sql`
+      select a.chamber::text, a.member_id, b.member_id as other_member, a.starts_on::text, a.ends_on::text, b.starts_on::text as other_start
+      from member_roles a join member_roles b on a.chamber = b.chamber and a.id < b.id
+      where a.kind = 'bureau' and b.kind = 'bureau' and a.title like 'Președinte al %' and b.title like 'Președinte al %'
+        and a.starts_on < coalesce(b.ends_on, '9999-12-31') and b.starts_on < coalesce(a.ends_on, '9999-12-31')`
+  },
+  {
     name: "orphan_people",
     severity: "warning",
     description: "People with no member record, no government role and no candidacy for prime minister.",

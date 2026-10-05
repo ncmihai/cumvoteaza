@@ -418,13 +418,20 @@ export interface MemberCommitteeMembership {
   sourceSnapshotId?: string;
 }
 
+export type MemberRoleKind = "group" | "bureau" | "other";
+
 export interface MemberRole {
   id: string;
   memberId: string;
   title: string;
   chamber: ChamberId;
+  /** "group": leader, deputy leader or secretary of a parliamentary group; "bureau": the chamber's Permanent Bureau. */
+  kind?: MemberRoleKind;
+  groupId?: string;
   startsOn: string;
+  startsOnPrecision?: DatePrecision;
   endsOn?: string;
+  endsOnPrecision?: DatePrecision;
   sourceSnapshotId?: string;
 }
 

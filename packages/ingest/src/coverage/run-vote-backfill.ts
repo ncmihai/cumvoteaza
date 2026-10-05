@@ -38,6 +38,8 @@ export interface VoteBackfillOptions {
   offline: boolean;
   /** Queue votes we already hold whose totals differ from the official list, instead of the missing ones. */
   refreshMismatched?: boolean;
+  /** Re-import exactly these official ids (a CDEP vote id or a Senate AppID), held or not. */
+  ids?: string[];
   log?: (line: string) => void;
 }
 
@@ -80,7 +82,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
   const official = await loadOfficialVotes(cache, options.from, options.to);
   const stored = await loadStoredVotes(options.from, options.to);
   const known = await readUnsupportedRegistry(options.repoRoot);
-  const plan = planVoteBackfill({ official: official.records, stored, range: { from: options.from, to: options.to }, sources: options.sources, limit: options.limit, unsupported: unsupportedKeys(known), mode: options.refreshMismatched ? "mismatched" : "missing" });
+  const plan = planVoteBackfill({ official: official.records, stored, range: { from: options.from, to: options.to }, sources: options.sources, limit: options.limit, unsupported: unsupportedKeys(known), mode: options.refreshMismatched ? "mismatched" : "missing", ids: options.ids ? new Set(options.ids) : undefined });
   log(`Queue: ${plan.queue.length} of ${plan.eligible} missing votes (${plan.alreadyHeld} already held, ${plan.summarised} summarised, ${plan.tests} test ballots).`);
 
   const result: VoteBackfillResult = {

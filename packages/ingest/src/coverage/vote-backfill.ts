@@ -23,6 +23,8 @@ export function planVoteBackfill(input: {
   unsupported?: ReadonlySet<string>;
   /** "missing" (default) queues votes we do not hold; "mismatched" queues votes we hold whose totals differ from the official list. */
   mode?: "missing" | "mismatched";
+  /** Official ids to queue whether we hold them or not (re-import through the same gates). Overrides the mode. */
+  ids?: ReadonlySet<string>;
 }): BackfillPlan {
   const held = new Set<string>();
   const storedByKey = new Map<string, StoredVoteRow>();
@@ -32,6 +34,12 @@ export function planVoteBackfill(input: {
       held.add(`${key.source}:${key.officialId}`);
       storedByKey.set(`${key.source}:${key.officialId}`, vote);
     }
+  }
+  if (input.ids && input.ids.size > 0) {
+    const queue = input.official
+      .filter((record) => input.ids!.has(record.officialId) && input.sources.includes(record.source) && !record.isTest)
+      .sort((a, b) => b.date.localeCompare(a.date) || a.officialId.localeCompare(b.officialId));
+    return { queue, eligible: queue.length, alreadyHeld: held.size, summarised: 0, tests: 0, unsupported: 0 };
   }
   if (input.mode === "mismatched") {
     const queue = input.official

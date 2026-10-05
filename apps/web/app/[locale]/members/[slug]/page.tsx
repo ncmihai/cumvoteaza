@@ -12,6 +12,7 @@ import { ImageWithFallback } from "../../_components/ImageWithFallback";
 import { DetailPageHeader } from "../../_components/DetailPageHeader";
 import { getGovernmentRolesForPerson } from "@/lib/ministry-data";
 import { PublicCareerTimeline, type PublicCareerEvent } from "../../_components/PublicCareerTimeline";
+import { OfficialActivityPanel } from "../../_components/OfficialActivityPanel";
 
 export default async function MemberPage({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string; fromVote?: string }> }) {
   const { locale: rawLocale, slug } = await params;
@@ -24,7 +25,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
     if (currentSlug && currentSlug !== slug) permanentRedirect(`/${rawLocale}/members/${currentSlug}${legislature ? `?legislature=${encodeURIComponent(legislature)}` : ""}`);
     notFound();
   }
-  const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history } = data;
+  const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
@@ -110,6 +111,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
       </div>
 
       <div className="min-w-0 space-y-5">
+        <OfficialActivityPanel items={officialActivity} locale={locale} />
         {governmentRoles.length ? <section className="border border-slate-300 bg-white p-5"><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Roluri în Guvern" : "Government roles"}</h2><div className="mt-3 divide-y divide-slate-200">{governmentRoles.map((role) => <article key={role.id} className="py-3"><div className="flex flex-wrap items-center justify-between gap-2">{role.ministry ? <Link href={`/${locale}/ministries/${role.ministry.slug}`} className="font-serif text-lg font-semibold text-[#061a47] hover:text-[#075fc6]">{role.incarnation?.name ?? role.ministry.name}</Link> : <strong className="font-serif text-lg text-[#061a47]">{role.title}</strong>}{role.interim ? <span className="border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-900">{locale === "ro" ? "Interimar" : "Interim"}</span> : null}</div><p className="mt-1 text-xs leading-5 text-[#4b608a]">{role.title} · <Link href={`/${locale}/governments/${role.government.slug}`} className="font-semibold text-[#075fc6]">{locale === "ro" ? "Guvernul" : "Government"} {role.government.name}</Link><br/>{formatDate(role.startsOn, locale)} — {role.endsOn ? formatDate(role.endsOn, locale) : (locale === "ro" ? "prezent" : "present")}</p>{role.sourceUrl ? <a href={role.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-[#075fc6]">{locale === "ro" ? "Sursă oficială" : "Official source"}<ExternalLink size={11}/></a> : null}</article>)}</div></section> : null}
         <section className="border border-slate-300 bg-white p-5 md:p-6"><div className="flex items-center justify-between gap-3"><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{locale === "ro" ? "Cum a votat recent" : "Recent votes"}</h2><Link href={`/${locale}/votes`} className="text-sm font-semibold text-[#075fc6]">{locale === "ro" ? "Vezi toate →" : "See all →"}</Link></div>
           {featured ? <Link href={`/${locale}/votes/${featured.vote.id}`} className="mt-4 block border border-[#d8e6f5] bg-[#f5f9fd] p-4 transition hover:border-[#075fc6]"><div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#4b608a]"><span className="flex items-center gap-2"><CalendarDays size={15}/>{formatDate(featured.vote.heldOn, locale)} · {voteChamberLabels[locale][featured.vote.chamber]}</span><ChoiceBadge value={featured.item.choice} locale={locale}/></div><h3 className="mt-3 font-serif text-2xl font-semibold leading-tight text-[#061a47]">{featured.presentation.heading}</h3>{featured.presentation.officialTitle !== featured.presentation.heading ? <p className="mt-2 line-clamp-3 text-sm leading-5 text-[#4b608a]">{featured.presentation.officialTitle}</p> : null}<span className="mt-4 inline-block text-sm font-semibold text-[#075fc6]">{locale === "ro" ? "Vezi votul complet →" : "View full vote →"}</span></Link> : <p className="mt-4 border border-slate-200 bg-[#f8fbff] p-4 text-sm text-[#4b608a]">{locale === "ro" ? "Nu există voturi nominale importate pentru perioada selectată." : "No nominal votes are imported for the selected period."}</p>}

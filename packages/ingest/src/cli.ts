@@ -14,6 +14,8 @@ import { runCoverageFetch } from "./coverage/run-fetch";
 import { runCoverageReport } from "./coverage/run-report";
 import { runVoteBackfill } from "./coverage/run-vote-backfill";
 import { runDiscoveryTriage } from "./discovery-triage";
+import { fetchChamberBureau, importChamberBureau } from "./leadership/run-chamber-bureau";
+import { fetchSenateCards, importSenateCards } from "./leadership/run-senate-cards";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
 import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
@@ -488,6 +490,7 @@ async function main() {
       persist: hasFlag("persist"),
       offline: hasFlag("offline"),
       refreshMismatched: hasFlag("refresh-mismatched"),
+      ids: listFlag("ids"),
       log: (line) => console.log(line)
     });
     console.log(JSON.stringify({ ...result, held: result.held.length ? result.held : undefined }, null, 2));
@@ -501,6 +504,36 @@ async function main() {
     // attendance check, summarised amendment vote, or still to import) and records the reason. Dry run unless --persist.
     console.log(JSON.stringify(await runDiscoveryTriage({ repoRoot, persist: hasFlag("persist") }), null, 2));
     if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to record the decisions.");
+    return;
+  }
+
+  if (command === "leadership:bureau:fetch") {
+    // Sprint 6 (D37): the Chamber's Permanent Bureau, one page per period of the 2024 legislature, saved raw under data/coverage/raw. Plan only without --live.
+    const result = await fetchChamberBureau({ repoRoot, live: hasFlag("live"), delayMs: numberFlag("delay-ms") ?? 2000, maxRequests: numberFlag("max-requests") ?? 20, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only (it lists the saved pages). Re-run with --live to request the pages, 2 s apart.");
+    return;
+  }
+
+  if (command === "leadership:bureau:import") {
+    // Sprint 6 (D37): saved bureau pages -> dated roles (kind "bureau"). Offline; dry run unless --persist.
+    console.log(JSON.stringify(await importChamberBureau({ repoRoot, persist: hasFlag("persist") }), null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write the roles.");
+    return;
+  }
+
+  if (command === "leadership:senate-cards:fetch") {
+    // Sprint 6 (D37): each senator's card on senat.ro (official counts, e-vote attendance, dated Permanent Bureau seat), saved raw. One request each, --delay-ms apart. Plan only without --live.
+    const result = await fetchSenateCards({ repoRoot, live: hasFlag("live"), delayMs: numberFlag("delay-ms") ?? 3000, maxRequests: numberFlag("max-requests") ?? 200, refresh: hasFlag("refresh"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request the cards.");
+    return;
+  }
+
+  if (command === "leadership:senate-cards:import") {
+    // Sprint 6 (D37): saved senator cards -> member_official_activity and dated Permanent Bureau roles. Offline; dry run unless --persist.
+    console.log(JSON.stringify(await importSenateCards({ repoRoot, persist: hasFlag("persist") }), null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write.");
     return;
   }
 
@@ -1139,10 +1172,8 @@ async function importSenateRoster(): Promise<ParsedRoster> {
       (affiliation) => affiliation.id
     ),
     committeeMemberships: uniqueBy(profiles.flatMap((profile) => profile.committeeMemberships), (membership) => membership.id),
-    roles: uniqueBy(
-      [...groupParts.flatMap((group) => group.members.flatMap((member) => (member.role ? [member.role] : []))), ...profiles.flatMap((profile) => profile.roles)],
-      (role) => role.id
-    ),
+    // Group roles are dated and come from the CDEP profiles (D37); the roster pages only know who holds a role today, not since when.
+    roles: [],
     groupCounts: groupParts.map((group) => ({
       groupId: group.group.id,
       expected: group.expectedCount ?? 0,
@@ -1250,10 +1281,8 @@ async function importDeputiesRoster(): Promise<ParsedRoster> {
       (affiliation) => affiliation.id
     ),
     committeeMemberships: uniqueBy(profiles.flatMap((profile) => profile.committeeMemberships), (membership) => membership.id),
-    roles: uniqueBy(
-      [...groupParts.flatMap((group) => group.members.flatMap((member) => (member.role ? [member.role] : []))), ...profiles.flatMap((profile) => profile.roles)],
-      (role) => role.id
-    ),
+    // Group roles are dated and come from the CDEP profiles (D37); the roster pages only know who holds a role today, not since when.
+    roles: [],
     groupCounts: groupParts.map((group) => ({
       groupId: group.group.id,
       expected: group.expectedCount ?? 0,

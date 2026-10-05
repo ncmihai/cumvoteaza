@@ -51,4 +51,47 @@ describe("CDEP history roster", () => {
       ["Comisia economică", "Secretar", "1999-09-01", "month", undefined, "day"]
     ]);
   });
+
+  it("dates a group role from CDEP's months and keeps who held it, in which group (D37)", () => {
+    const legislature = legislatureFromFlag("2024");
+    const roster = buildParsedRoster([{
+      ...profile("21 decembrie 2024"),
+      profileKey: "leg2024:cam2:idm9",
+      identity: { officialId: "9", legislature: "2024", chamber: "deputies" as const },
+      groupMemberships: [{
+        label: "Grupul parlamentar al Uniunii Salvaţi România",
+        url: "https://cdep.ro/ords/pls/parlam/structura.gp?idg=7&leg=2024",
+        startMonth: null,
+        endMonth: null,
+        roles: [
+          { role: "Vicelider", startMonth: "2025-09", endMonth: "2026-02" },
+          { role: "Lider", startMonth: "2026-02", endMonth: null }
+        ]
+      }]
+    }], legislature, "deputies");
+    expect(roster.roles.map((role) => [role.title, role.kind, role.startsOn, role.startsOnPrecision, role.endsOn, role.endsOnPrecision])).toEqual([
+      [expect.stringMatching(/^Vicelider de grup · /), "group", "2025-09-01", "month", "2026-02-01", "month"],
+      [expect.stringMatching(/^Lider de grup · /), "group", "2026-02-01", "month", undefined, "day"]
+    ]);
+    expect(roster.roles.every((role) => role.groupId && role.memberId === roster.members[0]!.id)).toBe(true);
+  });
+
+  it("gives a role without months of its own the dates of its group membership", () => {
+    const roster = buildParsedRoster([{
+      ...profile("21 decembrie 2024"),
+      profileKey: "leg2024:cam1:idm4",
+      identity: { officialId: "4", legislature: "2024", chamber: "senate" as const },
+      groupMemberships: [{ label: "Grupul parlamentar PSD", url: "https://cdep.ro/ords/pls/parlam/structura.gp?idg=1&cam=1&leg=2024", startMonth: null, endMonth: null, roles: [{ role: "Secretar" }] }]
+    }], legislatureFromFlag("2024"), "senate");
+    expect(roster.roles).toHaveLength(1);
+    expect(roster.roles[0]).toMatchObject({ kind: "group", startsOn: "2024-12-21", endsOn: undefined });
+  });
+
+  it("closes a role without an end at the end of a finished legislature, but leaves the current legislature's roles open", () => {
+    const group = [{ label: "Grupul parlamentar PSD", url: "https://cdep.ro/ords/pls/parlam/structura.gp?idg=1&leg=2004", startMonth: null, endMonth: null, roles: [{ role: "Lider" }] }];
+    const past = buildParsedRoster([{ ...profile("13 decembrie 2004"), groupMemberships: group }], legislatureFromFlag("2004"), "senate");
+    expect(past.roles[0]).toMatchObject({ endsOn: legislatureFromFlag("2004").endsOn });
+    const current = buildParsedRoster([{ ...profile("21 decembrie 2024"), profileKey: "leg2024:cam1:idm1", identity: { officialId: "1", legislature: "2024", chamber: "senate" as const }, groupMemberships: group }], legislatureFromFlag("2024"), "senate");
+    expect(current.roles[0]!.endsOn).toBeUndefined();
+  });
 });

@@ -162,7 +162,19 @@ export interface MemberPageData {
   votes: IndividualVote[];
   voteRecords: Vote[];
   sponsoredBills: Bill[];
+  /** Counts the institution itself publishes about this member (Senate cards), with the date they were read. */
+  officialActivity: MemberOfficialActivityItem[];
   sourceKind: "database";
+}
+
+export interface MemberOfficialActivityItem {
+  metric: string;
+  value: number;
+  outOf?: number;
+  detail?: number;
+  asOf: string;
+  sourceUrl: string;
+  chamber: "senate" | "deputies";
 }
 
 export interface MemberLegislatureActivityData {
@@ -923,6 +935,13 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       storedAssetUrl(storedAssetRows, "party_logo", member.id, selectedLegislature?.id, mandate?.chamber) ??
       storedAssetUrlByOfficialUrl(storedAssetRows, currentMembership?.logoUrl);
 
+    // Counts the institution publishes about the member; the table exists once migration 0037 is applied.
+    const officialActivityRows = await session.db
+      .select()
+      .from(schema.memberOfficialActivity)
+      .where(and(inArray(schema.memberOfficialActivity.memberId, memberIds), eq(schema.memberOfficialActivity.legislatureId, selectedLegislature?.id ?? "")))
+      .catch(() => []);
+
     return {
       member,
       mandate,
@@ -940,6 +959,7 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       votes: selectedVotes.individualVotes,
       voteRecords: selectedVotes.voteRecords,
       sponsoredBills,
+      officialActivity: officialActivityRows.map((row) => ({ metric: row.metric, value: row.value, outOf: row.outOf ?? undefined, detail: row.detail ?? undefined, asOf: row.asOf, sourceUrl: row.sourceUrl, chamber: row.chamber === "senate" ? "senate" as const : "deputies" as const })),
       sourceKind: "database"
     };
   } catch {
@@ -1684,8 +1704,12 @@ function mapMemberRole(row: typeof schema.memberRoles.$inferSelect): MemberRole 
     memberId: row.memberId,
     title: row.title,
     chamber: row.chamber,
+    kind: row.kind === "group" || row.kind === "bureau" ? row.kind : "other",
+    groupId: row.groupId ?? undefined,
     startsOn: row.startsOn,
+    startsOnPrecision: row.startsOnPrecision === "month" ? "month" : "day",
     endsOn: row.endsOn ?? undefined,
+    endsOnPrecision: row.endsOnPrecision === "month" ? "month" : "day",
     sourceSnapshotId: row.sourceSnapshotId ?? undefined
   };
 }
@@ -2615,12 +2639,14 @@ function buildMemberHistory(input: {
       return {
         id: `history-${role.id}`,
         startsOn: role.startsOn,
+        startsOnPrecision: role.startsOnPrecision,
         endsOn: displayEndsOn(role.endsOn, mandate, legislature),
+        endsOnPrecision: role.endsOn ? role.endsOnPrecision : "day",
         legislatureId: mandate?.legislatureId,
         chamber: role.chamber,
         type: "role" as const,
         label: role.title,
-        details: "Rol parlamentar",
+        details: role.kind === "bureau" ? "Biroul permanent" : role.kind === "group" ? "Grup parlamentar" : "Rol parlamentar",
         sourceUrl: role.sourceSnapshotId ? input.sourceUrls?.get(role.sourceSnapshotId) : undefined,
         ...counts
       };

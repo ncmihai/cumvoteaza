@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page";
+export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page" | "bureau-page" | "senate-card";
 
 export interface RawCacheEntry {
   kind: RawCacheKind;
@@ -21,7 +21,9 @@ const EXTENSIONS: Record<RawCacheKind, string> = {
   "senate-day": "html",
   "cdep-bills-year": "html",
   "senate-bills-year": "html",
-  "vote-page": "html"
+  "vote-page": "html",
+  "bureau-page": "html",
+  "senate-card": "html"
 };
 
 /**
@@ -67,6 +69,20 @@ export class RawCache {
     };
     await appendFile(path.join(this.dir, "manifest.jsonl"), `${JSON.stringify(entry)}\n`);
     return entry;
+  }
+
+  /** The latest manifest line of a saved file: when and from where it was fetched. */
+  async lastEntry(kind: RawCacheKind, key: string): Promise<RawCacheEntry | undefined> {
+    try {
+      const lines = (await readFile(path.join(this.dir, "manifest.jsonl"), "utf8")).split("\n").filter(Boolean);
+      for (let index = lines.length - 1; index >= 0; index -= 1) {
+        const entry = JSON.parse(lines[index]!) as RawCacheEntry;
+        if (entry.kind === kind && entry.key === key) return entry;
+      }
+    } catch {
+      return undefined;
+    }
+    return undefined;
   }
 
   async keys(kind: RawCacheKind): Promise<string[]> {

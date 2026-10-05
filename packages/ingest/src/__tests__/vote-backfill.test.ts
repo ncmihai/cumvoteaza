@@ -87,6 +87,15 @@ describe("planVoteBackfill, mismatched mode", () => {
   });
 });
 
+describe("planVoteBackfill, ids mode", () => {
+  it("queues exactly the named votes, held or not", () => {
+    const row = (id: string): StoredVoteRow => ({ id: `vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-${id}`, chamber: "deputies", heldOn: "2026-09-23", present: 10, forCount: 6, against: 3, abstention: 1, presentNotVoting: 0, sourceUrl: null });
+    const official = [cdep("1", "2026-09-23", "a"), cdep("2", "2026-09-23", "b"), cdep("3", "2026-09-23", "c")];
+    const plan = planVoteBackfill({ official, stored: [row("1")], range: { from: "2026-09-01", to: "2026-09-30" }, sources: ["cdep"], ids: new Set(["1", "3"]) });
+    expect(plan.queue.map((record) => record.officialId)).toEqual(["1", "3"]);
+  });
+});
+
 describe("checkVoteGate", () => {
   const record = cdep("37398", "2026-09-23", "Vot final", "deputies", { totals: { present: 252, for: 157, against: 81, abstention: 13, notVoting: 1 } });
   const good: GateInput = {

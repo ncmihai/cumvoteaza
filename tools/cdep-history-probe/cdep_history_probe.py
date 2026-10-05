@@ -264,9 +264,7 @@ def run_reparse(args: argparse.Namespace) -> None:
             continue
         snapshot = json.loads(meta_path.read_text(encoding="utf-8"))
         records.append(parse_profile_page(html_path.read_text(encoding="utf-8"), canonical, snapshot))
-    backup = profiles_path.with_suffix(".jsonl.bak")
-    if not backup.exists():
-        backup.write_text(profiles_path.read_text(encoding="utf-8"), encoding="utf-8")
+    backup = backup_file(profiles_path)
     write_jsonl(profiles_path, records)
     print(json.dumps({"reparsed": len(records) - len(missing), "missingRaw": len(missing), "backup": str(backup)}, indent=2))
 
@@ -389,6 +387,12 @@ def roster_urls(legislature_flag: str, chamber_flag: str, include_reelected: boo
     return rows
 
 
+def network_url(canonical: str) -> str:
+    """cdep.ro redirects to www.cdep.ro and, since October 2026, answers HTTP 500 to our client on the bare host.
+    Requests go to www; the cache key stays the canonical URL so every saved page is still found."""
+    return re.sub(r"^(https?://)cdep\.ro/", r"\1www.cdep.ro/", canonical)
+
+
 def fetch_or_read(url: str, raw_dir: Path, delay: float, refresh: bool, insecure: bool) -> tuple[str, dict[str, Any]]:
     canonical = canonical_url(url)
     file_stem = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -398,7 +402,7 @@ def fetch_or_read(url: str, raw_dir: Path, delay: float, refresh: bool, insecure
         return html_path.read_text(encoding="utf-8"), json.loads(meta_path.read_text(encoding="utf-8"))
 
     time.sleep(max(0, delay))
-    request = urllib.request.Request(canonical, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(network_url(canonical), headers={"User-Agent": USER_AGENT})
     context = ssl._create_unverified_context() if insecure else None
     started = now_iso()
     try:
@@ -415,7 +419,9 @@ def fetch_or_read(url: str, raw_dir: Path, delay: float, refresh: bool, insecure
             "status": "failed",
             "error": str(error),
         }
-        meta_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # A failed refresh must not replace the metadata of a page we already hold (the HTML survives a failure).
+        if not (html_path.exists() and meta_path.exists()):
+            meta_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         raise
 
     snapshot = {
@@ -587,6 +593,10 @@ def profile_section(html_text: str, header: str) -> str:
     return html_text[start: start + 1 + following.start()] if following else html_text[start:]
 
 
+# Roles inside a parliamentary group, masculine and feminine ("Lider" / "Lideră").
+GROUP_ROLE_WORDS = re.compile(r"^(?:vice)?lider[aă]?$|^secretar[aă]?$|^pre[sş]edinte$|^pre[sş]edint[aă]$", re.I)
+
+
 def parse_dated_memberships(html_text: str, source_url: str, header: str, path_part: str) -> list[dict[str, Any]]:
     """Memberships listed under a CDEP profile section, keeping CDEP's month-precision dates.
 
@@ -599,6 +609,17 @@ def parse_dated_memberships(html_text: str, source_url: str, header: str, path_p
     for piece in re.split(r"<tr\b", section, flags=re.I)[1:]:
         row = piece.split("</tr>", 1)[0]
         anchor = re.search(r"<a[^>]+href=\"([^\"]*)\"[^>]*>(.*?)</a>(.*)", row, re.I | re.S)
+        if not anchor and rows and path_part == "structura.gp":
+            # A second role of the same group sits on its own table row with no link ("Vicelider - până în feb. 2026",
+            # then "Lideră - din feb. 2026"): it belongs to the group row above.
+            extra = clean_text(strip_tags(row))
+            for role_match in re.finditer(r"([A-ZĂÂÎȘŞȚŢ][\wăâîșşțţ]+)\s*((?:-\s*(?:din|până)[^A-ZĂÂÎȘŞȚŢ]*)?)", extra):
+                if not GROUP_ROLE_WORDS.match(role_match.group(1)):
+                    continue
+                role_start, role_end, _ = parse_period(role_match.group(2))
+                rows[-1]["roles"].append({"role": role_match.group(1), "startMonth": role_start, "endMonth": role_end})
+                rows[-1]["raw"] = f"{rows[-1]['raw']} ; {extra}".strip(" ;")
+            continue
         if not anchor or path_part not in anchor.group(1):
             continue
         after = clean_text(strip_tags(re.sub(r"<br\s*/?>", " ; ", anchor.group(3), flags=re.I)))

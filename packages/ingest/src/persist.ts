@@ -27,6 +27,7 @@ import type {
   Party,
   Person,
   SourceSnapshot,
+  ChamberId,
   Vote
 } from "@cumsevoteaza/parliament-model";
 import type { ParsedSenateBill } from "./parsers/senate-bill";
@@ -287,7 +288,8 @@ async function deleteOwnMemberDetails(db: Db, memberIds: string[], parsers: stri
   for (const batch of chunks(memberIds)) {
     const members = sql.join(batch.map((id) => sql`${id}`), sql`, `);
     await db.execute(sql`delete from member_committee_memberships where member_id in (${members}) and (source_snapshot_id in ${ownSources} or source_snapshot_id is null)`);
-    await db.execute(sql`delete from member_roles where member_id in (${members}) and (source_snapshot_id in ${ownSources} or source_snapshot_id is null)`);
+    // kind 'other' rows are the undated group roles of the old roster pipeline ("leader since the legislature began"); dated roles replace them (D37).
+    await db.execute(sql`delete from member_roles where member_id in (${members}) and (source_snapshot_id in ${ownSources} or source_snapshot_id is null or kind = 'other')`);
   }
 }
 
@@ -1176,8 +1178,12 @@ async function upsertMemberRoles(db: Db, roles: MemberRole[]) {
           memberId: sql`excluded.member_id`,
           title: sql`excluded.title`,
           chamber: sql`excluded.chamber`,
+          kind: sql`excluded.kind`,
+          groupId: sql`excluded.group_id`,
           startsOn: sql`excluded.starts_on`,
+          startsOnPrecision: sql`excluded.starts_on_precision`,
           endsOn: sql`excluded.ends_on`,
+          endsOnPrecision: sql`excluded.ends_on_precision`,
           sourceSnapshotId: sql`excluded.source_snapshot_id`
         }
       });
@@ -1547,4 +1553,69 @@ async function canonicalGovernmentPeople<T extends { people: Person[]; governmen
     events: input.events.map((event) => (event.personId ? { ...event, personId: map(event.personId) } : event)),
     formationAttempts: input.formationAttempts?.map((attempt) => ({ ...attempt, designeePersonId: map(attempt.designeePersonId) }))
   };
+}
+
+
+/**
+ * Writes leadership roles of one kind and chamber from one importer (D37). Roles an earlier run of the same parser wrote
+ * are replaced, so a re-import after a change of office leaves no stale row; other importers' roles are untouched.
+ */
+export async function persistLeadershipRoles(input: { kind: "bureau" | "group"; chamber: ChamberId; parsers: string[]; snapshots: SourceSnapshot[]; roles: MemberRole[] }) {
+  const session = createDbSession();
+  try {
+    return await session.db.transaction(async (tx) => {
+      const db = tx as unknown as Db;
+      await upsertSourceSnapshots(db, input.snapshots);
+      const ownSources = sql`(select id from source_snapshots where parser in (${sql.join(input.parsers.map((parser) => sql`${parser}`), sql`, `)}))`;
+      await db.execute(sql`delete from member_roles where kind = ${input.kind} and chamber = ${input.chamber}::chamber and source_snapshot_id in ${ownSources}`);
+      await upsertMemberRoles(db, input.roles);
+      return { snapshots: input.snapshots.length, roles: input.roles.length };
+    });
+  } finally {
+    await session.close();
+  }
+}
+
+export interface OfficialActivityRow {
+  id: string;
+  memberId: string;
+  legislatureId: string;
+  chamber: ChamberId;
+  metric: string;
+  value: number;
+  outOf?: number;
+  detail?: number;
+  asOf: string;
+  sourceUrl: string;
+  sourceSnapshotId?: string;
+}
+
+/** Counts an institution publishes about a member's own activity, stored as published (one row per member, legislature and metric). */
+export async function persistOfficialActivity(rows: OfficialActivityRow[], snapshots: SourceSnapshot[]) {
+  const session = createDbSession();
+  try {
+    return await session.db.transaction(async (tx) => {
+      const db = tx as unknown as Db;
+      await upsertSourceSnapshots(db, snapshots);
+      for (const batch of chunks(rows)) {
+        await db
+          .insert(schema.memberOfficialActivity)
+          .values(batch.map((row) => ({ ...row, outOf: row.outOf ?? null, detail: row.detail ?? null, sourceSnapshotId: row.sourceSnapshotId ?? null })))
+          .onConflictDoUpdate({
+            target: [schema.memberOfficialActivity.memberId, schema.memberOfficialActivity.legislatureId, schema.memberOfficialActivity.metric],
+            set: {
+              value: sql`excluded.value`,
+              outOf: sql`excluded.out_of`,
+              detail: sql`excluded.detail`,
+              asOf: sql`excluded.as_of`,
+              sourceUrl: sql`excluded.source_url`,
+              sourceSnapshotId: sql`excluded.source_snapshot_id`
+            }
+          });
+      }
+      return { rows: rows.length };
+    });
+  } finally {
+    await session.close();
+  }
 }

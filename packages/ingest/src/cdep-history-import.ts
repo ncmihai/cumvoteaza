@@ -8,6 +8,7 @@ import type {
   MemberMandate,
   MemberMandateRelation,
   MemberPartyAffiliation,
+  MemberRole,
   ParliamentaryGroup,
   Party,
   SourceSnapshot
@@ -70,7 +71,7 @@ type CdepProfile = {
   groupLinks?: CdepLink[];
   /** Dated rows written by the probe since 2026-10 ("din / până în <month>"). Older parses only have *Links. */
   partyMemberships?: DatedMembershipRow[];
-  groupMemberships?: DatedMembershipRow[];
+  groupMemberships?: Array<DatedMembershipRow & { roles?: Array<{ role: string; startMonth?: string | null; endMonth?: string | null }> }>;
   committeeLinks?: CdepLink[];
   /** Written by the probe since D19: each committee with its own month dates and roles. */
   committeeMemberships?: CdepCommitteeRow[];
@@ -177,6 +178,7 @@ export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislat
   const groupMemberships = new Map<string, MemberGroupMembership>();
   const partyAffiliations = new Map<string, MemberPartyAffiliation>();
   const committeeMemberships = new Map<string, MemberCommitteeMembership>();
+  const roles = new Map<string, MemberRole>();
 
   for (const profile of selected) {
     const sourceSnapshot = sourceSnapshotFromProfile(profile);
@@ -237,6 +239,35 @@ export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislat
       groupMemberships.set(membership.id, membership);
     });
 
+    // D37: leader, deputy leader and secretary of a group, with the months CDEP gives ("Vicelider - din feb. 2026").
+    for (const row of profile.groupMemberships ?? []) {
+      if (!row.roles?.length) continue;
+      const group = groupFromLink(row, legislature, chamber);
+      if (!group) continue;
+      const bounds = groupPeriods.periods.find((period) => period.label === row.label && period.url === row.url) ?? { startsOn: mandate.startsOn, endsOn: mandate.endsOn };
+      for (const item of row.roles) {
+        const name = cleanText(item.role);
+        if (!name) continue;
+        const dates = periodWithin(item, bounds);
+        // CDEP gives no end for a role held until the legislature ended; a finished legislature closes it (an open end would
+        // make a 2004 group leader look like today's).
+        const endsOn = dates.endsOn ?? (legislature.endsOn < new Date().toISOString().slice(0, 10) ? legislature.endsOn : undefined);
+        const role: MemberRole = {
+          id: `role-${member.id}-${group.id}-${slugify(name)}-${dates.startsOn}`,
+          memberId: member.id,
+          title: groupRoleTitle(name, group),
+          chamber,
+          kind: "group",
+          groupId: group.id,
+          ...dates,
+          endsOn,
+          endsOnPrecision: dates.endsOn ? dates.endsOnPrecision : "day",
+          sourceSnapshotId: sourceSnapshot.id
+        };
+        roles.set(role.id, role);
+      }
+    }
+
     // D19: CDEP dates each committee ("din feb. 1997", "feb. - iun. 1998") and each role inside it.
     // Profiles parsed before the probe read those dates fall back to the bare links (whole mandate).
     const committeeRows: CdepCommitteeRow[] = profile.committeeMemberships
@@ -281,7 +312,7 @@ export function buildParsedRoster(profiles: CdepProfile[], legislature: Legislat
     groupMemberships: [...groupMemberships.values()],
     partyAffiliations: [...partyAffiliations.values()],
     committeeMemberships: [...committeeMemberships.values()],
-    roles: [],
+    roles: [...roles.values()],
     groupCounts: groupCounts([...groupMemberships.values()])
   };
 }
@@ -345,6 +376,12 @@ function sourceSnapshotFromProfile(profile: CdepProfile): SourceSnapshot {
     status,
     notes: `Official CDEP profile. TLS verification: ${profile.snapshot.tlsVerification ?? "unknown"}.`
   };
+}
+
+/** "Lider" of the PSD group becomes "Lider de grup · PSD". */
+export function groupRoleTitle(role: string, group: Pick<ParliamentaryGroup, "shortName">): string {
+  const base = /^vicelider/i.test(role) ? "Vicelider de grup" : /^lider/i.test(role) ? "Lider de grup" : /^secretar/i.test(role) ? "Secretar de grup" : `${role} (grup)`;
+  return `${base} · ${group.shortName}`;
 }
 
 function periodDates(period: MembershipPeriod) {

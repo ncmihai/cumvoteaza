@@ -260,6 +260,13 @@
       "when": 1791147255073,
       "tag": "0036_vote_sitting_summaries",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791208609725,
+      "tag": "0037_leadership_roles_and_official_activity",
+      "breakpoints": true
     }
   ]
 }
