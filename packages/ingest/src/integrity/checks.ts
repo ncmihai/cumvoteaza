@@ -148,7 +148,9 @@ export const checks: Check[] = [
     description: "A final adoption, final rejection or rejection report is not linked to a bill (fix with repair:link-vote-bill, reviewed).",
     query: sql`
       select id, held_on::text, title from votes
-      where bill_id is null and motion_kind in ('final_adoption', 'final_rejection', 'rejection_report')`
+      where bill_id is null and motion_kind in ('final_adoption', 'final_rejection', 'rejection_report')
+        -- a vote on a motion of censure or a simple motion ("Vot asupra unei moțiuni - MS 7/2025") concerns a motion, not a bill
+        and title !~* 'mo[tţț]iun'`
   },
   {
     name: "vote_nominal_totals_mismatch",
