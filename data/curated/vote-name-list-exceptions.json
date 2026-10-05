@@ -91,6 +91,28 @@
     },
     {
       "source": "senate",
+      "officialId": "640dc987-c6f1-458f-8751-f2c6ed1fc2b7",
+      "voteId": "",
+      "date": "2025-08-20",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-05",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=640DC987-C6F1-458F-8751-F2C6ED1FC2B7"
+    },
+    {
+      "source": "senate",
+      "officialId": "0b8ee8bd-9061-4084-879d-1ea0cbad0768",
+      "voteId": "",
+      "date": "2025-09-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-05",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=0B8EE8BD-9061-4084-879D-1EA0CBAD0768"
+    },
+    {
+      "source": "senate",
       "officialId": "1c0bd482-256b-4e69-9198-a664be6ce6f0",
       "voteId": "vote-senate-l181-2025-09-03-final-respingere",
       "date": "2025-09-03",
@@ -99,6 +121,17 @@
       },
       "verifiedOn": "2026-10-03",
       "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=1C0BD482-256B-4E69-9198-A664BE6CE6F0"
+    },
+    {
+      "source": "senate",
+      "officialId": "585c828e-cfe3-46fb-91ef-7053c19e95b0",
+      "voteId": "",
+      "date": "2025-09-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-05",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=585C828E-CFE3-46FB-91EF-7053C19E95B0"
     }
   ]
 }

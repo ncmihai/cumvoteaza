@@ -158,7 +158,8 @@ export const checks: Check[] = [
     // announces on those pages; our rows match the page. The vote page states the gap instead of filling it.
     // The updater applies this check to each newly imported vote as a blocking gate (D-008).
     query: sql`
-      select v.id, v.held_on::text, v.for_count, n.f as nominal_for, v.against, n.a as nominal_against, v.abstention, n.ab as nominal_abstention
+      select v.id, v.held_on::text, v.for_count, n.f as nominal_for, v.against, n.a as nominal_against, v.abstention, n.ab as nominal_abstention,
+             lower(substring((select source_url from source_snapshots where id = v.source_snapshot_id) from 'AppID=([0-9A-Fa-f-]{36})')) as official_id
       from votes v join (
         select vote_id, count(*) filter (where choice = 'for') as f, count(*) filter (where choice = 'against') as a,
                count(*) filter (where choice = 'abstention') as ab
@@ -204,8 +205,9 @@ export async function runIntegrityChecks(db?: DbClient): Promise<CheckResult[]> 
     for (const check of checks) {
       const all = await client.execute(sql`select * from (${check.query}) as offending limit 1000`);
       // Votes whose source page is itself short of names were checked by hand (data/curated/vote-name-list-exceptions.json).
-      const explainedIds = check.name === "vote_nominal_totals_mismatch" ? new Set(readNameListExceptions().map((item) => item.voteId)) : undefined;
-      const rows = explainedIds ? all.filter((row) => !explainedIds.has((row as { id?: string }).id ?? "")) : all;
+      const exceptions = check.name === "vote_nominal_totals_mismatch" ? readNameListExceptions() : undefined;
+      const explainedIds = exceptions ? new Set(exceptions.flatMap((item) => [item.voteId, item.officialId.toLowerCase()].filter(Boolean))) : undefined;
+      const rows = explainedIds ? all.filter((row) => !explainedIds.has((row as { id?: string }).id ?? "") && !explainedIds.has((row as { official_id?: string }).official_id ?? "")) : all;
       results.push({ name: check.name, severity: check.severity, description: check.description, count: rows.length, sample: rows.slice(0, 5), ...(explainedIds ? { explained: all.length - rows.length } : {}) });
     }
     return results;
