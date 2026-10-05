@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { exceptionKey, readNameListExceptions } from "../vote-name-list-exceptions";
 import { isJointAmendmentVote, summariseJointSittings } from "../coverage/joint-amendments";
 import { checkVoteGate, officialVoteUrl, planVoteBackfill, type GateInput } from "../coverage/vote-backfill";
 import { officialFromCdep, type OfficialVoteRecord, type StoredVoteRow } from "../coverage/vote-coverage";
@@ -77,6 +78,15 @@ describe("planVoteBackfill", () => {
   });
 });
 
+describe("planVoteBackfill, mismatched mode", () => {
+  it("queues the votes we hold whose totals differ from the official list", () => {
+    const row = (id: string, notVoting: number): StoredVoteRow => ({ id: `vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-${id}`, chamber: "deputies", heldOn: "2026-09-23", present: 10, forCount: 6, against: 3, abstention: 1, presentNotVoting: notVoting, sourceUrl: null });
+    const official = [cdep("1", "2026-09-23", "a"), cdep("2", "2026-09-23", "b"), cdep("3", "2026-09-23", "c")];
+    const plan = planVoteBackfill({ official, stored: [row("1", 0), row("2", 1)], range: { from: "2026-09-01", to: "2026-09-30" }, sources: ["cdep"], mode: "mismatched" });
+    expect(plan.queue.map((record) => record.officialId)).toEqual(["2"]);
+  });
+});
+
 describe("checkVoteGate", () => {
   const record = cdep("37398", "2026-09-23", "Vot final", "deputies", { totals: { present: 252, for: 157, against: 81, abstention: 13, notVoting: 1 } });
   const good: GateInput = {
@@ -106,8 +116,25 @@ describe("checkVoteGate", () => {
     expect(checkVoteGate({ ...good, parsedStatus: "failed" })[0]).toMatch(/could not be read/);
   });
 
+  it("passes exactly the shortfall recorded as a hand-checked source quirk, and nothing more", () => {
+    const short: GateInput = { ...good, parsed: { ...good.parsed, choices: good.parsed.choices.slice(1) } };
+    expect(checkVoteGate({ ...short, nameListShortBy: { for: 1 } })).toEqual([]);
+    // an exception for the wrong choice does not excuse the real gap, and is itself reported
+    expect(checkVoteGate({ ...short, nameListShortBy: { against: 1 } })).toEqual([expect.stringContaining('name list has 156 "for", totals say 157'), expect.stringContaining('name list has 81 "against"')]);
+    expect(checkVoteGate({ ...good, nameListShortBy: { for: 1 } })[0]).toMatch(/name list has 157 "for", totals say 157 \(a shortfall of 1/);
+  });
+
   it("builds the official page address of a vote", () => {
     expect(officialVoteUrl({ source: "cdep", officialId: "37398" })).toBe("https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=37398");
     expect(officialVoteUrl({ source: "senate", officialId: "abc" })).toBe("https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=abc");
+  });
+});
+
+describe("curated name-list exceptions", () => {
+  it("lists the hand-checked Senate votes with their evidence", () => {
+    const exceptions = readNameListExceptions();
+    expect(exceptions).toHaveLength(9);
+    expect(exceptions.every((item) => item.source === "senate" && item.shortBy.for === 1 && item.verifiedOn && item.evidence.includes(item.officialId.toUpperCase()))).toBe(true);
+    expect(exceptionKey("senate", "A9525454-81B6-43FF-9BD5-9851D7307F68")).toBe("senate:a9525454-81b6-43ff-9bd5-9851d7307f68");
   });
 });

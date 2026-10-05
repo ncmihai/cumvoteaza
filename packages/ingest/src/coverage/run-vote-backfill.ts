@@ -12,6 +12,7 @@ import { summariseJointSittings } from "./joint-amendments";
 import { loadOfficialVotes } from "./load-official-votes";
 import { FetchStoppedError, PoliteFetcher } from "./polite-fetcher";
 import { decodeOfficialBytes, RawCache } from "./raw-cache";
+import { exceptionKey, readNameListExceptions } from "../vote-name-list-exceptions";
 import { loadStoredVotes } from "./run-report";
 import { mergeUnsupportedRegistry, readUnsupportedRegistry, unsupportedKeys } from "./unsupported-registry";
 import { COVERAGE_RAW_DIR } from "./run-fetch";
@@ -34,6 +35,8 @@ export interface VoteBackfillOptions {
   persist: boolean;
   /** Use saved pages only; never ask the sources. */
   offline: boolean;
+  /** Queue votes we already hold whose totals differ from the official list, instead of the missing ones. */
+  refreshMismatched?: boolean;
   log?: (line: string) => void;
 }
 
@@ -72,7 +75,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
   const official = await loadOfficialVotes(cache, options.from, options.to);
   const stored = await loadStoredVotes(options.from, options.to);
   const known = await readUnsupportedRegistry(options.repoRoot);
-  const plan = planVoteBackfill({ official: official.records, stored, range: { from: options.from, to: options.to }, sources: options.sources, limit: options.limit, unsupported: unsupportedKeys(known) });
+  const plan = planVoteBackfill({ official: official.records, stored, range: { from: options.from, to: options.to }, sources: options.sources, limit: options.limit, unsupported: unsupportedKeys(known), mode: options.refreshMismatched ? "mismatched" : "missing" });
   log(`Queue: ${plan.queue.length} of ${plan.eligible} missing votes (${plan.alreadyHeld} already held, ${plan.summarised} summarised, ${plan.tests} test ballots).`);
 
   const result: VoteBackfillResult = {
@@ -87,6 +90,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
     summaries: 0,
     reportFile: ""
   };
+  const exceptions = new Map(readNameListExceptions().map((item) => [exceptionKey(item.source, item.officialId), item.shortBy]));
   const fetcher = new PoliteFetcher({ maxRequests: options.maxRequests, delayMs: options.delayMs });
   let integrityBefore = options.persist ? countsOf(await runIntegrityChecks()) : undefined;
   let writtenSinceCheck = 0;
@@ -130,7 +134,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
       let write: (() => Promise<unknown>) | undefined;
       try {
         const html = decodeOfficialBytes(body);
-        const prepared = prepare(record, html, url);
+        const prepared = prepare(record, html, url, exceptions.get(exceptionKey(record.source, record.officialId)));
         if (prepared.unsupported) {
           result.unsupported.push({ source: record.source, officialId: record.officialId, date: record.date, url, reason: prepared.unsupported, officialTotals: record.totals, label: record.label });
           log(`UNSUPPORTED ${record.source} ${record.officialId} ${record.date}: ${prepared.unsupported}`);
@@ -180,7 +184,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
 }
 
 /** Parses one saved page and says what is wrong with it, or how to write it. */
-function prepare(record: OfficialVoteRecord, html: string, url: string): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string } {
+function prepare(record: OfficialVoteRecord, html: string, url: string, nameListShortBy?: { for?: number; against?: number; abstention?: number }): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string } {
   if (record.source === "cdep") {
     const parsed = parseChamberNominalVote(html, canonicalizeOfficialUrl(url));
     if (parsed.individualVotes.length === 0 && parsed.warnings.some((warning) => /^Attendance check lists names without votes/.test(warning))) {
@@ -188,6 +192,7 @@ function prepare(record: OfficialVoteRecord, html: string, url: string): { reaso
     }
     const reasons = checkVoteGate({
       official: record,
+      nameListShortBy,
       parsedStatus: parsed.sourceSnapshot.status,
       parsed: { chamber: parsed.vote.chamber, heldOn: parsed.vote.heldOn, totals: parsed.vote.totals, choices: parsed.individualVotes.map((vote) => vote.choice), warnings: parsed.warnings }
     });
@@ -196,6 +201,7 @@ function prepare(record: OfficialVoteRecord, html: string, url: string): { reaso
   const parsed = parseSenateVote(html, url);
   const reasons = checkVoteGate({
     official: record,
+    nameListShortBy,
     parsedStatus: parsed.sourceSnapshot.status,
     parsed: { chamber: parsed.vote.chamber, heldOn: parsed.vote.heldOn, totals: parsed.vote.totals, choices: parsed.individualVotes.map((vote) => vote.choice), warnings: [] }
   });

@@ -1,0 +1,104 @@
+{
+  "note": "Votes whose own source page lists fewer names than it announces. Each was checked by hand against the live page on the date given; the shortfall is in the source, not in our parser. Used by votes:backfill (the gate passes exactly this shortfall) and by the vote_nominal_totals_mismatch integrity check (explained rows are not counted). Add an entry only after checking the page.",
+  "exceptions": [
+    {
+      "source": "senate",
+      "officialId": "f0b79ae7-eb3e-4cd9-8223-69f370067b7d",
+      "voteId": "vote-senate-l28-2025-02-19-proiect-de-lege-de-aprobare",
+      "date": "2025-02-19",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=F0B79AE7-EB3E-4CD9-8223-69F370067B7D"
+    },
+    {
+      "source": "senate",
+      "officialId": "568f8810-c22e-407e-9a92-995770c92469",
+      "voteId": "vote-senate-l22-2025-02-24-proiect-de-lege-de-aprobare",
+      "date": "2025-02-24",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=568F8810-C22E-407E-9A92-995770C92469"
+    },
+    {
+      "source": "senate",
+      "officialId": "c992ab75-ba57-419b-952c-4aee0d2d1d25",
+      "voteId": "vote-senate-l21-2025-03-03-proiect-de-lege-de-aprobare",
+      "date": "2025-03-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=C992AB75-BA57-419B-952C-4AEE0D2D1D25"
+    },
+    {
+      "source": "senate",
+      "officialId": "479e1b08-d508-4c89-a657-407b4fcf561d",
+      "voteId": "vote-senate-l24-2025-03-10-proiect-de-lege-de-aprobare",
+      "date": "2025-03-10",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=479E1B08-D508-4C89-A657-407B4FCF561D"
+    },
+    {
+      "source": "senate",
+      "officialId": "b4a17db9-020f-4cd6-9262-247b56c31fe8",
+      "voteId": "vote-senate-l23-2025-03-10-proiect-de-lege-de-aprobare",
+      "date": "2025-03-10",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-05",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=B4A17DB9-020F-4CD6-9262-247B56C31FE8"
+    },
+    {
+      "source": "senate",
+      "officialId": "cb4a5380-f70d-4fe5-8650-3056ebe053f6",
+      "voteId": "vote-senate-l29-2025-03-10-final",
+      "date": "2025-03-10",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=CB4A5380-F70D-4FE5-8650-3056EBE053F6"
+    },
+    {
+      "source": "senate",
+      "officialId": "2d277cf7-6029-40bf-9934-623a68f3680d",
+      "voteId": "vote-senate-l30-2025-04-14-final",
+      "date": "2025-04-14",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=2D277CF7-6029-40BF-9934-623A68F3680D"
+    },
+    {
+      "source": "senate",
+      "officialId": "a9525454-81b6-43ff-9bd5-9851d7307f68",
+      "voteId": "vote-senate-l113-2025-06-02-final-respingere",
+      "date": "2025-06-02",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-05",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=A9525454-81B6-43FF-9BD5-9851D7307F68"
+    },
+    {
+      "source": "senate",
+      "officialId": "1c0bd482-256b-4e69-9198-a664be6ce6f0",
+      "voteId": "vote-senate-l181-2025-09-03-final-respingere",
+      "date": "2025-09-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-03",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=1C0BD482-256B-4E69-9198-A664BE6CE6F0"
+    }
+  ]
+}

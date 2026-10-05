@@ -47,6 +47,7 @@
     "ingest:votes:coverage:fetch": "npm --workspace @cumsevoteaza/ingest run votes:coverage:fetch --",
     "ingest:votes:coverage": "npm --workspace @cumsevoteaza/ingest run votes:coverage --",
     "ingest:votes:backfill": "npm --workspace @cumsevoteaza/ingest run votes:backfill --",
+    "ingest:discoveries:triage": "npm --workspace @cumsevoteaza/ingest run discoveries:triage --",
     "ingest:bills:coverage:fetch": "npm --workspace @cumsevoteaza/ingest run bills:coverage:fetch --",
     "ingest:bills:coverage": "npm --workspace @cumsevoteaza/ingest run bills:coverage --",
     "ingest:members:coverage": "npm --workspace @cumsevoteaza/ingest run members:coverage --",

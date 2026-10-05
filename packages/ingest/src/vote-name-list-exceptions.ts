@@ -1,0 +1,24 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+export interface NameListException {
+  source: "cdep" | "senate";
+  officialId: string;
+  voteId: string;
+  date: string;
+  /** How many names the source's own list is short, per choice. */
+  shortBy: { for?: number; against?: number; abstention?: number };
+  verifiedOn: string;
+  evidence: string;
+}
+
+const defaultFile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../data/curated/vote-name-list-exceptions.json");
+
+/** Votes checked by hand whose source page lists fewer names than it announces (data/curated/vote-name-list-exceptions.json). */
+export function readNameListExceptions(file = defaultFile): NameListException[] {
+  if (!existsSync(file)) return [];
+  return (JSON.parse(readFileSync(file, "utf8")) as { exceptions: NameListException[] }).exceptions;
+}
+
+export const exceptionKey = (source: string, officialId: string) => `${source}:${officialId.toLowerCase()}`;

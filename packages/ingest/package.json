@@ -33,6 +33,7 @@
     "votes:coverage:fetch": "tsx src/cli.ts votes:coverage:fetch",
     "votes:coverage": "tsx src/cli.ts votes:coverage",
     "votes:backfill": "tsx src/cli.ts votes:backfill",
+    "discoveries:triage": "tsx src/cli.ts discoveries:triage",
     "bills:coverage:fetch": "tsx src/cli.ts bills:coverage:fetch",
     "bills:coverage": "tsx src/cli.ts bills:coverage",
     "members:coverage": "tsx src/cli.ts members:coverage",

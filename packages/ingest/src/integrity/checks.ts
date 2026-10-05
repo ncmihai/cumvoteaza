@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 import { createDbSession, type DbClient } from "@cumsevoteaza/db";
 import { committeeDuplicateCondition } from "../identity/committee-dedupe";
+import { readNameListExceptions } from "../vote-name-list-exceptions";
 
 /**
  * Data integrity checks. Every check is a query that returns offending rows; zero rows means pass.
@@ -193,7 +194,7 @@ export const checks: Check[] = [
   }
 ];
 
-export type CheckResult = { name: string; severity: "error" | "warning"; description: string; count: number; sample: unknown[] };
+export type CheckResult = { name: string; severity: "error" | "warning"; description: string; count: number; sample: unknown[]; /** Rows left out because a person checked them by hand (curated exceptions). */ explained?: number };
 
 export async function runIntegrityChecks(db?: DbClient): Promise<CheckResult[]> {
   const session = db ? undefined : createDbSession();
@@ -201,8 +202,11 @@ export async function runIntegrityChecks(db?: DbClient): Promise<CheckResult[]> 
   try {
     const results: CheckResult[] = [];
     for (const check of checks) {
-      const rows = await client.execute(sql`select * from (${check.query}) as offending limit 1000`);
-      results.push({ name: check.name, severity: check.severity, description: check.description, count: rows.length, sample: rows.slice(0, 5) });
+      const all = await client.execute(sql`select * from (${check.query}) as offending limit 1000`);
+      // Votes whose source page is itself short of names were checked by hand (data/curated/vote-name-list-exceptions.json).
+      const explainedIds = check.name === "vote_nominal_totals_mismatch" ? new Set(readNameListExceptions().map((item) => item.voteId)) : undefined;
+      const rows = explainedIds ? all.filter((row) => !explainedIds.has((row as { id?: string }).id ?? "")) : all;
+      results.push({ name: check.name, severity: check.severity, description: check.description, count: rows.length, sample: rows.slice(0, 5), ...(explainedIds ? { explained: all.length - rows.length } : {}) });
     }
     return results;
   } finally {

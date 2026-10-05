@@ -13,6 +13,7 @@ import { backupLocalData } from "./backup";
 import { runCoverageFetch } from "./coverage/run-fetch";
 import { runCoverageReport } from "./coverage/run-report";
 import { runVoteBackfill } from "./coverage/run-vote-backfill";
+import { runDiscoveryTriage } from "./discovery-triage";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
 import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
@@ -486,11 +487,20 @@ async function main() {
       delayMs: numberFlag("delay-ms") ?? 5000,
       persist: hasFlag("persist"),
       offline: hasFlag("offline"),
+      refreshMismatched: hasFlag("refresh-mismatched"),
       log: (line) => console.log(line)
     });
     console.log(JSON.stringify({ ...result, held: result.held.length ? result.held : undefined }, null, 2));
     if (!hasFlag("persist")) console.log("Nothing was written. Re-run with --persist once the held list looks right.");
     if (result.stopped) process.exitCode = 1;
+    return;
+  }
+
+  if (command === "discoveries:triage") {
+    // Sprint 5 (F3): decides what each pending or failed CDEP vote discovery is (older legislature, already imported, test ballot,
+    // attendance check, summarised amendment vote, or still to import) and records the reason. Dry run unless --persist.
+    console.log(JSON.stringify(await runDiscoveryTriage({ repoRoot, persist: hasFlag("persist") }), null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to record the decisions.");
     return;
   }
 

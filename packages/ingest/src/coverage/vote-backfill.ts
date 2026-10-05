@@ -21,11 +21,27 @@ export function planVoteBackfill(input: {
   limit?: number;
   /** `source:id` keys of votes known to carry no per-member choices. */
   unsupported?: ReadonlySet<string>;
+  /** "missing" (default) queues votes we do not hold; "mismatched" queues votes we hold whose totals differ from the official list. */
+  mode?: "missing" | "mismatched";
 }): BackfillPlan {
   const held = new Set<string>();
+  const storedByKey = new Map<string, StoredVoteRow>();
   for (const vote of input.stored) {
     const key = storedOfficialKey(vote);
-    if (key) held.add(`${key.source}:${key.officialId}`);
+    if (key) {
+      held.add(`${key.source}:${key.officialId}`);
+      storedByKey.set(`${key.source}:${key.officialId}`, vote);
+    }
+  }
+  if (input.mode === "mismatched") {
+    const queue = input.official
+      .filter((record) => {
+        if (record.date < input.range.from || record.date > input.range.to || !input.sources.includes(record.source) || record.isTest) return false;
+        const stored = storedByKey.get(`${record.source}:${record.officialId}`);
+        return stored !== undefined && !totalsAgree(stored, record);
+      })
+      .sort((a, b) => b.date.localeCompare(a.date) || a.officialId.localeCompare(b.officialId));
+    return { queue: input.limit === undefined ? queue : queue.slice(0, input.limit), eligible: queue.length, alreadyHeld: held.size, summarised: 0, tests: 0, unsupported: 0 };
   }
   let alreadyHeld = 0;
   let summarised = 0;
@@ -52,6 +68,11 @@ export function planVoteBackfill(input: {
   return { queue: input.limit === undefined ? wanted : wanted.slice(0, input.limit), eligible: wanted.length, alreadyHeld, summarised, tests, unsupported };
 }
 
+function totalsAgree(stored: StoredVoteRow, record: OfficialVoteRecord): boolean {
+  return stored.present === record.totals.present && stored.forCount === record.totals.for && stored.against === record.totals.against
+    && stored.abstention === record.totals.abstention && stored.presentNotVoting === record.totals.notVoting;
+}
+
 export function officialVoteUrl(record: Pick<OfficialVoteRecord, "source" | "officialId">): string {
   return record.source === "cdep"
     ? `https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=${record.officialId}`
@@ -60,6 +81,8 @@ export function officialVoteUrl(record: Pick<OfficialVoteRecord, "source" | "off
 
 export interface GateInput {
   official: OfficialVoteRecord;
+  /** A hand-checked shortfall in the source's own name list (data/curated/vote-name-list-exceptions.json). */
+  nameListShortBy?: { for?: number; against?: number; abstention?: number };
   /** "parsed" means the page's own totals agreed with its name list; "partial" and "failed" come with warnings. */
   parsedStatus: string;
   parsed: {
@@ -72,7 +95,7 @@ export interface GateInput {
 }
 
 /** Why a parsed vote page must not be written yet; an empty list means it passes every gate. */
-export function checkVoteGate({ official, parsedStatus, parsed }: GateInput): string[] {
+export function checkVoteGate({ official, parsedStatus, parsed, nameListShortBy }: GateInput): string[] {
   const reasons: string[] = [];
   if (parsedStatus === "failed") reasons.push(`page could not be read${parsed.warnings.length ? `: ${parsed.warnings.join(" ")}` : ""}`);
   else if (parsedStatus !== "parsed") reasons.push(`page parsed with warnings: ${parsed.warnings.join(" ") || parsedStatus}`);
@@ -88,7 +111,8 @@ export function checkVoteGate({ official, parsedStatus, parsed }: GateInput): st
   for (const [label, page, list] of pairs) if (page !== list) reasons.push(`${label}: page ${page}, official list ${list}`);
   const count = (choice: string) => parsed.choices.filter((item) => item === choice).length;
   for (const [label, choice, total] of [["for", "for", parsed.totals.for], ["against", "against", parsed.totals.against], ["abstention", "abstention", parsed.totals.abstention]] as const) {
-    if (count(choice) !== total) reasons.push(`name list has ${count(choice)} "${label}", totals say ${total}`);
+    const allowed = nameListShortBy?.[choice] ?? 0;
+    if (count(choice) + allowed !== total) reasons.push(`name list has ${count(choice)} "${label}", totals say ${total}${allowed ? ` (a shortfall of ${allowed} is recorded as a source quirk)` : ""}`);
   }
   return reasons;
 }
