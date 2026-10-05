@@ -83,6 +83,8 @@ export interface BillPlan {
   billId: string;
   slug: string;
   isNew: boolean;
+  /** The stored bill is the one this dossier's own numbers name (its id is the id those numbers give), not just one that shares a number with it. */
+  claimsStoredBill: boolean;
   /** Existing bills that also answer to this dossier's numbers (a duplicate to merge by hand; the first is used). */
   alsoMatches: string[];
   bill: { title: string; identifiers: Record<string, string>; chamberOfOrigin: string; decisionChamber: string | null; status: string; lawType: string | null; sourceSnapshotIds: string[] };
@@ -163,11 +165,15 @@ function stepTitle(step: DossierStep): string {
   return lead.slice(0, 400) || step.type;
 }
 
-export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapshot[]; fetchedAt: Partial<Record<"cdep" | "senate", string>>; context: PlanContext; existingIndex: Map<string, ExistingBill[]> }): BillPlan {
+export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapshot[]; fetchedAt: Partial<Record<"cdep" | "senate", string>>; context: PlanContext; existingIndex: Map<string, ExistingBill[]>; /** Stored bills another dossier already holds. */ exclude?: Set<string> }): BillPlan {
   const { merged, context } = input;
   const matches: ExistingBill[] = [];
-  for (const key of groupKeys(merged.keys)) for (const bill of input.existingIndex.get(key) ?? []) if (!matches.some((item) => item.id === bill.id)) matches.push(bill);
-  matches.sort((a, b) => Number(b.id.startsWith("bill-l")) - Number(a.id.startsWith("bill-l")) || a.id.localeCompare(b.id));
+  for (const key of groupKeys(merged.keys)) for (const bill of input.existingIndex.get(key) ?? []) if (!matches.some((item) => item.id === bill.id) && !input.exclude?.has(bill.id)) matches.push(bill);
+  // A Chamber (PL-x) or Senate (L) number belongs to one bill; a Senate B number is shared by every bill sent on from one Senate registration, and the stored copy of one may be wrong.
+  // So a stored bill that matches by PL-x or L ranks before one that matches only by a B number.
+  const strongKeys = new Set(groupKeys(merged.keys).filter((key) => !key.startsWith("b:")));
+  const isStrong = (bill: ExistingBill) => existingKeys(bill).some((key) => strongKeys.has(key));
+  matches.sort((a, b) => Number(isStrong(b)) - Number(isStrong(a)) || Number(b.id.startsWith("bill-l")) - Number(a.id.startsWith("bill-l")) || a.id.localeCompare(b.id));
   const existing = matches[0];
 
   const identifiers = identifiersOf(merged.keys);
@@ -267,6 +273,7 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     billId,
     slug,
     isNew: !existing,
+    claimsStoredBill: Boolean(existing && canonical && existing.id === billIdForIdentifier(canonical)),
     alsoMatches: matches.slice(1).map((bill) => bill.id),
     bill: {
       title: existing?.title && existing.title !== "unknown" ? existing.title : (merged.title ?? existing?.title ?? billId),
@@ -280,7 +287,8 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     snapshots: input.snapshots,
     dossier: {
       sources: Object.fromEntries(merged.pages.map((page) => [page.source, { url: page.url, ...(input.fetchedAt[page.source] ? { fetchedAt: input.fetchedAt[page.source] } : {}) }])),
-      registrations: merged.registrations,
+      // A number printed with only a year keeps it in the number ("L142/2026"); one with a date shows the date.
+      registrations: merged.registrations.map((item) => ({ body: item.body, number: item.date || !item.year ? item.number : `${item.number}/${item.year}`, ...(item.date ? { date: item.date } : {}) })),
       initiativeType: merged.initiativeType,
       initiativeKind: merged.initiativeKind,
       urgent: merged.urgent,
@@ -323,13 +331,11 @@ export interface PlanSummary {
   voteConflicts: Array<{ bill: string; voteId: string; storedBillId: string }>;
   duplicateBills: Array<{ bill: string; alsoMatches: string[] }>;
   /** Dossiers that resolved to a bill another dossier already took (the first one is written, the other is left out). */
-  /** Bills whose pages share no identifier but whose stored record ties them (read as one). */
-  readTogether: Array<{ bill: string; pages: string[] }>;
   collidingDossiers: Array<{ bill: string; keptIdentifiers: Record<string, string>; leftOutIdentifiers: Record<string, string>; leftOutSteps: number; leftOutOutcome: string }>;
   unrecognisedWording: Array<{ text: string; count: number }>;
 }
 
-export function summarisePlans(plans: BillPlan[], leftOut: BillPlan[] = [], readTogether: Array<{ bill: string; pages: string[] }> = []): PlanSummary {
+export function summarisePlans(plans: BillPlan[], leftOut: BillPlan[] = []): PlanSummary {
   const tally = (target: Record<string, number>, key: string) => void (target[key] = (target[key] ?? 0) + 1);
   const stepsByType: Record<string, number> = {};
   const outcomes: Record<string, number> = {};
@@ -351,7 +357,6 @@ export function summarisePlans(plans: BillPlan[], leftOut: BillPlan[] = [], read
     voteLinksToWrite: 0,
     voteConflicts: [],
     duplicateBills: [],
-    readTogether,
     collidingDossiers: leftOut.map((plan) => ({
       bill: plan.billId,
       keptIdentifiers: plans.find((kept) => kept.billId === plan.billId)?.bill.identifiers ?? {},

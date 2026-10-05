@@ -21,7 +21,7 @@ export function keysOfPage(page: ParsedDossier): BillKeys {
     if (registration.body === "senate") {
       const match = registration.number.match(/^([A-Z]+)(\d+)$/i);
       if (!match) continue;
-      const y = year(registration.date) ?? Number(self?.match(/\/(\d{4})$/)?.[1]);
+      const y = registration.year ?? year(registration.date) ?? Number(self?.match(/\/(\d{4})$/)?.[1]);
       if (!y) continue;
       const value = `${match[1]!.toUpperCase()}${Number(match[2])}/${y}`;
       if (match[1]!.toUpperCase() === "L") keys.senateL ??= value;
@@ -42,26 +42,33 @@ export interface PageGroup {
   keys: BillKeys;
 }
 
-/** Pages to bills: pages that share any identifier are one bill. */
+/**
+ * Pages to bills: pages that share any identifier are one bill. Two different Chamber pages are never one bill, though:
+ * when the Senate sent one bill down twice, the Chamber registered it twice (PL-x 34/2026 and PL-x 35/2026) and both pages name the same Senate number.
+ * Each Chamber page keeps its own dossier; a Senate page that names both joins the first.
+ */
 export function groupPages(pages: ParsedDossier[]): PageGroup[] {
   const parent = pages.map((_, index) => index);
+  const chamberPages: number[] = pages.map((page) => (page.source === "cdep" ? 1 : 0));
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  const join = (a: number, b: number) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA === rootB || chamberPages[rootA]! + chamberPages[rootB]! > 1) return;
+    parent[rootB] = rootA;
+    chamberPages[rootA] = chamberPages[rootA]! + chamberPages[rootB]!;
+  };
   const owner = new Map<string, number>();
   pages.forEach((page, index) => {
     for (const key of keyList(keysOfPage(page))) {
       const seen = owner.get(key);
       if (seen === undefined) owner.set(key, index);
-      else parent[find(index)] = find(seen);
+      else join(seen, index);
     }
   });
   const groups = new Map<number, ParsedDossier[]>();
   pages.forEach((page, index) => groups.set(find(index), [...(groups.get(find(index)) ?? []), page]));
   return [...groups.values()].map((group) => ({ pages: group, keys: mergeKeys(group.map(keysOfPage)) }));
-}
-
-/** Groups the pages could not tie together but the stored bill does (a Chamber page that names no Senate number, a Senate page that names no Chamber number): one bill from all their pages. */
-export function combineGroups(groups: PageGroup[]): PageGroup {
-  return { pages: groups.flatMap((group) => group.pages), keys: mergeKeys(groups.map((group) => group.keys)) };
 }
 
 function mergeKeys(all: BillKeys[]): BillKeys {

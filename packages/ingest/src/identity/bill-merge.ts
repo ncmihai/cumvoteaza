@@ -122,6 +122,11 @@ export async function applyBillMergePlan(db: DbClient, plan: BillMergePlan): Pro
   for (const merge of plan.merges) {
     for (const from of merge.from) {
       const into = merge.into;
+      // When the survivor has a dossier, the retired record's own dossier timeline, initiators and events would only repeat it: they are dropped, not moved.
+      const survivorHasDossier = sql`exists (select 1 from bill_dossiers where bill_id = ${into})`;
+      await db.execute(sql`delete from bill_procedure_steps where bill_id = ${from} and source is not null and ${survivorHasDossier}`);
+      await db.execute(sql`delete from bill_sponsors where bill_id = ${from} and source is not null and ${survivorHasDossier}`);
+      await db.execute(sql`delete from bill_events where bill_id = ${from} and ${survivorHasDossier}`);
       for (const table of BILL_CHILD_TABLES) {
         await db.execute(sql`update ${sql.identifier(table)} set bill_id = ${into} where bill_id = ${from}`);
       }

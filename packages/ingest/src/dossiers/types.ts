@@ -108,6 +108,8 @@ export interface DossierRegistration {
   /** As published: "497", "L535", "PLX127", "E91". */
   number: string;
   date?: string;
+  /** The year the page prints beside the number when it prints no date ("L142/2026"). */
+  year?: number;
 }
 
 export type BillOutcome = "in_progress" | "promulgated" | "rejected" | "withdrawn" | "ended" | "archived";

@@ -26,6 +26,8 @@ function registrations($: cheerio.CheerioAPI, labelCells: Map<string, Element>):
     else if (/^- camera deputa/i.test(label)) for (const item of dates(value)) result.push({ body: "cdep", ...item });
     else if (/^- senat/i.test(label)) {
       for (const m of value.matchAll(/([A-Z]{1,3}\d+)\s*\/\s*(\d{2}\.\d{2}\.\d{4})/g)) result.push({ body: "senate", number: m[1]!, date: isoFromRomanianDate(m[2]) });
+      // The Chamber prints the Senate's number with just a year ("L142/2026") when the Senate's date is not known to it.
+      for (const m of value.matchAll(/([A-Z]{1,3}\d+)\s*\/\s*(\d{4})(?!\d|\.)/g)) if (!result.some((item) => item.body === "senate" && item.number === m[1])) result.push({ body: "senate", number: m[1]!, year: Number(m[2]) });
     } else if (/^- guvern/i.test(label)) for (const item of dates(value)) result.push({ body: "government", ...item });
   }
   return result;
