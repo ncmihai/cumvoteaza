@@ -30,7 +30,11 @@ const STEP_LABELS: Record<BillProcedureStepType, { ro: string; en: string }> = {
   competence_decision: { ro: "Stabilirea competenței", en: "Competence decided" },
   constitutional_window: { ro: "Depus pentru sesizarea constituționalității", en: "Filed for a possible constitutional referral" },
   sent_to_president: { ro: "Trimis la Președinte pentru promulgare", en: "Sent to the President for promulgation" },
-  published: { ro: "Publicat în Monitorul Oficial", en: "Published in the Official Gazette" }
+  published: { ro: "Publicat în Monitorul Oficial", en: "Published in the Official Gazette" },
+  archived: { ro: "Clasat", en: "Filed away (clasat)" },
+  initiators_changed: { ro: "Lista inițiatorilor modificată", en: "List of initiators changed" },
+  reexamination_requested: { ro: "Președintele cere reexaminarea legii", en: "The President asks for the law to be re-examined" },
+  government_responsibility: { ro: "Guvernul își angajează răspunderea", en: "Government stakes its responsibility" }
 };
 
 const CHAMBER_LABELS: Record<string, { ro: string; en: string }> = {
@@ -112,6 +116,7 @@ export function fateView(dossier: BillDossier, locale: AppLocale): FateView {
   }
   if (dossier.outcome === "rejected") return { tone: "stopped", headline: ro ? "Respins" : "Rejected", details: dossier.outcomeOn ? [formatDate(dossier.outcomeOn, locale)] : [] };
   if (dossier.outcome === "withdrawn") return { tone: "stopped", headline: ro ? "Retras de inițiator" : "Withdrawn by the initiator", details: dossier.outcomeOn ? [formatDate(dossier.outcomeOn, locale)] : [] };
+  if (dossier.outcome === "archived") return { tone: "stopped", headline: ro ? "Clasat" : "Filed away (clasat)", details: [...(dossier.outcomeOn ? [formatDate(dossier.outcomeOn, locale)] : []), ...(dossier.stageText ? [dossier.stageText] : [])] };
   if (dossier.outcome === "ended") return { tone: "stopped", headline: ro ? "Procedură încetată" : "Procedure ended", details: dossier.outcomeOn ? [formatDate(dossier.outcomeOn, locale)] : [] };
   return { tone: "open", headline: ro ? "În procedură" : "In progress", details: dossier.stageText ? [dossier.stageText] : [] };
 }

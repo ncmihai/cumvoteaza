@@ -1,3 +1,4 @@
+import { parseSenateDossier } from "../dossiers/senate-dossier";
 import { parseDeputiesYearlyList, parseSenateYearlyList } from "../sync";
 import { CDEP_BILLS_YEAR_URL, SENATE_BILLS_YEAR_URL } from "./fetch-bill-lists";
 import { FetchStoppedError, type PoliteFetcher } from "./polite-fetcher";
@@ -66,6 +67,24 @@ export async function dossierItemsFromLists(cache: RawCache, years: number[], so
   return { items: items.filter((item) => (seen.has(`${item.source}|${item.key}`) ? false : (seen.add(`${item.source}|${item.key}`), true))), missingLists };
 }
 
+/** "PL-x 56/2026", "Pl-x 56/2026" and "PLX56/2026" are one bill. */
+export const chamberNumberKey = (value: string) => value.toLowerCase().replace(/pl-?x/, "plx").replace(/\s+/g, "");
+
+/**
+ * The Chamber bills whose Senate page we hold: a Senate page names the bill's Chamber number and prints the Chamber's steps too,
+ * so the Chamber's own page adds only the exact initiator links and its summary. Offline.
+ */
+export async function chamberNumbersNamedBySenatePages(cache: RawCache): Promise<Set<string>> {
+  const named = new Set<string>();
+  for (const key of await cache.keys("senate-bill")) {
+    const body = await cache.read("senate-bill", key);
+    if (!body) continue;
+    const registration = parseSenateDossier(decodeOfficialBytes(body), "").registrations.find((item) => item.body === "cdep");
+    if (registration) named.add(chamberNumberKey(registration.number));
+  }
+  return named;
+}
+
 export interface DossierFetchPlan {
   /** Pages to request, newest first. */
   queue: DossierItem[];
@@ -93,6 +112,8 @@ export interface DossierFetchOptions {
   only?: string[];
   /** Fetch again pages that are already saved (the dossier of a bill still in progress changes). */
   refresh?: boolean;
+  /** Skip the Chamber pages of bills whose Senate page is saved (see `chamberNumbersNamedBySenatePages`). */
+  uncoveredOnly?: boolean;
   dryRun?: boolean;
   log?: (line: string) => void;
 }
@@ -107,13 +128,18 @@ export interface DossierFetchResult {
   missingLists: string[];
   /** Set when the run ended early; what was saved is kept and the next run resumes. */
   stopped?: string;
+  /** Why: the request budget of this run was spent (normal: run again), the source pushed back or answered with a captcha (stop and wait), or failures piled up. */
+  stoppedReason?: "budget" | "blocked" | "failures";
 }
 
 /** One request per bill dossier, saved raw before any reading. Resumable: saved pages are skipped. Newest bills first. */
 export async function fetchBillDossiers(options: DossierFetchOptions): Promise<DossierFetchResult> {
   const { cache, fetcher } = options;
   const log = options.log ?? (() => {});
-  const { items, missingLists } = await dossierItemsFromLists(cache, options.years, options.sources);
+  const listed = await dossierItemsFromLists(cache, options.years, options.sources);
+  const missingLists = listed.missingLists;
+  const covered = options.uncoveredOnly ? await chamberNumbersNamedBySenatePages(cache) : undefined;
+  const items = covered ? listed.items.filter((item) => item.source !== "cdep" || !covered.has(chamberNumberKey(item.officialId))) : listed.items;
   const saved: Record<DossierSource, Set<string>> = { cdep: new Set(await cache.keys("cdep-bill")), senate: new Set(await cache.keys("senate-bill")) };
   const only = options.only?.length ? new Set(options.only.map((value) => value.toLowerCase().replace(/\s+/g, ""))) : undefined;
   const plan = planDossierFetch({ items, saved, limit: options.limit, only, refresh: options.refresh });
@@ -138,6 +164,7 @@ export async function fetchBillDossiers(options: DossierFetchOptions): Promise<D
   } catch (error) {
     if (!(error instanceof FetchStoppedError)) throw error;
     result.stopped = error.message;
+    result.stoppedReason = error.reason;
   }
   return result;
 }

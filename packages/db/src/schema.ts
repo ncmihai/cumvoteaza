@@ -215,7 +215,11 @@ export const billProcedureStepTypeEnum = pgEnum("bill_procedure_step_type", [
   "competence_decision",
   "constitutional_window",
   "sent_to_president",
-  "published"
+  "published",
+  "archived",
+  "initiators_changed",
+  "reexamination_requested",
+  "government_responsibility"
 ]);
 
 export const legislatures = pgTable("legislatures", {

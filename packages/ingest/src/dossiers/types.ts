@@ -6,7 +6,7 @@
 export type DossierSourceName = "cdep" | "senate";
 
 /** Where a step happened. "president" covers the rows the Chamber marks PA and the Senate marks PA (promulgation, the Official Gazette). */
-export type StepChamber = "deputies" | "senate" | "president" | "unknown";
+export type StepChamber = "deputies" | "senate" | "joint" | "president" | "unknown";
 
 /** Mirrors the `bill_procedure_step_type` enum. Old values stay for rows written before Sprint 7. */
 export type StepType =
@@ -38,7 +38,11 @@ export type StepType =
   | "competence_decision"
   | "constitutional_window"
   | "sent_to_president"
-  | "published";
+  | "published"
+  | "archived"
+  | "initiators_changed"
+  | "reexamination_requested"
+  | "government_responsibility";
 
 /** What a committee report, an opinion or the Government's view concluded, in the source's own words reduced to a few values. */
 export type Verdict = "favorable" | "unfavorable" | "favorable_with_amendments" | "rejection";
@@ -106,7 +110,7 @@ export interface DossierRegistration {
   date?: string;
 }
 
-export type BillOutcome = "in_progress" | "promulgated" | "rejected" | "withdrawn" | "ended";
+export type BillOutcome = "in_progress" | "promulgated" | "rejected" | "withdrawn" | "ended" | "archived";
 
 export interface DossierFate {
   outcome: BillOutcome;

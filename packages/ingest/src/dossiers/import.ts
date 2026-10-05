@@ -36,7 +36,7 @@ export interface DossierImportResult {
   pagesRead: { cdep: number; senate: number };
   unreadable: Array<{ key: string; error: string }>;
   summary: PlanSummary;
-  written?: { bills: number; steps: number; sponsors: number; documents: number; votesLinked: number };
+  written?: { bills: number; steps: number; sponsors: number; documents: number; votesLinked: number; placeholdersRemoved: number };
   files?: { json: string; markdown: string };
 }
 
@@ -145,10 +145,11 @@ const chunks = <T>(items: T[], size: number): T[][] => {
 
 /** Writes bills in transactions: each bill's steps, sponsors and dossier row are replaced by what the pages say now. */
 export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, log: (line: string) => void = () => {}): Promise<NonNullable<DossierImportResult["written"]>> {
-  const written = { bills: 0, steps: 0, sponsors: 0, documents: 0, votesLinked: 0 };
+  const written = { bills: 0, steps: 0, sponsors: 0, documents: 0, votesLinked: 0, placeholdersRemoved: 0 };
   for (const group of chunks(plans, batch)) {
     await db.transaction(async (tx) => {
       const ids = group.map((plan) => plan.billId);
+      const replaced = new Set<string>();
       const snapshots = new Map<string, SourceSnapshot>();
       for (const plan of group) for (const snapshot of plan.snapshots) snapshots.set(snapshot.id, snapshot);
       for (const part of chunks([...snapshots.values()], 200)) {
@@ -191,6 +192,16 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
           const current = id ? heldById.get(id) : undefined;
           if (id && current && (current.label !== document.label || current.kind !== document.kind) && /-d[0-9a-f]{10}$/.test(id)) await tx.update(schema.documents).set({ label: document.label, documentKind: document.kind }).where(sql`${schema.documents.id} = ${id}`);
         }
+      }
+
+      // The other record of a dossier stored twice (merged by bills:merge-duplicates afterwards) keeps no timeline or initiators of its own:
+      // the dossier written above supersedes them, and the merge would otherwise move them onto the surviving bill beside it.
+      const superseded = [...new Set(group.flatMap((plan) => plan.alsoMatches))];
+      if (superseded.length) {
+        const other = sql.join(superseded.map((id) => sql`${id}`), sql`, `);
+        await tx.execute(sql`delete from bill_procedure_steps where bill_id in (${other}) and source is null`);
+        await tx.execute(sql`delete from bill_events where bill_id in (${other})`);
+        await tx.execute(sql`delete from bill_sponsors where bill_id in (${other}) and source is null`);
       }
 
       // Steps and sponsors are replaced as a whole.
@@ -260,9 +271,28 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
           .values(row)
           .onConflictDoUpdate({ target: schema.billDossiers.billId, set: { ...row, billId: undefined } });
         for (const link of plan.voteLinks) {
-          await tx.execute(sql`update votes set bill_id = ${link.billId} where id = ${link.voteId} and bill_id is null`);
+          await tx.execute(sql`update votes set bill_id = ${link.billId} where id = ${link.voteId} and (bill_id is null${link.replaces ? sql` or bill_id = ${link.replaces}` : sql``})`);
           written.votesLinked += 1;
+          if (link.replaces) replaced.add(link.replaces);
         }
+      }
+      // A placeholder that no longer holds a vote or anything else is removed (its read-model row is rebuilt by refresh-read-models).
+      if (replaced.size) {
+        const gone = [...replaced];
+        const list = sql.join(gone.map((id) => sql`${id}`), sql`, `);
+        await tx.execute(sql`delete from bill_vote_summaries where bill_id in (${list}) and not exists (select 1 from votes v where v.bill_id = bill_vote_summaries.bill_id)`);
+        const removed = await tx.execute<{ id: string }>(sql`
+          delete from bills b where b.id in (${list})
+            and not exists (select 1 from votes v where v.bill_id = b.id)
+            and not exists (select 1 from documents d where d.bill_id = b.id)
+            and not exists (select 1 from bill_events e where e.bill_id = b.id)
+            and not exists (select 1 from bill_procedure_steps s where s.bill_id = b.id)
+            and not exists (select 1 from bill_sponsors s where s.bill_id = b.id)
+            and not exists (select 1 from bill_ministry_relations r where r.bill_id = b.id)
+            and not exists (select 1 from bill_document_text_chunks c where c.bill_id = b.id)
+            and not exists (select 1 from bill_dossiers x where x.bill_id = b.id)
+          returning b.id`);
+        written.placeholdersRemoved += [...removed].length;
       }
       written.bills += group.length;
     });

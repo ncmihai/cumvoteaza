@@ -110,3 +110,38 @@ describe("typeStepWording", () => {
     expect(typeStepWording("o formulare cu totul nouă")).toMatchObject({ type: "other", recognised: false });
   });
 });
+
+describe("wording found in the full corpus of 2024-2026", () => {
+  const more: Case[] = [
+    ["Clasat, conform Hotărârii Biroului Permanent al Senatului din data de 30.12.2024 în baza art.63 alin.(5) din Constituţie", { type: "archived" }],
+    ["se aprobă retragerea din lista de inițiatori", { type: "initiators_changed" }],
+    ["se aprobă completarea listei de inițiatori", { type: "initiators_changed" }],
+    ["retragerea semnăturii", { type: "initiators_changed" }],
+    ["Președintele României cere reexaminarea legii", { type: "reexamination_requested" }],
+    ["Presedintele României solicita reexaminarea;cererea de reexaminare este înaintata Camerei Deputatilor", { type: "reexamination_requested" }],
+    ["s-a depus sesizare de neconstituționalitate; autor: Președintele României", { type: "constitutional_review" }],
+    ["sesizare de neconstituţionalitate", { type: "constitutional_review" }],
+    ["trimis pentru raport privind decizia Curții Constituționale la Comisia pentru constituţionalitate (TERMEN: 21/04/2026)", { type: "sent_to_committee", committee: "Comisia pentru constituţionalitate", deadlineOn: "2026-04-21" }],
+    ["trimis pentru raport privind cererea de reexaminare formulată de Președintele României, la Comisia juridică, de numiri, disciplină, imunităţi şi validări (TERMEN: 11/11/2025)", { type: "sent_to_committee", committee: "Comisia juridică, de numiri, disciplină, imunităţi şi validări", deadlineOn: "2025-11-11" }],
+    ["trimis pentru aviz privind cererea de reexaminare formulată de Președintele României, la Comisia pentru tineret și sport (TERMEN: 09/09/2025)", { type: "committee_opinion_requested", committee: "Comisia pentru tineret și sport" }],
+    ["adoptat în ședința comună a celor două Camere", { type: "adopted", chamber: "joint" }],
+    ["vot final respingere - fără majoritate calificată", { type: "final_vote" }],
+    ["vot final adoptare - nu a fost întrunită majoritatea simplă", { type: "final_vote" }],
+    ["legea pentru aprobarea ordonantei adoptata de Camera Deputatilor (ca urmare a cererii de reexaminare)", { type: "adopted", chamber: "deputies" }],
+    ["propunerea legislativă privind introducerea în curriculum naţional a disciplinei \"Educaţie\" (Pl-x 446/2025) (adoptată ca urmare a depăşirii termenului constituţional).", { type: "adopted" }],
+    ["solicitarea Comisiei juridice, de disciplină şi imunităţi cu privire la încadrarea în categoria legilor de complexitate deosebită şi, în consecinţă, prelungirea termenului constituţional de dezbatere", { type: "deadline_extended" }],
+    ["Biroul permanent a aprobat prelungirea termenului de depunere a raportului", { type: "deadline_extended" }],
+    ["aprobarea procedurii de urgenta în plenul Camerei Deputatilor", { type: "urgency_decided" }],
+    ["Guvernul își angajează răspunderea în Parlament - asupra formei inițiatorului (nu au fost acceptate amendamente)", { type: "government_responsibility" }],
+    ["solicitare punct de vedere de la Consiliul Concurenţei", { type: "opinion_requested", institution: "Consiliul Concurenţei" }],
+    ["primire punct de vedere de la Consiliul Concurenţei - cu nr.RG 8636/17.06.2026", { type: "opinion_received", institution: "Consiliul Concurenţei", documentNumber: "RG 8636/17.06.2026" }],
+    ["trimis pentru punct de vedere la Înalta Curte de Casație și Justiție", { type: "opinion_requested", institution: "Înalta Curte de Casație și Justiție" }],
+    ["prezentare în Birourile Permanente reunite ale Senatului și Camerei Deputaților cu nr.L13", { type: "registered" }],
+    ["trimis pentru avizarea competenţei de primă Cameră sesizată, la Comisia pentru constituţionalitate", { type: "competence_decision" }],
+    ["plenul Senatului a aprobat trimiterea propunerii legislative la Camera Deputaţilor, ca primă Cameră sesizată, urmare a primirii avizului Comisiei pentru constituţionalitate nr.3381/23.10.2024", { type: "competence_decision" }],
+    ["dezbaterea Proiectului de Lege pentru aprobarea Ordonanţei de urgenţă a Guvernului nr. 7/2024", { type: "plenary_debate" }]
+  ];
+  it.each(more)("%s", (sentence, expected) => {
+    expect(typeStepWording(sentence)).toMatchObject({ recognised: true, ...expected });
+  });
+});

@@ -2,7 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { dossierItemsFromLists, dossierPageIsReal, fetchBillDossiers, planDossierFetch, type DossierItem } from "../coverage/fetch-bill-dossiers";
+import { chamberNumberKey, chamberNumbersNamedBySenatePages, dossierItemsFromLists, dossierPageIsReal, fetchBillDossiers, planDossierFetch, type DossierItem } from "../coverage/fetch-bill-dossiers";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { PoliteFetcher } from "../coverage/polite-fetcher";
 import { RawCache } from "../coverage/raw-cache";
 
@@ -114,7 +116,27 @@ describe("fetchBillDossiers", () => {
     const { fetcher } = setup(cache, () => (++calls <= 1 ? answer(cdepPage) : answer(challenge)));
     const result = await fetchBillDossiers({ cache, fetcher, years: [2026], sources: ["cdep"] });
     expect(result.stopped).toMatch(/captcha|blocked|challenge|pushed back/i);
+    expect(result.stoppedReason).toBe("blocked");
     expect(await cache.keys("cdep-bill")).toEqual(["idp-22923"]);
+  });
+
+  it("ends a run quietly when its request budget is spent, so the next run can resume", async () => {
+    const cache = await cacheWithLists();
+    const { fetcher } = setup(cache, () => answer(cdepPage), 2);
+    const result = await fetchBillDossiers({ cache, fetcher, years: [2026], sources: ["cdep"] });
+    expect(result).toMatchObject({ saved: 2, stoppedReason: "budget" });
+  });
+
+  it("can skip the Chamber pages of bills whose Senate page is saved, because that page names the Chamber number and prints the Chamber's steps", async () => {
+    const cache = await cacheWithLists();
+    const promulgated = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "senate-dossier-promulgated.html"), "utf8");
+    await cache.write("senate-bill", "L316-2025", Buffer.from(promulgated), { url: "https://www.senat.ro/x", status: 200 });
+    expect([...(await chamberNumbersNamedBySenatePages(cache))]).toEqual(["plx429/2025"]);
+    expect(chamberNumberKey("Pl-x 429/2025")).toBe("plx429/2025");
+    expect(chamberNumberKey("PL-x 1/2026")).toBe(chamberNumberKey("PLX1/2026"));
+    // the three Chamber bills of the test list are not named by that page, so all three stay
+    const result = await fetchBillDossiers({ cache, fetcher: setup(cache, () => answer(cdepPage)).fetcher, years: [2026], sources: ["cdep"], uncoveredOnly: true, dryRun: true });
+    expect(result.planned).toBe(3);
   });
 
   it("recognises real pages by their heading", () => {

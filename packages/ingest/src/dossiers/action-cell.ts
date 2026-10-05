@@ -145,7 +145,7 @@ export function readActionCell($: $, cell: Element, baseUrl: string): ReadCell {
   }
 
   return {
-    lead: squash(lead.replace(/ /g, " ")).replace(/^-\s*/, ""),
+    lead: squash(lead.replace(/ /g, " ")).replace(/^[-\u2013\u2014]\s*/, ""),
     committees,
     documents: looseDocuments,
     deadlineAmendmentsOn,

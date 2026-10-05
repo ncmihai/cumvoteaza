@@ -69,8 +69,6 @@ function mergeKeys(all: BillKeys[]): BillKeys {
   return merged;
 }
 
-const CHAMBER_RANK: Record<StepChamber, number> = { deputies: 0, senate: 0, president: 2, unknown: 1 };
-
 export interface MergedDossier {
   keys: BillKeys;
   title?: string;
@@ -139,7 +137,7 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
   } else steps = [...(cdep ?? senate)!.steps];
 
   const firstChamber = senate?.firstChamber ?? cdep?.firstChamber ?? firstChamberFrom(registrations);
-  const rank = (step: DossierStep) => (step.chamber === firstChamber ? 0 : step.chamber === "president" ? 3 : step.chamber === "unknown" ? 1 : 2);
+  const rank = (step: DossierStep) => (step.chamber === firstChamber ? 0 : step.chamber === "president" ? 3 : step.chamber === "unknown" || step.chamber === "joint" ? 1 : 2);
   steps = steps
     .map((step, index) => ({ step, index }))
     .sort((a, b) => a.step.occurredOn.localeCompare(b.step.occurredOn) || rank(a.step) - rank(b.step) || a.index - b.index)
@@ -152,7 +150,8 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
 
   const memberFirst = (list: DossierInitiator[]) => list.filter((item) => item.kind === "member").length > 0;
   const initiators = cdep && memberFirst(cdep.initiators) ? cdep.initiators : senate && senate.initiators.length ? senate.initiators : cdep?.initiators ?? [];
-  const decisionChamber = cdep?.decisionChamber ?? senate?.decisionChamber;
+  // The decisional chamber is always the one that was not the first notified (art. 75): the page says so when it can, and otherwise it follows from the first chamber.
+  const decisionChamber = cdep?.decisionChamber ?? senate?.decisionChamber ?? (firstChamber === "senate" ? "deputies" : firstChamber === "deputies" ? "senate" : undefined);
 
   return {
     keys: group.keys,

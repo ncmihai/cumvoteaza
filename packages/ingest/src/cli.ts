@@ -463,11 +463,13 @@ async function main() {
       maxRequests: numberFlag("max-requests") ?? 250,
       delayMs: numberFlag("delay-ms") ?? 3000,
       refresh: hasFlag("refresh"),
+      uncoveredOnly: hasFlag("uncovered-only"),
       log: (line) => console.log(line)
     });
     console.log(JSON.stringify({ ...result, failures: result.failures.length ? result.failures : undefined }, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request the pages (3 s apart, newest first, at most --max-requests per run).");
-    if (result.stopped) process.exitCode = 1;
+    // Spending the run's request budget is normal (the next run resumes); a captcha or a pile of failures is not, so a shell loop stops there.
+    if (result.stopped && result.stoppedReason !== "budget") process.exitCode = 1;
     return;
   }
 

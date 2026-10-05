@@ -95,7 +95,11 @@ export type BillProcedureStepType =
   | "competence_decision"
   | "constitutional_window"
   | "sent_to_president"
-  | "published";
+  | "published"
+  | "archived"
+  | "initiators_changed"
+  | "reexamination_requested"
+  | "government_responsibility";
 
 export type StepVerdict = "favorable" | "unfavorable" | "favorable_with_amendments" | "rejection";
 
@@ -555,7 +559,7 @@ export interface BillProcedureStep {
   note?: string;
 }
 
-export type BillOutcome = "in_progress" | "promulgated" | "rejected" | "withdrawn" | "ended";
+export type BillOutcome = "in_progress" | "promulgated" | "rejected" | "withdrawn" | "ended" | "archived";
 
 /** What a bill's official dossier pages say, as published (D-025). */
 export interface BillDossier {

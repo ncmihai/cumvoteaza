@@ -110,10 +110,14 @@ export interface BillPlan {
   steps: StepRow[];
   sponsors: SponsorRow[];
   documents: DocumentRow[];
-  voteLinks: Array<{ voteId: string; billId: string }>;
+  /** `replaces` is the placeholder bill (an empty record the vote importer made from the vote page) the vote moves away from. */
+  voteLinks: Array<{ voteId: string; billId: string; replaces?: string }>;
   voteConflicts: Array<{ voteId: string; storedBillId: string }>;
   unrecognised: string[];
 }
+
+/** Bills the vote importer made from a vote page when it did not know the bill: an id built from the page address, no numbers, no steps. */
+export const isPlaceholderBillId = (id: string) => /^bill-(deputies|senate)-https-/.test(id);
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -222,8 +226,9 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     const refKey = reference ? `${reference.source}:${reference.id}` : undefined;
     const vote = refKey ? context.voteByRef.get(refKey) : undefined;
     if (vote) {
-      if (!vote.billId) voteLinks.push({ voteId: vote.id, billId });
-      else if (vote.billId !== billId) voteConflicts.push({ voteId: vote.id, storedBillId: vote.billId });
+      if (!vote.billId || isPlaceholderBillId(vote.billId)) voteLinks.push({ voteId: vote.id, billId, ...(vote.billId ? { replaces: vote.billId } : {}) });
+      // A vote stored under the other record of this same dossier is not a conflict: the duplicate merge makes it one bill.
+      else if (vote.billId !== billId && !matches.some((bill) => bill.id === vote.billId)) voteConflicts.push({ voteId: vote.id, storedBillId: vote.billId });
     }
     const notes = [step.detail, step.stenogramUrl && undefined].filter(Boolean).join(" | ") || undefined;
     return {

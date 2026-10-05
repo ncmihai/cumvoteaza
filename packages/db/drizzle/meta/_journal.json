@@ -274,6 +274,13 @@
       "when": 1791216665674,
       "tag": "0038_bill_dossiers",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791227612828,
+      "tag": "0039_dossier_step_types",
+      "breakpoints": true
     }
   ]
 }

@@ -46,6 +46,7 @@ export async function runBillDossierFetch(options: {
   limit?: number;
   only?: string[];
   refresh?: boolean;
+  uncoveredOnly?: boolean;
   log?: (line: string) => void;
 }): Promise<DossierFetchResult> {
   return fetchBillDossiers({
@@ -56,6 +57,7 @@ export async function runBillDossierFetch(options: {
     limit: options.limit,
     only: options.only,
     refresh: options.refresh,
+    uncoveredOnly: options.uncoveredOnly,
     dryRun: !options.live,
     log: options.log
   });

@@ -41,6 +41,13 @@ describe("bill dossier presentation", () => {
     expect(fateView(dossier({ outcome: "withdrawn" }), "en").tone).toBe("stopped");
   });
 
+  it("shows a shelved (clasat) bill as stopped, with the page's own stage line", () => {
+    const view = fateView(dossier({ outcome: "archived", outcomeOn: "2024-12-30", stageText: "Clasat, conform Hotărârii Biroului Permanent" }), "ro");
+    expect(view).toMatchObject({ tone: "stopped", headline: "Clasat" });
+    expect(view.details.at(-1)).toBe("Clasat, conform Hotărârii Biroului Permanent");
+    expect(stepTypeLabel("reexamination_requested", "ro")).toBe("Președintele cere reexaminarea legii");
+  });
+
   it("writes registration numbers and groups steps into chamber lanes", () => {
     expect(registrationLine({ body: "senate", number: "L535", date: "2025-12-02" }, "ro")).toMatch(/^Senat L535 · /);
     expect(groupStepsByChamber([{ chamber: "senate" }, { chamber: "senate" }, { chamber: "deputies" }, { chamber: "senate" }]).map((group) => [group.chamber, group.steps.length])).toEqual([["senate", 2], ["deputies", 1], ["senate", 1]]);

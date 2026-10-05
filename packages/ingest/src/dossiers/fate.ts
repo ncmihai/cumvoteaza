@@ -77,6 +77,7 @@ export function deriveFate(input: { steps: DossierStep[]; stage?: string; decisi
   const withdrawn = chronological.filter((step) => step.type === "withdrawn").at(-1);
   const rejectedByDecider = chronological.filter((step) => step.type === "rejected" && decisionChamber !== undefined && step.chamber === decisionChamber).at(-1);
   // "încetarea procedurii ... înaintare la Senat" hands the bill to the other chamber: that chamber's page tells what happens next.
+  const archived = chronological.filter((step) => step.type === "archived").at(-1);
   const ended = chronological.filter((step) => step.type === "procedure_ended" && !/inaintare la (senat|camera)/.test(fold(step.text))).at(-1);
   const last = chronological.at(-1);
 
@@ -85,6 +86,9 @@ export function deriveFate(input: { steps: DossierStep[]; stage?: string; decisi
   else if (withdrawn || /^retras/.test(stage)) {
     outcome = "withdrawn";
     fate.outcomeOn ??= withdrawn?.occurredOn;
+  } else if (archived) {
+    outcome = "archived";
+    fate.outcomeOn ??= archived.occurredOn;
   } else if (rejectedByDecider) {
     outcome = "rejected";
     fate.outcomeOn ??= rejectedByDecider.occurredOn;

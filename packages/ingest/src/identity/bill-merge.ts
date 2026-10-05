@@ -99,6 +99,25 @@ const BILL_CHILD_TABLES = ["votes", "bill_events", "bill_sponsors", "documents",
  * Folds each retired record into the survivor: children re-pointed, identifiers and sources united,
  * missing facts filled from the retired record, retired ID and slug kept as aliases for redirects.
  */
+/** Documents of one bill that point at the same file (the Senate appends `?nocache=true`, hosts differ): one row stays. */
+const DUPLICATE_DOCUMENTS = sql`
+  select id, keep_id from (
+    select id,
+      row_number() over (partition by bill_id, k order by (text_status = 'stored') desc, (text_asset_id is not null) desc, id) as rn,
+      first_value(id) over (partition by bill_id, k order by (text_status = 'stored') desc, (text_asset_id is not null) desc, id) as keep_id
+    from (select documents.*, lower(regexp_replace(regexp_replace(url, '[?]nocache=true$', ''), '^https?://(www[.])?', '')) as k from documents) d
+  ) ranked where rn > 1`;
+
+/** Keeps the copy that has extracted text, repoints what referred to the others (steps, ministry relations, text chunks), deletes them. Returns how many were deleted. */
+export async function dedupeBillDocuments(db: DbClient): Promise<number> {
+  await db.execute(sql`with dups as (${DUPLICATE_DOCUMENTS}) update bill_procedure_steps s set document_id = d.keep_id from dups d where s.document_id = d.id`);
+  await db.execute(sql`with dups as (${DUPLICATE_DOCUMENTS}) update bill_ministry_relations r set document_id = d.keep_id from dups d where r.document_id = d.id`);
+  await db.execute(sql`with dups as (${DUPLICATE_DOCUMENTS}) delete from bill_document_text_chunks c using dups d where c.document_id = d.id and exists (select 1 from bill_document_text_chunks k where k.document_id = d.keep_id)`);
+  await db.execute(sql`with dups as (${DUPLICATE_DOCUMENTS}) update bill_document_text_chunks c set document_id = d.keep_id from dups d where c.document_id = d.id`);
+  const removed = await db.execute<{ id: string }>(sql`with dups as (${DUPLICATE_DOCUMENTS}) delete from documents x using dups d where x.id = d.id returning x.id`);
+  return [...removed].length;
+}
+
 export async function applyBillMergePlan(db: DbClient, plan: BillMergePlan): Promise<void> {
   for (const merge of plan.merges) {
     for (const from of merge.from) {
@@ -106,6 +125,9 @@ export async function applyBillMergePlan(db: DbClient, plan: BillMergePlan): Pro
       for (const table of BILL_CHILD_TABLES) {
         await db.execute(sql`update ${sql.identifier(table)} set bill_id = ${into} where bill_id = ${from}`);
       }
+      // One dossier row per bill: the survivor's stays if it has one, otherwise the retired bill's moves over.
+      await db.execute(sql`delete from bill_dossiers where bill_id = ${from} and exists (select 1 from bill_dossiers where bill_id = ${into})`);
+      await db.execute(sql`update bill_dossiers set bill_id = ${into} where bill_id = ${from}`);
       await db.execute(sql`
         delete from bill_ministry_relations r where r.bill_id = ${from}
           and exists (select 1 from bill_ministry_relations s where s.bill_id = ${into} and s.ministry_id = r.ministry_id and s.relation = r.relation)
@@ -140,4 +162,5 @@ export async function applyBillMergePlan(db: DbClient, plan: BillMergePlan): Pro
       await db.execute(sql`delete from bills where id = ${from}`);
     }
   }
+  if (plan.merges.length) await dedupeBillDocuments(db);
 }

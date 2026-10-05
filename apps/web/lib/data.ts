@@ -1582,7 +1582,7 @@ function isStepVerdict(value: string | null): value is StepVerdict {
 }
 
 function mapBillDossier(row: typeof schema.billDossiers.$inferSelect): BillDossier {
-  const outcomes = ["in_progress", "promulgated", "rejected", "withdrawn", "ended"] as const;
+  const outcomes = ["in_progress", "promulgated", "rejected", "withdrawn", "ended", "archived"] as const;
   return {
     billId: row.billId,
     readAt: row.readAt.toISOString(),

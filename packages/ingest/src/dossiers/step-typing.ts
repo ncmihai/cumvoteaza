@@ -86,33 +86,52 @@ export function typeStepWording(original: string): TypedWording {
   };
 
   // The tacit-adoption deadline (45 or 60 days) being extended.
-  if (/prelungire(a)? termen(ului)? de adoptare tacita|modificarea termenului de adoptare/.test(f)) return base("deadline_extended");
+  if (/prelungire(a)? termen(ului)? de adoptare tacita|modificarea termenului de adoptare|prelungirea termenului (constitutional )?de (dezbatere|depunere)|complexitate deosebita/.test(f)) return base("deadline_extended");
+
+  // The Senate's own filing of an initiative (art. 63 alin. (5)).
+  if (/^clasat\b/.test(f)) return base("archived");
+  // Who initiated: the list changes.
+  if (/list(a|ei) de initiatori|^retragerea semnaturii/.test(f)) return base("initiators_changed");
+  // The President sends a law back; the Government takes responsibility (art. 114).
+  if (/presedintele romaniei (cere|solicita) reexaminarea|cererea de reexaminare este inaintata/.test(f)) return base("reexamination_requested");
+  if (/^guvernul isi angajeaza raspunderea/.test(f)) return base("government_responsibility");
 
   // Fate, the end of the road.
   if (/devine legea nr|promulgat(a)? prin decret/.test(f)) return base("promulgation");
   if (/publicat(a)? in monitorul oficial/.test(f)) return base("published");
   if (/trimis(a)? la promulgare|trimitere la presedintele romaniei pentru promulgare/.test(f)) return base("sent_to_president");
-  if (/curtea constitutionala/.test(f)) return base("constitutional_review");
   if (/(depunere|depus|depusa) la secretarul general.*(constitutionalitat)/.test(f)) return base("constitutional_window");
   if (/retras de catre initiator|retragerea initiativei|solicita retragerea|retras(a)? de/.test(f)) return base("withdrawn");
   if (/incetarea procedurii legislative/.test(f)) return base("procedure_ended");
 
   // A chamber decides.
+  if (/^respins in sedinta comuna/.test(f)) return base("rejected", { chamber: "joint", vote: voteCounts(f) });
+  if (/^adoptat in sedinta comuna/.test(f)) return base("adopted", { chamber: "joint", vote: voteCounts(f) });
+  if (/^vot final (adoptare|respingere)/.test(f)) return base("final_vote", { vote: voteCounts(f) });
   if (/^respins(a)? (de|de catre) /.test(f)) return base("rejected", { chamber: chamberOfAdoption(f), vote: voteCounts(f) });
-  if (/^(proiectul|propunerea) (de lege|legislativa).*adoptat de/.test(f) || /^adoptat(a)? de (catre )?(camera deputatilor|senat)/.test(f)) return base("adopted", { chamber: chamberOfAdoption(f.replace(/^.*?adoptat(a)? de (catre )?/, "")), vote: voteCounts(f) });
-  if (/^dezbatere in plenul/.test(f)) return base("plenary_debate", { chamber: chamberOfAdoption(f) });
+  if (/^(legea|proiectul|propunerea)\b.*(adoptat|adoptata) (de|ca urmare)/.test(f) || /^adoptat(a)? de (catre )?(camera deputatilor|senat)/.test(f)) return base("adopted", { chamber: chamberOfAdoption(f.replace(/^.*?adoptat(a)? de (catre )?/, "")), vote: voteCounts(f) });
+  if (/^dezbatere(a)? /.test(f)) return base("plenary_debate", { chamber: chamberOfAdoption(f) });
   if (/inscris pe ordinea de zi/.test(f)) return base("agenda_scheduled", { chamber: chamberOfAdoption(f) });
 
   // The Government.
   if (/^(solicitare|trimis pentru) (punct de vedere|informare|fisa financiara)( de la| la) guvern|trimis pentru punct de vedere la guvern/.test(f)) return base("government_view_requested", { institution: "Guvernul României" });
   if (/^primire punct de vedere de la guvern/.test(f)) return base("government_view_received", { institution: "Guvernul României", verdict: verdictFrom(f), documentNumber: f.match(/cu nr\.?\s*([^\s(]+)/)?.[1] });
+  const viewFrom = f.match(/^(solicitare punct de vedere de la|trimis pentru punct de vedere la) (.+)$/);
+  if (viewFrom) return base("opinion_requested", { institution: squash(text.slice(f.length - viewFrom[2]!.length)) });
+  const viewReceived = f.match(/^primire punct de vedere de la (.+?)(?:\s+-\s+cu nr\.?\s*(.+?))?\s*$/);
+  if (viewReceived) return base("opinion_received", { institution: squash(text.slice(f.indexOf(viewReceived[1]!), f.indexOf(viewReceived[1]!) + viewReceived[1]!.length)), documentNumber: viewReceived[2] ? squash(text.slice(f.length - viewReceived[2].length)) : undefined });
 
   // Competence (which chamber is first): an opinion of a committee and the plenary's decision.
-  if (/stabilirii competentei|trimiterea initiativei legislative la camera deputatilor, ca prima|competentei privind|solicitarea comisiei .* de transmitere/.test(f) || /^primit de la senat.*prima camera/.test(f)) {
+  if (/stabilirii competentei|avizarea competentei|trimiterea (initiativei|propunerii) legislative la camera deputatilor, ca prima|competentei privind|solicitarea comisiei .* de transmitere/.test(f) || /^primit de la senat.*prima camera/.test(f)) {
     return base("competence_decision", { committee: committeeIn(text) });
   }
 
   // Committees, named inside the sentence (the Senate) or in a list below it (the Chamber).
+  const topic = f.match(/^trimis pentru (raport suplimentar|raport|aviz) privind .*?,? la (comisia .*)$/);
+  if (topic) {
+    const name = squash(text.slice(f.length - topic[2]!.length).replace(/\s*\((termen|TERMEN):[^)]*\)\s*$/, ""));
+    return base(topic[1]!.startsWith("raport") ? "sent_to_committee" : "committee_opinion_requested", { committee: name });
+  }
   const sentFor = f.match(/^-?\s*trimis pentru (raport suplimentar|raport|aviz) la:?\s*(.*)$/);
   if (sentFor) {
     const rest = sentFor[2]!;
@@ -139,15 +158,17 @@ export function typeStepWording(original: string): TypedWording {
     return base(isReport ? "committee_report_received" : isCommittee(name) ? "committee_opinion_received" : "opinion_received", { [isCommittee(name) || isReport ? "committee" : "institution"]: name, documentNumber: named[4], verdict });
   }
 
+  // The Constitutional Court: a referral (with its author) or a decision.
+  if (/sesizare de neconstitutionalitate|curt(ea|ii) constitutional/.test(f)) return base("constitutional_review");
+
   // The urgency procedure.
-  if (/procedura de urgenta/.test(f) && !/^prezentare/.test(f)) return base(/a fost aprobata|aprobat/.test(f) ? "urgency_decided" : "urgency_requested");
+  if (/procedur(a|ii) de urgenta/.test(f) && !/^prezentare/.test(f)) return base(/a fost aprobata|aprobarea|aprobat/.test(f) ? "urgency_decided" : "urgency_requested");
 
   // Arrival and registration.
   if (/^(- )?(inregistrat la senat|inregistrat la camera deputatilor)/.test(f)) return base("registered", { chamber: chamberOfAdoption(f.replace(/^- /, "").replace(/^inregistrat la /, "")) });
-  if (/^prezentare in biroul permanent|^cu nr\.l\d+ prezentare in biroul permanent|^biroul permanent aproba|^primit de la senat/.test(f)) return base("registered");
+  if (/^prezentare in birou|^cu nr\.l\d+ prezentare in biroul permanent|^biroul permanent aproba|^primit de la senat/.test(f)) return base("registered");
   if (/^inaintat la senat|^trimis la senat/.test(f)) return base("sent_to_senate");
   if (/^inaintat la camera|^trimis la camera/.test(f)) return base("sent_to_deputies");
-  if (/^se aproba completarea listei de initiatori/.test(f)) return base("other");
 
   return { type: "other", recognised: false, ...counts, ...(deadlineOn ? { deadlineOn } : {}) };
 }
