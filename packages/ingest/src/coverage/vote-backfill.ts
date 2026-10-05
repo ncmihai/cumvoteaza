@@ -81,6 +81,8 @@ export function officialVoteUrl(record: Pick<OfficialVoteRecord, "source" | "off
 
 export interface GateInput {
   official: OfficialVoteRecord;
+  /** The page itself has no name rows at all (empty tables): totals-only vote, e.g. a secret ballot. Totals must still match the official list. */
+  sourcePublishesNoNames?: boolean;
   /** A hand-checked shortfall in the source's own name list (data/curated/vote-name-list-exceptions.json). */
   nameListShortBy?: { for?: number; against?: number; abstention?: number };
   /** "parsed" means the page's own totals agreed with its name list; "partial" and "failed" come with warnings. */
@@ -95,7 +97,7 @@ export interface GateInput {
 }
 
 /** Why a parsed vote page must not be written yet; an empty list means it passes every gate. */
-export function checkVoteGate({ official, parsedStatus, parsed, nameListShortBy }: GateInput): string[] {
+export function checkVoteGate({ official, parsedStatus, parsed, nameListShortBy, sourcePublishesNoNames }: GateInput): string[] {
   const reasons: string[] = [];
   if (parsedStatus === "failed") reasons.push(`page could not be read${parsed.warnings.length ? `: ${parsed.warnings.join(" ")}` : ""}`);
   else if (parsedStatus !== "parsed") reasons.push(`page parsed with warnings: ${parsed.warnings.join(" ") || parsedStatus}`);
@@ -109,6 +111,7 @@ export function checkVoteGate({ official, parsedStatus, parsed, nameListShortBy 
     ["present, did not vote", parsed.totals.presentNotVoting, official.totals.notVoting]
   ];
   for (const [label, page, list] of pairs) if (page !== list) reasons.push(`${label}: page ${page}, official list ${list}`);
+  if (sourcePublishesNoNames && parsed.choices.length === 0) return reasons;
   const count = (choice: string) => parsed.choices.filter((item) => item === choice).length;
   for (const [label, choice, total] of [["for", "for", parsed.totals.for], ["against", "against", parsed.totals.against], ["abstention", "abstention", parsed.totals.abstention]] as const) {
     const allowed = nameListShortBy?.[choice] ?? 0;

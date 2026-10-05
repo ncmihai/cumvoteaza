@@ -5,6 +5,7 @@ import * as schema from "@cumsevoteaza/db";
 import { runIntegrityChecks } from "../integrity/checks";
 import { canonicalizeOfficialUrl } from "../official-urls";
 import { parseChamberNominalVote } from "../parsers/chamber-vote";
+import * as cheerio from "cheerio";
 import { parseSenateVote } from "../parsers/senate-vote";
 import { persistChamberVote, persistSenateVote } from "../persist";
 import { refreshReadModels } from "../read-models";
@@ -49,6 +50,8 @@ export interface VoteBackfillResult {
   written: number;
   held: Array<{ source: string; officialId: string; date: string; url: string; reasons: string[] }>;
   /** Pages that cannot be imported as votes because the source publishes no per-member choices (attendance checks). */
+  /** Votes written with totals only: the source page publishes no names (empty tables). */
+  totalsOnly: Array<{ source: string; officialId: string; date: string; label: string }>;
   unsupported: Array<{ source: string; officialId: string; date: string; url: string; reason: string; officialTotals: OfficialVoteRecord["totals"]; label: string }>;
   stopped?: string;
   integrity?: { before: Record<string, number>; after: Record<string, number>; worse: string[]; grew: string[] };
@@ -86,6 +89,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
     passedGates: 0,
     written: 0,
     held: [],
+    totalsOnly: [],
     unsupported: [],
     summaries: 0,
     reportFile: ""
@@ -142,6 +146,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
         }
         reasons.push(...prepared.reasons);
         write = prepared.write;
+        if (!prepared.reasons.length && prepared.totalsOnly) result.totalsOnly.push({ source: record.source, officialId: record.officialId, date: record.date, label: record.label });
       } catch (error) {
         reasons.push(`page could not be read: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -184,7 +189,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
 }
 
 /** Parses one saved page and says what is wrong with it, or how to write it. */
-function prepare(record: OfficialVoteRecord, html: string, url: string, nameListShortBy?: { for?: number; against?: number; abstention?: number }): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string } {
+function prepare(record: OfficialVoteRecord, html: string, url: string, nameListShortBy?: { for?: number; against?: number; abstention?: number }): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string; totalsOnly?: boolean } {
   if (record.source === "cdep") {
     const parsed = parseChamberNominalVote(html, canonicalizeOfficialUrl(url));
     if (parsed.individualVotes.length === 0 && parsed.warnings.some((warning) => /^Attendance check lists names without votes/.test(warning))) {
@@ -199,13 +204,17 @@ function prepare(record: OfficialVoteRecord, html: string, url: string, nameList
     return { reasons, write: () => persistChamberVote(parsed) };
   }
   const parsed = parseSenateVote(html, url);
+  // A page whose name tables have no body rows at all publishes no names (observed: a simple motion and an ANI appointment).
+  const $ = cheerio.load(html);
+  const sourcePublishesNoNames = $(".plenary-votes table").length > 0 && $(".plenary-votes table tbody tr").length === 0;
   const reasons = checkVoteGate({
     official: record,
     nameListShortBy,
+    sourcePublishesNoNames,
     parsedStatus: parsed.sourceSnapshot.status,
     parsed: { chamber: parsed.vote.chamber, heldOn: parsed.vote.heldOn, totals: parsed.vote.totals, choices: parsed.individualVotes.map((vote) => vote.choice), warnings: [] }
   });
-  return { reasons, write: () => persistSenateVote(parsed) };
+  return { reasons, write: () => persistSenateVote(parsed), totalsOnly: sourcePublishesNoNames && parsed.individualVotes.length === 0 };
 }
 
 /** One summary row per joint sitting that has summarised votes (D-022); recomputed from the official lists every time. */

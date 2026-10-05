@@ -124,6 +124,14 @@ describe("checkVoteGate", () => {
     expect(checkVoteGate({ ...good, nameListShortBy: { for: 1 } })[0]).toMatch(/name list has 157 "for", totals say 157 \(a shortfall of 1/);
   });
 
+  it("accepts a vote whose source publishes no names at all, as long as the totals match, and still holds a page that has names the parser lost", () => {
+    const noNames: GateInput = { ...good, parsed: { ...good.parsed, choices: [] } };
+    expect(checkVoteGate(noNames)).not.toEqual([]);
+    expect(checkVoteGate({ ...noNames, sourcePublishesNoNames: true })).toEqual([]);
+    expect(checkVoteGate({ ...noNames, sourcePublishesNoNames: true, parsed: { ...noNames.parsed, totals: { ...good.parsed.totals, for: 150 } } })).toEqual([expect.stringContaining("for: page 150")]);
+    expect(checkVoteGate({ ...good, sourcePublishesNoNames: true, parsed: { ...good.parsed, choices: good.parsed.choices.slice(1) } })).not.toEqual([]);
+  });
+
   it("builds the official page address of a vote", () => {
     expect(officialVoteUrl({ source: "cdep", officialId: "37398" })).toBe("https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=37398");
     expect(officialVoteUrl({ source: "senate", officialId: "abc" })).toBe("https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=abc");
