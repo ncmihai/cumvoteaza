@@ -35,6 +35,14 @@ export function dossierPageIsReal(source: DossierSource, text: string): boolean 
   return PAGE_MARKER[source].test(text);
 }
 
+/** One Senate page from its number ("L673/2023"), for bills the saved yearly lists do not name (registered at the Senate in an earlier year). */
+export function senateItemFromNumber(number: string): DossierItem | undefined {
+  const match = number.trim().match(/^([A-Z]+)(\d+)\/(\d{4})$/i);
+  if (!match) return undefined;
+  const letters = match[1]!.toUpperCase();
+  return { source: "senate", key: `${letters}${match[2]}-${match[3]}`, url: `https://www.senat.ro/Legis/Lista.aspx?an_cls=${match[3]}&nr_cls=${letters}${match[2]}`, officialId: `${letters}${match[2]}/${match[3]}`, year: Number(match[3]), rank: Number(match[2]) };
+}
+
 /** The bill pages named by the saved yearly lists of both chambers. Offline. */
 export async function dossierItemsFromLists(cache: RawCache, years: number[], sources: DossierSource[]): Promise<{ items: DossierItem[]; missingLists: string[] }> {
   const items: DossierItem[] = [];
@@ -114,6 +122,8 @@ export interface DossierFetchOptions {
   refresh?: boolean;
   /** Skip the Chamber pages of bills whose Senate page is saved (see `chamberNumbersNamedBySenatePages`). */
   uncoveredOnly?: boolean;
+  /** Senate numbers ("L673/2023") to fetch in addition to the listed ones (bills the yearly lists do not name). */
+  extraSenate?: string[];
   dryRun?: boolean;
   log?: (line: string) => void;
 }
@@ -139,7 +149,9 @@ export async function fetchBillDossiers(options: DossierFetchOptions): Promise<D
   const listed = await dossierItemsFromLists(cache, options.years, options.sources);
   const missingLists = listed.missingLists;
   const covered = options.uncoveredOnly ? await chamberNumbersNamedBySenatePages(cache) : undefined;
-  const items = covered ? listed.items.filter((item) => item.source !== "cdep" || !covered.has(chamberNumberKey(item.officialId))) : listed.items;
+  const known = covered ? listed.items.filter((item) => item.source !== "cdep" || !covered.has(chamberNumberKey(item.officialId))) : listed.items;
+  const extra = options.sources.includes("senate") ? (options.extraSenate ?? []).map(senateItemFromNumber).filter((item): item is DossierItem => Boolean(item) && !known.some((other) => other.source === "senate" && other.key === item!.key)) : [];
+  const items = [...known, ...extra];
   const saved: Record<DossierSource, Set<string>> = { cdep: new Set(await cache.keys("cdep-bill")), senate: new Set(await cache.keys("senate-bill")) };
   const only = options.only?.length ? new Set(options.only.map((value) => value.toLowerCase().replace(/\s+/g, ""))) : undefined;
   const plan = planDossierFetch({ items, saved, limit: options.limit, only, refresh: options.refresh });

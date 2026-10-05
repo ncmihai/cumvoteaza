@@ -18,6 +18,7 @@ import { repairCrossLegislatureMembers } from "./identity/cross-legislature-repa
 import { fetchChamberBureau, importChamberBureau } from "./leadership/run-chamber-bureau";
 import { fetchSenateCards, importSenateCards } from "./leadership/run-senate-cards";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
+import { legislatieToken, lawGazette, searchActs } from "./dossiers/gazette-lookup";
 import { importBillDossiers } from "./dossiers/import";
 import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillDossierFetch, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
@@ -453,16 +454,34 @@ async function main() {
     // Sprint 7 (F3, D36): one page per bill dossier named by the saved yearly lists, saved raw under data/coverage/raw
     // (cdep-bill, senate-bill), newest first, resumable. Plan only without --live. Stops on a captcha, a 403/429 or the request cap.
     const sources = (flag("source") ?? "cdep,senate").split(",").map((item) => item.trim()).filter((item): item is "cdep" | "senate" => item === "cdep" || item === "senate");
+    // --gazette-gap: the Senate pages of promulgated laws that still have no Official Gazette number (the Senate page prints it): fetched when missing,
+    // fetched again when saved before the law was published. --senate-numbers=L673/2023,... names Senate pages outside the yearly lists the same way.
+    let extraSenate = listFlag("senate-numbers") ?? [];
+    let only = listFlag("only");
+    let refresh = hasFlag("refresh");
+    if (hasFlag("gazette-gap")) {
+      const session = createDbSession();
+      try {
+        const rows = await session.db.execute<{ senate_l: string }>(sql`select b.identifiers->>'senate_l' as senate_l from bill_dossiers d join bills b on b.id = d.bill_id where d.outcome = 'promulgated' and d.gazette_number is null and b.identifiers->>'senate_l' is not null`);
+        extraSenate = [...new Set([...extraSenate, ...[...rows].map((row) => row.senate_l)])];
+      } finally {
+        await session.close();
+      }
+      only = extraSenate;
+      refresh = true;
+      console.log(`${extraSenate.length} promulgated laws without a gazette number have a Senate number: ${extraSenate.join(", ")}`);
+    }
     const result = await runBillDossierFetch({
       repoRoot,
       years: numberListFlag("years") ?? [2024, 2025, 2026],
       sources,
       live: hasFlag("live"),
       limit: numberFlag("limit"),
-      only: listFlag("only"),
+      only,
+      extraSenate,
       maxRequests: numberFlag("max-requests") ?? 250,
       delayMs: numberFlag("delay-ms") ?? 3000,
-      refresh: hasFlag("refresh"),
+      refresh,
       uncoveredOnly: hasFlag("uncovered-only"),
       log: (line) => console.log(line)
     });
@@ -470,6 +489,38 @@ async function main() {
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request the pages (3 s apart, newest first, at most --max-requests per run).");
     // Spending the run's request budget is normal (the next run resumes); a captcha or a pile of failures is not, so a shell loop stops there.
     if (result.stopped && result.stoppedReason !== "budget") process.exitCode = 1;
+    return;
+  }
+
+  if (command === "bills:gazette:fill") {
+    // Sprint 7 (D36): the Official Gazette number of promulgated laws whose dossier pages do not print it (a Chamber-only page, or a law published after
+    // the page was saved), from legislatie.just.ro's search by law number and year. The law's own date must equal the promulgation date or nothing is written.
+    // Dry run unless --persist; one request per law, --delay-ms apart.
+    const session = createDbSession();
+    try {
+      const rows = [...(await session.db.execute<{ bill_id: string; law_number: string; law_year: number; decree_on: string | null }>(sql`
+        select d.bill_id, d.law_number, d.law_year, d.decree_on::text as decree_on from bill_dossiers d
+        where d.outcome = 'promulgated' and d.gazette_number is null and d.law_number is not null and d.law_year is not null
+        order by d.law_year, d.law_number::int`))];
+      const token = rows.length ? await legislatieToken() : "";
+      const found: Array<{ bill: string; law: string; gazetteNumber: string; gazetteOn: string }> = [];
+      const notFound: Array<{ bill: string; law: string; reason: string }> = [];
+      for (const row of rows) {
+        const law = `${row.law_number}/${row.law_year}`;
+        await new Promise((resolve) => setTimeout(resolve, numberFlag("delay-ms") ?? 1500));
+        const gazette = lawGazette(await searchActs(token, row.law_year, row.law_number), row.law_number);
+        if (!gazette) notFound.push({ bill: row.bill_id, law, reason: "no published law with that number and year yet" });
+        else if (row.decree_on && gazette.lawOn !== row.decree_on.slice(0, 10)) notFound.push({ bill: row.bill_id, law, reason: `the law is dated ${gazette.lawOn}, the promulgation decree ${row.decree_on.slice(0, 10)}` });
+        else found.push({ bill: row.bill_id, law, gazetteNumber: gazette.gazetteNumber, gazetteOn: gazette.gazetteOn });
+      }
+      if (hasFlag("persist")) {
+        for (const item of found) await session.db.execute(sql`update bill_dossiers set gazette_number = ${item.gazetteNumber}, gazette_on = ${item.gazetteOn}::date where bill_id = ${item.bill} and gazette_number is null`);
+      }
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), withoutGazette: rows.length, found, notFound }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write, then npm run ingest:refresh-read-models.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

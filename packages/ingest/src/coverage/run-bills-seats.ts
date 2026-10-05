@@ -47,6 +47,7 @@ export async function runBillDossierFetch(options: {
   only?: string[];
   refresh?: boolean;
   uncoveredOnly?: boolean;
+  extraSenate?: string[];
   log?: (line: string) => void;
 }): Promise<DossierFetchResult> {
   return fetchBillDossiers({
@@ -58,6 +59,7 @@ export async function runBillDossierFetch(options: {
     only: options.only,
     refresh: options.refresh,
     uncoveredOnly: options.uncoveredOnly,
+    extraSenate: options.extraSenate,
     dryRun: !options.live,
     log: options.log
   });

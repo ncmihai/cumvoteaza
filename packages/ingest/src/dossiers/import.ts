@@ -292,7 +292,8 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
         await tx
           .insert(schema.billDossiers)
           .values(row)
-          .onConflictDoUpdate({ target: schema.billDossiers.billId, set: { ...row, billId: undefined } });
+          // A gazette number the pages do not print may have been filled in from legislatie.just.ro (bills:gazette:fill): a read of the pages must not erase it.
+          .onConflictDoUpdate({ target: schema.billDossiers.billId, set: { ...row, billId: undefined, gazetteNumber: sql`coalesce(excluded.gazette_number, bill_dossiers.gazette_number)`, gazetteOn: sql`coalesce(excluded.gazette_on, bill_dossiers.gazette_on)` } });
         for (const link of plan.voteLinks) {
           await tx.execute(sql`update votes set bill_id = ${link.billId} where id = ${link.voteId} and (bill_id is null${link.replaces ? sql` or bill_id = ${link.replaces}` : sql``})`);
           written.votesLinked += 1;
