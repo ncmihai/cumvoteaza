@@ -48,6 +48,7 @@
     "ingest:votes:coverage": "npm --workspace @cumsevoteaza/ingest run votes:coverage --",
     "ingest:votes:backfill": "npm --workspace @cumsevoteaza/ingest run votes:backfill --",
     "ingest:discoveries:triage": "npm --workspace @cumsevoteaza/ingest run discoveries:triage --",
+    "ingest:identity:repair-cross-legislature": "npm --workspace @cumsevoteaza/ingest run identity:repair-cross-legislature --",
     "ingest:leadership:bureau:fetch": "npm --workspace @cumsevoteaza/ingest run leadership:bureau:fetch --",
     "ingest:leadership:bureau:import": "npm --workspace @cumsevoteaza/ingest run leadership:bureau:import --",
     "ingest:leadership:senate-cards:fetch": "npm --workspace @cumsevoteaza/ingest run leadership:senate-cards:fetch --",

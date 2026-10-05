@@ -34,6 +34,7 @@
     "votes:coverage": "tsx src/cli.ts votes:coverage",
     "votes:backfill": "tsx src/cli.ts votes:backfill",
     "discoveries:triage": "tsx src/cli.ts discoveries:triage",
+    "identity:repair-cross-legislature": "tsx src/cli.ts identity:repair-cross-legislature",
     "leadership:bureau:fetch": "tsx src/cli.ts leadership:bureau:fetch",
     "leadership:bureau:import": "tsx src/cli.ts leadership:bureau:import",
     "leadership:senate-cards:fetch": "tsx src/cli.ts leadership:senate-cards:fetch",

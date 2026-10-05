@@ -88,6 +88,7 @@ async function loadPersonReferences(db: DbClient): Promise<Set<string>> {
     select person_id from government_roles
     union select prime_minister_person_id from governments where prime_minister_person_id is not null
     union select person_id from composition_events where person_id is not null
+    union select designee_person_id from government_formation_attempts
   `);
   return new Set(rows.map((row) => row.person_id));
 }
@@ -150,6 +151,7 @@ async function applyIdentityPlan(db: DbClient, plan: IdentityPlan) {
     await db.execute(sql`update government_roles set person_id = ${alias.canonicalId} where person_id = ${alias.aliasId}`);
     await db.execute(sql`update governments set prime_minister_person_id = ${alias.canonicalId} where prime_minister_person_id = ${alias.aliasId}`);
     await db.execute(sql`update composition_events set person_id = ${alias.canonicalId} where person_id = ${alias.aliasId}`);
+    await db.execute(sql`update government_formation_attempts set designee_person_id = ${alias.canonicalId} where designee_person_id = ${alias.aliasId}`);
     await db.execute(sql`update member_legislature_activity set person_id = ${alias.canonicalId} where person_id = ${alias.aliasId}`);
   }
   // Aliases are only useful if the retired row is gone; nothing references it any more.
@@ -161,6 +163,7 @@ async function applyIdentityPlan(db: DbClient, plan: IdentityPlan) {
       and not exists (select 1 from government_roles where person_id = people.id)
       and not exists (select 1 from governments where prime_minister_person_id = people.id)
       and not exists (select 1 from composition_events where person_id = people.id)
+      and not exists (select 1 from government_formation_attempts where designee_person_id = people.id)
       and not exists (select 1 from member_legislature_activity where person_id = people.id)`);
   }
 }

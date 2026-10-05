@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { upsertIndividualVoteRows } from "./individual-vote-rows";
+import { isCrossLegislatureAlias } from "./identity/legislature-tag";
 import { createDbSession, type DbClient, type DbSession } from "@cumsevoteaza/db";
 import * as schema from "@cumsevoteaza/db";
 import type {
@@ -299,7 +300,10 @@ async function canonicalRosterMembers(db: Db, parsed: ParsedRoster): Promise<Par
   if (ids.length === 0) return parsed;
   const rows = await db.select().from(schema.idAliases).where(and(eq(schema.idAliases.kind, "member"), inArray(schema.idAliases.aliasId, ids)));
   if (rows.length === 0) return parsed;
-  const aliases = new Map(rows.map((row) => [row.aliasId, row.canonicalId]));
+  // Only aliases inside one legislature: CDEP reuses member numbers per legislature, so `member-deputies-336` (2024) must
+  // not become `member-deputies-2020-336`, whatever an earlier vote repair recorded.
+  const aliases = new Map(rows.filter((row) => !isCrossLegislatureAlias(row.aliasId, row.canonicalId)).map((row) => [row.aliasId, row.canonicalId]));
+  if (aliases.size === 0) return parsed;
   // IDs embed the member ID (mandate-<member>-..., group-membership-<member>-...), so rewrite whole tokens.
   const pattern = new RegExp(`(${[...aliases.keys()].map(escapeRegExp).join("|")})(?![0-9a-z])`, "g");
   const rewritten = JSON.parse(JSON.stringify(parsed).replace(pattern, (id) => aliases.get(id)!)) as ParsedRoster;

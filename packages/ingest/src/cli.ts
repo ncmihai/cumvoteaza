@@ -14,6 +14,7 @@ import { runCoverageFetch } from "./coverage/run-fetch";
 import { runCoverageReport } from "./coverage/run-report";
 import { runVoteBackfill } from "./coverage/run-vote-backfill";
 import { runDiscoveryTriage } from "./discovery-triage";
+import { repairCrossLegislatureMembers } from "./identity/cross-legislature-repair";
 import { fetchChamberBureau, importChamberBureau } from "./leadership/run-chamber-bureau";
 import { fetchSenateCards, importSenateCards } from "./leadership/run-senate-cards";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
@@ -534,6 +535,14 @@ async function main() {
     // Sprint 6 (D37): saved senator cards -> member_official_activity and dated Permanent Bureau roles. Offline; dry run unless --persist.
     console.log(JSON.stringify(await importSenateCards({ repoRoot, persist: hasFlag("persist") }), null, 2));
     if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write.");
+    return;
+  }
+
+  if (command === "identity:repair-cross-legislature") {
+    // Data of the current legislature written onto a member of an earlier one (an alias followed across legislatures, 2026-10-05).
+    // Dry run unless --persist; then re-import the roster (cdep-history:import --legislature=2024) and the affected votes (votes:backfill --ids=...).
+    console.log(JSON.stringify(await repairCrossLegislatureMembers({ persist: hasFlag("persist") }), null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to remove it.");
     return;
   }
 
