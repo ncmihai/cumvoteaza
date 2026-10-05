@@ -292,7 +292,8 @@ def run_crawl(args: argparse.Namespace) -> None:
             profile_queue.extend(item["url"] for item in parsed_roster["profiles"])
 
     concurrency = max(1, min(8, int(args.concurrency or 1)))
-    while profile_queue:
+    blocked = False
+    while profile_queue and not blocked:
         batch = next_profile_batch(profile_queue, seen_profile_urls, seen_profile_keys, args.limit_profiles, len(profile_records), concurrency)
         if not batch:
             break
@@ -306,6 +307,8 @@ def run_crawl(args: argparse.Namespace) -> None:
                     parsed_profile = future.result()
                 except Exception as error:
                     profile_failures.append(profile_failure_record(futures[future], error))
+                    if isinstance(error, ChallengePage):
+                        blocked = True
                     continue
                 profile_records.append(parsed_profile)
                 if parsed_profile["profileKey"]:
@@ -387,6 +390,18 @@ def roster_urls(legislature_flag: str, chamber_flag: str, include_reelected: boo
     return rows
 
 
+class ChallengePage(Exception):
+    """CDEP answered with its bot-protection page ("Security check ... Captcha") instead of the content."""
+
+
+def is_challenge_page(text: str) -> bool:
+    if len(text) >= 60_000:
+        return False
+    if re.search(r"the url you requested has been blocked", text, re.I):
+        return True
+    return bool(re.search(r"security check", text, re.I)) and bool(re.search(r"captcha", text, re.I))
+
+
 def network_url(canonical: str) -> str:
     """cdep.ro redirects to www.cdep.ro and, since October 2026, answers HTTP 500 to our client on the bare host.
     Requests go to www; the cache key stays the canonical URL so every saved page is still found."""
@@ -412,6 +427,9 @@ def fetch_or_read(url: str, raw_dir: Path, delay: float, refresh: bool, insecure
             charset = detect_charset(body, headers.get("Content-Type", ""))
             text = body.decode(charset, errors="replace")
             status = getattr(response, "status", 200)
+        if is_challenge_page(text):
+            # Never saved: it would replace a good page (a refresh) or pose as a profile.
+            raise ChallengePage(f"security check page instead of {canonical}")
     except urllib.error.URLError as error:
         snapshot = {
             "url": canonical,

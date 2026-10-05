@@ -68,6 +68,38 @@ class CrawlSafetyTests(unittest.TestCase):
                     probe.fetch_or_read("https://cdep.ro/ords/pls/parlam/structura.mp?cam=2&idm=9&leg=2024", raw, 0, False, False)
             self.assertEqual([json.loads(path.read_text())["status"] for path in raw.glob("*.json")], ["failed"])
 
+    def test_a_security_check_page_is_never_saved_and_never_replaces_a_good_page(self):
+        challenge = "<html><body><h1>Security check</h1>Please enter the above result to continue Captcha Result: <input></body></html>"
+        self.assertTrue(probe.is_challenge_page(challenge))
+        self.assertTrue(probe.is_challenge_page("<html><title>The URL you requested has been blocked</title>block Captcha Failed! You entered an invaild Captcha code.</html>"))
+        self.assertFalse(probe.is_challenge_page("<html>VOT ELECTRONIC " + "x" * 100 + "</html>"))
+        self.assertFalse(probe.is_challenge_page("Security check " * 6000 + "captcha"))  # a long real page that merely mentions it
+        with tempfile.TemporaryDirectory() as folder:
+            raw = Path(folder)
+            url = "https://cdep.ro/ords/pls/parlam/structura.mp?cam=2&idm=63&leg=2024"
+            import hashlib
+            stem = hashlib.sha256(probe.canonical_url(url).encode("utf-8")).hexdigest()
+            (raw / f"{stem}.html").write_text("<html>good profile</html>", encoding="utf-8")
+            (raw / f"{stem}.json").write_text(json.dumps({"status": 200}), encoding="utf-8")
+
+            class Reply:
+                status = 200
+                headers = {"Content-Type": "text/html; charset=UTF-8"}
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    return False
+
+                def read(self):
+                    return challenge.encode("utf-8")
+
+            with mock.patch("urllib.request.urlopen", return_value=Reply()):
+                with self.assertRaises(probe.ChallengePage):
+                    probe.fetch_or_read(url, raw, 0, True, False)
+            self.assertEqual((raw / f"{stem}.html").read_text(encoding="utf-8"), "<html>good profile</html>")
+
 
 if __name__ == "__main__":
     unittest.main()

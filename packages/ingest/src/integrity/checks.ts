@@ -25,12 +25,13 @@ export const checks: Check[] = [
   {
     name: "overlapping_party_affiliations",
     severity: "error",
-    description: "A member belongs to two parties at the same time.",
+    description: "A member belongs to two parties at the same time (\"independent\" and \"no adherence to the party they ran for\" are both no party, so they may overlap).",
     query: sql`
       select a.member_id, a.party_id, a.starts_on::text, a.ends_on::text, b.party_id as other_party, b.starts_on::text as other_start
       from member_party_affiliations a join member_party_affiliations b
         on a.member_id = b.member_id and a.id < b.id
-       and a.starts_on < coalesce(b.ends_on, '9999-12-31') and b.starts_on < coalesce(a.ends_on, '9999-12-31')`
+       and a.starts_on < coalesce(b.ends_on, '9999-12-31') and b.starts_on < coalesce(a.ends_on, '9999-12-31')
+      where not (a.party_id ~ '-(independent|fara-adeziune[a-z-]*)$' and b.party_id ~ '-(independent|fara-adeziune[a-z-]*)$')`
   },
   {
     name: "group_membership_outside_mandates",
