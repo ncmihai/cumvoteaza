@@ -50,8 +50,8 @@ export interface VoteBackfillResult {
   written: number;
   held: Array<{ source: string; officialId: string; date: string; url: string; reasons: string[] }>;
   /** Pages that cannot be imported as votes because the source publishes no per-member choices (attendance checks). */
-  /** Senate votes accepted because the page lists exactly one "for" name fewer than it announces and its raw row count equals present minus one; recorded in the curated exceptions file. */
-  autoExceptions: Array<{ officialId: string; date: string; present: number; nameRows: number }>;
+  /** Senate votes accepted because the page lists exactly one name fewer than it announces in one choice, with its raw row count equal to present minus one; recorded in the curated exceptions file. */
+  autoExceptions: Array<{ officialId: string; date: string; present: number; nameRows: number; choice: string }>;
   /** Votes written with totals only: the source page publishes no names (empty tables). */
   totalsOnly: Array<{ source: string; officialId: string; date: string; label: string }>;
   unsupported: Array<{ source: string; officialId: string; date: string; url: string; reason: string; officialTotals: OfficialVoteRecord["totals"]; label: string }>;
@@ -151,8 +151,8 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
         write = prepared.write;
         if (prepared.autoException) {
           // Recorded before the write so the integrity check that follows already counts it as explained.
-          if (options.persist) appendNameListExceptions([{ source: "senate", officialId: record.officialId.toLowerCase(), voteId: prepared.autoException.voteId, date: record.date, shortBy: { for: 1 }, verifiedOn: new Date().toISOString().slice(0, 10), evidence: `${url} (automatic: ${prepared.autoException.nameRows} name rows counted on the raw page, ${prepared.autoException.present} present)` }]);
-          result.autoExceptions.push({ officialId: record.officialId, date: record.date, present: prepared.autoException.present, nameRows: prepared.autoException.nameRows });
+          if (options.persist) appendNameListExceptions([{ source: "senate", officialId: record.officialId.toLowerCase(), voteId: prepared.autoException.voteId, date: record.date, shortBy: { [prepared.autoException.choice]: 1 }, verifiedOn: new Date().toISOString().slice(0, 10), evidence: `${url} (automatic: ${prepared.autoException.nameRows} name rows counted on the raw page, ${prepared.autoException.present} present)` }]);
+          result.autoExceptions.push({ officialId: record.officialId, date: record.date, present: prepared.autoException.present, nameRows: prepared.autoException.nameRows, choice: prepared.autoException.choice });
         }
         if (!prepared.reasons.length && prepared.totalsOnly) result.totalsOnly.push({ source: record.source, officialId: record.officialId, date: record.date, label: record.label });
       } catch (error) {
@@ -197,7 +197,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
 }
 
 /** Parses one saved page and says what is wrong with it, or how to write it. */
-function prepare(record: OfficialVoteRecord, html: string, url: string, nameListShortBy?: { for?: number; against?: number; abstention?: number }): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string; totalsOnly?: boolean; autoException?: { voteId: string; present: number; nameRows: number } } {
+function prepare(record: OfficialVoteRecord, html: string, url: string, nameListShortBy?: { for?: number; against?: number; abstention?: number }): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string; totalsOnly?: boolean; autoException?: { voteId: string; present: number; nameRows: number; choice: "for" | "against" | "abstention" } } {
   if (record.source === "cdep") {
     const parsed = parseChamberNominalVote(html, canonicalizeOfficialUrl(url));
     if (parsed.individualVotes.length === 0 && parsed.warnings.some((warning) => /^Attendance check lists names without votes/.test(warning))) {
@@ -224,9 +224,10 @@ function prepare(record: OfficialVoteRecord, html: string, url: string, nameList
   });
   // The source page itself lists one name fewer than it announces: counted on the raw rows, independent of our parser.
   const nameRows = $(".plenary-votes table").last().find("tbody tr").length;
-  const onlyOneForShort = reasons.length === 1 && /^name list has (\d+) "for", totals say (\d+)$/.test(reasons[0]!) && Number(/totals say (\d+)/.exec(reasons[0]!)![1]) - Number(/has (\d+)/.exec(reasons[0]!)![1]) === 1;
-  if (onlyOneForShort && nameRows === parsed.vote.totals.present - 1) {
-    return { reasons: [], write: () => persistSenateVote(parsed), autoException: { voteId: parsed.vote.id, present: parsed.vote.totals.present, nameRows } };
+  const short = reasons.length === 1 ? /^name list has (\d+) "(for|against|abstention)", totals say (\d+)$/.exec(reasons[0]!) : null;
+  if (short && Number(short[3]) - Number(short[1]) === 1 && nameRows === parsed.vote.totals.present - 1) {
+    const choice = short[2] as "for" | "against" | "abstention";
+    return { reasons: [], write: () => persistSenateVote(parsed), autoException: { voteId: parsed.vote.id, present: parsed.vote.totals.present, nameRows, choice } };
   }
   return { reasons, write: () => persistSenateVote(parsed), totalsOnly: sourcePublishesNoNames && parsed.individualVotes.length === 0 };
 }
