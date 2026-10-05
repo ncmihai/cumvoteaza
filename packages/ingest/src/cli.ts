@@ -18,6 +18,7 @@ import { repairCrossLegislatureMembers } from "./identity/cross-legislature-repa
 import { fetchChamberBureau, importChamberBureau } from "./leadership/run-chamber-bureau";
 import { fetchSenateCards, importSenateCards } from "./leadership/run-senate-cards";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
+import { importBillDossiers } from "./dossiers/import";
 import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillDossierFetch, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
 import { runIdentityJob } from "./identity/identity-job";
@@ -467,6 +468,16 @@ async function main() {
     console.log(JSON.stringify({ ...result, failures: result.failures.length ? result.failures : undefined }, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request the pages (3 s apart, newest first, at most --max-requests per run).");
     if (result.stopped) process.exitCode = 1;
+    return;
+  }
+
+  if (command === "bills:dossiers:import") {
+    // Sprint 7 (F3, D36): the saved dossier pages (bills:dossiers:fetch) become steps, initiators linked to members, registration
+    // numbers, urgency, the stage line and the bill's fate. Offline apart from the database. Dry run unless --persist; the report
+    // (data/coverage/reports/bill-dossiers-*.md) lists the wording the typing did not recognise.
+    const result = await importBillDossiers({ repoRoot, persist: hasFlag("persist"), only: listFlag("only"), limit: numberFlag("limit"), batch: numberFlag("batch"), log: (line) => console.log(line) });
+    console.log(JSON.stringify({ ...result, summary: { ...result.summary, unrecognisedWording: result.summary.unrecognisedWording.slice(0, 15), unmatchedSponsorNames: result.summary.unmatchedSponsorNames.slice(0, 10) } }, null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write, then npm run ingest:refresh-read-models.");
     return;
   }
 

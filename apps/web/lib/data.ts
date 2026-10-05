@@ -5,6 +5,7 @@ import * as schema from "@cumsevoteaza/db";
 import tribunalEntitySources from "../../../data/curated/tribunal-political-entity-sources.json";
 import {
   type Bill,
+  type BillDossier,
   type BillEvent,
   type BillProcedureStep,
   type BillSponsor,
@@ -27,6 +28,7 @@ import {
   type ParliamentaryGroup,
   type Party,
   type PoliticalFormationEvent,
+  type StepVerdict,
   type SourceSnapshot,
   type Vote
 } from "@cumsevoteaza/parliament-model";
@@ -83,6 +85,7 @@ export interface BillDirectoryData {
 
 export interface BillPageData {
   bill: Bill;
+  dossier?: BillDossier;
   events: BillEvent[];
   procedureSteps: BillProcedureStep[];
   documents: DocumentSource[];
@@ -641,7 +644,8 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       .limit(1);
     if (!billRow) return undefined;
 
-    const [eventRows, procedureRows, documentRows, voteRows, sponsorRows] = await Promise.all([
+    const [dossierRows, eventRows, procedureRows, documentRows, voteRows, sponsorRows] = await Promise.all([
+      session.db.select().from(schema.billDossiers).where(eq(schema.billDossiers.billId, billRow.id)).limit(1),
       session.db.select().from(schema.billEvents).where(eq(schema.billEvents.billId, billRow.id)),
       session.db.select().from(schema.billProcedureSteps).where(eq(schema.billProcedureSteps.billId, billRow.id)),
       session.db.select().from(schema.documents).where(eq(schema.documents.billId, billRow.id)),
@@ -665,6 +669,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
 
     return {
       bill: mapBill(billRow),
+      dossier: dossierRows[0] ? mapBillDossier(dossierRows[0]) : undefined,
       events,
       procedureSteps: procedureRows
         .map(mapBillProcedureStep)
@@ -1571,8 +1576,37 @@ function mapGroupVoteTotal(row: typeof schema.groupVoteTotals.$inferSelect): Gro
   };
 }
 
+const STEP_VERDICTS = ["favorable", "unfavorable", "favorable_with_amendments", "rejection"] as const;
+function isStepVerdict(value: string | null): value is StepVerdict {
+  return value !== null && (STEP_VERDICTS as readonly string[]).includes(value);
+}
+
+function mapBillDossier(row: typeof schema.billDossiers.$inferSelect): BillDossier {
+  const outcomes = ["in_progress", "promulgated", "rejected", "withdrawn", "ended"] as const;
+  return {
+    billId: row.billId,
+    readAt: row.readAt.toISOString(),
+    sources: row.sources ?? {},
+    registrations: (row.registrations ?? []).filter((item): item is BillDossier["registrations"][number] => ["bpi", "cdep", "senate", "government"].includes(item.body)),
+    initiativeType: row.initiativeType ?? undefined,
+    urgent: row.urgent ?? undefined,
+    stageText: row.stageText ?? undefined,
+    summary: row.summary ?? undefined,
+    tacitDeadline: row.tacitDeadline ?? undefined,
+    outcome: (outcomes as readonly string[]).includes(row.outcome) ? (row.outcome as BillDossier["outcome"]) : "in_progress",
+    outcomeOn: row.outcomeOn ?? undefined,
+    lawNumber: row.lawNumber ?? undefined,
+    lawYear: row.lawYear ?? undefined,
+    decreeNumber: row.decreeNumber ?? undefined,
+    decreeYear: row.decreeYear ?? undefined,
+    decreeOn: row.decreeOn ?? undefined,
+    gazetteNumber: row.gazetteNumber ?? undefined,
+    gazetteOn: row.gazetteOn ?? undefined
+  };
+}
+
 function mapBillSponsor(row: typeof schema.billSponsors.$inferSelect): BillSponsor {
-  const sponsorType = ["member", "government", "group", "unknown"].includes(row.sponsorType)
+  const sponsorType = ["member", "government", "group", "citizens", "other", "unknown"].includes(row.sponsorType)
     ? row.sponsorType as BillSponsor["sponsorType"]
     : "unknown";
   return {
@@ -1580,7 +1614,9 @@ function mapBillSponsor(row: typeof schema.billSponsors.$inferSelect): BillSpons
     billId: row.billId,
     sponsorType,
     memberId: row.memberId ?? undefined,
-    name: row.name
+    name: row.name,
+    groupLabel: row.groupLabel ?? undefined,
+    memberChamber: row.memberChamber === "deputies" || row.memberChamber === "senate" ? row.memberChamber : undefined
   };
 }
 
@@ -1720,7 +1756,7 @@ function mapBillEvent(row: typeof schema.billEvents.$inferSelect): BillEvent {
     billId: row.billId,
     occurredOn: row.occurredOn,
     chamber:
-      row.chamber === "senate" || row.chamber === "deputies" || row.chamber === "joint" || row.chamber === "unknown"
+      row.chamber === "senate" || row.chamber === "deputies" || row.chamber === "joint" || row.chamber === "president" || row.chamber === "unknown"
         ? row.chamber
         : "unknown",
     label: row.label,
@@ -1734,7 +1770,7 @@ function mapBillProcedureStep(row: typeof schema.billProcedureSteps.$inferSelect
     billId: row.billId,
     occurredOn: row.occurredOn,
     chamber:
-      row.chamber === "senate" || row.chamber === "deputies" || row.chamber === "joint" || row.chamber === "unknown"
+      row.chamber === "senate" || row.chamber === "deputies" || row.chamber === "joint" || row.chamber === "president" || row.chamber === "unknown"
         ? row.chamber
         : "unknown",
     stepType: row.stepType,
@@ -1743,7 +1779,22 @@ function mapBillProcedureStep(row: typeof schema.billProcedureSteps.$inferSelect
     committeeName: row.committeeName ?? undefined,
     documentId: row.documentId ?? undefined,
     sourceUrl: row.sourceUrl ?? undefined,
-    displayOrder: row.displayOrder
+    displayOrder: row.displayOrder,
+    source: row.source === "cdep" || row.source === "senate" ? row.source : undefined,
+    institution: row.institution ?? undefined,
+    verdict: isStepVerdict(row.verdict) ? row.verdict : undefined,
+    documentNumber: row.documentNumber ?? undefined,
+    amendmentsAdmitted: row.amendmentsAdmitted ?? undefined,
+    amendmentsRejected: row.amendmentsRejected ?? undefined,
+    deadlineAmendmentsOn: row.deadlineAmendmentsOn ?? undefined,
+    deadlineOn: row.deadlineOn ?? undefined,
+    result:
+      row.resultFor !== null || row.resultAgainst !== null
+        ? { for: row.resultFor ?? undefined, against: row.resultAgainst ?? undefined, abstention: row.resultAbstention ?? undefined, notVoting: row.resultNotVoting ?? undefined }
+        : undefined,
+    voteId: row.voteId ?? undefined,
+    stenogramUrl: row.stenogramUrl ?? undefined,
+    note: row.note ?? undefined
   };
 }
 

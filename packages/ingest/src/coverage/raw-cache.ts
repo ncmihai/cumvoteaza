@@ -87,6 +87,21 @@ export class RawCache {
     return undefined;
   }
 
+  /** The latest manifest line of every saved file of a kind, read once (use this instead of `lastEntry` in a loop). */
+  async entries(kind: RawCacheKind): Promise<Map<string, RawCacheEntry>> {
+    const latest = new Map<string, RawCacheEntry>();
+    try {
+      for (const line of (await readFile(path.join(this.dir, "manifest.jsonl"), "utf8")).split("\n")) {
+        if (!line) continue;
+        const entry = JSON.parse(line) as RawCacheEntry;
+        if (entry.kind === kind) latest.set(entry.key, entry);
+      }
+    } catch {
+      return latest;
+    }
+    return latest;
+  }
+
   async keys(kind: RawCacheKind): Promise<string[]> {
     try {
       const extension = `.${EXTENSIONS[kind]}`;

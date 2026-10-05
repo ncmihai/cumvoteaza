@@ -10,6 +10,7 @@ import { presentBill } from "@/lib/public-presentation";
 import { confidenceForDocument, confidenceForSource } from "@/lib/source-confidence";
 import { ArrowLeft } from "lucide-react";
 import { BillDocumentDiffPanel } from "../../_components/BillDocumentDiffPanel";
+import { BillFatePanel, BillTimeline } from "../../_components/BillDossierPanels";
 import { BillTextSearch } from "../../_components/BillTextSearch";
 import { ConfidenceBadge } from "../../_components/ConfidenceBadge";
 import { EngagementTracker } from "../../_components/EngagementTracker";
@@ -31,7 +32,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
     if (currentSlug && currentSlug !== id) permanentRedirect(`/${rawLocale}/bills/${currentSlug}`);
     notFound();
   }
-  const { bill, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts } = data;
+  const { bill, dossier, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts } = data;
   const [hotCount, comparisons, documentConfidence] = await Promise.all([
     getHotCount("bill", bill.id),
     getBillTextComparisons(bill.id),
@@ -45,8 +46,8 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
   const sponsorPreview = sponsorContexts.slice(0, 6);
   const sponsorGroupMap = new Map<string, typeof sponsorContexts>();
   for (const context of sponsorContexts) {
-    const affiliation = context.party?.shortName ?? context.group?.shortName ?? (context.sponsor.sponsorType === "government" ? (locale === "ro" ? "Guvern" : "Government") : (locale === "ro" ? "Apartenență neidentificată" : "Affiliation not identified"));
-    const chamber = context.group?.chamber ? chamberLabels[locale][context.group.chamber] : (locale === "ro" ? "Cameră neidentificată" : "Chamber not identified");
+    const affiliation = context.party?.shortName ?? context.group?.shortName ?? context.sponsor.groupLabel ?? (context.sponsor.sponsorType === "government" ? (locale === "ro" ? "Guvern" : "Government") : (locale === "ro" ? "Apartenență neidentificată" : "Affiliation not identified"));
+    const chamber = context.group?.chamber ?? context.sponsor.memberChamber ? chamberLabels[locale][(context.group?.chamber ?? context.sponsor.memberChamber)!] : (locale === "ro" ? "Cameră neidentificată" : "Chamber not identified");
     const label = `${affiliation} · ${chamber}`;
     sponsorGroupMap.set(label, [...(sponsorGroupMap.get(label) ?? []), context]);
   }
@@ -75,29 +76,35 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
           </div>
       </DetailPageHeader>
 
-      {sponsorContexts.length ? <section className="mt-5 border border-slate-300 bg-white p-4"><h2 className="font-serif text-xl font-semibold text-[#061a47]">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-[#075fc6] pl-3"><strong className="block [overflow-wrap:anywhere] text-[#061a47]">{sponsor.name}</strong><span className="text-xs text-[#4b608a]">{party?.shortName??group?.shortName??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{group?.chamber?` · ${chamberLabels[locale][group.chamber]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<details className="mt-4 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-[#075fc6]">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</summary><div className="mt-4 space-y-5">{sponsorGroups.map(([label,contexts])=><section key={label}><h3 className="text-xs font-bold uppercase tracking-wide text-[#4b608a]">{label} · {contexts.length}</h3><ul className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">{contexts.map(({sponsor})=><li key={sponsor.id} className="[overflow-wrap:anywhere] text-sm text-[#061a47]">{sponsor.name}</li>)}</ul></section>)}</div></details>:null}</section>:null}
+      {dossier ? <BillFatePanel dossier={dossier} locale={locale} /> : null}
+
+      {sponsorContexts.length ? <section className="mt-5 border border-slate-300 bg-white p-4"><h2 className="font-serif text-xl font-semibold text-[#061a47]">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,member,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-[#075fc6] pl-3"><strong className="block [overflow-wrap:anywhere] text-[#061a47]">{member?<Link className="underline decoration-[#075fc6]/40 underline-offset-2 hover:decoration-[#075fc6]" href={`/${locale}/members/${member.slug}`}>{sponsor.name}</Link>:sponsor.name}</strong><span className="text-xs text-[#4b608a]">{party?.shortName??group?.shortName??sponsor.groupLabel??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{(group?.chamber??sponsor.memberChamber)?` · ${chamberLabels[locale][(group?.chamber??sponsor.memberChamber)!]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<details className="mt-4 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-sm font-semibold text-[#075fc6]">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</summary><div className="mt-4 space-y-5">{sponsorGroups.map(([label,contexts])=><section key={label}><h3 className="text-xs font-bold uppercase tracking-wide text-[#4b608a]">{label} · {contexts.length}</h3><ul className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">{contexts.map(({sponsor,member})=><li key={sponsor.id} className="[overflow-wrap:anywhere] text-sm text-[#061a47]">{member?<Link className="underline decoration-[#075fc6]/40 underline-offset-2 hover:decoration-[#075fc6]" href={`/${locale}/members/${member.slug}`}>{sponsor.name}</Link>:sponsor.name}</li>)}</ul></section>)}</div></details>:null}</section>:null}
 
       <GovernmentContextPanel context={governmentContext} billSponsors={sponsorContexts} locale={locale} />
 
       <section className="mt-6 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-5">
-          <div className="min-w-0 border border-slate-300 bg-white">
-            <div className="border-b border-slate-300 px-4 py-3 font-semibold">{labels.timeline}</div>
-            <div className="divide-y divide-slate-200">
-              {timeline.map((item) => (
-                <div key={item.id} className="grid gap-2 px-4 py-4 md:grid-cols-[140px_1fr]">
-                  <div className="text-sm font-medium text-slate-700">{formatDate(item.occurredOn, locale)}</div>
-                  <div>
-                    <div className="font-medium text-slate-950">{"title" in item ? item.title : item.label}</div>
-                    {"description" in item && item.description ? <div className="mt-1 text-sm text-slate-700">{item.description}</div> : null}
-                    {"committeeName" in item && item.committeeName ? <div className="mt-2 text-sm font-medium text-teal-700">{item.committeeName}</div> : null}
-                    <div className="mt-1 text-sm text-slate-600">{item.chamber}</div>
+          {procedureSteps.some((step) => step.source) ? (
+            <BillTimeline steps={procedureSteps} documents={documents} locale={locale} title={labels.timeline} />
+          ) : (
+            <div className="min-w-0 border border-slate-300 bg-white">
+              <div className="border-b border-slate-300 px-4 py-3 font-semibold">{labels.timeline}</div>
+              <div className="divide-y divide-slate-200">
+                {timeline.map((item) => (
+                  <div key={item.id} className="grid gap-2 px-4 py-4 md:grid-cols-[140px_1fr]">
+                    <div className="text-sm font-medium text-slate-700">{formatDate(item.occurredOn, locale)}</div>
+                    <div>
+                      <div className="font-medium text-slate-950">{"title" in item ? item.title : item.label}</div>
+                      {"description" in item && item.description ? <div className="mt-1 text-sm text-slate-700">{item.description}</div> : null}
+                      {"committeeName" in item && item.committeeName ? <div className="mt-2 text-sm font-medium text-teal-700">{item.committeeName}</div> : null}
+                      <div className="mt-1 text-sm text-slate-600">{item.chamber}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {timeline.length === 0 ? <div className="px-4 py-4 text-sm text-slate-600">{locale === "ro" ? "Traseul legislativ nu este încă disponibil." : "The legislative timeline is not available yet."}</div> : null}
+                ))}
+                {timeline.length === 0 ? <div className="px-4 py-4 text-sm text-slate-600">{locale === "ro" ? "Traseul legislativ nu este încă disponibil." : "The legislative timeline is not available yet."}</div> : null}
+              </div>
             </div>
-          </div>
+          )}
 
           <BillDocumentDiffPanel comparisons={comparisons} locale={locale} />
         </div>

@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   integer,
   index,
@@ -197,7 +198,24 @@ export const billProcedureStepTypeEnum = pgEnum("bill_procedure_step_type", [
   "final_vote",
   "promulgation",
   "constitutional_review",
-  "other"
+  "other",
+  // Sprint 7 (D-025): the dossier pages' own vocabulary.
+  "urgency_requested",
+  "urgency_decided",
+  "government_view_requested",
+  "government_view_received",
+  "opinion_requested",
+  "opinion_received",
+  "agenda_scheduled",
+  "adopted",
+  "rejected",
+  "withdrawn",
+  "procedure_ended",
+  "deadline_extended",
+  "competence_decision",
+  "constitutional_window",
+  "sent_to_president",
+  "published"
 ]);
 
 export const legislatures = pgTable("legislatures", {
@@ -780,7 +798,13 @@ export const billSponsors = pgTable("bill_sponsors", {
   billId: text("bill_id").notNull().references(() => bills.id),
   sponsorType: text("sponsor_type").notNull().default("unknown"),
   memberId: text("member_id").references(() => members.id),
-  name: text("name").notNull()
+  name: text("name").notNull(),
+  /** The group or party label printed beside the name on the bill page ("PSD", "neafiliati"). */
+  groupLabel: text("group_label"),
+  /** "deputies" or "senate" when the page says whether the initiator is a deputy or a senator. */
+  memberChamber: text("member_chamber"),
+  /** Which official page named the initiator: "cdep" (with a profile link) or "senate" (a name). */
+  source: text("source")
 }, (table) => ({
   billIdx: index("bill_sponsors_bill_idx").on(table.billId),
   memberIdx: index("bill_sponsors_member_idx").on(table.memberId)
@@ -831,11 +855,69 @@ export const billProcedureSteps = pgTable("bill_procedure_steps", {
   committeeName: text("committee_name"),
   documentId: text("document_id").references(() => documents.id),
   sourceUrl: text("source_url"),
-  displayOrder: integer("display_order").notNull().default(0)
+  displayOrder: integer("display_order").notNull().default(0),
+  /** "cdep" or "senate": the official page the step was read from (D-025). */
+  source: text("source"),
+  /** An outside body the step concerns (Consiliul Legislativ, the Government, ...); parliamentary committees use `committee_name`. */
+  institution: text("institution"),
+  /** The page's own committee identifier: "cdep:7" (the Chamber's idc) or "senate:<guid>". */
+  committeeRef: text("committee_ref"),
+  /** favorable | unfavorable | favorable_with_amendments | rejection, as the sentence says. */
+  verdict: text("verdict"),
+  /** Registration number of the report, opinion or view ("213", "596/27.08.2025"). */
+  documentNumber: text("document_number"),
+  amendmentsAdmitted: integer("amendments_admitted"),
+  amendmentsRejected: integer("amendments_rejected"),
+  deadlineAmendmentsOn: date("deadline_amendments_on"),
+  deadlineOn: date("deadline_on"),
+  /** The counts the dossier prints beside an adoption or rejection. */
+  resultFor: integer("result_for"),
+  resultAgainst: integer("result_against"),
+  resultAbstention: integer("result_abstention"),
+  resultNotVoting: integer("result_not_voting"),
+  /** The vote this step links to, when we hold it (the dossier names the vote page; D-025). */
+  voteId: text("vote_id"),
+  /** The official vote page the dossier names: "cdep:36828" or "senate:<AppID>". */
+  voteRef: text("vote_ref"),
+  stenogramUrl: text("stenogram_url"),
+  /** A note printed with the row (the law's category, the title as adopted). */
+  note: text("note")
 }, (table) => ({
   billDateIdx: index("bill_procedure_steps_bill_date_idx").on(table.billId, table.occurredOn, table.displayOrder),
   documentIdx: index("bill_procedure_steps_document_idx").on(table.documentId),
   typeIdx: index("bill_procedure_steps_type_idx").on(table.stepType)
+}));
+
+/**
+ * What a bill's dossier pages say, read as published (D-025): registration numbers, initiative type, urgency,
+ * the stage line, the Chamber's summary of the object, and the bill's fate. One row per bill that has been read.
+ */
+export const billDossiers = pgTable("bill_dossiers", {
+  billId: text("bill_id").primaryKey().references(() => bills.id),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull(),
+  /** The official pages read and when they were fetched: { cdep?: { url, fetchedAt }, senate?: { url, fetchedAt } }. */
+  sources: jsonb("sources").$type<Record<string, { url: string; fetchedAt?: string }>>().notNull().default({}),
+  registrations: jsonb("registrations").$type<Array<{ body: string; number: string; date?: string }>>().notNull().default([]),
+  initiativeType: text("initiative_type"),
+  initiativeKind: text("initiative_kind"),
+  urgent: boolean("urgent"),
+  stageText: text("stage_text"),
+  summary: text("summary"),
+  tacitDeadline: date("tacit_deadline"),
+  initiatorCountText: text("initiator_count_text"),
+  /** in_progress | promulgated | rejected | withdrawn | ended (only what the pages say; see D-025). */
+  outcome: text("outcome").notNull().default("in_progress"),
+  outcomeOn: date("outcome_on"),
+  lawNumber: text("law_number"),
+  lawYear: integer("law_year"),
+  decreeNumber: text("decree_number"),
+  decreeYear: integer("decree_year"),
+  decreeOn: date("decree_on"),
+  gazetteNumber: text("gazette_number"),
+  gazetteOn: date("gazette_on")
+}, (table) => ({
+  outcomeIdx: index("bill_dossiers_outcome_idx").on(table.outcome),
+  lawIdx: index("bill_dossiers_law_idx").on(table.lawYear, table.lawNumber)
 }));
 
 export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {

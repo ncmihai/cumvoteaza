@@ -79,7 +79,25 @@ export type BillProcedureStepType =
   | "final_vote"
   | "promulgation"
   | "constitutional_review"
-  | "other";
+  | "other"
+  | "urgency_requested"
+  | "urgency_decided"
+  | "government_view_requested"
+  | "government_view_received"
+  | "opinion_requested"
+  | "opinion_received"
+  | "agenda_scheduled"
+  | "adopted"
+  | "rejected"
+  | "withdrawn"
+  | "procedure_ended"
+  | "deadline_extended"
+  | "competence_decision"
+  | "constitutional_window"
+  | "sent_to_president"
+  | "published";
+
+export type StepVerdict = "favorable" | "unfavorable" | "favorable_with_amendments" | "rejection";
 
 export type GovernanceAlignment =
   | "government"
@@ -478,7 +496,7 @@ export interface BillEvent {
   id: string;
   billId: string;
   occurredOn: string;
-  chamber: ChamberId | "joint" | "unknown";
+  chamber: ChamberId | "joint" | "president" | "unknown";
   label: string;
   sourceUrl?: string;
 }
@@ -486,9 +504,12 @@ export interface BillEvent {
 export interface BillSponsor {
   id: string;
   billId: string;
-  sponsorType: "member" | "government" | "group" | "unknown";
+  sponsorType: "member" | "government" | "group" | "citizens" | "other" | "unknown";
   memberId?: string;
   name: string;
+  /** The group or party label printed beside the name on the official bill page. */
+  groupLabel?: string;
+  memberChamber?: ChamberId;
 }
 
 export interface DocumentSource {
@@ -509,7 +530,8 @@ export interface BillProcedureStep {
   id: string;
   billId: string;
   occurredOn: string;
-  chamber: ChamberId | "joint" | "unknown";
+  /** "president" marks the Presidency's steps (promulgation, publication). */
+  chamber: ChamberId | "joint" | "president" | "unknown";
   stepType: BillProcedureStepType;
   title: string;
   description?: string;
@@ -517,6 +539,44 @@ export interface BillProcedureStep {
   documentId?: string;
   sourceUrl?: string;
   displayOrder: number;
+  /** Read from the dossier pages (Sprint 7): which page, the outside body, what a report or opinion concluded, deadlines, the vote. */
+  source?: "cdep" | "senate";
+  institution?: string;
+  verdict?: StepVerdict;
+  documentNumber?: string;
+  amendmentsAdmitted?: number;
+  amendmentsRejected?: number;
+  deadlineAmendmentsOn?: string;
+  deadlineOn?: string;
+  result?: { for?: number; against?: number; abstention?: number; notVoting?: number };
+  /** The vote this step links to, when we hold it. */
+  voteId?: string;
+  stenogramUrl?: string;
+  note?: string;
+}
+
+export type BillOutcome = "in_progress" | "promulgated" | "rejected" | "withdrawn" | "ended";
+
+/** What a bill's official dossier pages say, as published (D-025). */
+export interface BillDossier {
+  billId: string;
+  readAt: string;
+  sources: Record<string, { url: string; fetchedAt?: string }>;
+  registrations: Array<{ body: "bpi" | "cdep" | "senate" | "government"; number: string; date?: string }>;
+  initiativeType?: string;
+  urgent?: boolean;
+  stageText?: string;
+  summary?: string;
+  tacitDeadline?: string;
+  outcome: BillOutcome;
+  outcomeOn?: string;
+  lawNumber?: string;
+  lawYear?: number;
+  decreeNumber?: string;
+  decreeYear?: number;
+  decreeOn?: string;
+  gazetteNumber?: string;
+  gazetteOn?: string;
 }
 
 export interface BillDocumentTextChunk {

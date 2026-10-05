@@ -42,6 +42,7 @@
     "bills:coverage:fetch": "tsx src/cli.ts bills:coverage:fetch",
     "bills:coverage": "tsx src/cli.ts bills:coverage",
     "bills:dossiers:fetch": "tsx src/cli.ts bills:dossiers:fetch",
+    "bills:dossiers:import": "tsx src/cli.ts bills:dossiers:import",
     "members:coverage": "tsx src/cli.ts members:coverage",
     "spotcheck:pack": "tsx src/cli.ts spotcheck:pack",
     "identity:link-government-people": "tsx src/cli.ts identity:link-government-people",

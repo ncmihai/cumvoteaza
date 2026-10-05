@@ -190,6 +190,27 @@ export const checks: Check[] = [
         and a.starts_on < coalesce(b.ends_on, '9999-12-31') and b.starts_on < coalesce(a.ends_on, '9999-12-31')`
   },
   {
+    name: "promulgated_without_law_number",
+    severity: "error",
+    description: "A bill whose dossier says it was promulgated has no law number (D-025: the number must be on the page).",
+    query: sql`select d.bill_id, d.stage_text from bill_dossiers d where d.outcome = 'promulgated' and d.law_number is null`
+  },
+  {
+    name: "promulgated_without_gazette",
+    severity: "warning",
+    description: "A promulgated law has no Monitorul Oficial number: the Senate page carries it, so fetch that page (bills:dossiers:fetch --source=senate) or read it from legislatie.just.ro.",
+    query: sql`select d.bill_id, d.law_number, d.law_year from bill_dossiers d where d.outcome = 'promulgated' and d.gazette_number is null`
+  },
+  {
+    name: "dossier_vote_linked_to_another_bill",
+    severity: "warning",
+    description: "A step of a bill's dossier names a vote that is stored under a different bill.",
+    query: sql`
+      select s.bill_id, s.vote_id, v.bill_id as vote_bill_id
+      from bill_procedure_steps s join votes v on v.id = s.vote_id
+      where v.bill_id is not null and v.bill_id <> s.bill_id`
+  },
+  {
     name: "orphan_people",
     severity: "warning",
     description: "People with no member record, no government role and no candidacy for prime minister.",

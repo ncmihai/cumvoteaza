@@ -267,6 +267,13 @@
       "when": 1791208609725,
       "tag": "0037_leadership_roles_and_official_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791216665674,
+      "tag": "0038_bill_dossiers",
+      "breakpoints": true
     }
   ]
 }
