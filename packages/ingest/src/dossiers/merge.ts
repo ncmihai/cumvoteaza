@@ -59,6 +59,11 @@ export function groupPages(pages: ParsedDossier[]): PageGroup[] {
   return [...groups.values()].map((group) => ({ pages: group, keys: mergeKeys(group.map(keysOfPage)) }));
 }
 
+/** Groups the pages could not tie together but the stored bill does (a Chamber page that names no Senate number, a Senate page that names no Chamber number): one bill from all their pages. */
+export function combineGroups(groups: PageGroup[]): PageGroup {
+  return { pages: groups.flatMap((group) => group.pages), keys: mergeKeys(groups.map((group) => group.keys)) };
+}
+
 function mergeKeys(all: BillKeys[]): BillKeys {
   const merged: BillKeys = { senateB: [] };
   for (const keys of all) {

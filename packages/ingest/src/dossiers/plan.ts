@@ -322,10 +322,14 @@ export interface PlanSummary {
   voteLinksToWrite: number;
   voteConflicts: Array<{ bill: string; voteId: string; storedBillId: string }>;
   duplicateBills: Array<{ bill: string; alsoMatches: string[] }>;
+  /** Dossiers that resolved to a bill another dossier already took (the first one is written, the other is left out). */
+  /** Bills whose pages share no identifier but whose stored record ties them (read as one). */
+  readTogether: Array<{ bill: string; pages: string[] }>;
+  collidingDossiers: Array<{ bill: string; keptIdentifiers: Record<string, string>; leftOutIdentifiers: Record<string, string>; leftOutSteps: number; leftOutOutcome: string }>;
   unrecognisedWording: Array<{ text: string; count: number }>;
 }
 
-export function summarisePlans(plans: BillPlan[]): PlanSummary {
+export function summarisePlans(plans: BillPlan[], leftOut: BillPlan[] = [], readTogether: Array<{ bill: string; pages: string[] }> = []): PlanSummary {
   const tally = (target: Record<string, number>, key: string) => void (target[key] = (target[key] ?? 0) + 1);
   const stepsByType: Record<string, number> = {};
   const outcomes: Record<string, number> = {};
@@ -347,6 +351,14 @@ export function summarisePlans(plans: BillPlan[]): PlanSummary {
     voteLinksToWrite: 0,
     voteConflicts: [],
     duplicateBills: [],
+    readTogether,
+    collidingDossiers: leftOut.map((plan) => ({
+      bill: plan.billId,
+      keptIdentifiers: plans.find((kept) => kept.billId === plan.billId)?.bill.identifiers ?? {},
+      leftOutIdentifiers: plan.bill.identifiers,
+      leftOutSteps: plan.steps.length,
+      leftOutOutcome: plan.dossier.outcome
+    })),
     unrecognisedWording: []
   };
   for (const plan of plans) {

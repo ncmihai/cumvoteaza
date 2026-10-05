@@ -9,7 +9,7 @@ import { COVERAGE_RAW_DIR } from "../coverage/run-fetch";
 import { decodeOfficialBytes, RawCache } from "../coverage/raw-cache";
 import { snapshotFor } from "../parsers/utils";
 import { parseCdepDossier } from "./cdep-dossier";
-import { groupPages, mergeDossiers } from "./merge";
+import { combineGroups, groupPages, mergeDossiers, type PageGroup } from "./merge";
 import type { NameCandidate } from "./member-match";
 import { documentKey, indexExistingBills, planBill, summarisePlans, type BillPlan, type ExistingBill, type PlanContext, type PlanSummary } from "./plan";
 import { parseSenateDossier } from "./senate-dossier";
@@ -125,16 +125,33 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
   const byParsed = new Map(pages.map((page) => [page.parsed, page]));
   let groups = groupPages(pages.map((page) => page.parsed));
   if (options.limit !== undefined) groups = groups.slice(0, options.limit);
-  const plans = groups.map((group) => {
+  const planGroup = (group: PageGroup) => {
     const members = group.pages.map((page) => byParsed.get(page)!);
     const fetchedAt: Partial<Record<"cdep" | "senate", string>> = {};
     for (const member of members) fetchedAt[member.parsed.source] = member.fetchedAt;
     return planBill({ merged: mergeDossiers(group), snapshots: members.map((member) => member.snapshot), fetchedAt, context, existingIndex });
-  });
-  // Two dossiers that resolve to one new bill id would collide: say so, the first wins.
+  };
+  let planned = groups.map((group) => ({ group, plan: planGroup(group) }));
+  // Pages that name no identifier in common can still be one stored bill (the Chamber page names no Senate number, the Senate page no Chamber number):
+  // when the stored bill says so, its pages are read together instead of one overwriting the other.
+  const readTogether: Array<{ bill: string; pages: string[] }> = [];
+  const byStoredBill = new Map<string, Array<(typeof planned)[number]>>();
+  for (const item of planned) if (!item.plan.isNew) byStoredBill.set(item.plan.billId, [...(byStoredBill.get(item.plan.billId) ?? []), item]);
+  const combinedFor = new Map<(typeof planned)[number], (typeof planned)[number] | null>();
+  for (const [billId, items] of byStoredBill) {
+    if (items.length < 2) continue;
+    const group = combineGroups(items.map((item) => item.group));
+    combinedFor.set(items[0]!, { group, plan: planGroup(group) });
+    for (const item of items.slice(1)) combinedFor.set(item, null);
+    readTogether.push({ bill: billId, pages: group.pages.map((page) => page.selfId ?? page.sourceUrl) });
+  }
+  planned = planned.flatMap((item) => (combinedFor.has(item) ? (combinedFor.get(item) ? [combinedFor.get(item)!] : []) : [item]));
+  const plans = planned.map((item) => item.plan);
+  // Two dossiers that still resolve to one bill id (a new bill, or a plan that moved to another stored bill when read together) would collide: the first wins, the report says which were left out.
   const seen = new Set<string>();
-  const unique = plans.filter((plan) => (seen.has(plan.billId) ? false : (seen.add(plan.billId), true)));
-  return { plans: unique, summary: summarisePlans(unique), pagesRead: { cdep: pages.filter((page) => page.parsed.source === "cdep").length, senate: pages.filter((page) => page.parsed.source === "senate").length }, unreadable };
+  const leftOut: BillPlan[] = [];
+  const unique = plans.filter((plan) => (seen.has(plan.billId) ? (leftOut.push(plan), false) : (seen.add(plan.billId), true)));
+  return { plans: unique, summary: summarisePlans(unique, leftOut, readTogether), pagesRead: { cdep: pages.filter((page) => page.parsed.source === "cdep").length, senate: pages.filter((page) => page.parsed.source === "senate").length }, unreadable };
 }
 
 const chunks = <T>(items: T[], size: number): T[][] => {
@@ -323,6 +340,9 @@ function renderMarkdown(result: DossierImportResult, generatedAt: string): strin
     "",
     `Votes linked to a bill by the dossier: ${s.voteLinksToWrite}. Votes the dossier ties to another bill than the one stored: ${s.voteConflicts.length}.`,
     `Bills that answer to two stored records (to merge by hand): ${s.duplicateBills.length}.`,
+    `Bills whose Chamber and Senate pages name no identifier in common and were read together because the stored bill ties them: ${s.readTogether.length}.`,
+    `Dossiers left out because another dossier resolved to the same bill: ${s.collidingDossiers.length}.`,
+    ...s.collidingDossiers.map((item) => `- ${item.bill}: kept ${JSON.stringify(item.keptIdentifiers)}; left out ${JSON.stringify(item.leftOutIdentifiers)} (${item.leftOutSteps} steps, ${item.leftOutOutcome})`),
     "",
     "## Step types",
     "",
