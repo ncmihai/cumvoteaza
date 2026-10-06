@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { NextIntlClientProvider } from "next-intl";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { TITLE_TEMPLATE } from "@/lib/page-metadata";
+import { FeedbackWidget } from "./_components/FeedbackWidget";
 import { SiteFooter } from "./_components/SiteFooter";
 import { SiteHeader } from "./_components/SiteHeader";
 import { RevealObserver } from "./_components/ui/RevealObserver";
@@ -49,6 +50,7 @@ export default async function LocaleLayout({
             <SiteHeader locale={locale} />
             {children}
             <SiteFooter locale={locale} />
+            <FeedbackWidget locale={locale} />
           </div>
         </NextIntlClientProvider>
       </body>

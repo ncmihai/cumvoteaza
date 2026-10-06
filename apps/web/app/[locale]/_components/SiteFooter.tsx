@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getLastCatchUp } from "@/lib/coverage-data";
 import type { AppLocale } from "@/lib/i18n";
-import { SITE } from "@/lib/site";
 import { BrandLogo } from "./BrandLogo";
+import { FeedbackLink } from "./FeedbackLink";
 
 export async function SiteFooter({ locale }: { locale: AppLocale }) {
   const ro = locale === "ro";
@@ -41,8 +41,7 @@ export async function SiteFooter({ locale }: { locale: AppLocale }) {
           <p className="mb-3 text-sm font-semibold text-ink">{ro ? "Despre site" : "About the site"}</p>
           <ul className="grid gap-2">
             <li><Link href={at("/methodology")} className={link}>{ro ? "Date și metodă" : "Data and method"}</Link></li>
-            <li><a href={SITE.repoUrl} className={link}>{ro ? "Cod sursă" : "Source code"}</a></li>
-            <li><a href={SITE.issuesUrl} className={link}>{ro ? "Raportează o greșeală" : "Report a mistake"}</a></li>
+            <li><FeedbackLink className={`${link} text-left`}>{ro ? "Raportează o greșeală sau trimite o sugestie" : "Report a mistake or send a suggestion"}</FeedbackLink></li>
           </ul>
         </nav>
       </div>

@@ -3,6 +3,7 @@ import { titled } from "@/lib/page-metadata";
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
 import { getCoveragePageData, type CoverageStatus, type CoveragePageData } from "@/lib/coverage-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
+import { FeedbackLink } from "../_components/FeedbackLink";
 import { SITE } from "@/lib/site";
 
 
@@ -154,8 +155,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
       </Section>
 
       <Section title={ro ? "Reutilizare și corecturi" : "Reuse and corrections"}>
-        <p>{ro ? <>Codul sursă este public pe <a className="font-semibold text-ink underline" href={SITE.repoUrl}>GitHub</a>. Datele vor fi oferite pentru descărcare sub licența <a className="font-semibold text-ink underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> (cu menționarea sursei); descărcările nu sunt încă disponibile.</> : <>The source code is public on <a className="font-semibold text-ink underline" href={SITE.repoUrl}>GitHub</a>. The data will be offered for download under the <a className="font-semibold text-ink underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> licence (credit the source); downloads are not available yet.</>}</p>
-        <p>{ro ? <>Ai găsit o greșeală? <a className="font-semibold text-ink underline" href={SITE.issuesUrl}>Deschide o sesizare</a> cu adresa paginii și ce nu se potrivește cu sursa oficială.</> : <>Found a mistake? <a className="font-semibold text-ink underline" href={SITE.issuesUrl}>Open an issue</a> with the page address and what differs from the official source.</>}</p>
+        <p>{ro ? <>Datele vor fi oferite pentru descărcare sub licența <a className="font-semibold text-ink underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> (cu menționarea sursei); descărcările nu sunt încă disponibile.</> : <>The data will be offered for download under the <a className="font-semibold text-ink underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> licence (credit the source); downloads are not available yet.</>}</p>
+        <p>{ro ? <>Ai găsit o greșeală? <FeedbackLink className="font-semibold text-ink underline">Spune-ne</FeedbackLink> ce nu se potrivește cu sursa oficială; adresa paginii se atașează singură.</> : <>Found a mistake? <FeedbackLink className="font-semibold text-ink underline">Tell us</FeedbackLink> what differs from the official source; the page address is attached for you.</>}</p>
       </Section>
     </main>
   );

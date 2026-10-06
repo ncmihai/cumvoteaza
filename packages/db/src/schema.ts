@@ -1185,6 +1185,23 @@ export const engagementEvents = pgTable("engagement_events", {
   searchIdx: index("engagement_events_search_idx").on(table.queryHash, table.occurredAt)
 }));
 
+/**
+ * What visitors send through the feedback form (D-031): a mistake in the data, a suggestion or a technical problem. No IP, no cookie, no account: the optional
+ * contact is only what the visitor types. `status` is for the owner: new, then read, then done.
+ */
+export const feedbackReports = pgTable("feedback_reports", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  message: text("message").notNull(),
+  pagePath: text("page_path"),
+  locale: text("locale"),
+  contact: text("contact"),
+  status: text("status").notNull().default("new"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => ({
+  statusIdx: index("feedback_reports_status_idx").on(table.status, table.createdAt)
+}));
+
 export const contentReactions = pgTable("content_reactions", {
   id: text("id").primaryKey(),
   entityType: text("entity_type").notNull(),

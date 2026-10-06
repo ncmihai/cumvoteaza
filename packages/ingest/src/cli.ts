@@ -15,6 +15,7 @@ import { publishCoverage } from "./coverage/publish";
 import { removeTestVotes } from "./repair/remove-test-votes";
 import { mergeParties } from "./repair/merge-parties";
 import { fillCurrentSeatLinks } from "./repair/current-seat-links";
+import { formatFeedback, listFeedback, markFeedback } from "./feedback";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
@@ -595,6 +596,32 @@ async function main() {
       const result = await fillCurrentSeatLinks(session.db, { persist: hasFlag("persist"), repoRoot });
       console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "feedback:list") {
+    // D-031: what visitors sent through the feedback form. Read-only. --status=new|read|done, --limit=N, --json.
+    const session = createDbSession();
+    try {
+      const rows = await listFeedback(session.db, { status: flag("status"), limit: numberFlag("limit") });
+      console.log(hasFlag("json") ? JSON.stringify(rows, null, 2) : formatFeedback(rows));
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "feedback:mark") {
+    // Sets the status of reports: --ids=fb-a,fb-b --status=read|done. Changes nothing else.
+    const ids = listFlag("ids");
+    const status = flag("status");
+    if (!ids?.length || !status) throw new Error("Usage: feedback:mark --ids=fb-a,fb-b --status=read|done");
+    const session = createDbSession();
+    try {
+      console.log(`Updated ${await markFeedback(session.db, ids, status)} report(s).`);
     } finally {
       await session.close();
     }

@@ -147,13 +147,36 @@ test.describe("the trust surface", () => {
     await expect(page.locator("main")).toContainText("CC BY 4.0");
   });
 
-  test("the footer on every page leads to the methodology, the code and the issue tracker", async ({ page }) => {
+  test("the footer on every page leads to the methodology and opens the feedback form, and no page links the code repository", async ({ page }) => {
     for (const path of ["/ro", "/ro/votes", "/en/bills"]) {
       await page.goto(path);
       const footer = page.locator("footer");
       await expect(footer.locator('a[href$="/methodology"]')).toBeVisible();
-      await expect(footer.locator('a[href^="https://github.com/"]').first()).toBeVisible();
+      await expect(page.locator('a[href*="github.com"]')).toHaveCount(0);
+      await footer.getByRole("button", { name: /Raportează o greșeală|Report a mistake/ }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole("radio")).toHaveCount(3);
+      await expect(dialog.locator("textarea")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
     }
+  });
+
+  test("the feedback button stays on screen and a too short message is refused before anything is sent", async ({ page }) => {
+    await page.goto("/ro");
+    let sent = 0;
+    await page.route("**/api/feedback", (route) => { sent += 1; return route.fulfill({ status: 200, body: "{}" }); });
+    await page.getByRole("button", { name: /Trimite o sugestie sau raportează o greșeală/ }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("textarea").fill("scurt");
+    await dialog.getByRole("button", { name: "Trimite" }).click();
+    await expect(dialog).toContainText("cel puțin 10 caractere");
+    expect(sent).toBe(0);
+    await dialog.locator("textarea").fill("Aceasta este o sugestie suficient de lungă.");
+    await dialog.getByRole("button", { name: "Trimite" }).click();
+    await expect(dialog).toContainText("Mulțumim");
+    expect(sent).toBe(1);
   });
 
   test("the parties and governments indexes list entries that open @db", async ({ page }) => {
