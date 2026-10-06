@@ -18,68 +18,68 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
   const visibleAlignments = context.alignments.filter((item) => item.alignment !== "opposition" && item.alignment !== "unknown");
 
   return (
-    <section className="mt-6 border border-slate-300 bg-white">
+    <section className="mt-6 border border-line bg-white">
       <div className="grid gap-4 p-4 md:grid-cols-[1fr_2fr]">
         <div>
-          <div className="text-xs font-semibold uppercase text-teal-700">{labels.title}</div>
-          <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xl font-semibold text-slate-950">{context.government.name}</span>{context.caretakerSince ? <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">{labels.caretaker}</span> : null}</div>
-          <div className="mt-1 text-sm text-slate-600">
+          <div className="text-xs font-semibold uppercase text-brand-strong">{labels.title}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xl font-semibold text-ink">{context.government.name}</span>{context.caretakerSince ? <span className="border border-vote-abstain-fill bg-vote-abstain-bg px-2 py-1 text-xs font-semibold text-vote-abstain">{labels.caretaker}</span> : null}</div>
+          <div className="mt-1 text-sm text-muted">
             {formatDate(context.government.startsOn, locale)}
             {" - "}
             {context.government.endsOn ? formatDate(context.government.endsOn, locale) : labels.present}
           </div>
-          <div className="mt-2 text-sm text-slate-600">
+          <div className="mt-2 text-sm text-muted">
             {labels.asOf} {formatDate(context.asOf, locale)}
           </div>
-          {context.caretakerSince ? <div className="mt-1 text-xs text-slate-500">{labels.caretakerSince} {formatDate(context.caretakerSince, locale)}</div> : null}
+          {context.caretakerSince ? <div className="mt-1 text-xs text-muted">{labels.caretakerSince} {formatDate(context.caretakerSince, locale)}</div> : null}
         </div>
 
         <div>
-          <div className="text-xs font-semibold uppercase text-slate-500">{labels.alignment}</div>
+          <div className="text-xs font-semibold uppercase text-muted">{labels.alignment}</div>
           {visibleAlignments.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {visibleAlignments.map((item) => (
                 <span
                   key={`${item.party.id}-${item.alignment}-${item.startsOn}`}
-                  className="inline-flex items-center gap-2 border border-slate-300 px-2 py-1 text-sm text-slate-800"
+                  className="inline-flex items-center gap-2 border border-line px-2 py-1 text-sm text-ink-soft"
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.party.color }} />
                   <span className="font-medium">{item.party.shortName}</span>
-                  <span className="text-slate-500">{alignmentLabel(item.alignment, locale)}</span>
+                  <span className="text-muted">{alignmentLabel(item.alignment, locale)}</span>
                 </span>
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-slate-600">{labels.noAlignment}</p>
+            <p className="mt-2 text-sm text-muted">{labels.noAlignment}</p>
           )}
           {context.hasCuratedCoalitionData ? (
-            <p className="mt-3 text-xs text-slate-500">{labels.oppositionNote}</p>
+            <p className="mt-3 text-xs text-muted">{labels.oppositionNote}</p>
           ) : (
-            <p className="mt-3 text-xs text-slate-500">{labels.unknownNote}</p>
+            <p className="mt-3 text-xs text-muted">{labels.unknownNote}</p>
           )}
         </div>
       </div>
 
       {voteGroups.length > 0 ? (
-        <div className="border-t border-slate-200 px-4 py-4">
-          <div className="text-xs font-semibold uppercase text-slate-500">{labels.voteGroupContext}</div>
+        <div className="border-t border-line px-4 py-4">
+          <div className="text-xs font-semibold uppercase text-muted">{labels.voteGroupContext}</div>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {voteGroups.map((item) => (
-              <div key={`${item.group.id}-${item.totals.id}`} className="border border-slate-200 px-3 py-2 text-sm">
+              <div key={`${item.group.id}-${item.totals.id}`} className="border border-line px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2 font-medium text-slate-950">
+                  <div className="flex min-w-0 items-center gap-2 font-medium text-ink">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.group.color }} />
                     <span className="truncate">{item.group.shortName}</span>
                   </div>
-                  <span className="shrink-0 text-xs text-slate-500">{alignmentLabel(item.alignment, locale)}</span>
+                  <span className="shrink-0 text-xs text-muted">{alignmentLabel(item.alignment, locale)}</span>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
                   <span>{labels.for}: {item.totals.for}</span>
                   <span>{labels.against}: {item.totals.against}</span>
                   <span>{labels.abstention}: {item.totals.abstention}</span>
                 </div>
                 {item.party ? (
-                  <Link href={`/${locale}/parties/${item.party.slug}`} className="mt-1 block text-xs text-blue-800 underline">
+                  <Link href={`/${locale}/parties/${item.party.slug}`} className="mt-1 block text-xs text-brand-strong underline">
                     {item.party.name}
                   </Link>
                 ) : null}
@@ -90,12 +90,12 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
       ) : null}
 
       {billSponsors.length > 0 ? (
-        <div className="border-t border-slate-200 px-4 py-4">
-          <div className="text-xs font-semibold uppercase text-slate-500">{labels.sponsorContext}</div>
+        <div className="border-t border-line px-4 py-4">
+          <div className="text-xs font-semibold uppercase text-muted">{labels.sponsorContext}</div>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {billSponsors.map((item) => (
-              <div key={item.sponsor.id} className="border border-slate-200 px-3 py-2 text-sm">
-                <div className="font-medium text-slate-950">
+              <div key={item.sponsor.id} className="border border-line px-3 py-2 text-sm">
+                <div className="font-medium text-ink">
                   {item.member ? (
                     <Link href={`/${locale}/members/${item.member.slug}`} className="underline">
                       {presentMemberIdentity(item.member).name}
@@ -104,11 +104,11 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
                     item.sponsor.name
                   )}
                 </div>
-                <div className="mt-1 text-xs text-slate-600">
+                <div className="mt-1 text-xs text-muted">
                   {[item.group?.shortName, item.party?.shortName, alignmentLabel(item.alignment, locale)].filter(Boolean).join(" · ")}
                 </div>
                 {item.party ? (
-                  <Link href={`/${locale}/parties/${item.party.slug}`} className="mt-1 block text-xs text-blue-800 underline">
+                  <Link href={`/${locale}/parties/${item.party.slug}`} className="mt-1 block text-xs text-brand-strong underline">
                     {item.party.name}
                   </Link>
                 ) : null}

@@ -27,7 +27,7 @@ export default async function MotionPage({ params }: { params: Promise<{ locale:
     <Link href={`/${locale}/motions`} className="inline-flex items-center gap-1 text-xs font-bold text-brand"><ArrowLeft size={14}/>{ro ? "Toate moțiunile" : "All motions"}</Link>
     <p className="mt-5 text-xs font-bold uppercase tracking-wide text-brand">{motion.kind === "censure" ? (ro ? "Moțiune de cenzură" : "Motion of censure") : (ro ? "Moțiune simplă" : "Simple motion")} · {motion.number}/{motion.filedOn.slice(0, 4)} · {voteChamberLabels[locale][motion.chamber]}</p>
     <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight text-ink [overflow-wrap:anywhere]">{motion.title}</h1>
-    <div className={`mt-4 inline-block border px-3 py-2 text-sm font-bold ${motion.outcome === "adopted" ? "border-red-300 bg-red-50 text-red-800" : "border-slate-300 bg-white text-ink"}`}>
+    <div className={`mt-4 inline-block border px-3 py-2 text-sm font-bold ${motion.outcome === "adopted" ? "border-vote-against-fill bg-vote-against-bg text-vote-against" : "border-line bg-white text-ink"}`}>
       {outcome[locale][motion.outcome]}{motion.votesFor != null ? ` · ${motion.votesFor} ${ro ? "pentru" : "for"}` : ""}{motion.votesAgainst != null ? `, ${motion.votesAgainst} ${ro ? "împotrivă" : "against"}` : ""}{motion.votesVoid ? `, ${motion.votesVoid} ${ro ? "anulate" : "void"}` : ""}
     </div>
     <dl className="mt-4 grid gap-x-8 gap-y-1 text-sm text-muted sm:grid-cols-2">
@@ -41,7 +41,7 @@ export default async function MotionPage({ params }: { params: Promise<{ locale:
       <a href={motion.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">{ro ? "Pagina oficială a moțiunii" : "Official motion page"}<ExternalLink size={11}/></a>
       {motion.documentUrl ? <a href={motion.documentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">{ro ? "Textul moțiunii (PDF)" : "Motion text (PDF)"}<ExternalLink size={11}/></a> : null}
     </p>
-    <section className="mt-6 border border-slate-300 bg-white p-5 rounded-card">
+    <section className="mt-6 border border-line bg-white p-5 rounded-card">
       <h2 className="font-serif text-2xl font-semibold text-ink">{ro ? "Semnatari" : "Signatories"} <span className="text-base text-muted">{signed}{motion.signatoriesDeputies != null && motion.signatoriesSenators != null ? ` (${motion.signatoriesDeputies} ${ro ? "deputați" : "deputies"}, ${motion.signatoriesSenators} ${ro ? "senatori" : "senators"})` : ""}</span></h2>
       <div className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <div key={group.label} className="min-w-0"><h3 className="text-sm font-bold text-ink">{group.label} <span className="font-normal text-muted">· {group.members.length}</span></h3>
         <ul className="mt-1 text-sm leading-6">{group.members.map((member) => <li key={member.memberId}><Link href={`/${locale}/members/${member.slug}`} className="text-brand hover:underline">{member.displayName}</Link></li>)}</ul></div>)}</div>

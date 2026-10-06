@@ -10,6 +10,10 @@ Each Open question has a recommendation; the owner decides.
 
 
 
+### Q21 — Sorting the members list by activity or absences
+- The members list can be sorted by "most documented votes" and "most documented absences". D-029 says no rankings, leaderboards or "best / worst" lists of individuals; sorting everyone by absences is exactly such a ranking, and a count of absences also mixes real absences with gaps in a source.
+- **Recommendation:** remove both sorts; keep name, party and county. Attendance and agreement stay on each person's own page, with their formulas.
+
 ### Q10 — Vercel Hobby is non-commercial
 - Fine for now. Any donations or ads would require a paid plan or another host.
 

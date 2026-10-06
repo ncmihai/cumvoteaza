@@ -50,14 +50,14 @@ export function BillDocumentTextToggle({
       <button
         type="button"
         onClick={toggle}
-        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+        className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-wash"
       >
         {open ? labels.hide : labels.show}
       </button>
       {open ? (
-        <div className="mt-3 max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-800">
-          <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2 text-xs text-slate-600">
-            <span className="border border-slate-300 bg-white px-2 py-1 font-semibold uppercase text-slate-700 rounded-control">{labels.status}</span>
+        <div className="mt-3 max-h-80 overflow-auto border border-line bg-wash p-3 text-sm leading-6 text-ink-soft">
+          <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-line pb-2 text-xs text-muted">
+            <span className="border border-line bg-white px-2 py-1 font-semibold uppercase text-ink-soft rounded-control">{labels.status}</span>
             <span>{labels.note}</span>
           </div>
           {state === "loading" ? labels.loading : state === "failed" ? labels.failed : <pre className="whitespace-pre-wrap font-sans">{text}</pre>}

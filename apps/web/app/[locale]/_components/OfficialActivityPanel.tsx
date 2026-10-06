@@ -32,10 +32,10 @@ export function OfficialActivityPanel({ items, locale }: { items: MemberOfficial
   const first = items[0]!;
   const institution = first.chamber === "senate" ? (ro ? "Senatului" : "the Senate") : (ro ? "Camerei Deputaților" : "the Chamber of Deputies");
   return (
-    <section className="border border-slate-300 bg-white p-5 rounded-card" aria-labelledby="official-activity">
+    <section className="border border-line bg-white p-5 rounded-card" aria-labelledby="official-activity">
       <h2 id="official-activity" className="font-serif text-2xl font-semibold text-ink">{ro ? `Cifre publicate de site-ul ${institution}` : `Figures published by ${institution}`}</h2>
       <p className="mt-1 text-xs leading-5 text-muted">{ro ? `Citite la ${formatDate(first.asOf, locale)}. Le afișăm așa cum sunt publicate; nu le recalculăm, iar numărătoarea noastră din voturile importate poate diferi.` : `Read on ${formatDate(first.asOf, locale)}. Shown as published; we do not recompute them, and our own count from the imported votes may differ.`}</p>
-      <dl className="mt-3 divide-y divide-slate-200 text-sm">
+      <dl className="mt-3 divide-y divide-line text-sm">
         {rows.map((item) => (
           <div key={item.metric} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
             <dt className="text-muted">{LABELS[item.metric as keyof typeof LABELS][ro ? "ro" : "en"]}</dt>

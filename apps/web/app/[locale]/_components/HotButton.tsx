@@ -43,7 +43,7 @@ export function HotButton({
         });
       }}
       className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold ${
-        active ? "border-blue-800 bg-blue-800 text-white" : "border-slate-300 bg-white text-slate-700 hover:border-blue-800 hover:text-blue-800"
+        active ? "border-brand bg-brand text-white" : "border-line bg-white text-ink-soft hover:border-brand hover:text-brand-strong"
       }`}
       aria-label={`${label}: ${count}`}
     >

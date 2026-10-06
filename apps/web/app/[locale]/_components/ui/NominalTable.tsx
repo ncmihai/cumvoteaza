@@ -51,7 +51,7 @@ export function NominalTable({ rows, locale, caption }: { rows: NominalRow[]; lo
   };
   return (
     <div>
-      <div className="overflow-x-auto rounded-card border border-line">
+      <div className="overflow-x-auto rounded-card border border-line" tabIndex={0} role="region" aria-label={caption}>
         <table className="w-full min-w-[34rem] border-collapse text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-wash text-xs text-ink-soft">

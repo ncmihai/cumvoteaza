@@ -9,7 +9,7 @@ export function DetailPageHeader({ eyebrow, title, subtitle, media, trailing, ch
   children?: ReactNode;
   className?: string;
 }) {
-  return <header className={`min-w-0 border-b border-slate-300 pb-5 ${className}`}>
+  return <header className={`min-w-0 border-b border-line pb-5 ${className}`}>
     <div className={media ? "grid min-w-0 gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center" : "min-w-0"}>
       {media ? <div className="min-w-0">{media}</div> : null}
       <div className="min-w-0">

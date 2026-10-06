@@ -26,13 +26,13 @@ export default async function MotionsPage({ params }: { params: Promise<{ locale
     <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{ro ? "Legislatura 2024–2028, din paginile oficiale ale Camerei Deputaților: rezultatul, inițiatorii și parlamentarii care au semnat fiecare moțiune." : "Legislature 2024–2028, from the Chamber of Deputies' official pages: the result, the initiators and the parliamentarians who signed each motion."}</p>
     {groups.map((group) => {
       const items = motions.filter((motion) => motion.kind === group.kind);
-      return items.length ? <section key={group.kind} className="mt-6 border border-slate-300 bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{group.title}</h2><p className="mt-1 text-xs leading-5 text-muted">{group.note}</p>
-        <div className="mt-3 divide-y divide-slate-200">{items.map((motion) => <Link key={motion.id} href={`/${locale}/motions/${motion.id}`} className="grid gap-1 py-3 hover:bg-wash sm:grid-cols-[170px_minmax(0,1fr)_auto]">
+      return items.length ? <section key={group.kind} className="mt-6 border border-line bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{group.title}</h2><p className="mt-1 text-xs leading-5 text-muted">{group.note}</p>
+        <div className="mt-3 divide-y divide-line">{items.map((motion) => <Link key={motion.id} href={`/${locale}/motions/${motion.id}`} className="grid gap-1 py-3 hover:bg-wash sm:grid-cols-[170px_minmax(0,1fr)_auto]">
           <span className="text-xs font-bold text-muted">{motion.number}/{motion.filedOn.slice(0, 4)} · {formatDate(motion.filedOn, locale)}</span>
           <span className="line-clamp-2 text-sm text-ink">{motion.title}<span className="ml-2 text-xs text-muted">{voteChamberLabels[locale][motion.chamber]} · {motion.signatories} {ro ? "semnatari" : "signatories"}</span></span>
-          <span className={`text-xs font-bold ${motion.outcome === "adopted" ? "text-red-700" : "text-slate-600"}`}>{outcome[locale][motion.outcome]}{motion.votesFor != null ? ` · ${motion.votesFor}${motion.votesAgainst != null ? `–${motion.votesAgainst}` : ""}` : ""}</span>
+          <span className={`text-xs font-bold ${motion.outcome === "adopted" ? "text-vote-against" : "text-muted"}`}>{outcome[locale][motion.outcome]}{motion.votesFor != null ? ` · ${motion.votesFor}${motion.votesAgainst != null ? `–${motion.votesAgainst}` : ""}` : ""}</span>
         </Link>)}</div></section> : null;
     })}
-    {motions.length === 0 ? <p className="mt-6 border border-slate-300 bg-white p-5 text-sm text-muted rounded-card">{ro ? "Moțiunile nu sunt încă importate." : "Motions are not imported yet."}</p> : null}
+    {motions.length === 0 ? <p className="mt-6 border border-line bg-white p-5 text-sm text-muted rounded-card">{ro ? "Moțiunile nu sunt încă importate." : "Motions are not imported yet."}</p> : null}
   </main>;
 }

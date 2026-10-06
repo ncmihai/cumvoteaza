@@ -14,7 +14,7 @@ export function MemberCareerTimeline({ career, locale }: { career: MemberCareerP
       <div>
         <h2 className="font-serif text-2xl font-semibold text-ink md:text-3xl">{copy.title}</h2>
         <p className="mt-1 text-sm text-muted">{career.hasChanges ? copy.changed(career.affiliationCount, career.legislatureCount) : copy.single}</p>
-        {career.hasAmbiguousDates ? <p className="mt-1 text-xs font-medium text-amber-800">{copy.ambiguous}</p> : null}
+        {career.hasAmbiguousDates ? <p className="mt-1 text-xs font-medium text-vote-abstain">{copy.ambiguous}</p> : null}
       </div>
       {career.legislatureCount > 1 ? <span className="border border-line bg-white px-2.5 py-1 text-xs font-semibold text-muted rounded-control">{career.legislatureCount} {copy.legislatures}</span> : null}
     </div>
@@ -57,7 +57,7 @@ function CareerCard({ segment, locale }: { segment: MemberCareerSegment; locale:
     <span className="min-w-0"><strong className="block text-base text-ink">{segment.label}</strong><span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><Building2 size={12}/>{chamberLabels[locale][segment.chamber]}</span><span className="mt-0.5 block text-xs text-muted">{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} – {segment.endsOn ? formatDate(segment.endsOn, locale, segment.endsOnPrecision) : (locale === "ro" ? "prezent" : "present")}</span></span>
     {segment.sourceUrl ? <ExternalLink size={14} className="ml-auto shrink-0 text-brand"/> : null}
   </>;
-  const className = "flex min-w-[210px] items-center gap-3 border border-slate-300 bg-white p-2 shadow-sm";
+  const className = "flex min-w-[210px] items-center gap-3 border border-line bg-white p-2 shadow-sm";
   if (isNamedParty && segment.partySlug) return <Link href={`/${locale}/parties/${segment.partySlug}`} className={`${className} hover:border-brand`}>{content}</Link>;
   if (segment.sourceUrl) return <a href={segment.sourceUrl} target="_blank" rel="noreferrer" className={`${className} hover:border-brand`}>{content}</a>;
   return <div className={className}>{content}</div>;

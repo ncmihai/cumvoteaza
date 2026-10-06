@@ -12,43 +12,43 @@ export function BillDocumentDiffPanel({
   if (comparisons.length === 0) return null;
 
   return (
-    <section className="border border-slate-300 bg-white">
+    <section className="border border-line bg-white">
       <details>
-        <summary className="cursor-pointer border-b border-slate-300 px-4 py-3 font-semibold text-slate-950">
+        <summary className="cursor-pointer border-b border-line px-4 py-3 font-semibold text-ink">
           {labels.title}
         </summary>
         <div className="p-4">
-          <p className="text-sm text-slate-600">{labels.note}</p>
+          <p className="text-sm text-muted">{labels.note}</p>
           <div className="mt-4 space-y-4">
             {comparisons.map((comparison) => (
-              <div key={`${comparison.from.documentId}-${comparison.to.documentId}`} className="border border-slate-200">
-                <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+              <div key={`${comparison.from.documentId}-${comparison.to.documentId}`} className="border border-line">
+                <div className="border-b border-line bg-wash px-3 py-2 text-sm">
                   <span className="font-semibold">{comparison.from.documentKind}</span>
                   {" -> "}
                   <span className="font-semibold">{comparison.to.documentKind}</span>
-                  <span className="ml-2 text-slate-500">
+                  <span className="ml-2 text-muted">
                     +{comparison.added} / -{comparison.removed} / {labels.changed}: {comparison.changed} / {labels.unchanged}: {comparison.unchanged}
                   </span>
                 </div>
-                <div className="divide-y divide-slate-200">
+                <div className="divide-y divide-line">
                   {comparison.sections.filter((section) => section.status !== "unchanged").slice(0, 8).map((section) => (
                     <div key={section.key} className="px-3 py-3 text-sm">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={statusClass(section.status)}>{labels.status[section.status]}</span>
-                        <span className="font-medium text-slate-950">{section.heading}</span>
+                        <span className="font-medium text-ink">{section.heading}</span>
                       </div>
                       {section.wordDiff ? (
                         <p className="mt-2 leading-7">
                           {section.wordDiff.map((token, index) => (
-                            <span key={index} className={token.type === "added" ? "bg-emerald-100 text-emerald-900" : token.type === "removed" ? "bg-red-100 text-red-900 line-through" : ""}>
+                            <span key={index} className={token.type === "added" ? "bg-vote-for-bg text-vote-for" : token.type === "removed" ? "bg-vote-against-bg text-vote-against line-through" : ""}>
                               {token.value}{" "}
                             </span>
                           ))}
                         </p>
                       ) : (
                         <div className="mt-2 grid gap-2 md:grid-cols-2">
-                          {section.before ? <p className="border border-red-100 bg-red-50 p-2 leading-6 text-slate-700">{section.before}</p> : null}
-                          {section.after ? <p className="border border-emerald-100 bg-emerald-50 p-2 leading-6 text-slate-700">{section.after}</p> : null}
+                          {section.before ? <p className="border border-vote-against-fill bg-vote-against-bg p-2 leading-6 text-ink-soft">{section.before}</p> : null}
+                          {section.after ? <p className="border border-vote-for-fill bg-vote-for-bg p-2 leading-6 text-ink-soft">{section.after}</p> : null}
                         </div>
                       )}
                     </div>
@@ -64,9 +64,9 @@ export function BillDocumentDiffPanel({
 }
 
 function statusClass(status: string): string {
-  if (status === "added") return "border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold uppercase text-emerald-800";
-  if (status === "removed") return "border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold uppercase text-red-800";
-  return "border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold uppercase text-amber-800";
+  if (status === "added") return "border border-vote-for-fill bg-vote-for-bg px-2 py-1 text-xs font-semibold uppercase text-vote-for";
+  if (status === "removed") return "border border-vote-against-fill bg-vote-against-bg px-2 py-1 text-xs font-semibold uppercase text-vote-against";
+  return "border border-vote-abstain-fill bg-vote-abstain-bg px-2 py-1 text-xs font-semibold uppercase text-vote-abstain";
 }
 
 const diffLabels = {

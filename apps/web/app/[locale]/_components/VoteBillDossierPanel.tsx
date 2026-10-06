@@ -70,14 +70,14 @@ export function VoteBillDossierPanel({
   const storedTextDocuments = documents.filter((document) => document.textStatus === "stored");
 
   return (
-    <section className="mt-3 max-w-5xl border border-slate-300 bg-white text-sm">
+    <section className="mt-3 max-w-5xl border border-line bg-white text-sm">
       <div className="p-4">
-        <div className="text-xs font-semibold uppercase text-teal-700">{labels.billDossier}</div>
-        <Link href={billHref} className="font-medium text-slate-900 underline">
+        <div className="text-xs font-semibold uppercase text-brand-strong">{labels.billDossier}</div>
+        <Link href={billHref} className="font-medium text-ink underline">
           {billIdentifiers ? `${billIdentifiers} · ` : null}
           {bill.title}
         </Link>
-        <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+        <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
           {bill.status ? <span>{bill.status}</span> : null}
           {bill.decisionChamber ? <span>{labels.decisionChamber}: {labels.chambers[bill.decisionChamber] ?? bill.decisionChamber}</span> : null}
           {documents.length > 0 ? <span>{labels.documents}: {documents.length}</span> : null}
@@ -86,8 +86,8 @@ export function VoteBillDossierPanel({
           ) : null}
         </div>
         {sponsorNames.length > 0 ? (
-          <div className="mt-3 text-xs text-slate-700">
-            <span className="font-semibold uppercase text-slate-500">{labels.initiators}</span>{" "}
+          <div className="mt-3 text-xs text-ink-soft">
+            <span className="font-semibold uppercase text-muted">{labels.initiators}</span>{" "}
             {sponsorNames.join(", ")}
             {sponsorOverflowCount > 0 ? ` +${sponsorOverflowCount}` : null}
           </div>
@@ -95,26 +95,26 @@ export function VoteBillDossierPanel({
         {sponsorContexts.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {sponsorContexts.slice(0, 8).map((item) => (
-              <span key={item.sponsor.id} className="inline-flex items-center gap-1 border border-slate-200 px-2 py-1 text-xs text-slate-700">
+              <span key={item.sponsor.id} className="inline-flex items-center gap-1 border border-line px-2 py-1 text-xs text-ink-soft">
                 <span className="font-medium">{item.group?.shortName ?? item.party?.shortName ?? item.sponsor.name}</span>
-                <span className="text-slate-500">{alignmentLabel(item.alignment, locale)}</span>
+                <span className="text-muted">{alignmentLabel(item.alignment, locale)}</span>
               </span>
             ))}
-            {sponsorContexts.length > 8 ? <span className="border border-slate-200 px-2 py-1 text-xs text-slate-500">+{sponsorContexts.length - 8}</span> : null}
+            {sponsorContexts.length > 8 ? <span className="border border-line px-2 py-1 text-xs text-muted">+{sponsorContexts.length - 8}</span> : null}
           </div>
         ) : null}
       </div>
 
       {previewSteps.length > 0 ? (
-        <div className="border-t border-slate-200 px-4 py-3">
-          <div className="text-xs font-semibold uppercase text-slate-500">{labels.recentProcedure}</div>
-          <ol className="mt-2 grid gap-2 text-xs text-slate-700">
+        <div className="border-t border-line px-4 py-3">
+          <div className="text-xs font-semibold uppercase text-muted">{labels.recentProcedure}</div>
+          <ol className="mt-2 grid gap-2 text-xs text-ink-soft">
             {previewSteps.map((step) => (
               <li key={step.id} className="grid gap-1 md:grid-cols-[7rem_1fr]">
-                <span className="font-semibold text-slate-500">{formatDate(step.occurredOn, locale)}</span>
+                <span className="font-semibold text-muted">{formatDate(step.occurredOn, locale)}</span>
                 <span>
-                  <span className="font-medium text-slate-900">{step.title}</span>
-                  {step.committeeName ? <span className="text-slate-500"> · {step.committeeName}</span> : null}
+                  <span className="font-medium text-ink">{step.title}</span>
+                  {step.committeeName ? <span className="text-muted"> · {step.committeeName}</span> : null}
                 </span>
               </li>
             ))}
@@ -122,11 +122,11 @@ export function VoteBillDossierPanel({
         </div>
       ) : null}
 
-      <div className="border-t border-slate-200 p-4">
+      <div className="border-t border-line p-4">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+          className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-wash"
           aria-expanded={open}
         >
           {open ? labels.hideFullDossier : labels.showFullDossier}
@@ -134,34 +134,34 @@ export function VoteBillDossierPanel({
       </div>
 
       {open ? (
-        <div className="border-t border-slate-200">
+        <div className="border-t border-line">
           <section className="p-4">
-            <div className="font-semibold text-slate-950">{labels.fullProcedure}</div>
-            <ol className="mt-3 divide-y divide-slate-200 border border-slate-200">
+            <div className="font-semibold text-ink">{labels.fullProcedure}</div>
+            <ol className="mt-3 divide-y divide-line border border-line">
               {procedureSteps.map((step) => (
                 <li key={step.id} className="grid gap-2 md:grid-cols-[8rem_1fr]">
-                  <div className="bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600">
+                  <div className="bg-wash px-3 py-3 text-sm font-semibold text-muted">
                     {formatDate(step.occurredOn, locale)}
                   </div>
                   <div className="px-3 py-3">
-                    <div className="font-medium text-slate-950">{step.title}</div>
-                    {step.description ? <div className="mt-1 text-sm leading-6 text-slate-700">{step.description}</div> : null}
-                    {step.committeeName ? <div className="mt-2 text-sm font-medium text-teal-700">{step.committeeName}</div> : null}
-                    <div className="mt-1 text-xs uppercase text-slate-500">{labels.chambers[step.chamber] ?? step.chamber}</div>
+                    <div className="font-medium text-ink">{step.title}</div>
+                    {step.description ? <div className="mt-1 text-sm leading-6 text-ink-soft">{step.description}</div> : null}
+                    {step.committeeName ? <div className="mt-2 text-sm font-medium text-brand-strong">{step.committeeName}</div> : null}
+                    <div className="mt-1 text-xs uppercase text-muted">{labels.chambers[step.chamber] ?? step.chamber}</div>
                   </div>
                 </li>
               ))}
             </ol>
           </section>
 
-          <section className="border-t border-slate-200 p-4">
-            <div className="font-semibold text-slate-950">{labels.extractedText}</div>
+          <section className="border-t border-line p-4">
+            <div className="font-semibold text-ink">{labels.extractedText}</div>
             {storedTextDocuments.length > 0 ? (
               <div className="mt-3 grid gap-3">
                 {storedTextDocuments.map((document) => (
-                  <div key={document.id} className="border border-slate-200 p-3">
-                    <div className="font-medium text-slate-950">{document.label}</div>
-                    <div className="mt-1 text-xs uppercase text-slate-500">
+                  <div key={document.id} className="border border-line p-3">
+                    <div className="font-medium text-ink">{document.label}</div>
+                    <div className="mt-1 text-xs uppercase text-muted">
                       {document.documentKind ? labels.documentKinds[document.documentKind] ?? document.documentKind : labels.documentKinds.other}
                     </div>
                     <div className="mt-2">
@@ -183,13 +183,13 @@ export function VoteBillDossierPanel({
                 ))}
               </div>
             ) : (
-              <p className="mt-2 text-sm text-slate-600">{labels.noExtractedText}</p>
+              <p className="mt-2 text-sm text-muted">{labels.noExtractedText}</p>
             )}
           </section>
 
           {documents.length > 0 ? (
-            <section className="border-t border-slate-200 p-4">
-              <div className="font-semibold text-slate-950">{labels.officialDocuments}</div>
+            <section className="border-t border-line p-4">
+              <div className="font-semibold text-ink">{labels.officialDocuments}</div>
               <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {documents.map((document) => (
                   <a
@@ -197,10 +197,10 @@ export function VoteBillDossierPanel({
                     href={document.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
+                    className="border border-line px-3 py-2 text-sm hover:bg-wash"
                   >
-                    <span className="font-medium text-slate-950 underline">{document.label}</span>
-                    <span className="mt-1 block text-xs uppercase text-slate-500">
+                    <span className="font-medium text-ink underline">{document.label}</span>
+                    <span className="mt-1 block text-xs uppercase text-muted">
                       {document.documentKind ? labels.documentKinds[document.documentKind] ?? document.documentKind : labels.documentKinds.other}
                     </span>
                     <span className="mt-2 block">
@@ -212,8 +212,8 @@ export function VoteBillDossierPanel({
             </section>
           ) : null}
 
-          <div className="border-t border-slate-200 p-4">
-            <Link href={billHref} className="text-sm font-medium text-blue-800 underline">
+          <div className="border-t border-line p-4">
+            <Link href={billHref} className="text-sm font-medium text-brand-strong underline">
               {labels.fullBillPage}
             </Link>
           </div>

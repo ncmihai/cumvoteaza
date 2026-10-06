@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Building2, CalendarDays, ExternalLink, FileText, Landmark, MapPin, UserRound, UsersRound } from "lucide-react";
+import { Building2, CalendarDays, ExternalLink, Landmark, MapPin } from "lucide-react";
 import { chamberLabels, formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
 import { getCurrentMemberSlug, getMemberPageData } from "@/lib/data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
@@ -10,8 +10,16 @@ import { presentMemberActivity, presentMemberCareer, presentMemberIdentity, pres
 import { placeForDisplay } from "@/lib/presentation";
 import { EngagementTracker } from "../../_components/EngagementTracker";
 import { MemberCareerTimeline } from "../../_components/MemberCareerTimeline";
-import { ImageWithFallback } from "../../_components/ImageWithFallback";
-import { DetailPageHeader } from "../../_components/DetailPageHeader";
+import { ShareButton } from "../../_components/ShareButton";
+import { CountUp } from "../../_components/ui/CountUp";
+import { PartyMark } from "../../_components/ui/PartyMark";
+import { PersonAvatar } from "../../_components/ui/PersonAvatar";
+import { SectionHeader } from "../../_components/ui/SectionHeader";
+import { SplitBar } from "../../_components/ui/SplitBar";
+import { VoteDot } from "../../_components/ui/VoteIcon";
+import { VOTE_LABEL, VOTE_STYLE, voteKindOfChoice } from "../../_components/ui/vote-meaning";
+import { getMemberVoteStats } from "@/lib/member-stats";
+import { countyLabel } from "@/lib/text";
 import { getGovernmentRolesForPerson } from "@/lib/ministry-data";
 import { PublicCareerTimeline, type PublicCareerEvent } from "../../_components/PublicCareerTimeline";
 import { OfficialActivityPanel } from "../../_components/OfficialActivityPanel";
@@ -36,6 +44,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   }
   const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
+  const voteStats = mandate ? await getMemberVoteStats(member.id, mandate.chamber, mandate.startsOn, mandate.endsOn ?? undefined) : undefined;
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
   // Several roles can be active at once (a Prime Minister may also hold interim ministries): show the most senior.
@@ -54,7 +63,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const recent = importantVote ? [importantVote, ...chronologicalVotes.filter(({ item }) => item.id !== importantVote.item.id)].slice(0, 6) : chronologicalVotes.slice(0, 6);
   const shortParty = party?.shortName ?? (locale === "ro" ? "Fără partid declarat" : "No declared party");
   const contextualVote = fromVote && voteRecords.some((vote) => vote.id === fromVote) ? fromVote : undefined;
-  const context = presentMemberProfileContext({ identity, chamberLabel: mandate ? chamberLabels[locale][mandate.chamber] : undefined, constituency: placeForDisplay(mandate?.constituency), partyLabel: shortParty, legislatureId: selectedLegislature?.id, legislatureLabel: selectedLegislature?.label, history, sponsoredBillCount: sponsoredBills.length, locale, asOf, currentMandate: isActive });
+  const context = presentMemberProfileContext({ identity, chamberLabel: mandate ? chamberLabels[locale][mandate.chamber] : undefined, constituency: mandate?.constituency ? countyLabel(placeForDisplay(mandate.constituency) ?? mandate.constituency, locale) : undefined, partyLabel: shortParty, legislatureId: selectedLegislature?.id, legislatureLabel: selectedLegislature?.label, history, sponsoredBillCount: sponsoredBills.length, locale, asOf, currentMandate: isActive });
   const featured = recent[0] ? { ...recent[0], presentation: presentVote(recent[0].vote, { locale }) } : undefined;
   const institutionalRoles = [...context.roles, ...context.committees];
   const publicCareerEvents: PublicCareerEvent[] = [
@@ -78,68 +87,111 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
     }))
   ];
 
-  return <main className="mx-auto min-h-[calc(100vh-76px)] max-w-page bg-canvas px-4 py-7 md:px-8 lg:px-10">
-    <EngagementTracker entityType="member" entityId={member.id} locale={locale}/>
-    <nav className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted"><span><Link href={`/${locale}`}>{locale === "ro" ? "Acasă" : "Home"}</Link>　›　<Link href={`/${locale}/members`}>{locale === "ro" ? "Parlamentari" : "Members"}</Link>　›　{identity.name}</span>{contextualVote ? <Link href={`/${locale}/votes/${contextualVote}`} className="font-semibold text-brand">← {locale === "ro" ? "Înapoi la vot" : "Back to vote"}</Link> : null}</nav>
+  const ro = locale === "ro";
+  const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0);
+  const showAttendance = Boolean(voteStats && voteStats.eligible >= 10);
+  const showAgreement = Boolean(voteStats && voteStats.agreementVotes >= 10);
+  const partyMark = party ? { shortName: party.shortName, color: party.color ?? group?.color ?? "#64748b", logoAssetId: party.logoAssetId } : undefined;
+  const choiceCounts = { for: activity?.votesFor ?? 0, against: activity?.votesAgainst ?? 0, abstain: activity?.abstentions ?? 0, present: activity?.presentNotVoting ?? 0 };
 
-    <DetailPageHeader className="pb-1" media={<div className="relative h-[200px] w-[160px] overflow-hidden rounded-md border border-slate-300 bg-wash lg:h-[250px] lg:w-[210px]"><ImageWithFallback src={profilePhotoUrl} alt={identity.name} className="h-full w-full object-cover"><span className="grid h-full place-items-center font-serif text-4xl font-bold text-muted">{initials(identity.name)}</span></ImageWithFallback>{currentLogoUrl ? <img src={currentLogoUrl} alt="" className="absolute bottom-2 right-2 h-11 w-11 border border-slate-300 bg-white object-contain p-1"/> : null}</div>} title={identity.name} subtitle={identity.office || currentGovernmentRole ? <strong className="block text-xl leading-tight text-ink lg:text-2xl">{identity.office ?? currentGovernmentRole?.title}</strong> : undefined}>
-        <div className="mt-5 flex flex-wrap items-stretch gap-y-3 text-sm text-muted">
-          <IdentityFact label={locale === "ro" ? "Partid" : "Party"}>{party ? <Link href={`/${locale}/parties/${party.slug}`} className="flex items-center gap-2 font-semibold text-ink"><i className="h-4 w-4 rounded-full" style={{ background: party.color ?? group?.color ?? "#8996a9" }}/>{shortParty}</Link> : <span className="flex items-center gap-2 font-semibold text-ink"><i className="h-4 w-4 rounded-full bg-slate-400"/>{shortParty}</span>}</IdentityFact>
-          {group && group.partyId !== party?.id ? <IdentityFact label={locale === "ro" ? "Grup parlamentar" : "Parliamentary group"}><span className="flex items-center gap-2 font-semibold text-ink"><i className="h-4 w-4 rounded-full" style={{ background: group.color ?? "#8996a9" }}/>{group.shortName}</span></IdentityFact> : null}
-          {mandate ? <IdentityFact label={locale === "ro" ? "Cameră" : "Chamber"}><span className="flex items-center gap-2 font-semibold text-ink"><Building2 size={20}/>{chamberLabels[locale][mandate.chamber]}</span></IdentityFact> : null}
-          {mandate?.constituency ? <IdentityFact label={locale === "ro" ? "Circumscripție" : "Constituency"}><span className="flex items-center gap-2 font-semibold text-ink"><MapPin size={20}/>{placeForDisplay(mandate.constituency)}</span></IdentityFact> : null}
-          <IdentityFact label={locale === "ro" ? "Statut" : "Status"}><span className={`flex items-center gap-2 font-semibold ${isActive ? "text-emerald-700" : "text-muted"}`}><i className={`h-4 w-4 rounded-full ${isActive ? "bg-emerald-600" : "bg-slate-400"}`}/>{statusLabel}</span></IdentityFact>
-          {currentGovernmentRole ? <IdentityFact label={locale === "ro" ? "Rol guvernamental" : "Government role"}><span className="flex max-w-[260px] items-center gap-2 font-semibold text-ink"><Landmark size={20}/>{currentGovernmentRole.title}</span></IdentityFact> : null}
-        </div>
-        <p className="mt-5 max-w-4xl font-serif text-lg leading-7 text-muted">{locale === "ro" ? `Activitate verificată în legislatura ${selectedLegislature?.label ?? "curentă"}, pe baza voturilor și inițiativelor conectate la sursele oficiale.` : `Verified activity in the ${selectedLegislature?.label ?? "current"} legislature, based on votes and bills linked to official sources.`}</p>
-    </DetailPageHeader>
+  return <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
+    <EngagementTracker entityType="member" entityId={member.id} locale={locale}/>
+    <nav aria-label={ro ? "Unde ești" : "Breadcrumb"} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+      <ol className="flex min-w-0 items-center gap-2 text-muted">
+        <li><Link href={`/${locale}`} className="hover:text-brand">{ro ? "Acasă" : "Home"}</Link></li><li aria-hidden="true">›</li>
+        <li><Link href={`/${locale}/members`} className="hover:text-brand">{ro ? "Parlamentari" : "Members"}</Link></li><li aria-hidden="true">›</li>
+        <li aria-current="page" className="max-w-[28ch] truncate text-ink-soft sm:max-w-[48ch]">{identity.name}</li>
+      </ol>
+      <div className="flex items-center gap-2">
+        {contextualVote ? <Link href={`/${locale}/votes/${contextualVote}`} className="rounded-full border border-brand px-3.5 py-1.5 font-semibold text-brand hover:bg-brand-soft">← {ro ? "Înapoi la vot" : "Back to vote"}</Link> : null}
+        <ShareButton href={`/${locale}/members/${member.slug}`} title={identity.name} label={ro ? "Distribuie" : "Share"} copiedLabel={ro ? "Link copiat" : "Link copied"} errorLabel={ro ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 font-semibold text-ink-soft hover:border-line-strong"/>
+        {source?.sourceUrl ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-brand px-3.5 py-1.5 font-semibold text-brand hover:bg-brand-soft"><ExternalLink size={15} aria-hidden="true"/>{ro ? "Profil oficial" : "Official profile"}</a> : null}
+      </div>
+    </nav>
+
+    <header className="mt-6 flex flex-col gap-6 rounded-card border border-line bg-surface p-5 sm:flex-row sm:items-start sm:p-7">
+      <div className="shrink-0"><PersonAvatar name={identity.name} photoUrl={profilePhotoUrl} size={132} shape="portrait" /></div>
+      <div className="min-w-0 flex-1">
+        {identity.office || currentGovernmentRole ? <p className="inline-flex rounded-full bg-brand-soft px-3 py-1 text-sm font-semibold text-brand-strong">{identity.office ?? currentGovernmentRole?.title}</p> : null}
+        <h1 className="mt-2 font-display text-4xl font-bold leading-tight text-ink [overflow-wrap:anywhere] lg:text-5xl">{identity.name}</h1>
+        <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-4 text-sm">
+          <IdentityFact label={ro ? "Partid" : "Party"}>{party && partyMark ? <Link href={`/${locale}/parties/${party.slug}`} className="inline-flex items-center gap-2 font-semibold text-ink hover:text-brand"><PartyMark party={partyMark} size={24}/>{shortParty}</Link> : <span className="font-semibold text-muted">{shortParty}</span>}</IdentityFact>
+          {group && group.partyId !== party?.id ? <IdentityFact label={ro ? "Grup parlamentar" : "Parliamentary group"}><span className="inline-flex items-center gap-2 font-semibold text-ink"><PartyMark party={{ shortName: group.shortName, color: group.color ?? "#64748b" }} size={24}/>{group.shortName}</span></IdentityFact> : null}
+          {mandate ? <IdentityFact label={ro ? "Cameră" : "Chamber"}><span className="inline-flex items-center gap-2 font-semibold text-ink"><Building2 size={18} aria-hidden="true" className="text-muted"/>{chamberLabels[locale][mandate.chamber]}</span></IdentityFact> : null}
+          {mandate?.constituency ? <IdentityFact label={ro ? "Circumscripție" : "Constituency"}><span className="inline-flex items-center gap-2 font-semibold text-ink"><MapPin size={18} aria-hidden="true" className="text-muted"/>{countyLabel(placeForDisplay(mandate.constituency) ?? mandate.constituency, locale)}</span></IdentityFact> : null}
+          <IdentityFact label={ro ? "Statut" : "Status"}><span className={`inline-flex items-center gap-2 font-semibold ${isActive ? "text-vote-for" : "text-muted"}`}><span aria-hidden="true" className={`size-2.5 rounded-full ${isActive ? "bg-vote-for-fill" : "bg-vote-present-fill"}`}/>{statusLabel}</span></IdentityFact>
+          {currentGovernmentRole ? <IdentityFact label={ro ? "Rol guvernamental" : "Government role"}><span className="inline-flex max-w-[260px] items-center gap-2 font-semibold text-ink"><Landmark size={18} aria-hidden="true" className="text-muted"/>{currentGovernmentRole.title}</span></IdentityFact> : null}
+        </dl>
+        <p className="mt-5 max-w-3xl text-base leading-7 text-ink-soft">{context.summary}</p>
+      </div>
+    </header>
 
     <MemberCareerTimeline career={career} locale={locale}/>
     <PublicCareerTimeline events={publicCareerEvents} locale={locale}/>
 
-    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-slate-300 py-3">
-      <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-muted">{locale === "ro" ? "Legislatură" : "Legislature"}</span>{legislatures.map((item) => <Link key={item.id} href={`/${locale}/members/${member.slug}?legislature=${item.id}`} className={`border px-3 py-1.5 text-xs font-semibold ${item.id === selectedLegislature?.id ? "border-ink bg-ink text-white" : "border-slate-300 bg-white text-muted hover:border-brand"}`}>{item.label}</Link>)}</div>
-      {source?.sourceUrl ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm font-semibold text-brand"><ExternalLink size={17}/>{locale === "ro" ? "Profil oficial" : "Official profile"}</a> : null}
+    <div className="mt-8 flex flex-wrap items-center gap-2" aria-label={ro ? "Legislatura" : "Legislature"}>
+      <span className="mr-1 text-sm font-semibold text-ink-soft">{ro ? "Legislatura" : "Legislature"}</span>
+      {legislatures.map((item) => <Link key={item.id} href={`/${locale}/members/${member.slug}?legislature=${item.id}`} aria-current={item.id === selectedLegislature?.id ? "true" : undefined} className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold ${item.id === selectedLegislature?.id ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink-soft hover:border-line-strong"}`}>{item.label.replace("-", "–")}</Link>)}
     </div>
 
-    <div className="mt-5 grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
-      <div className="min-w-0 space-y-5">
-        <section className="border border-slate-300 bg-white p-5 md:p-6 rounded-card">
-          <ContextBlock icon={<FileText size={28}/>} title={locale === "ro" ? "Pe scurt" : "At a glance"}><p>{context.summary}</p></ContextBlock>
-          <ContextBlock icon={<UsersRound size={28}/>} title={locale === "ro" ? "De ce contează?" : "Why does it matter?"}><p>{context.significance}</p></ContextBlock>
+    <div className="mt-6 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
+      <div className="min-w-0 space-y-6">
+        <section className="rounded-card border border-line bg-surface p-6" aria-label={ro ? "Activitatea în această legislatură" : "Activity in this legislature"}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-display text-2xl font-bold text-ink">{ro ? "Activitatea în această legislatură" : "Activity in this legislature"}</h2><span className="text-xs text-muted">{ro ? "Date la" : "Data as of"} {formatDate(asOf, locale)}</span></div>
+          <div className="mt-5 flex items-end gap-3"><p className="font-display text-5xl font-bold leading-none text-ink"><CountUp value={expressed} /></p><p className="pb-1 text-sm text-muted">{ro ? "voturi exprimate" : "votes cast"}</p></div>
+          <div className="mt-4"><SplitBar counts={choiceCounts} locale={locale} height="h-3" /></div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+            {(["for", "against", "abstain", "present"] as const).map((kind) => <div key={kind} className="flex flex-col-reverse"><dt className="text-xs text-muted">{VOTE_LABEL[locale][kind]}</dt><dd className={`flex items-center gap-1.5 font-display text-2xl font-bold ${VOTE_STYLE[kind].text}`}><VoteDot kind={kind} size={20} locale={locale}/>{choiceCounts[kind]}</dd></div>)}
+          </dl>
+          {(showAttendance || showAgreement) && voteStats ? (
+            <div className="mt-6 grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-2">
+              {showAttendance ? <div><p className="text-sm font-semibold text-ink-soft">{ro ? "Prezență" : "Attendance"}</p><p className="mt-1 font-display text-3xl font-bold text-ink">{pct(voteStats.present, voteStats.eligible)}%</p><p className="mt-1 text-xs leading-5 text-muted">{ro ? `pe lista nominală la ${voteStats.present} din ${voteStats.eligible} voturi nominale din mandat` : `on the name list in ${voteStats.present} of ${voteStats.eligible} nominal votes of the mandate`}</p></div> : null}
+              {showAgreement ? <div><p className="text-sm font-semibold text-ink-soft">{ro ? "Vot ca restul grupului" : "Voting with the group"}</p><p className="mt-1 font-display text-3xl font-bold text-ink">{pct(voteStats.agreementMatches, voteStats.agreementVotes)}%</p><p className="mt-1 text-xs leading-5 text-muted">{ro ? `${voteStats.agreementMatches} din ${voteStats.agreementVotes} voturi în care grupul avea o majoritate clară` : `${voteStats.agreementMatches} of ${voteStats.agreementVotes} votes in which the group had a clear majority`}</p></div> : null}
+              <p className="text-xs leading-5 text-muted sm:col-span-2">{ro ? "Cifre despre o singură persoană, calculate din listele nominale oficiale; nu sunt clasamente." : "Figures about one person, computed from the official name lists; they are not rankings."} <Link href={`/${locale}/methodology#cum-calculam`} className="font-semibold text-brand hover:text-brand-strong">{ro ? "Cum le calculăm" : "How we compute them"}</Link></p>
+            </div>
+          ) : null}
+          <p className="mt-5 border-t border-line pt-4 text-xs leading-5 text-muted">{activityPresentation.coveredRecords} {activityPresentation.label}. {activity?.majorVoteRecords ? `${activity.majorVoteRecords} ${ro ? "decizii importante" : "major decisions"}. ` : ""}{ro ? "Cifrele sunt calculate din voturile nominale importate." : "The figures are computed from the nominal votes imported."}</p>
         </section>
 
-        <section className="border border-slate-300 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-wash px-5 py-3"><h2 className="flex items-center gap-3 font-serif text-2xl font-semibold text-ink"><Landmark size={24}/>{locale === "ro" ? "Activitatea în această legislatură" : "Activity in this legislature"}</h2><span className="text-xs text-muted">{locale === "ro" ? "Date la" : "Data as of"} {formatDate(asOf, locale)}</span></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2"><ProfileStat icon={<FileText/>} value={expressed} label={locale === "ro" ? "voturi exprimate" : "votes cast"}/><ProfileStat icon={<UserRound/>} value={activity?.votesFor ?? 0} label={locale === "ro" ? "voturi pentru" : "votes for"}/><ProfileStat icon={<FileText/>} value={activity?.proposals ?? sponsoredBills.length} label={locale === "ro" ? "inițiative" : "initiatives"}/><ProfileStat icon={<Building2/>} value={context.committees.length} label={locale === "ro" ? "comisii documentate" : "documented committees"}/></div>
-          <div className="grid grid-cols-3 border-t border-slate-200 bg-white text-center text-xs text-muted"><ActivityBucket value={activity?.majorVoteRecords ?? 0} label={locale === "ro" ? "decizii importante" : "major decisions"}/><ActivityBucket value={activity?.standardVoteRecords ?? 0} label={locale === "ro" ? "voturi intermediare" : "intermediate votes"}/><ActivityBucket value={activity?.routineVoteRecords ?? 0} label={locale === "ro" ? "voturi procedurale" : "procedural votes"}/></div>
-          <p className="border-t border-slate-200 bg-wash px-5 py-3 text-xs leading-5 text-muted">{activityPresentation.coveredRecords} {activityPresentation.label}. {locale === "ro" ? "Prezența nu este estimată fără un numitor verificat al voturilor eligibile." : "Attendance is not estimated without a verified eligible-vote denominator."}</p>
+        <section className="rounded-card border border-line bg-surface p-6">
+          <h2 className="font-display text-2xl font-bold text-ink">{ro ? "Comisii și roluri" : "Committees and roles"}</h2>
+          <div className="mt-3 divide-y divide-line">{institutionalRoles.length ? institutionalRoles.map((row) => <div key={row.id} className="py-3"><div className="flex items-start justify-between gap-3"><strong className="text-ink">{row.label}</strong>{row.sourceUrl ? <a href={row.sourceUrl} target="_blank" rel="noreferrer" aria-label={ro ? "Sursă oficială" : "Official source"} className="text-brand"><ExternalLink size={16}/></a> : null}</div><p className="mt-1 text-xs text-muted">{formatDate(row.startsOn, locale, row.startsOnPrecision)} — {row.endsOn ? formatDate(row.endsOn, locale, row.endsOnPrecision) : (ro ? "prezent" : "present")}</p>{row.details ? <p className="mt-1 text-sm text-muted">{row.details}</p> : null}</div>) : <p className="py-3 text-sm leading-6 text-muted">{ro ? "Nu sunt încă importate apartenențe la comisii sau roluri pentru legislatura selectată." : "No committee memberships or roles are imported for the selected legislature yet."}</p>}</div>
         </section>
-
-        <section className="border border-slate-300 bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{locale === "ro" ? "Comisii și roluri" : "Committees and roles"}</h2><div className="mt-3 divide-y divide-slate-200">{institutionalRoles.length ? institutionalRoles.map((row) => <div key={row.id} className="py-3"><div className="flex items-start justify-between gap-3"><strong className="text-ink">{row.label}</strong>{row.sourceUrl ? <a href={row.sourceUrl} target="_blank" rel="noreferrer" aria-label={locale === "ro" ? "Sursă oficială" : "Official source"} className="text-brand"><ExternalLink size={16}/></a> : null}</div><p className="mt-1 text-xs text-muted">{formatDate(row.startsOn, locale, row.startsOnPrecision)} — {row.endsOn ? formatDate(row.endsOn, locale, row.endsOnPrecision) : (locale === "ro" ? "prezent" : "present")}</p>{row.details ? <p className="mt-1 text-sm text-muted">{row.details}</p> : null}</div>) : <p className="py-3 text-sm leading-6 text-muted">{locale === "ro" ? "Nu sunt încă importate apartenențe la comisii sau roluri pentru legislatura selectată." : "No committee memberships or roles are imported for the selected legislature yet."}</p>}</div></section>
       </div>
 
-      <div className="min-w-0 space-y-5">
+      <div className="min-w-0 space-y-6">
         <OfficialActivityPanel items={officialActivity} locale={locale} />
-        {governmentRoles.length ? <section className="border border-slate-300 bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{locale === "ro" ? "Roluri în Guvern" : "Government roles"}</h2><div className="mt-3 divide-y divide-slate-200">{governmentRoles.map((role) => <article key={role.id} className="py-3"><div className="flex flex-wrap items-center justify-between gap-2">{role.ministry ? <Link href={`/${locale}/ministries/${role.ministry.slug}`} className="font-serif text-lg font-semibold text-ink hover:text-brand">{role.incarnation?.name ?? role.ministry.name}</Link> : <strong className="font-serif text-lg text-ink">{role.title}</strong>}{role.interim ? <span className="border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs font-bold uppercase text-amber-900">{locale === "ro" ? "Interimar" : "Interim"}</span> : null}</div><p className="mt-1 text-xs leading-5 text-muted">{role.title} · <Link href={`/${locale}/governments/${role.government.slug}`} className="font-semibold text-brand">{locale === "ro" ? "Guvernul" : "Government"} {role.government.name}</Link><br/>{formatDate(role.startsOn, locale)} — {role.endsOn ? formatDate(role.endsOn, locale) : (locale === "ro" ? "prezent" : "present")}</p>{role.sourceUrl ? <a href={role.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Sursă oficială" : "Official source"}<ExternalLink size={11}/></a> : null}</article>)}</div></section> : null}
-        <section className="border border-slate-300 bg-white p-5 md:p-6 rounded-card"><div className="flex items-center justify-between gap-3"><h2 className="font-serif text-2xl font-semibold text-ink">{locale === "ro" ? "Cum a votat recent" : "Recent votes"}</h2><Link href={`/${locale}/votes`} className="text-sm font-semibold text-brand">{locale === "ro" ? "Vezi toate →" : "See all →"}</Link></div>
-          {featured ? <Link href={`/${locale}/votes/${featured.vote.id}`} className="mt-4 block border border-[#d8e6f5] bg-[#f5f9fd] p-4 transition hover:border-brand"><div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><span className="flex items-center gap-2"><CalendarDays size={15}/>{formatDate(featured.vote.heldOn, locale)} · {voteChamberLabels[locale][featured.vote.chamber]}</span><ChoiceBadge value={featured.item.choice} locale={locale}/></div><h3 className="mt-3 font-serif text-2xl font-semibold leading-tight text-ink">{featured.presentation.heading}</h3>{featured.presentation.officialTitle !== featured.presentation.heading ? <p className="mt-2 line-clamp-3 text-sm leading-5 text-muted">{featured.presentation.officialTitle}</p> : null}<span className="mt-4 inline-block text-sm font-semibold text-brand">{locale === "ro" ? "Vezi votul complet →" : "View full vote →"}</span></Link> : <p className="mt-4 border border-slate-200 bg-wash p-4 text-sm text-muted rounded-card">{locale === "ro" ? "Nu există voturi nominale importate pentru perioada selectată." : "No nominal votes are imported for the selected period."}</p>}
-          {recent.length > 1 ? <div className="mt-5"><h3 className="border-b border-slate-300 pb-2 font-serif text-lg font-semibold text-ink">{locale === "ro" ? "Alte voturi recente" : "Other recent votes"}</h3><div className="divide-y divide-slate-200">{recent.slice(1).map(({ item, vote }) => <Link key={item.id} href={`/${locale}/votes/${vote.id}`} className="grid gap-2 py-3 text-sm hover:bg-wash sm:grid-cols-[92px_minmax(0,1fr)_110px]"><span className="text-xs text-muted">{formatDate(vote.heldOn, locale)}</span><strong className="line-clamp-2 text-ink">{presentVote(vote, { locale }).heading}</strong><ChoiceBadge value={item.choice} locale={locale}/></Link>)}</div></div> : null}
+        {governmentRoles.length ? (
+          <section className="rounded-card border border-line bg-surface p-6">
+            <h2 className="font-display text-2xl font-bold text-ink">{ro ? "Roluri în Guvern" : "Government roles"}</h2>
+            <div className="mt-3 divide-y divide-line">{governmentRoles.map((role) => <article key={role.id} className="py-3"><div className="flex flex-wrap items-center justify-between gap-2">{role.ministry ? <Link href={`/${locale}/ministries/${role.ministry.slug}`} className="font-display text-lg font-bold text-ink hover:text-brand">{role.incarnation?.name ?? role.ministry.name}</Link> : <strong className="font-display text-lg text-ink">{role.title}</strong>}{role.interim ? <span className="rounded-full bg-vote-abstain-bg px-2.5 py-0.5 text-xs font-semibold text-vote-abstain">{ro ? "Interimar" : "Interim"}</span> : null}</div><p className="mt-1 text-xs leading-5 text-muted">{role.title} · <Link href={`/${locale}/governments/${role.government.slug}`} className="font-semibold text-brand">{ro ? "Guvernul" : "Government"} {role.government.name}</Link><br/>{formatDate(role.startsOn, locale)} — {role.endsOn ? formatDate(role.endsOn, locale) : (ro ? "prezent" : "present")}</p>{role.sourceUrl ? <a href={role.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand">{ro ? "Sursă oficială" : "Official source"}<ExternalLink size={11}/></a> : null}</article>)}</div>
+          </section>
+        ) : null}
+
+        <section className="rounded-card border border-line bg-surface p-6">
+          <SectionHeader title={ro ? "Cum a votat recent" : "Recent votes"} href={`/${locale}/votes`} linkLabel={ro ? "Toate voturile" : "All votes"} />
+          {featured ? (
+            <Link href={`/${locale}/votes/${featured.vote.id}`} className="mt-4 block rounded-card border border-line bg-wash/60 p-4 transition hover:border-line-strong">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><span className="inline-flex items-center gap-2"><CalendarDays size={15} aria-hidden="true"/>{formatDate(featured.vote.heldOn, locale)} · {voteChamberLabels[locale][featured.vote.chamber]}</span><ChoiceBadge value={featured.item.choice} locale={locale}/></div>
+              <h3 className="mt-3 font-display text-xl font-bold leading-tight text-ink">{featured.presentation.heading}</h3>
+              {featured.presentation.officialTitle !== featured.presentation.heading ? <p lang="ro" className="mt-2 line-clamp-3 text-sm leading-5 text-muted">{featured.presentation.officialTitle}</p> : null}
+              <span className="mt-3 inline-block text-sm font-semibold text-brand">{ro ? "Vezi votul complet →" : "View full vote →"}</span>
+            </Link>
+          ) : <p className="mt-4 rounded-card border border-dashed border-line-strong p-4 text-sm text-muted">{ro ? "Nu există voturi nominale importate pentru perioada selectată." : "No nominal votes are imported for the selected period."}</p>}
+          {recent.length > 1 ? <ul className="mt-4 divide-y divide-line">{recent.slice(1).map(({ item, vote }) => <li key={item.id}><Link href={`/${locale}/votes/${vote.id}`} className="grid gap-2 py-3 text-sm hover:bg-wash/60 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center"><span className="text-xs text-muted">{formatDate(vote.heldOn, locale)}</span><strong className="line-clamp-2 font-semibold text-ink">{presentVote(vote, { locale }).heading}</strong><ChoiceBadge value={item.choice} locale={locale}/></Link></li>)}</ul> : null}
         </section>
 
-        <section className="border border-slate-300 bg-white p-5 rounded-card"><div className="flex items-center justify-between gap-3"><h2 className="font-serif text-2xl font-semibold text-ink">{locale === "ro" ? "Inițiative legislative" : "Legislative initiatives"}</h2><span className="font-serif text-2xl font-semibold text-ink">{sponsoredBills.length}</span></div><div className="mt-3 divide-y divide-slate-200">{sponsoredBills.length ? sponsoredBills.slice(0, 5).map((bill) => <Link key={bill.id} href={`/${locale}/bills/${bill.slug}`} className="grid gap-1 py-3 hover:bg-wash sm:grid-cols-[120px_minmax(0,1fr)]"><strong className="text-ink">{bill.identifiers.deputies ?? bill.identifiers.senate ?? bill.id}</strong><span className="line-clamp-2 text-sm leading-5 text-muted">{bill.title}</span></Link>) : <p className="py-3 text-sm leading-6 text-muted">{locale === "ro" ? "Nu sunt încă inițiative legislative conectate la acest profil pentru legislatura selectată." : "No legislative initiatives are linked to this profile for the selected legislature yet."}</p>}</div></section>
+        <section className="rounded-card border border-line bg-surface p-6">
+          <div className="flex items-baseline justify-between gap-3"><h2 className="font-display text-2xl font-bold text-ink">{ro ? "Inițiative legislative" : "Legislative initiatives"}</h2><span className="font-display text-2xl font-bold text-ink">{sponsoredBills.length}</span></div>
+          <div className="mt-3 divide-y divide-line">{sponsoredBills.length ? sponsoredBills.slice(0, 5).map((bill) => <Link key={bill.id} href={`/${locale}/bills/${bill.slug}`} className="grid gap-1 py-3 hover:bg-wash/60 sm:grid-cols-[120px_minmax(0,1fr)]"><strong className="text-ink">{bill.identifiers.deputies ?? bill.identifiers.senate ?? bill.id}</strong><span className="line-clamp-2 text-sm leading-5 text-muted">{bill.title}</span></Link>) : <p className="py-3 text-sm leading-6 text-muted">{ro ? "Nu sunt încă inițiative legislative conectate la acest profil pentru legislatura selectată." : "No legislative initiatives are linked to this profile for the selected legislature yet."}</p>}</div>
+        </section>
       </div>
     </div>
   </main>;
 }
 
-function IdentityFact({ label, children }: { label: string; children: React.ReactNode }) { return <div className="min-w-[150px] border-l border-slate-300 px-5 first:border-l-0 first:pl-0"><div>{children}</div><small className="mt-1 block text-xs text-muted">{label}</small></div>; }
-function ActivityBucket({ value, label }: { value: number; label: string }) { return <div className="border-r border-slate-200 px-2 py-3 last:border-r-0"><strong className="block font-serif text-xl text-ink">{value}</strong><span>{label}</span></div>; }
-function ProfileStat({ icon, value, label }: { icon: React.ReactNode; value: string | number; label: string }) { return <div className="border-l border-slate-200 p-3 first:border-l-0 md:p-4"><div className="flex items-center gap-2 text-ink md:gap-3"><span>{icon}</span><strong className="font-serif text-2xl md:text-3xl">{value}</strong></div><p className="mt-1 text-xs text-muted">{label}</p></div>; }
-function ContextBlock({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) { return <div className="grid grid-cols-[32px_minmax(0,1fr)] gap-4 border-t border-slate-200 py-5 first:border-t-0 first:pt-0 last:pb-0"><span className="text-ink">{icon}</span><div><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-2 text-sm leading-6 text-muted">{children}</div></div></div>; }
-function ChoiceBadge({ value, locale }: { value: string; locale: AppLocale }) { const tone = value === "for" ? "bg-emerald-100 text-emerald-800" : value === "against" ? "bg-rose-100 text-rose-700" : value === "abstention" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"; return <span className={`w-fit px-2 py-1 text-xs font-semibold ${tone}`}>{choice(value, locale)}</span>; }
-function initials(value: string) { return value.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
-function choice(value: string, locale: AppLocale) { const ro: Record<string, string> = { for: "Pentru", against: "Contra", abstention: "Abținere", present_not_voting: "Nu a votat", absent: "Absent" }; return locale === "ro" ? (ro[value] ?? value) : value.replaceAll("_", " "); }
+function IdentityFact({ label, children }: { label: string; children: React.ReactNode }) { return <div className="flex min-w-0 flex-col-reverse"><dt className="mt-0.5 text-xs text-muted">{label}</dt><dd>{children}</dd></div>; }
+function ChoiceBadge({ value, locale }: { value: string; locale: AppLocale }) { const kind = voteKindOfChoice(value); return <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${VOTE_STYLE[kind].badge}`}><VoteDot kind={kind} size={14} locale={locale}/>{VOTE_LABEL[locale][kind]}</span>; }
 
 function governmentRoleRank(role: { title: string; interim?: boolean }): number {
   const title = role.title.toLowerCase();

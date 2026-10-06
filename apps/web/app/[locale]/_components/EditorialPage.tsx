@@ -4,12 +4,12 @@ import { FileText, Info } from "lucide-react";
 export function EditorialPage({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return <main className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-page grid-cols-1 bg-canvas ${aside ? "lg:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
     <div className="min-w-0 px-4 py-7 md:px-8 lg:px-10">{children}</div>
-    {aside ? <aside className="border-t border-slate-300 bg-white/70 px-6 py-7 lg:border-l lg:border-t-0">{aside}</aside> : null}
+    {aside ? <aside className="border-t border-line bg-white/70 px-6 py-7 lg:border-l lg:border-t-0">{aside}</aside> : null}
   </main>;
 }
 
 export function EditorialPageHeader({ eyebrow, title, subtitle }: { eyebrow?: string; title: string; subtitle: string }) {
-  return <header className="border-b border-slate-300 pb-5">
+  return <header className="border-b border-line pb-5">
     {eyebrow ? <p className="text-xs font-bold uppercase tracking-wide text-brand">{eyebrow}</p> : null}
     <h1 className="mt-2 font-serif text-5xl font-semibold leading-[.98] tracking-[-.045em] text-ink md:text-6xl">{title}</h1>
     <p className="mt-3 max-w-3xl font-serif text-lg leading-7 text-muted">{subtitle}</p>
@@ -23,6 +23,6 @@ export function EditorialGuide({ title, body, items }: { title: string; body: st
       <p className="mt-3 text-sm leading-6 text-muted">{body}</p>
       {items?.length ? <ol className="mt-5 space-y-4">{items.map((item, index) => <li key={item} className="grid grid-cols-[30px_1fr] gap-3 text-sm text-ink-soft"><span className="grid h-7 w-7 place-items-center rounded-full bg-[#dbe9fb] font-bold text-ink">{index + 1}</span><span>{item}</span></li>)}</ol> : null}
     </section>
-    <section className="mt-5 border border-slate-300 bg-white p-5 rounded-card"><div className="flex items-center gap-3"><FileText className="text-ink" /><h3 className="font-serif text-xl font-semibold text-ink">Date oficiale</h3></div><p className="mt-2 text-sm leading-6 text-muted">Informațiile păstrează legătura către sursele Parlamentului și data ultimei actualizări.</p></section>
+    <section className="mt-5 border border-line bg-white p-5 rounded-card"><div className="flex items-center gap-3"><FileText className="text-ink" /><h3 className="font-serif text-xl font-semibold text-ink">Date oficiale</h3></div><p className="mt-2 text-sm leading-6 text-muted">Informațiile păstrează legătura către sursele Parlamentului și data ultimei actualizări.</p></section>
   </div>;
 }

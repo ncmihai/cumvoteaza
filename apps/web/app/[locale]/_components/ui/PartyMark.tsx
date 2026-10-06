@@ -15,15 +15,38 @@ export function monogramOf(shortName: string): string {
   return name.slice(0, 3).toUpperCase();
 }
 
-function isLight(hex: string): boolean {
+function luminance(hex: string): number {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!match) return false;
+  if (!match) return 0.2;
   const value = parseInt(match[1]!, 16);
   const channel = (shift: number) => {
     const c = ((value >> shift) & 255) / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   };
-  return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0) > 0.4;
+  return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0);
+}
+
+const INK = "#14122b";
+const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+
+function mix(hex: string, towards: "black" | "white", amount: number): string {
+  const value = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16);
+  const target = towards === "black" ? 0 : 255;
+  const part = (shift: number) => Math.round((((value >> shift) & 255) * (1 - amount)) + target * amount);
+  return `#${[16, 8, 0].map((shift) => part(shift).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** The label colour that reads best on a party colour (white or ink); a colour where neither reaches 4.5:1 is darkened or lightened until one does. */
+export function readableOn(hex: string): { background: string; color: string } {
+  let background = /^#[0-9a-f]{6}$/i.test(hex.trim()) ? hex.trim() : "#64748b";
+  for (let step = 0; step < 8; step++) {
+    const l = luminance(background);
+    const white = contrast(1, l);
+    const ink = contrast(l, luminance(INK));
+    if (Math.max(white, ink) >= 4.5) return { background, color: white >= ink ? "#ffffff" : INK };
+    background = white >= ink ? mix(background, "black", 0.12) : mix(background, "white", 0.12);
+  }
+  return { background, color: "#ffffff" };
 }
 
 /**
@@ -38,8 +61,9 @@ export function PartyMark({ party, size = 24, className = "" }: { party: PartyMa
   }
   const text = monogramOf(party.shortName);
   const fontSize = Math.max(8, Math.round(size * (text.length > 3 ? 0.3 : 0.36)));
+  const { background, color } = readableOn(party.color);
   return (
-    <span aria-hidden="true" className={`inline-grid shrink-0 place-items-center rounded-md font-display font-bold leading-none ${isLight(party.color) ? "text-ink" : "text-white"} ${className}`} style={{ ...box, backgroundColor: party.color, fontSize }}>
+    <span aria-hidden="true" className={`inline-grid shrink-0 place-items-center rounded-md font-display font-bold leading-none ${className}`} style={{ ...box, backgroundColor: background, color, fontSize }}>
       {text}
     </span>
   );

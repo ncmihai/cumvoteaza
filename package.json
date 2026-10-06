@@ -62,6 +62,7 @@
     "ingest:repair:remove-test-votes": "npm --workspace @cumsevoteaza/ingest run repair:remove-test-votes --",
     "ingest:repair:merge-parties": "npm --workspace @cumsevoteaza/ingest run repair:merge-parties --",
     "ingest:repair:current-seat-links": "npm --workspace @cumsevoteaza/ingest run repair:current-seat-links --",
+    "ingest:assets:large-photos:inventory": "npm --workspace @cumsevoteaza/ingest run assets:large-photos:inventory --",
     "ingest:updater:catch-up": "npm --workspace @cumsevoteaza/ingest run updater:catch-up --",
     "ingest:updater:status": "npm --workspace @cumsevoteaza/ingest run updater:status --",
     "ingest:updater:request": "npm --workspace @cumsevoteaza/ingest run updater:request --",

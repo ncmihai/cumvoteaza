@@ -952,7 +952,7 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
     });
     const resolvedHistory = resolveHistoryAssetUrls(history, storedAssetRows);
     const profilePhotoUrl =
-      storedAssetUrl(storedAssetRows, "photo", member.id, selectedLegislature?.id, mandate?.chamber);
+      storedAssetUrl(storedAssetRows, "photo", member.id, selectedLegislature?.id, mandate?.chamber, "large");
     const logoUrl =
       storedAssetUrl(storedAssetRows, "party_logo", member.id, selectedLegislature?.id, mandate?.chamber) ??
       storedAssetUrlByOfficialUrl(storedAssetRows, currentMembership?.logoUrl);
@@ -2479,13 +2479,17 @@ function storedAssetUrl(
   assetType: "photo" | "party_logo" | "cv",
   memberId: string,
   legislatureId?: string,
-  chamber?: string
+  chamber?: string,
+  /** A photo comes in two sizes (150 px thumbnail, 600 px portrait): lists and seat maps want the small one, a profile header the large one. */
+  prefer: "small" | "large" = "small"
 ): string | undefined {
   const candidates = assets.filter((asset) => asset.assetType === assetType && asset.entityId === memberId && storedAssetPublicUrl(asset));
+  const width = (asset: typeof schema.storedAssets.$inferSelect) => asset.width ?? 0;
+  const pick = (list: typeof candidates) => [...list].sort((a, b) => (prefer === "large" ? width(b) - width(a) : width(a) - width(b)))[0];
   return (
-    storedAssetPublicUrl(candidates.find((asset) => asset.legislatureId === legislatureId && asset.chamber === chamber)) ??
-    storedAssetPublicUrl(candidates.find((asset) => asset.legislatureId === legislatureId)) ??
-    storedAssetPublicUrl(candidates[0]) ??
+    storedAssetPublicUrl(pick(candidates.filter((asset) => asset.legislatureId === legislatureId && asset.chamber === chamber))) ??
+    storedAssetPublicUrl(pick(candidates.filter((asset) => asset.legislatureId === legislatureId))) ??
+    storedAssetPublicUrl(pick(candidates)) ??
     undefined
   );
 }

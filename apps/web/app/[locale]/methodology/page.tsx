@@ -7,9 +7,9 @@ import { SITE } from "@/lib/site";
 
 
 const statusStyle: Record<CoverageStatus, string> = {
-  complete: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  partial: "border-amber-300 bg-amber-50 text-amber-900",
-  none: "border-slate-300 bg-slate-100 text-slate-700"
+  complete: "border-vote-for-fill bg-vote-for-bg text-vote-for",
+  partial: "border-vote-abstain-fill bg-vote-abstain-bg text-vote-abstain",
+  none: "border-line bg-wash text-ink-soft"
 };
 
 function Status({ status, ro }: { status: CoverageStatus; ro: boolean }) {
@@ -17,8 +17,8 @@ function Status({ status, ro }: { status: CoverageStatus; ro: boolean }) {
   return <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold ${statusStyle[status]}`}>{label}</span>;
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mt-6 border border-slate-300 bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
+function Section({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
+  return <section id={id} className="mt-6 border border-line bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
 }
 
 const th = "px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted";
@@ -63,8 +63,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           <Section title={ro ? "Voturi" : "Votes"}>
             <p>{ro ? "Pentru legislatura curentă comparăm lista oficială a fiecărei zile de vot cu ce avem; legislaturile anterioare sunt păstrate cu istoricul parlamentarilor, dar voturile lor sunt etichetate Parțial până la un import complet." : "For the current legislature we compare each sitting day's official list with what we hold; earlier legislatures keep their members' histories, but their votes are labelled Partial until a full import."}</p>
             <div className="overflow-x-auto"><table className="w-full min-w-[640px] border-collapse text-sm">
-              <thead><tr className="border-b border-slate-300"><th className={th}>{ro ? "Legislatura" : "Legislature"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Voturi păstrate" : "Votes held"}</th><th className={`${th} text-right`}>{ro ? "Cu voturi nominale" : "With named votes"}</th><th className={th}>{ro ? "Perioada voturilor" : "Votes between"}</th><th className={th}>{ro ? "Stare" : "Status"}</th></tr></thead>
-              <tbody className="divide-y divide-slate-200">
+              <thead><tr className="border-b border-line"><th className={th}>{ro ? "Legislatura" : "Legislature"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Voturi păstrate" : "Votes held"}</th><th className={`${th} text-right`}>{ro ? "Cu voturi nominale" : "With named votes"}</th><th className={th}>{ro ? "Perioada voturilor" : "Votes between"}</th><th className={th}>{ro ? "Stare" : "Status"}</th></tr></thead>
+              <tbody className="divide-y divide-line">
                 {data.votes.map((row) => (
                   <tr key={`${row.legislature}-${row.chamber}`}>
                     <td className={`${td} font-semibold text-ink`}>{row.legislature}</td>
@@ -90,8 +90,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           <Section title={ro ? "Parlamentari și locuri" : "Members and seats"}>
             <p>{ro ? "Numărul de locuri este cel legal al fiecărei Camere. Mandatele deschise (doar pentru legislatura în curs) sunt persoanele care stau acum în bancă; mandatele deținute includ și înlocuirile din timpul legislaturii." : "The number of seats is each chamber's legal number. Open mandates (current legislature only) are the people sitting now; mandates held include replacements during the legislature."}</p>
             <div className="overflow-x-auto"><table className="w-full min-w-[520px] border-collapse text-sm">
-              <thead><tr className="border-b border-slate-300"><th className={th}>{ro ? "Legislatura" : "Legislature"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Locuri legale" : "Legal seats"}</th><th className={`${th} text-right`}>{ro ? "Mandate deschise" : "Open mandates"}</th><th className={`${th} text-right`}>{ro ? "Mandate deținute" : "Mandates held"}</th></tr></thead>
-              <tbody className="divide-y divide-slate-200">
+              <thead><tr className="border-b border-line"><th className={th}>{ro ? "Legislatura" : "Legislature"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Locuri legale" : "Legal seats"}</th><th className={`${th} text-right`}>{ro ? "Mandate deschise" : "Open mandates"}</th><th className={`${th} text-right`}>{ro ? "Mandate deținute" : "Mandates held"}</th></tr></thead>
+              <tbody className="divide-y divide-line">
                 {data.seats.map((row) => (
                   <tr key={`${row.legislature}-${row.chamber}`}><td className={`${td} font-semibold text-ink`}>{row.legislature}</td><td className={td}>{voteChamberLabels[locale][row.chamber]}</td><td className={`${td} text-right tabular-nums`}>{row.seats ? n(row.seats) : "–"}</td><td className={`${td} text-right tabular-nums`}>{row.openMandates === undefined ? "–" : n(row.openMandates)}</td><td className={`${td} text-right tabular-nums`}>{n(row.mandatesEver)}</td></tr>
                 ))}
@@ -111,8 +111,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
             {data.officialBills?.rows.length ? (
               <div className="overflow-x-auto"><table className="w-full min-w-[460px] border-collapse text-sm">
                 <caption className="pb-2 text-left text-xs text-muted">{ro ? `Listele oficiale de proiecte pe an față de ce avem (verificat la ${date(data.officialBills.generatedOn)}).` : `The official yearly bill lists against what we hold (checked on ${date(data.officialBills.generatedOn)}).`}</caption>
-                <thead><tr className="border-b border-slate-300"><th className={th}>{ro ? "An" : "Year"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Pe lista oficială" : "On the official list"}</th><th className={`${th} text-right`}>{ro ? "Le avem" : "Held"}</th><th className={`${th} text-right`}>%</th></tr></thead>
-                <tbody className="divide-y divide-slate-200">
+                <thead><tr className="border-b border-line"><th className={th}>{ro ? "An" : "Year"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Pe lista oficială" : "On the official list"}</th><th className={`${th} text-right`}>{ro ? "Le avem" : "Held"}</th><th className={`${th} text-right`}>%</th></tr></thead>
+                <tbody className="divide-y divide-line">
                   {[...data.officialBills.rows].sort((a, b) => b.year - a.year || a.chamber.localeCompare(b.chamber)).map((row) => (
                     <tr key={`${row.year}-${row.chamber}`}><td className={`${td} font-semibold text-ink`}>{row.year}</td><td className={td}>{voteChamberLabels[locale][row.chamber]}</td><td className={`${td} text-right tabular-nums`}>{n(row.official)}</td><td className={`${td} text-right tabular-nums`}>{n(row.held)}</td><td className={`${td} text-right tabular-nums`}>{pct(row.percent)}</td></tr>
                   ))}
@@ -132,11 +132,13 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
         </>
       )}
 
-      <Section title={ro ? "Cum calculăm" : "How we work things out"}>
+      <Section id="cum-calculam" title={ro ? "Cum calculăm" : "How we work things out"}>
         <ul className="list-disc space-y-2 pl-5">
           <li>{ro ? "Rezultatul unui vot este cel de pe pagina oficială. Când Camera nu îl publică, îl calculăm din voturile oficiale și regula de majoritate din Constituție (art. 76), iar pagina votului spune ce regulă am folosit." : "A vote's result is the one on the official page. When the chamber does not publish it, we calculate it from the official votes and the Constitution's majority rule (art. 76), and the vote page says which rule was used."}</li>
           <li>{ro ? "Totalurile unui vot (prezenți, pentru, contra, abțineri, nu au votat) sunt cele oficiale; verificăm că lista nominală le însumează exact, iar diferențele sunt raportate, nu ascunse." : "A vote's totals (present, for, against, abstaining, did not vote) are the official ones; we check that the named list adds up to them exactly, and differences are reported, not hidden."}</li>
           <li>{ro ? "Absențele din fișa unui parlamentar sunt numărate din voturile nominale; cifrele oficiale ale Camerei (activitate, prezență) sunt afișate alături, cu sursa lor, nu amestecate cu ale noastre." : "The absences on a member's page are counted from the named votes; the chamber's own official figures (activity, attendance) are shown beside them with their source, not mixed with ours."}</li>
+          <li><strong>{ro ? "Prezența" : "Attendance"}</strong>: {ro ? "pentru un parlamentar, numărul voturilor în care apare pe lista nominală (a votat pentru, contra, s-a abținut sau a fost prezent fără să voteze), împărțit la numărul voturilor cu listă nominală ținute în camera lui (și în ședințele comune) cât timp a avut mandatul. Votul fără listă nominală (de exemplu un vot secret) nu intră nici la numărător, nici la numitor. Lipsa de pe listă nu spune de ce: poate fi absență sau o lipsă din sursă, deci numim cifra „prezență pe listă”, nu „absențe”." : "For a member, the number of votes in which they appear on the name list (voted for, against, abstained, or were present without voting), divided by the number of votes with a name list held in their chamber (and in joint sittings) while they held the mandate. A vote with no name list (for example a secret ballot) counts in neither. Not being on the list does not say why: it can be an absence or a gap in the source, so we call the figure \"on the list\", not \"absences\"."}</li>
+          <li><strong>{ro ? "Vot ca restul grupului" : "Voting with the group"}</strong>: {ro ? "numărul voturilor în care parlamentarul a votat ca majoritatea celorlalți membri ai grupului său, împărțit la numărul voturilor în care a luat o poziție (pentru, contra sau abținere) și restul grupului (cel puțin patru persoane) avea o majoritate clară, fără egalitate. Fiecare cifră descrie o singură persoană; nu facem clasamente și nu numim pe nimeni «rebel» sau «loial»." : "The number of votes in which the member voted as the majority of the other members of their group did, divided by the number of votes in which they took a side (for, against or abstention) and the rest of the group (at least four people) had a clear majority, with no tie. Each figure describes one person; we do not rank anyone and do not call anyone \"rebel\" or \"loyal\"."}</li>
           <li>{ro ? "Soarta unui proiect este doar ce spune pagina oficială: «promulgat» numai când pagina are numărul legii; «respins» numai când respinge Camera decizională; altfel «în procedură», cu etapa scrisă de sursă. Camera de origine și Camera decizională sunt cele din pagini; când două pagini se contrazic, nu alegem și lăsăm valoarea veche." : "A bill's fate is only what the official page says: \"promulgated\" only when the page has the law's number; \"rejected\" only when the deciding chamber rejects; otherwise \"in progress\", with the stage as the source wrote it. The chamber of origin and the deciding chamber are the ones the pages give; when two pages contradict each other we do not choose and leave the earlier value."}</li>
           <li>{ro ? "Un inițiator este legat de un parlamentar numai prin legătura exactă din pagina Camerei sau printr-un nume care se potrivește cu o singură persoană care sedea în ziua respectivă; altfel rămâne scris ca în sursă, fără legătură." : "An initiator is linked to a member only through the exact link on the Chamber's page or a name that matches exactly one person sitting that day; otherwise it stays as the source wrote it, unlinked."}</li>
         </ul>

@@ -87,7 +87,7 @@ export function VoteDirectoryExplorer({
       <DirectoryFilters locale={locale} kind="votes" filters={initialFilters} filterOptions={filterOptions} labels={labels} />
       {loadError ? <DirectoryMessage tone="error" message={labels.error} /> : null}
       <section className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div data-testid="vote-directory-list" className="divide-y divide-slate-200 border border-slate-300 bg-white">
+        <div data-testid="vote-directory-list" className="divide-y divide-line border border-line bg-white">
           {items.length === 0 ? <DirectoryMessage message={labels.empty} /> : null}
           {items.map(({ vote, bill, source, hotCount }) => {
             const presentation = presentVote(vote, { locale, bill, source });
@@ -95,23 +95,23 @@ export function VoteDirectoryExplorer({
             <div key={vote.id} role="button" tabIndex={0} aria-pressed={selected?.vote.id === vote.id} aria-busy={navigatingId === vote.id} onClick={() => selectVote(vote.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectVote(vote.id); } }} className={`group relative w-full cursor-pointer border-l-4 px-4 py-3.5 text-left transition ${selected?.vote.id === vote.id ? "border-[#f7b500] bg-canvas" : "border-transparent hover:border-[#f7b500] hover:bg-[#fbfcfd]"} ${navigatingId === vote.id ? "pointer-events-none opacity-60" : ""}`}>
               {navigatingId === vote.id ? <span className="absolute right-4 top-4 inline-flex items-center gap-2 bg-white px-2 py-1 text-xs font-bold text-brand"><LoaderCircle className="animate-spin" size={15}/>{locale === "ro" ? "Se deschide…" : "Opening…"}</span> : null}
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-blue-800">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-brand-strong">
                   <BarChart3 size={16} aria-hidden="true" />
                   {formatDate(vote.heldOn, locale)} · {voteChamberLabels[locale][vote.chamber]}
                 </div>
-                {locale === "en" ? <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Official title in Romanian</div> : null}
-                <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2"><h2 className="min-w-0 flex-1 font-serif text-xl font-semibold leading-tight text-ink">{presentation.heading}</h2><span className="shrink-0 border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">{vote.voteType}</span></div>
-                {presentation.subject ? <OfficialText className="mt-1 line-clamp-2 text-sm text-slate-600" text={presentation.subject} locale={locale}/> : null}
+                {locale === "en" ? <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted">Official title in Romanian</div> : null}
+                <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2"><h2 className="min-w-0 flex-1 font-serif text-xl font-semibold leading-tight text-ink">{presentation.heading}</h2><span className="shrink-0 border border-line bg-wash px-2 py-0.5 text-xs font-semibold text-ink-soft">{vote.voteType}</span></div>
+                {presentation.subject ? <OfficialText className="mt-1 line-clamp-2 text-sm text-muted" text={presentation.subject} locale={locale}/> : null}
                 <div className="mt-2 flex flex-wrap items-center gap-3" onClick={(event) => event.stopPropagation()}>
                   <HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.hot} />
                   <Link href={`/${locale}/votes/${vote.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Vezi votul complet" : "Open full vote"}<ArrowRight size={14}/></Link>
                 </div>
               </div>
-              <div className="mt-2.5 grid grid-cols-4 gap-2 border-t border-slate-200 pt-2 text-xs">
-                <StatLine label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-emerald-700" />
-                <StatLine label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-red-700" />
-                <StatLine label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-amber-700" />
-                <StatLine label={labels.present} value={vote.totals.present} tone="text-slate-700" />
+              <div className="mt-2.5 grid grid-cols-4 gap-2 border-t border-line pt-2 text-xs">
+                <StatLine label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-vote-for" />
+                <StatLine label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-vote-against" />
+                <StatLine label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-vote-abstain" />
+                <StatLine label={labels.present} value={vote.totals.present} tone="text-ink-soft" />
               </div>
             </div>
           );})}
@@ -170,23 +170,23 @@ export function BillDirectoryExplorer({
     <>
       <DirectoryFilters locale={locale} kind="bills" filters={initialFilters} filterOptions={filterOptions} labels={labels} />
       {loadError ? <DirectoryMessage tone="error" message={labels.error} /> : null}
-      <section className="mt-6 border border-slate-300 bg-white">
-        <div className="divide-y divide-slate-200">
+      <section className="mt-6 border border-line bg-white">
+        <div className="divide-y divide-line">
           {items.length === 0 ? <DirectoryMessage message={labels.empty} /> : null}
           {items.map(({ bill, submittedOn, latestEventOn, voteCount, hotCount }) => {
             const presentation = presentBill(bill);
             return (
-            <Link key={bill.id} href={`/${locale}/bills/${bill.slug}`} className="grid gap-4 px-4 py-4 hover:bg-slate-50 md:grid-cols-[1fr_280px]">
+            <Link key={bill.id} href={`/${locale}/bills/${bill.slug}`} className="grid gap-4 px-4 py-4 hover:bg-wash md:grid-cols-[1fr_280px]">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold uppercase text-blue-800">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold uppercase text-brand-strong">
                   <FileText size={16} aria-hidden="true" />
                   {bill.identifiers.deputies ? <span>{locale === "ro" ? "Camera Deputaților" : "Chamber of Deputies"}: {bill.identifiers.deputies}</span> : null}
-                  {bill.identifiers.senate ? <span className="border-l border-slate-300 pl-2">Senat: {bill.identifiers.senate}</span> : null}
+                  {bill.identifiers.senate ? <span className="border-l border-line pl-2">Senat: {bill.identifiers.senate}</span> : null}
                   {!bill.identifiers.senate && !bill.identifiers.deputies ? bill.id : null}
                 </div>
-                {locale === "en" ? <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Official title in Romanian</div> : null}
+                {locale === "en" ? <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted">Official title in Romanian</div> : null}
                 <h2 className="mt-2 line-clamp-2 font-serif text-xl font-semibold text-ink">{presentation.heading}</h2>
-                <p className="mt-1 line-clamp-2 text-sm text-slate-600">{presentation.status}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-muted">{presentation.status}</p>
                 <div className="mt-3" onClick={(event) => event.preventDefault()}>
                   <HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.hot} />
                 </div>
@@ -242,14 +242,14 @@ function DirectoryFilters({
       }}
     >
       <div className="flex min-w-0 border border-line-strong bg-white focus-within:outline focus-within:outline-3 focus-within:outline-blue-100"><label className="flex min-w-0 flex-1 items-center gap-3 px-4"><Search size={21} className="shrink-0 text-ink" aria-hidden="true" /><input className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" name="q" defaultValue={filters.q ?? ""} placeholder={labels.search} /></label><button className="bg-ink px-6 text-sm font-bold text-white hover:bg-ink" type="submit">{locale === "ro" ? "Caută" : "Search"}</button></div>
-      <DismissibleDetails className="relative" summary={<summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-line-strong bg-white text-sm font-semibold text-ink"><Filter size={19}/>{locale === "ro" ? "Filtre" : "Filters"}{activeFilters.length ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 text-xs text-white">{activeFilters.length}</span> : null}<span aria-hidden="true">⌄</span></summary>} panelClassName="absolute right-0 z-30 mt-2 w-[min(620px,calc(100vw-32px))] border border-slate-300 bg-white p-4 shadow-xl"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <DismissibleDetails className="relative" summary={<summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-line-strong bg-white text-sm font-semibold text-ink"><Filter size={19}/>{locale === "ro" ? "Filtre" : "Filters"}{activeFilters.length ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 text-xs text-white">{activeFilters.length}</span> : null}<span aria-hidden="true">⌄</span></summary>} panelClassName="absolute right-0 z-30 mt-2 w-[min(620px,calc(100vw-32px))] border border-line bg-white p-4 shadow-xl"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Select name="legislature" label={labels.legislature} defaultValue={filters.legislature ?? ""} options={filterOptions.legislatures.map((legislature) => [legislature.id, legislature.label])} />
         <Select name="year" label={labels.year} defaultValue={filters.year ?? ""} options={years.map((year) => [year, year])} />
         <Select name="month" label={labels.month} defaultValue={filters.month ?? ""} options={monthOptions(locale)} />
         <Select name="chamber" label={labels.chamber} defaultValue={filters.chamber ?? ""} options={[["senate", chamberLabels[locale].senate],["deputies", chamberLabels[locale].deputies], ...(kind === "votes" ? [["joint", voteChamberLabels[locale].joint] as [string, string]] : [])]} />
         <Select name="sourceStatus" label={labels.sourceStatus} defaultValue={filters.sourceStatus ?? ""} options={[["parsed", locale === "ro" ? "Preluată complet" : "Fully parsed"],["partial", locale === "ro" ? "Parțială" : "Partial"],["failed", locale === "ro" ? "Cu eroare" : "Failed"]]} />
         <Select name="group" label={labels.group} defaultValue={filters.group ?? ""} options={filterOptions.groups.map((group) => [group.id, `${group.shortName} · ${chamberLabels[locale][group.chamber]}`])} />
-      </div><div className="mt-4 flex gap-2"><Link href={path} className="flex-1 border border-slate-300 px-4 py-2.5 text-center text-sm font-bold text-ink">{locale === "ro" ? "Resetează" : "Reset"}</Link><button className="flex-1 bg-ink px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></DismissibleDetails>
+      </div><div className="mt-4 flex gap-2"><Link href={path} className="flex-1 border border-line px-4 py-2.5 text-center text-sm font-bold text-ink">{locale === "ro" ? "Resetează" : "Reset"}</Link><button className="flex-1 bg-ink px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></DismissibleDetails>
       {activeFilters.length ? <div className="flex flex-wrap gap-2 sm:col-span-2">{activeFilters.map(([key, value]) => <span key={key} className="border border-[#cbd5e1] bg-white px-2.5 py-1 text-xs text-muted rounded-control">{key}: <strong className="text-ink">{value}</strong></span>)}</div> : null}
     </form>
   );
@@ -259,7 +259,7 @@ function Select({ name, label, defaultValue, options }: { name: string; label: s
   return (
     <label className="grid gap-1 text-xs font-semibold uppercase text-muted">
       {label}
-      <select name={name} defaultValue={defaultValue} className="min-w-0 border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal normal-case text-slate-900 rounded-control">
+      <select name={name} defaultValue={defaultValue} className="min-w-0 border border-line bg-white px-3 py-2.5 text-sm font-normal normal-case text-ink rounded-control">
         <option value="">{name === "year" || name === "month" ? ("—") : ("Toate")}</option>
         {options.map(([value, optionLabel]) => (
           <option key={value} value={value}>
@@ -275,7 +275,7 @@ function LoadMoreButton({ hasMore, isPending, labels, onClick }: { hasMore: bool
   if (!hasMore) return null;
   return (
     <div className="mt-5 flex justify-center">
-      <button disabled={isPending} type="button" onClick={onClick} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+      <button disabled={isPending} type="button" onClick={onClick} className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-wash">
         {isPending ? labels.loading : labels.loadMore}
       </button>
     </div>
@@ -288,13 +288,13 @@ function DirectorySkeleton() {
       {Array.from({ length: 3 }).map((_, index) => (
         <div key={index} className="grid gap-4 px-4 py-4 md:grid-cols-[1fr_280px]">
           <div>
-            <div className="h-4 w-40 animate-pulse bg-slate-200" />
-            <div className="mt-3 h-5 w-4/5 animate-pulse bg-slate-200" />
-            <div className="mt-2 h-4 w-2/3 animate-pulse bg-slate-200" />
+            <div className="h-4 w-40 animate-pulse bg-line" />
+            <div className="mt-3 h-5 w-4/5 animate-pulse bg-line" />
+            <div className="mt-2 h-4 w-2/3 animate-pulse bg-line" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="h-10 animate-pulse bg-slate-200" />
-            <div className="h-10 animate-pulse bg-slate-200" />
+            <div className="h-10 animate-pulse bg-line" />
+            <div className="h-10 animate-pulse bg-line" />
           </div>
         </div>
       ))}
@@ -303,13 +303,13 @@ function DirectorySkeleton() {
 }
 
 function DirectoryMessage({ message, tone = "empty" }: { message: string; tone?: "empty" | "error" }) {
-  return <div role={tone === "error" ? "alert" : "status"} className={`px-5 py-8 text-center text-sm ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "text-slate-600"}`}>{message}</div>;
+  return <div role={tone === "error" ? "alert" : "status"} className={`px-5 py-8 text-center text-sm ${tone === "error" ? "border border-vote-against-fill bg-vote-against-bg text-vote-against" : "text-muted"}`}>{message}</div>;
 }
 
 function StatLine({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div>
-      <div className="text-xs uppercase text-slate-500">{label}</div>
+      <div className="text-xs uppercase text-muted">{label}</div>
       <div className={`mt-1 text-xl font-semibold ${tone}`}>{value}</div>
     </div>
   );
@@ -318,8 +318,8 @@ function StatLine({ label, value, tone }: { label: string; value: number; tone: 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase text-slate-500">{label}</dt>
-      <dd className="mt-1 font-semibold text-slate-950">{value}</dd>
+      <dt className="text-xs uppercase text-muted">{label}</dt>
+      <dd className="mt-1 font-semibold text-ink">{value}</dd>
     </div>
   );
 }

@@ -43,11 +43,11 @@ export function BillTextSearch({
   }
 
   return (
-    <section className="border border-slate-300 bg-white p-4 rounded-card">
-      <h2 className="font-semibold text-slate-950">{labels.title}</h2>
+    <section className="border border-line bg-white p-4 rounded-card">
+      <h2 className="font-semibold text-ink">{labels.title}</h2>
       <div className="mt-3 flex gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2 border border-slate-300 px-3 py-2">
-          <Search size={16} className="text-slate-500" aria-hidden="true" />
+        <div className="flex min-w-0 flex-1 items-center gap-2 border border-line px-3 py-2">
+          <Search size={16} className="text-muted" aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -58,23 +58,23 @@ export function BillTextSearch({
             className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
           />
         </div>
-        <button type="button" onClick={runSearch} className="border border-slate-950 bg-slate-950 px-3 py-2 text-sm font-medium text-white">
+        <button type="button" onClick={runSearch} className="border border-ink bg-ink px-3 py-2 text-sm font-medium text-white">
           {labels.search}
         </button>
       </div>
-      {state === "idle" ? <p className="mt-3 text-xs leading-5 text-slate-500">{labels.noQuery}</p> : null}
-      {state === "loading" ? <p className="mt-3 text-sm text-slate-600">{labels.loading}</p> : null}
-      {state === "failed" ? <p className="mt-3 text-sm text-slate-600">{labels.failed}</p> : null}
-      {state === "loaded" && results.length === 0 ? <p className="mt-3 text-sm text-slate-600">{labels.empty}</p> : null}
+      {state === "idle" ? <p className="mt-3 text-xs leading-5 text-muted">{labels.noQuery}</p> : null}
+      {state === "loading" ? <p className="mt-3 text-sm text-muted">{labels.loading}</p> : null}
+      {state === "failed" ? <p className="mt-3 text-sm text-muted">{labels.failed}</p> : null}
+      {state === "loaded" && results.length === 0 ? <p className="mt-3 text-sm text-muted">{labels.empty}</p> : null}
       {results.length > 0 ? (
         <div className="mt-4 grid gap-3">
           {results.map((result) => (
-            <div key={result.documentId} className="border border-slate-200 px-3 py-2 text-sm">
-              <div className="font-medium text-slate-950">{result.label}</div>
-              <div className="mt-1 text-xs uppercase text-slate-500">{result.documentKind}</div>
+            <div key={result.documentId} className="border border-line px-3 py-2 text-sm">
+              <div className="font-medium text-ink">{result.label}</div>
+              <div className="mt-1 text-xs uppercase text-muted">{result.documentKind}</div>
               <div className="mt-2 space-y-2">
                 {result.snippets.map((snippet, index) => (
-                  <p key={`${result.documentId}-${index}`} className="leading-6 text-slate-700">{snippet}</p>
+                  <p key={`${result.documentId}-${index}`} className="leading-6 text-ink-soft">{snippet}</p>
                 ))}
               </div>
             </div>

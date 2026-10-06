@@ -42,6 +42,8 @@ export type AssetImportOptions = {
   optimizePhotos?: boolean;
   photoWidth?: number;
   photoHeight?: number;
+  /** Stop after this many failed downloads in a row (default 5). */
+  stopAfterFailures?: number;
   force?: boolean;
 };
 
@@ -55,6 +57,8 @@ export type AssetImportSummary = {
   missing: number;
   officialTimeout: number;
   failed: number;
+  /** True when the run stopped because several downloads in a row failed (a block page or an outage): nothing more is requested until the owner looks. */
+  stoppedAfterFailures?: boolean;
   failures: Array<{ id: string; officialUrl: string; status: StoredAssetStatus; error?: string }>;
 };
 
@@ -101,8 +105,15 @@ export async function importStoredAssetsFromInventory(options: AssetImportOption
   const session = createDbSession();
   const resultByOfficialUrl = new Map<string, StoredAssetResult>();
   let processed = 0;
+  let failuresInARow = 0;
+  const failureLimit = options.stopAfterFailures ?? 5;
   try {
     for (const item of items) {
+      if (failuresInARow >= failureLimit) {
+        summary.stoppedAfterFailures = true;
+        console.log(`assets:import stopped: ${failuresInARow} downloads failed in a row (a block page or an outage). Nothing more was requested.`);
+        break;
+      }
       processed += 1;
       const existing = await session.db.query.storedAssets.findFirst({
         where: eq(storedAssets.id, item.id)
@@ -131,6 +142,7 @@ export async function importStoredAssetsFromInventory(options: AssetImportOption
         }
       }
       await upsertAsset(session.db, item, result);
+      failuresInARow = result.status === "stored" ? 0 : failuresInARow + 1;
       if (result.status === "stored") summary.stored += 1;
       else if (result.status === "missing") summary.missing += 1;
       else if (result.status === "official_timeout") summary.officialTimeout += 1;
@@ -248,6 +260,8 @@ async function fetchAndStoreAsset(item: AssetInventoryItem, storage: AssetStorag
     }
     const officialBytes = Buffer.from(await response.arrayBuffer());
     const officialMimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || mimeTypeFromUrl(item.officialUrl);
+    // A photo that is not an image is a block page (the Chamber answers a captcha with HTTP 200): never store it as a picture.
+    if (item.assetType === "photo" && !officialMimeType.startsWith("image/")) return { status: "failed", error: `Not an image (${officialMimeType}): a block page?` };
     const asset = await prepareAssetForStorage(item, officialBytes, officialMimeType, options);
     const bytes = asset.bytes;
     const contentHash = createHash("sha256").update(bytes).digest("hex");

@@ -69,7 +69,7 @@ type SittingRow = {
 };
 
 /** The profile pages we saved for the current legislature, found through the probe's sidecar files (the page's address is stored beside it). */
-async function indexProfiles(repoRoot: string): Promise<Map<string, { htmlPath: string; contentHash: string; url: string; fetchedAt: string }>> {
+export async function indexProfiles(repoRoot: string): Promise<Map<string, { htmlPath: string; contentHash: string; url: string; fetchedAt: string }>> {
   const dir = path.join(repoRoot, "data", "cdep-history", "raw");
   const index = new Map<string, { htmlPath: string; contentHash: string; url: string; fetchedAt: string }>();
   let names: string[] = [];

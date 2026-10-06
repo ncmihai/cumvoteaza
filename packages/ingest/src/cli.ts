@@ -15,6 +15,7 @@ import { publishCoverage } from "./coverage/publish";
 import { removeTestVotes } from "./repair/remove-test-votes";
 import { mergeParties } from "./repair/merge-parties";
 import { fillCurrentSeatLinks } from "./repair/current-seat-links";
+import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
 import { revalidateSite } from "./site-revalidate";
@@ -306,6 +307,20 @@ async function main() {
     console.log(JSON.stringify(compactCdepHistoryImportResult(result), null, 2));
     if (!hasFlag("persist")) {
       console.log("Dry run only. Re-run with --persist to write these official CDEP roster rows.");
+    }
+    return;
+  }
+
+  if (command === "assets:large-photos:inventory") {
+    // Sprint 11b: the larger official portraits (1200 x 1600) of the sitting members, listed from the profile pages already saved; no request is made.
+    // Without --write it only counts. The fetch itself is assets:import (see the printed command).
+    const session = createDbSession();
+    try {
+      const plan = await planLargePhotos(session.db, { repoRoot, write: hasFlag("write") });
+      console.log(JSON.stringify({ summary: plan.summary, inventory: plan.outFile ?? "(not written: add --write)", sample: plan.items.slice(0, 2).map((item) => item.officialUrl) }, null, 2));
+      if (plan.outFile) console.log(`\nThen, run by you (about ${Math.ceil(plan.items.length * 4 / 60)} minutes, one request every 3 s, stops after 5 failures in a row):\n  npm run prod -- ingest:assets:import --assets=data/imports/large-photos-inventory.jsonl --photo-width=600 --photo-height=800 --delay-ms=3000 --persist`);
+    } finally {
+      await session.close();
     }
     return;
   }

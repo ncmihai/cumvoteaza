@@ -19,33 +19,33 @@ export function VotePreview({ locale, item, className = "" }: { locale: Locale; 
   const attendanceBase = vote.totals.absent === undefined ? undefined : vote.totals.present + vote.totals.absent;
   const attendance = attendanceBase ? Math.round(vote.totals.present / attendanceBase * 100) : undefined;
 
-  return <aside className={`self-start border border-slate-300 bg-white p-5 xl:sticky xl:top-24 ${className}`} aria-live="polite">
+  return <aside className={`self-start border border-line bg-white p-5 xl:sticky xl:top-24 ${className}`} aria-live="polite">
     <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-brand">
       <span className={vote.chamber === "joint" ? "bg-ink px-1.5 py-0.5 text-xs font-bold uppercase text-white" : undefined}>{voteChamberLabels[locale][vote.chamber]}</span>
       <ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={copy.share} copiedLabel={copy.copied} errorLabel={copy.copyError} className="bg-transparent text-muted" />
     </div>
     <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-ink">{presentation.heading}</h2>
     {presentation.subject ? <OfficialText className="mt-3 line-clamp-3 text-sm leading-6 text-muted" text={presentation.subject} locale={locale}/> : null}
-    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-slate-200 py-3 text-xs text-muted">
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-line py-3 text-xs text-muted">
       <span className="inline-flex items-center gap-1.5"><CalendarDays size={15}/>{formatDate(vote.heldOn, locale)}</span>
       <span className="inline-flex items-center gap-1.5"><Landmark size={15}/>{vote.voteType}</span>
       {attendance !== undefined ? <span className="inline-flex items-center gap-1.5"><Users size={15}/>{attendance}% {copy.attendance}</span> : null}
     </div>
 
     <div className="mt-5 grid grid-cols-4 gap-2">
-      <Tally label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-emerald-700" />
-      <Tally label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-red-700" />
-      <Tally label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-amber-700" />
+      <Tally label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-vote-for" />
+      <Tally label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-vote-against" />
+      <Tally label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-vote-abstain" />
       <Tally label={copy.present} value={vote.totals.present} tone="text-ink" />
     </div>
     <VoteBalance item={item} />
 
-    <section className="mt-6 border-t border-slate-200 pt-4">
+    <section className="mt-6 border-t border-line pt-4">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="font-serif text-xl font-semibold text-ink">{copy.parties}</h3>
-        {represented ? <span className="text-xs text-slate-500">{represented} {copy.groupVotes}</span> : null}
+        {represented ? <span className="text-xs text-muted">{represented} {copy.groupVotes}</span> : null}
       </div>
-      {groups.length ? <div className="mt-3 space-y-3">{groups.map((group) => <PartyRow key={group.groupId} group={group} locale={locale} />)}</div> : <p className="mt-3 border border-dashed border-slate-300 bg-slate-50 p-3 text-sm leading-5 text-slate-600">{copy.noGroups}</p>}
+      {groups.length ? <div className="mt-3 space-y-3">{groups.map((group) => <PartyRow key={group.groupId} group={group} locale={locale} />)}</div> : <p className="mt-3 border border-dashed border-line bg-wash p-3 text-sm leading-5 text-muted">{copy.noGroups}</p>}
     </section>
 
     <Link href={`/${locale}/votes/${vote.id}`} className="mt-6 flex items-center justify-center gap-2 bg-ink px-4 py-3 text-sm font-bold !text-white transition hover:bg-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
@@ -62,7 +62,7 @@ function VoteBalance({ item }: { item: VoteExplorerItem }) {
     { value: item.vote.totals.abstention, color: "#c9640c" },
     { value: item.vote.totals.presentNotVoting, color: "#94a3b8" }
   ].filter((piece) => piece.value > 0);
-  return <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">{pieces.map((piece) => <span key={piece.color} style={{ width: `${piece.value / total * 100}%`, backgroundColor: piece.color }} />)}</div>;
+  return <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-wash" aria-hidden="true">{pieces.map((piece) => <span key={piece.color} style={{ width: `${piece.value / total * 100}%`, backgroundColor: piece.color }} />)}</div>;
 }
 
 function PartyRow({ group, locale }: { group: VotePreviewGroup; locale: Locale }) {
@@ -75,19 +75,19 @@ function PartyRow({ group, locale }: { group: VotePreviewGroup; locale: Locale }
   return <div>
     <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
       <span className="flex min-w-0 items-center gap-2 font-bold text-ink" title={group.name}><i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }}/><span className="truncate">{group.shortName}</span></span>
-      <span className="shrink-0 text-slate-600"><strong style={{ color: leading.color }}>{leading.value}</strong> {leading.label.toLowerCase()}</span>
+      <span className="shrink-0 text-muted"><strong style={{ color: leading.color }}>{leading.value}</strong> {leading.label.toLowerCase()}</span>
     </div>
-    <div className="flex h-2 overflow-hidden rounded-full bg-slate-100" title={`${group.for} / ${group.against} / ${group.abstention}`}>
-      <span className="bg-emerald-600" style={{ width: `${group.for / total * 100}%` }}/>
-      <span className="bg-red-600" style={{ width: `${group.against / total * 100}%` }}/>
-      <span className="bg-amber-600" style={{ width: `${group.abstention / total * 100}%` }}/>
-      <span className="bg-slate-400" style={{ width: `${group.presentNotVoting / total * 100}%` }}/>
+    <div className="flex h-2 overflow-hidden rounded-full bg-wash" title={`${group.for} / ${group.against} / ${group.abstention}`}>
+      <span className="bg-vote-for-fill" style={{ width: `${group.for / total * 100}%` }}/>
+      <span className="bg-vote-against-fill" style={{ width: `${group.against / total * 100}%` }}/>
+      <span className="bg-vote-abstain-fill" style={{ width: `${group.abstention / total * 100}%` }}/>
+      <span className="bg-line-strong" style={{ width: `${group.presentNotVoting / total * 100}%` }}/>
     </div>
   </div>;
 }
 
 function groupTotal(group: VotePreviewGroup) { return group.for + group.against + group.abstention + group.presentNotVoting; }
-function Tally({ label, value, tone }: { label: string; value: number; tone: string }) { return <div><div className={`font-serif text-xl font-semibold ${tone}`}>{value}</div><div className="truncate text-xs uppercase tracking-wide text-slate-500">{label}</div></div>; }
+function Tally({ label, value, tone }: { label: string; value: number; tone: string }) { return <div><div className={`font-serif text-xl font-semibold ${tone}`}>{value}</div><div className="truncate text-xs uppercase tracking-wide text-muted">{label}</div></div>; }
 
 const labels = {
   ro: { share: "Distribuie", copied: "Link copiat", copyError: "Copiază manual", attendance: "prezență", present: "Prezenți", parties: "Cum au votat grupurile", groupVotes: "voturi grupate", noGroups: "Parlamentul nu a publicat o defalcare pe grupuri pentru acest vot. Rezultatul total rămâne verificabil în pagina completă.", complete: "Vezi votul complet" },
