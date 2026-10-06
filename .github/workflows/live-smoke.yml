@@ -1,0 +1,48 @@
+name: Live smoke
+
+# The browser smoke tests (apps/web/e2e/smoke.e2e.ts) against the live site: language and redirects, 404s, page titles,
+# a vote, the joint-sitting chart, a member, a bill, the methodology page, the footer, no overflow on a phone.
+# Every morning, and on request. A failure e-mails the owner (GitHub does that for a failed scheduled run) and keeps the traces.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site to check"
+        default: "https://cumvoteaza.vercel.app"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Smoke tests against the live site
+        run: npx playwright test e2e/smoke.e2e.ts
+        working-directory: apps/web
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://cumvoteaza.vercel.app' }}
+
+      - name: Keep the traces of a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          retention-days: 7
