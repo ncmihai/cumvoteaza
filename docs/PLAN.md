@@ -183,6 +183,7 @@ F-1 shared plumbing (raw-page archive, revisions, open downloads with licence) â
 
 ## Working agreement
 
+- **Neon budget (6 Oct 2026):** the owner holds $100 of Neon credits, so nothing is blocked, but they are spent by storage, compute hours and data transfer. Habits: a rehearsal copy of production only when the change needs one and deleted the same day; at most two backup branches besides dev's parent; change history 1 h; full re-imports and re-persists only when the data changed; at the end of each sprint the owner reads the balance from the Neon console (Billing) and tells me, and it is written in the sprint's log row.
 - One branch per phase or feature. Before merging: `npm run verify` (typecheck, tests, build), plus a live check after deploy. Local commands run on the Neon `dev` branch; production runs go through `npm run prod -- <script>` and are run by the owner.
 - At the end of each session, update **this file** (checkboxes, verified state, log). Decisions and questions go in `DECISIONS.md`. **No new planning docs.**
 - Tests never touch the network or the production DB.
