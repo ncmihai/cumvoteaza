@@ -15,6 +15,7 @@
     "@cumsevoteaza/db": "0.1.0",
     "@cumsevoteaza/ingest": "0.1.0",
     "@cumsevoteaza/parliament-model": "0.1.0",
+    "@vercel/analytics": "^2.0.1",
     "d3-shape": "^3.2.0",
     "lucide-react": "^0.468.0",
     "next": "^16.2.4",

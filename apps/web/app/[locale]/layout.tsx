@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import { NextIntlClientProvider } from "next-intl";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { TITLE_TEMPLATE } from "@/lib/page-metadata";
@@ -53,6 +54,8 @@ export default async function LocaleLayout({
             <FeedbackWidget locale={locale} />
           </div>
         </NextIntlClientProvider>
+        {/* Vercel Web Analytics: page views only, no cookies (D-015). It does nothing until Analytics is enabled in the Vercel project. */}
+        <Analytics />
       </body>
     </html>
   );
