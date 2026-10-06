@@ -85,6 +85,11 @@ export interface BillPlan {
   billId: string;
   slug: string;
   isNew: boolean;
+  /** The dossier changed the chamber of origin / the deciding chamber the bill was stored with. */
+  originChanged: boolean;
+  decisionChanged: boolean;
+  /** The pages disagree: one says the Senate was first, the other that the Senate decides (or the same for the Chamber). */
+  originConflict: boolean;
   /** A bill created under the id of an old merge that the dossiers prove wrong: the merge's alias is removed when the bill is written. */
   unmerge: boolean;
   /** The stored bill is the one this dossier's own numbers name (its id is the id those numbers give), not just one that shares a number with it. */
@@ -187,14 +192,15 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
   matches.sort((a, b) => Number(isStrong(b)) - Number(isStrong(a)) || Number(b.id.startsWith("bill-l")) - Number(a.id.startsWith("bill-l")) || a.id.localeCompare(b.id));
   const existing = matches[0];
 
-  // A dossier that lost its stored bill to another dossier and has no other bill to go to becomes a bill of its own under its Chamber number only:
+  // A dossier that lost its stored bill to another dossier keeps (or becomes) a bill of its own under its Chamber number only:
   // the Senate number it prints belongs to the dossier that kept the stored bill (the Chamber printed it on the wrong bill).
-  const lostItsBill = Boolean(input.exclude?.size) && !existing;
+  const lostItsBill = Boolean(input.exclude?.size);
   const identifiers = identifiersOf(lostItsBill ? { deputies: merged.keys.deputies, senateB: [] } : merged.keys);
   const canonical = canonicalBillIdentifier(identifiers);
   const billId = existing?.id ?? (canonical ? billIdForIdentifier(canonical) : `bill-${slugify(merged.title ?? "unknown").slice(0, 60)}`);
   const slug = existing?.slug ?? slugify(canonical?.value ?? billId);
-  const mergedIdentifiers = { ...(existing?.identifiers ?? {}), ...identifierRecord(identifiers) };
+  // Such a bill keeps only its Chamber number, also on a re-read: it must not take the other dossier's Senate number back (the duplicate merge would fold it in again).
+  const mergedIdentifiers = lostItsBill ? identifierRecord(identifiers) : { ...(existing?.identifiers ?? {}), ...identifierRecord(identifiers) };
   const earliest = [...merged.registrations.map((item) => item.date), ...merged.steps.map((step) => step.occurredOn)].filter(Boolean).sort()[0];
 
   // Initiators: the Chamber's profile link is exact; a Senate name is matched only when it is unique among those who sat that day.
@@ -283,6 +289,7 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     };
   });
 
+  const originAgrees = !(merged.firstChamber && merged.decisionChamber && merged.firstChamber === merged.decisionChamber);
   const snapshotIds = input.snapshots.map((snapshot) => snapshot.id);
   const fate = merged.fate;
   return {
@@ -290,14 +297,20 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     slug,
     isNew: !existing,
     unmerge: false,
+    originChanged: Boolean(existing && existing.chamberOfOrigin !== "unknown" && merged.firstChamber && merged.firstChamber !== merged.decisionChamber && existing.chamberOfOrigin !== merged.firstChamber),
+    decisionChanged: Boolean(existing?.decisionChamber && merged.decisionChamber && merged.firstChamber !== merged.decisionChamber && existing.decisionChamber !== merged.decisionChamber),
+    originConflict: Boolean(merged.firstChamber && merged.decisionChamber && merged.firstChamber === merged.decisionChamber),
     claimsStoredBill: Boolean(existing && canonical && existing.id === billIdForIdentifier(canonical)),
     alsoMatches: matches.slice(1).map((bill) => bill.id),
     bill: {
       // The stored title stays, unless it contradicts the dossier (it approves another ordinance: an older mislink wrote another bill's title here).
       title: existing?.title && existing.title !== "unknown" && !(merged.title && contradicts(existing.title, merged.title)) ? existing.title : (merged.title ?? existing?.title ?? billId),
       identifiers: mergedIdentifiers,
-      chamberOfOrigin: existing && existing.chamberOfOrigin !== "unknown" ? existing.chamberOfOrigin : (merged.firstChamber ?? "unknown"),
-      decisionChamber: existing?.decisionChamber ?? merged.decisionChamber ?? null,
+      // The dossier says which chamber was notified first (the Senate page prints "Prima cameră", the Chamber's registration dates show it) and which decides:
+      // that replaces what an older import stored (for more than half of the bills it had written the Chamber of Deputies as the origin).
+      // When the two pages disagree (one says the Senate was first, the other that the Senate decides) nothing is changed: the stored values stay and the report counts it.
+      chamberOfOrigin: (originAgrees ? merged.firstChamber : undefined) ?? (existing && existing.chamberOfOrigin !== "unknown" ? existing.chamberOfOrigin : (merged.firstChamber ?? "unknown")),
+      decisionChamber: (originAgrees ? merged.decisionChamber : undefined) ?? existing?.decisionChamber ?? merged.decisionChamber ?? null,
       status: merged.stage ?? "unknown",
       lawType: lawTypeOf(merged.character) ?? existing?.lawType ?? null,
       sourceSnapshotIds: [...new Set([...(existing?.sourceSnapshotIds ?? []), ...snapshotIds])]
@@ -348,6 +361,8 @@ export interface PlanSummary {
   voteLinksToWrite: number;
   voteConflicts: Array<{ bill: string; voteId: string; storedBillId: string }>;
   duplicateBills: Array<{ bill: string; alsoMatches: string[] }>;
+  /** Bills whose stored chamber of origin / deciding chamber the dossier corrects. */
+  originCorrections: { origin: number; decision: number; conflicts: string[] };
   /** Bills re-created under the id of an old merge that the dossiers prove wrong (the two dossiers approve different ordinances). */
   unmergedBills: string[];
   /** Dossiers that resolved to a bill another dossier already took (the first one is written, the other is left out). */
@@ -377,6 +392,7 @@ export function summarisePlans(plans: BillPlan[], leftOut: BillPlan[] = []): Pla
     voteLinksToWrite: 0,
     voteConflicts: [],
     duplicateBills: [],
+    originCorrections: { origin: plans.filter((plan) => plan.originChanged).length, decision: plans.filter((plan) => plan.decisionChanged).length, conflicts: plans.filter((plan) => plan.originConflict).map((plan) => plan.billId) },
     unmergedBills: plans.filter((plan) => plan.unmerge).map((plan) => plan.billId),
     collidingDossiers: leftOut.map((plan) => ({
       bill: plan.billId,

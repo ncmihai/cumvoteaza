@@ -370,6 +370,7 @@ function renderMarkdown(result: DossierImportResult, generatedAt: string): strin
     "",
     `Votes linked to a bill by the dossier: ${s.voteLinksToWrite}. Votes the dossier ties to another bill than the one stored: ${s.voteConflicts.length}.`,
     `Bills that answer to two stored records (to merge by hand): ${s.duplicateBills.length}.`,
+    `Chamber of origin corrected by the dossier: ${s.originCorrections.origin} bills; deciding chamber: ${s.originCorrections.decision}. Left as stored because the two pages disagree: ${s.originCorrections.conflicts.length} (${s.originCorrections.conflicts.join(", ")}).`,
     ...(s.unmergedBills.length ? [`Bills re-created because an old merge put two different laws into one: ${s.unmergedBills.join(", ")}.`] : []),
     `Dossiers left out because another dossier resolved to the same bill: ${s.collidingDossiers.length}.`,
     ...s.collidingDossiers.map((item) => `- ${item.bill}: kept ${JSON.stringify(item.keptIdentifiers)}; left out ${JSON.stringify(item.leftOutIdentifiers)} (${item.leftOutSteps} steps, ${item.leftOutOutcome})`),
