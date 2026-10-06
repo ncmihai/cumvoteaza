@@ -48,7 +48,7 @@ export function JointVoteBreakdown({ locale, nominalVotes, groups }: { locale: A
     }))
   ];
 
-  return <section aria-label={locale === "ro" ? "Votul în ședința comună" : "Vote in the joint sitting"} className="border border-line bg-white p-4 md:p-5">
+  return <section aria-label={locale === "ro" ? "Votul în ședința comună" : "Vote in the joint sitting"} className="border border-line bg-white p-4 md:p-5 rounded-card">
     <p className="inline-block bg-ink px-2 py-1 text-xs font-bold uppercase tracking-wide text-white">{locale === "ro" ? "Ședință comună" : "Joint sitting"}</p>
     <p className="mt-2 text-sm leading-6 text-muted">{locale === "ro"
       ? "Deputații și senatorii votează împreună; majoritatea se calculează la numărul total al parlamentarilor."

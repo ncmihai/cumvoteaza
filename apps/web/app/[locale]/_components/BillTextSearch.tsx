@@ -43,7 +43,7 @@ export function BillTextSearch({
   }
 
   return (
-    <section className="border border-slate-300 bg-white p-4">
+    <section className="border border-slate-300 bg-white p-4 rounded-card">
       <h2 className="font-semibold text-slate-950">{labels.title}</h2>
       <div className="mt-3 flex gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2 border border-slate-300 px-3 py-2">

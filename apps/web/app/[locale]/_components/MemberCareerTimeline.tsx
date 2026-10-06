@@ -16,7 +16,7 @@ export function MemberCareerTimeline({ career, locale }: { career: MemberCareerP
         <p className="mt-1 text-sm text-muted">{career.hasChanges ? copy.changed(career.affiliationCount, career.legislatureCount) : copy.single}</p>
         {career.hasAmbiguousDates ? <p className="mt-1 text-xs font-medium text-amber-800">{copy.ambiguous}</p> : null}
       </div>
-      {career.legislatureCount > 1 ? <span className="border border-line bg-white px-2.5 py-1 text-xs font-semibold text-muted">{career.legislatureCount} {copy.legislatures}</span> : null}
+      {career.legislatureCount > 1 ? <span className="border border-line bg-white px-2.5 py-1 text-xs font-semibold text-muted rounded-control">{career.legislatureCount} {copy.legislatures}</span> : null}
     </div>
 
     <div className="mt-5 hidden md:block">

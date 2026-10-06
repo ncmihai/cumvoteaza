@@ -18,7 +18,7 @@ function Status({ status, ro }: { status: CoverageStatus; ro: boolean }) {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mt-6 border border-slate-300 bg-white p-5"><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
+  return <section className="mt-6 border border-slate-300 bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
 }
 
 const th = "px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted";

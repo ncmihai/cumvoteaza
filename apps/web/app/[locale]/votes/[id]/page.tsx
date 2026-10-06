@@ -3,8 +3,8 @@ import { clip } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate, voteChamberLabels, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
-import { ArrowLeft, Building2, CalendarDays, FileText } from "lucide-react";
+import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
+import { ArrowRight, Building2, CalendarDays, FileText } from "lucide-react";
 import { getVotePageData } from "@/lib/data";
 import { getDocumentConfidenceMap } from "@/lib/document-confidence";
 import { getHotCount } from "@/lib/explorer-data";
@@ -19,6 +19,11 @@ import { ShareButton } from "../../_components/ShareButton";
 import { VoteBillDossierPanel } from "../../_components/VoteBillDossierPanel";
 import { JointVoteBreakdown } from "../../_components/JointVoteBreakdown";
 import { VoteChamberExplorer } from "../../_components/VoteChamberExplorer";
+import { CountUp } from "../../_components/ui/CountUp";
+import { OutcomeBadge } from "../../_components/ui/OutcomeBadge";
+import { SplitBar, countsOfTotals } from "../../_components/ui/SplitBar";
+import { VoteDot } from "../../_components/ui/VoteIcon";
+import { VOTE_LABEL, VOTE_STYLE, type VoteKind } from "../../_components/ui/vote-meaning";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
   const { locale: rawLocale, id } = await params;
@@ -62,27 +67,63 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
   ).slice(0, 4);
   const presentation = presentVote(vote, { locale, bill, source });
 
-  return <main className="mx-auto max-w-[1600px] bg-canvas px-4 py-5 md:px-8 lg:px-10">
-    <EngagementTracker entityType="vote" entityId={vote.id} locale={locale}/>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4 text-xs text-muted"><Link href={`/${locale}/votes`} className="inline-flex items-center gap-2 font-semibold text-brand"><ArrowLeft size={15}/>{locale === "ro" ? "Înapoi la voturi" : "Back to votes"}</Link><ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={locale === "ro" ? "Distribuie" : "Share"} copiedLabel={locale === "ro" ? "Link copiat" : "Link copied"} errorLabel={locale === "ro" ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 bg-transparent text-muted"/></div>
-    <div className="grid min-w-0 gap-6 pt-5 lg:grid-cols-[minmax(285px,.38fr)_minmax(0,1fr)] xl:gap-8">
-      <div className="min-w-0 border-b border-line pb-6 lg:border-b-0 lg:border-r lg:pr-7">
-        <p className="text-xs font-bold uppercase tracking-wide text-brand">{presentation.voteType}</p><h1 className="mt-2 font-serif text-4xl font-semibold leading-[.98] tracking-[-.035em] text-ink [overflow-wrap:anywhere] lg:text-5xl">{presentation.heading}</h1>
-        <p className="mt-3 font-serif text-base leading-6 text-muted">{presentation.subject ?? presentation.officialTitle}</p>{locale === "en" ? <p className="mt-2 text-xs font-semibold uppercase text-slate-500">Official parliamentary title in Romanian</p> : null}
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><CalendarDays size={16}/>{formatDate(vote.heldOn,locale)}</span><span className="inline-flex items-center gap-1.5"><Building2 size={16}/>{vote.chamber === "joint" ? <strong className="bg-ink px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">{voteChamberLabels[locale].joint}</strong> : voteChamberLabels[locale][vote.chamber]}</span></div>
-        <div className="mt-5 border border-line bg-wash p-4"><p className="font-serif text-lg font-bold text-ink">{presentation.outcomeLabel}</p><p className="mt-1 text-xs leading-5 text-muted">{presentation.outcomeExplanation}</p>{bill ? <Link href={`/${locale}/bills/${bill.slug}`} className="mt-2 inline-block text-xs font-bold text-brand">{locale === "ro" ? "Vezi starea proiectului →" : "View bill status →"}</Link> : null}</div>
-        <h2 className="mt-6 font-serif text-2xl font-semibold text-ink">{locale === "ro" ? "Cum s-a votat?" : "How did members vote?"}</h2><p className="mt-1 text-sm text-muted">{locale === "ro" ? "Voturile nominale publicate de Parlament, fără interpretarea stării juridice a proiectului." : "Parliament's published nominal votes, without interpreting the bill's legal status."}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2"><ResultFact label={voteChoiceLabels[locale].for} value={vote.totals.for} tone="text-emerald-700"/><ResultFact label={voteChoiceLabels[locale].against} value={vote.totals.against} tone="text-red-700"/><ResultFact label={voteChoiceLabels[locale].abstention} value={vote.totals.abstention} tone="text-amber-700"/><ResultFact label={voteChoiceLabels[locale].present_not_voting} value={vote.totals.presentNotVoting} tone="text-slate-600"/><ResultFact label={locale === "ro" ? "prezenți" : "present"} value={vote.totals.present} tone="text-ink"/><ResultFact label={locale === "ro" ? "absențe consemnate" : "recorded absences"} value={seatVotes.filter((seat) => seat.choice === "absent").length} tone="text-muted"/></div>
-        <div className="mt-5 flex flex-wrap gap-2"><HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.publicInterest}/>{source ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-line bg-white px-3 py-2 text-xs font-bold text-brand"><FileText size={15}/>{locale === "ro" ? "Sursa oficială" : "Official source"}</a> : null}</div>
-      </div>
-      <div className="min-w-0">{individualVotes.length === 0 && groupTotals.length === 0 ? <p role="note" className="border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{locale === "ro" ? "Pentru acest vot sursa oficială publică doar totalurile, nu și lista nominală (de exemplu, la un vot secret). De aceea nu afișăm harta votului și nu completăm voturile individuale." : "For this vote the official source publishes only the totals, not a name list (for example, in a secret ballot). So we show no seat map and do not fill in individual votes."}</p> : vote.chamber === "joint" ? <JointVoteBreakdown locale={locale} nominalVotes={individualVotes} groups={groups}/> : <VoteChamberExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} members={members} seatVotes={seatVotes} seatConstituencies={seatConstituencies} seatPhotoUrls={seatPhotoUrls} nominalVotes={individualVotes} groupTotals={groupTotals} officialTotals={vote.totals} capacity={data.seatCapacity}/>}</div>
-    </div>
-    <details className="mt-7 border-t border-line pt-4"><summary className="cursor-pointer font-serif text-xl font-semibold text-ink">{locale === "ro" ? "Detalii oficiale și context" : "Official details and context"}</summary><div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"><div className="min-w-0">{process.env.GEMINI_EXPLANATIONS_ENABLED === "1" ? <VoteExplanation id={vote.id} locale={locale}/> : null}<GovernmentContextPanel context={governmentContext} locale={locale}/>{bill ? <div className="mt-6"><VoteBillDossierPanel locale={locale} bill={bill} billHref={`/${locale}/bills/${bill.slug}`} voteDate={vote.heldOn} procedureSteps={billProcedureSteps} documents={billDocuments} documentConfidence={Object.fromEntries(billDocumentConfidence)} sponsorNames={sponsorNames} sponsorOverflowCount={Math.max(0, billSponsorContexts.length - sponsorNames.length)} sponsorContexts={billSponsorContexts} labels={labels}/></div> : null}</div><aside>{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale}/> : null}</aside></div></details>
-  </main>;
-}
+  const ro = locale === "ro";
+  const absentSeats = seatVotes.filter((seat) => seat.choice === "absent").length;
+  const counts = countsOfTotals({ ...vote.totals, absent: absentSeats });
+  const kinds: Array<{ kind: VoteKind; value: number }> = [
+    { kind: "for", value: counts.for ?? 0 },
+    { kind: "against", value: counts.against ?? 0 },
+    { kind: "abstain", value: counts.abstain ?? 0 },
+    { kind: "present", value: counts.present ?? 0 },
+    { kind: "absent", value: counts.absent ?? 0 }
+  ];
 
-function ResultFact({label,value,tone}:{label:string;value:number;tone:string}){
-  return <div className="border-b border-line py-2"><strong className={`block font-serif text-3xl leading-none ${tone}`}>{value}</strong><span className="mt-1 block text-xs text-muted">{label}</span></div>;
+  return <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
+    <EngagementTracker entityType="vote" entityId={vote.id} locale={locale}/>
+    <nav aria-label={ro ? "Unde ești" : "Breadcrumb"} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+      <ol className="flex min-w-0 items-center gap-2 text-muted">
+        <li><Link href={`/${locale}`} className="hover:text-brand">{ro ? "Acasă" : "Home"}</Link></li><li aria-hidden="true">›</li>
+        <li><Link href={`/${locale}/votes`} className="hover:text-brand">{ro ? "Voturi" : "Votes"}</Link></li><li aria-hidden="true">›</li>
+        <li aria-current="page" className="max-w-[28ch] truncate text-ink-soft sm:max-w-[48ch]">{presentation.heading}</li>
+      </ol>
+      <div className="flex items-center gap-2">
+        <ShareButton href={`/${locale}/votes/${vote.id}`} title={presentation.heading} label={ro ? "Distribuie" : "Share"} copiedLabel={ro ? "Link copiat" : "Link copied"} errorLabel={ro ? "Copiază manual" : "Copy manually"} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 font-semibold text-ink-soft hover:border-line-strong"/>
+        {source ? <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-brand px-3.5 py-1.5 font-semibold text-brand hover:bg-brand-soft"><FileText size={15} aria-hidden="true"/>{ro ? "Sursa oficială" : "Official source"}</a> : null}
+      </div>
+    </nav>
+    <header className="mt-6">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-strong">{presentation.voteType}</span>
+        {vote.chamber === "joint" ? <span className="rounded-full bg-ink px-3 py-1 font-semibold text-white">{voteChamberLabels[locale].joint}</span> : <span className="inline-flex items-center gap-1.5 rounded-full bg-wash px-3 py-1 font-medium text-ink-soft"><Building2 size={15} aria-hidden="true"/>{voteChamberLabels[locale][vote.chamber]}</span>}
+        <span className="inline-flex items-center gap-1.5 text-muted"><CalendarDays size={15} aria-hidden="true"/><time dateTime={vote.heldOn}>{formatDate(vote.heldOn, locale)}</time></span>
+      </div>
+      <h1 className="mt-3 font-display text-4xl font-bold leading-[1.05] tracking-tight text-ink [overflow-wrap:anywhere] lg:text-5xl">{presentation.heading}</h1>
+      <p lang="ro" className="mt-3 max-w-4xl text-lg leading-7 text-ink-soft">{presentation.subject ?? presentation.officialTitle}</p>
+      {locale === "en" ? <p className="mt-2 text-sm font-medium text-muted">Official parliamentary title, in Romanian</p> : null}
+    </header>
+    <div className="mt-7 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(300px,.42fr)_minmax(0,1fr)]">
+      <aside className="min-w-0 self-start rounded-card border border-line bg-surface p-6 lg:sticky lg:top-24">
+        <OutcomeBadge outcome={presentation.outcome} label={presentation.outcomeLabel} size="lg"/>
+        <p className="mt-3 text-sm leading-6 text-muted">{presentation.outcomeExplanation}</p>
+        {bill ? <Link href={`/${locale}/bills/${bill.slug}`} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong">{ro ? "Vezi starea proiectului" : "View bill status"}<ArrowRight size={15} aria-hidden="true"/></Link> : null}
+        <h2 className="mt-6 font-display text-xl font-bold text-ink">{ro ? "Cum s-a votat?" : "How did members vote?"}</h2>
+        <p className="mt-1 text-sm text-muted">{ro ? "Voturile nominale publicate de Parlament, fără interpretarea stării juridice a proiectului." : "Parliament's published nominal votes, without interpreting the bill's legal status."}</p>
+        <div className="mt-4"><SplitBar counts={counts} locale={locale} height="h-3.5" showAbsent/></div>
+        <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5">
+          {kinds.filter((item) => item.value > 0 || item.kind !== "absent").map(({ kind, value }) => (
+            <div key={kind} className="flex items-start gap-3">
+              <VoteDot kind={kind} size={28} locale={locale}/>
+              <div className="flex min-w-0 flex-col-reverse"><dt className="mt-1 text-xs leading-4 text-muted">{VOTE_LABEL[locale][kind]}</dt><dd className={`font-display text-3xl font-bold leading-none ${VOTE_STYLE[kind].text}`}><CountUp value={value}/></dd></div>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-5 border-t border-line pt-4 text-sm text-ink-soft"><strong className="font-display text-lg text-ink tabular-nums">{vote.totals.present}</strong> {ro ? "parlamentari prezenți la vot" : "members present for the vote"}</p>
+        <div className="mt-5 flex flex-wrap gap-2"><HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.publicInterest}/></div>
+      </aside>
+      <div className="min-w-0 rounded-card border border-line bg-surface p-4 sm:p-6">{individualVotes.length === 0 && groupTotals.length === 0 ? <p role="note" className="rounded-card border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{ro ? "Pentru acest vot sursa oficială publică doar totalurile, nu și lista nominală (de exemplu, la un vot secret). De aceea nu afișăm harta votului și nu completăm voturile individuale." : "For this vote the official source publishes only the totals, not a name list (for example, in a secret ballot). So we show no seat map and do not fill in individual votes."}</p> : vote.chamber === "joint" ? <JointVoteBreakdown locale={locale} nominalVotes={individualVotes} groups={groups}/> : <VoteChamberExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} members={members} seatVotes={seatVotes} seatConstituencies={seatConstituencies} seatPhotoUrls={seatPhotoUrls} nominalVotes={individualVotes} groupTotals={groupTotals} officialTotals={vote.totals} capacity={data.seatCapacity}/>}</div>
+    </div>
+    <details className="mt-6 rounded-card border border-line bg-surface p-5"><summary className="cursor-pointer font-display text-xl font-bold text-ink">{locale === "ro" ? "Detalii oficiale și context" : "Official details and context"}</summary><div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"><div className="min-w-0">{process.env.GEMINI_EXPLANATIONS_ENABLED === "1" ? <VoteExplanation id={vote.id} locale={locale}/> : null}<GovernmentContextPanel context={governmentContext} locale={locale}/>{bill ? <div className="mt-6"><VoteBillDossierPanel locale={locale} bill={bill} billHref={`/${locale}/bills/${bill.slug}`} voteDate={vote.heldOn} procedureSteps={billProcedureSteps} documents={billDocuments} documentConfidence={Object.fromEntries(billDocumentConfidence)} sponsorNames={sponsorNames} sponsorOverflowCount={Math.max(0, billSponsorContexts.length - sponsorNames.length)} sponsorContexts={billSponsorContexts} labels={labels}/></div> : null}</div><aside>{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale}/> : null}</aside></div></details>
+  </main>;
 }
 
 const votePageLabels = {

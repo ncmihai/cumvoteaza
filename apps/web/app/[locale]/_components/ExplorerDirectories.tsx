@@ -250,7 +250,7 @@ function DirectoryFilters({
         <Select name="sourceStatus" label={labels.sourceStatus} defaultValue={filters.sourceStatus ?? ""} options={[["parsed", locale === "ro" ? "Preluată complet" : "Fully parsed"],["partial", locale === "ro" ? "Parțială" : "Partial"],["failed", locale === "ro" ? "Cu eroare" : "Failed"]]} />
         <Select name="group" label={labels.group} defaultValue={filters.group ?? ""} options={filterOptions.groups.map((group) => [group.id, `${group.shortName} · ${chamberLabels[locale][group.chamber]}`])} />
       </div><div className="mt-4 flex gap-2"><Link href={path} className="flex-1 border border-slate-300 px-4 py-2.5 text-center text-sm font-bold text-ink">{locale === "ro" ? "Resetează" : "Reset"}</Link><button className="flex-1 bg-ink px-4 py-2.5 text-sm font-bold text-white" type="submit">{labels.apply}</button></div></DismissibleDetails>
-      {activeFilters.length ? <div className="flex flex-wrap gap-2 sm:col-span-2">{activeFilters.map(([key, value]) => <span key={key} className="border border-[#cbd5e1] bg-white px-2.5 py-1 text-xs text-muted">{key}: <strong className="text-ink">{value}</strong></span>)}</div> : null}
+      {activeFilters.length ? <div className="flex flex-wrap gap-2 sm:col-span-2">{activeFilters.map(([key, value]) => <span key={key} className="border border-[#cbd5e1] bg-white px-2.5 py-1 text-xs text-muted rounded-control">{key}: <strong className="text-ink">{value}</strong></span>)}</div> : null}
     </form>
   );
 }
@@ -259,7 +259,7 @@ function Select({ name, label, defaultValue, options }: { name: string; label: s
   return (
     <label className="grid gap-1 text-xs font-semibold uppercase text-muted">
       {label}
-      <select name={name} defaultValue={defaultValue} className="min-w-0 border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal normal-case text-slate-900">
+      <select name={name} defaultValue={defaultValue} className="min-w-0 border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal normal-case text-slate-900 rounded-control">
         <option value="">{name === "year" || name === "month" ? ("—") : ("Toate")}</option>
         {options.map(([value, optionLabel]) => (
           <option key={value} value={value}>

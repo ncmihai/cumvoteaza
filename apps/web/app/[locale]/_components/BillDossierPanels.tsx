@@ -33,7 +33,7 @@ export function BillFatePanel({ dossier, locale }: { dossier: BillDossier; local
         ))}
         {dossier.outcomeOn && dossier.outcome === "promulgated" ? <p className="mt-1 text-xs opacity-80">{ro ? "Promulgată la" : "Promulgated on"} {formatDate(dossier.outcomeOn, locale)}</p> : null}
       </div>
-      <div className="min-w-0 border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800">
+      <div className="min-w-0 border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 rounded-control">
         {facts.length ? <p className="font-medium text-ink">{facts.join(" · ")}</p> : null}
         {dossier.registrations.length ? (
           <ul className="mt-1 space-y-0.5 text-slate-700">

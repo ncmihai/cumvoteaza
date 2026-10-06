@@ -40,7 +40,7 @@ export function CompositionSeatMap({ locale, chamber, seats }: CompositionSeatMa
   const [pinnedSeatId, setPinnedSeatId] = useState<string | undefined>();
 
   return (
-    <section className="border border-slate-300 bg-white p-4">
+    <section className="border border-slate-300 bg-white p-4 rounded-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-950">{chamberLabels[locale][chamber]}</h2>
@@ -163,14 +163,14 @@ export function CompositionSeatMapPreview({
   );
 
   if (!onOpen) {
-    return <div className="border border-slate-300 bg-white p-3">{content}</div>;
+    return <div className="border border-slate-300 bg-white p-3 rounded-card">{content}</div>;
   }
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="w-full border border-slate-300 bg-white p-3 text-left shadow-sm transition hover:border-[#309898] hover:bg-[#309898]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#309898]"
+      className="w-full border border-slate-300 bg-white p-3 text-left shadow-sm transition hover:border-[#309898] hover:bg-[#309898]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#309898] rounded-card"
       aria-label={`${labels.openMap}: ${chamberLabels[locale][chamber]}`}
     >
       {content}
