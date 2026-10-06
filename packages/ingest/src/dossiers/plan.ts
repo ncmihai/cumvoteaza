@@ -289,7 +289,12 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     };
   });
 
-  const originAgrees = !(merged.firstChamber && merged.decisionChamber && merged.firstChamber === merged.decisionChamber);
+  // Art. 75: the first notified chamber is never the deciding one. A deciding chamber the page states settles a first chamber that was only worked out from dates;
+  // two statements that contradict each other settle nothing (the stored values stay and the report lists the bill).
+  const sameChamber = Boolean(merged.firstChamber && merged.decisionChamber && merged.firstChamber === merged.decisionChamber);
+  const decisionSettlesFirst = sameChamber && merged.decisionChamberStated && !merged.firstChamberStated;
+  const originAgrees = !sameChamber || decisionSettlesFirst;
+  const settledFirst = decisionSettlesFirst ? (merged.decisionChamber === "senate" ? "deputies" : "senate") : merged.firstChamber;
   const snapshotIds = input.snapshots.map((snapshot) => snapshot.id);
   const fate = merged.fate;
   return {
@@ -297,9 +302,9 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     slug,
     isNew: !existing,
     unmerge: false,
-    originChanged: Boolean(existing && existing.chamberOfOrigin !== "unknown" && merged.firstChamber && merged.firstChamber !== merged.decisionChamber && existing.chamberOfOrigin !== merged.firstChamber),
-    decisionChanged: Boolean(existing?.decisionChamber && merged.decisionChamber && merged.firstChamber !== merged.decisionChamber && existing.decisionChamber !== merged.decisionChamber),
-    originConflict: Boolean(merged.firstChamber && merged.decisionChamber && merged.firstChamber === merged.decisionChamber),
+    originChanged: Boolean(existing && existing.chamberOfOrigin !== "unknown" && settledFirst && originAgrees && existing.chamberOfOrigin !== settledFirst),
+    decisionChanged: Boolean(existing?.decisionChamber && merged.decisionChamber && originAgrees && existing.decisionChamber !== merged.decisionChamber),
+    originConflict: !originAgrees,
     claimsStoredBill: Boolean(existing && canonical && existing.id === billIdForIdentifier(canonical)),
     alsoMatches: matches.slice(1).map((bill) => bill.id),
     bill: {
@@ -309,7 +314,7 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
       // The dossier says which chamber was notified first (the Senate page prints "Prima cameră", the Chamber's registration dates show it) and which decides:
       // that replaces what an older import stored (for more than half of the bills it had written the Chamber of Deputies as the origin).
       // When the two pages disagree (one says the Senate was first, the other that the Senate decides) nothing is changed: the stored values stay and the report counts it.
-      chamberOfOrigin: (originAgrees ? merged.firstChamber : undefined) ?? (existing && existing.chamberOfOrigin !== "unknown" ? existing.chamberOfOrigin : (merged.firstChamber ?? "unknown")),
+      chamberOfOrigin: (originAgrees ? settledFirst : undefined) ?? (existing && existing.chamberOfOrigin !== "unknown" ? existing.chamberOfOrigin : (merged.firstChamber ?? "unknown")),
       decisionChamber: (originAgrees ? merged.decisionChamber : undefined) ?? existing?.decisionChamber ?? merged.decisionChamber ?? null,
       status: merged.stage ?? "unknown",
       lawType: lawTypeOf(merged.character) ?? existing?.lawType ?? null,

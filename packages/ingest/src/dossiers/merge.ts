@@ -100,6 +100,9 @@ export interface MergedDossier {
   initiativeKind?: ParsedDossier["initiativeKind"];
   firstChamber?: "deputies" | "senate";
   decisionChamber?: "deputies" | "senate";
+  /** The pages say so themselves (the Senate's "Prima cameră", the Chamber's "Camera decizionala"); otherwise the value is worked out from the registration dates or from the other chamber. */
+  firstChamberStated: boolean;
+  decisionChamberStated: boolean;
   character?: string;
   urgent?: boolean;
   stage?: string;
@@ -184,6 +187,8 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
     initiativeKind: cdep?.initiativeKind ?? senate?.initiativeKind,
     firstChamber,
     decisionChamber,
+    firstChamberStated: Boolean(senate?.firstChamber ?? cdep?.firstChamber),
+    decisionChamberStated: Boolean(cdep?.decisionChamber ?? senate?.decisionChamber),
     character: cdep?.character ?? (senate?.character ? senate.character : undefined),
     urgent: senate?.urgent ?? cdep?.urgent,
     stage,
