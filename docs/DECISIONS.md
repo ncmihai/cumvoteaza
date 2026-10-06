@@ -23,6 +23,7 @@ Each Open question has a recommendation; the owner decides.
 
 ### Q18 — Where do party logos come from?
 - The `parties` table holds only a colour. Logos are needed for about 25 parties (those with seats or an election list), not 221.
+- **Found on 6 Oct 2026, changes the starting point:** the Chamber's own profile pages carry a party logo and we already store them (`stored_assets`, type `party_logo`): 4,306 copies, one per member, but only **77 distinct images** (about 44 KB each, shown 110 px wide on the member page). So the official source exists and is in hand; what is missing is one file per party, linked to `parties`. The member photos are also stored, but they are small (150 px wide at most, about 3 KB), so large portraits would look blurry unless a larger official photo exists (source check).
 - **Recommendation:** take each logo from an official source where one exists (the electoral authorities' party register or the electoral sign on the lists); otherwise from Wikimedia Commons with the file's own licence; store `logo_source_url` and `logo_licence` for every logo; self-host the files; a party with no usable logo gets a coloured monogram, never a redrawn or guessed logo; remove on request. Party logos are mostly registered signs: showing them to identify the party in a factual, non-commercial record is normal practice, but this is not legal advice and the methodology page should say so.
 
 ### Q19 — The President's record: decorations and individual pardons
