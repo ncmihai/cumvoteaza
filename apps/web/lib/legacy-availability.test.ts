@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock("./server-db", () => ({
-  CACHE_TAGS: {}, timed: (_label: string, work: () => unknown) => work(),
+  CACHE_TAGS: {}, timed: (_label: string, work: () => unknown) => work(), coalesce: (_key: string, work: () => unknown) => work(),
   createWebDbSession: () => ({ db: {
     select: () => { throw new Error("database unavailable"); },
     execute: () => { throw new Error("database unavailable"); }
