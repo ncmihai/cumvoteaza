@@ -30,8 +30,10 @@ export interface PartyMergePlan {
   /** Old formation id → canonical id. */
   idMap: Map<string, string>;
   slugCollisions: string[];
-  /** Curated rows whose kind is not the default. */
+  /** The kind every hand-curated row must have (almost always "party"). */
   curatedKinds: Array<{ id: string; kind: PartyKind }>;
+  /** The kind the name of every existing organisation row implies; re-applied on each run so a repeat run repairs a wrong value. */
+  organisationKinds: Array<{ id: string; kind: PartyKind }>;
   abbreviationOnly: string[];
   /** Abbreviation-only organisations that look like a curated party (never merged by itself; the owner decides). */
   possibleDuplicates: Array<{ organisation: string; curated: string }>;
@@ -43,10 +45,13 @@ const DEFAULT_COLOR = "#64748b";
 
 /** knownSame: organisation id ("party-org-sos") → curated party id, proven by the members of the curated party's own groups (see mergeParties). */
 export function planPartyMerge(rows: PartyRow[], knownSame: Map<string, string> = new Map()): PartyMergePlan {
-  const curated = rows.filter((row) => !FORMATION.test(row.id));
+  // Three kinds of rows: per-legislature formations (to fold), organisation rows (this command's own output, kind from the name), and hand-curated parties.
+  const stable = rows.filter((row) => !FORMATION.test(row.id));
+  const organisationRows = stable.filter((row) => row.id.startsWith("party-org-"));
+  const curated = stable.filter((row) => !row.id.startsWith("party-org-"));
   const curatedByKey = new Map(curated.map((row) => [organisationKey(row.name), row]));
   const curatedById = new Map(curated.map((row) => [row.id, row]));
-  const curatedSlugs = new Set(curated.map((row) => row.slug));
+  const curatedSlugs = new Set(stable.map((row) => row.slug));
   const byCanonical = new Map<string, { rows: Array<PartyRow & { year: string }>; identity: ReturnType<typeof organisationIdentity>; intoCurated?: PartyRow }>();
 
   for (const row of rows) {
@@ -92,9 +97,13 @@ export function planPartyMerge(rows: PartyRow[], knownSame: Map<string, string> 
     });
   }
 
-  const curatedKinds = curated
-    .map((row) => ({ id: row.id, kind: classifyOrganisation(row.name) }))
-    .filter((row) => row.kind !== "party");
+  // A curated party is a party whatever its name sounds like ("Uniunea Salvați România", "Uniunea Democrată Maghiară din România"); only the umbrella
+  // row of the national-minority seats, independents and unaffiliated members get another kind.
+  const curatedKinds = curated.map((row) => {
+    const kind = classifyOrganisation(row.name);
+    return { id: row.id, kind: kind === "minority_organisation" ? ("party" as const) : kind };
+  });
+  const organisationKinds = organisationRows.map((row) => ({ id: row.id, kind: classifyOrganisation(row.name) }));
   const abbreviationOnly = groups.filter((group) => !group.fullNameKnown && !group.intoCurated).map((group) => group.shortName).sort();
   const possibleDuplicates: PartyMergePlan["possibleDuplicates"] = [];
   for (const group of groups.filter((candidate) => !candidate.fullNameKnown && !candidate.intoCurated)) {
@@ -106,7 +115,7 @@ export function planPartyMerge(rows: PartyRow[], knownSame: Map<string, string> 
   }
   const kindCounts: Record<string, number> = {};
   for (const group of groups) kindCounts[group.kind] = (kindCounts[group.kind] ?? 0) + 1;
-  return { groups, idMap, slugCollisions, curatedKinds, abbreviationOnly, possibleDuplicates, kindCounts };
+  return { groups, idMap, slugCollisions, curatedKinds, organisationKinds, abbreviationOnly, possibleDuplicates, kindCounts };
 }
 
 /** One stored "party logo" image of a member's profile, with the party the member was elected on (the first affiliation of that mandate). */
@@ -273,7 +282,7 @@ export async function mergeParties(db: DbClient, options: { persist: boolean }):
       oldRowsMerged: oldIds.length,
       mergedIntoCuratedParties: plan.groups.filter((group) => group.intoCurated).map((group) => `${group.canonicalId} ← ${group.oldIds.length} rows`),
       kindCounts: plan.kindCounts,
-      curatedKinds: plan.curatedKinds,
+      curatedKinds: plan.curatedKinds.filter((row) => row.kind !== "party"),
       abbreviationOnly: plan.abbreviationOnly,
       possibleDuplicates: plan.possibleDuplicates.filter((candidate) => !mergedByEvidence.some((merged) => merged.curated === candidate.curated.split(" ")[0])),
       mergedByEvidence,
@@ -313,7 +322,7 @@ export async function mergeParties(db: DbClient, options: { persist: boolean }):
       }
     }
     if (oldIds.length > 0) await tx.execute(sql`delete from parties where id in (${idList})`);
-    for (const { id, kind } of plan.curatedKinds) await tx.execute(sql`update parties set kind = ${kind} where id = ${id}`);
+    for (const { id, kind } of [...plan.curatedKinds, ...plan.organisationKinds]) await tx.execute(sql`update parties set kind = ${kind} where id = ${id} and kind <> ${kind}`);
     for (const pick of logoPlan.picks) {
       await tx.execute(sql`update parties set logo_asset_id = ${pick.assetId}, logo_source_url = ${pick.officialUrl} where id = ${pick.partyId}`);
     }

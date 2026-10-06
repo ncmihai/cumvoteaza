@@ -85,7 +85,28 @@ describe("planPartyMerge", () => {
 
   it("marks the umbrella minority row and leaves ordinary curated parties alone", () => {
     const plan = planPartyMerge(rows);
-    expect(plan.curatedKinds).toEqual([{ id: "party-minoritati", kind: "minority_group" }]);
+    expect(plan.curatedKinds.filter((row) => row.kind !== "party")).toEqual([{ id: "party-minoritati", kind: "minority_group" }]);
+  });
+
+  it("never turns a curated party into a minority organisation because its name starts with Uniunea", () => {
+    const plan = planPartyMerge([
+      row("party-usr", "Uniunea Salvați România", "USR", "usr"),
+      row("party-udmr", "Uniunea Democrată Maghiară din România", "UDMR", "udmr"),
+      row("party-formation-2024-uniunea-polonezilor-din-romania", "Uniunea Polonezilor din România", "PR", "formation-2024-uniunea-polonezilor-din-romania")
+    ]);
+    expect(plan.curatedKinds).toEqual([{ id: "party-usr", kind: "party" }, { id: "party-udmr", kind: "party" }]);
+    expect(plan.groups[0]!.kind).toBe("minority_organisation");
+  });
+
+  it("keeps the kind an organisation row's name implies on a repeat run, and never treats it as a hand-curated party", () => {
+    const plan = planPartyMerge([
+      row("party-usr", "Uniunea Salvați România", "USR", "usr"),
+      row("party-org-uniunea-polonezilor-din-romania", "Uniunea Polonezilor din România", "PR", "uniunea-polonezilor-din-romania"),
+      row("party-org-independent", "independent", "independent", "independent")
+    ]);
+    expect(plan.curatedKinds).toEqual([{ id: "party-usr", kind: "party" }]);
+    expect(plan.organisationKinds).toEqual([{ id: "party-org-uniunea-polonezilor-din-romania", kind: "minority_organisation" }, { id: "party-org-independent", kind: "independent" }]);
+    expect(plan.groups).toHaveLength(0);
   });
 
   it("renames a slug that a curated party already uses", () => {
