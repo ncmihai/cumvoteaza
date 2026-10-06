@@ -9,21 +9,21 @@ export function MemberCareerTimeline({ career, locale }: { career: MemberCareerP
   const copy = labels[locale];
   const openEnded = !career.endsOn;
 
-  return <section className="mt-5 border border-line bg-[#f3f8fd] px-4 py-4 md:px-5">
+  return <section className="mt-5 border border-line bg-wash px-4 py-4 md:px-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 className="font-serif text-2xl font-semibold text-ink md:text-3xl">{copy.title}</h2>
         <p className="mt-1 text-sm text-muted">{career.hasChanges ? copy.changed(career.affiliationCount, career.legislatureCount) : copy.single}</p>
         {career.hasAmbiguousDates ? <p className="mt-1 text-xs font-medium text-vote-abstain">{copy.ambiguous}</p> : null}
       </div>
-      {career.legislatureCount > 1 ? <span className="border border-line bg-white px-2.5 py-1 text-xs font-semibold text-muted rounded-control">{career.legislatureCount} {copy.legislatures}</span> : null}
+      {career.legislatureCount > 1 ? <span className="border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-muted rounded-control">{career.legislatureCount} {copy.legislatures}</span> : null}
     </div>
 
     <div className="mt-5 hidden md:block">
       <div className="grid grid-cols-[150px_minmax(0,1fr)_120px] items-center gap-3">
         <Endpoint icon={<CalendarDays/>} value={formatDate(career.startsOn!, locale, career.startsOnPrecision)} label={copy.start}/>
-        <div className="relative min-w-0 overflow-x-auto px-2 py-2">
-          <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 bg-[#f5b900]" aria-hidden="true"/>
+        <div tabIndex={0} role="region" aria-label={locale === "ro" ? "Parcursul în funcții" : "Career path"} className="relative min-w-0 overflow-x-auto px-2 py-2">
+          <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 bg-brand" aria-hidden="true"/>
           <ol className="relative z-10 flex min-w-max justify-around gap-3 px-3">
             {career.segments.map((segment, index) => <li key={segment.id} className="flex items-center gap-2">
               {index > 0 && !career.hasAmbiguousDates ? <span className="h-3 w-3 shrink-0 rounded-full border-2 border-white bg-brand shadow" title={copy.transition}/> : null}
@@ -36,7 +36,7 @@ export function MemberCareerTimeline({ career, locale }: { career: MemberCareerP
     </div>
 
     <ol className="mt-5 space-y-3 md:hidden">
-      {career.segments.map((segment, index) => <li key={segment.id} className="relative border-l-2 border-[#f5b900] pl-4">
+      {career.segments.map((segment, index) => <li key={segment.id} className="relative border-l-2 border-brand pl-4">
         <span className="absolute -left-[6px] top-4 h-2.5 w-2.5 rounded-full border-2 border-white bg-brand" aria-hidden="true"/>
         <p className="mb-1 text-xs font-semibold text-muted">{index === 0 ? copy.start : copy.transition} · {formatDate(segment.startsOn, locale, segment.startsOnPrecision)}</p>
         <CareerCard segment={segment} locale={locale}/>
@@ -44,20 +44,20 @@ export function MemberCareerTimeline({ career, locale }: { career: MemberCareerP
       <li className="flex items-center gap-2 pl-4 text-sm font-semibold text-ink"><CalendarDays size={17}/>{openEnded ? copy.present : formatDate(career.endsOn!, locale, career.endsOnPrecision)}</li>
     </ol>
 
-    {career.hasChanges ? <div className="mt-4 border-t border-line pt-3"><p className="text-xs font-bold uppercase tracking-wide text-muted">{career.hasAmbiguousDates ? copy.documentedAffiliations : copy.documentedChanges}</p><div className="mt-2 flex flex-wrap gap-2">{career.segments.slice(career.hasAmbiguousDates ? 0 : 1).map((segment) => <span key={`${segment.id}-change`} className="inline-flex items-center gap-1.5 bg-white px-2.5 py-1.5 text-xs text-ink">{career.hasAmbiguousDates ? null : <><ArrowRight size={13}/>{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} · </>}{segment.label}{career.hasAmbiguousDates && segment.legislatureId ? ` · ${segment.legislatureId.replace(/^leg-/, "")}` : null}</span>)}</div></div> : null}
+    {career.hasChanges ? <div className="mt-4 border-t border-line pt-3"><p className="text-xs font-bold uppercase tracking-wide text-muted">{career.hasAmbiguousDates ? copy.documentedAffiliations : copy.documentedChanges}</p><div className="mt-2 flex flex-wrap gap-2">{career.segments.slice(career.hasAmbiguousDates ? 0 : 1).map((segment) => <span key={`${segment.id}-change`} className="inline-flex items-center gap-1.5 bg-surface px-2.5 py-1.5 text-xs text-ink">{career.hasAmbiguousDates ? null : <><ArrowRight size={13}/>{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} · </>}{segment.label}{career.hasAmbiguousDates && segment.legislatureId ? ` · ${segment.legislatureId.replace(/^leg-/, "")}` : null}</span>)}</div></div> : null}
   </section>;
 }
 
 function CareerCard({ segment, locale }: { segment: MemberCareerSegment; locale: Locale }) {
   const isNamedParty = !isUnaffiliatedLabel(segment.label);
   const content = <>
-    <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden border border-line bg-white text-xs font-bold" style={{ color: segment.color ?? "#061a47" }}>
+    <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden border border-line bg-surface text-xs font-bold" style={{ color: segment.color ?? "var(--color-ink)" }}>
       <ImageWithFallback src={isNamedParty && segment.partySlug ? segment.logoUrl : undefined} alt="" className="h-full w-full object-contain p-1">{segment.label.slice(0, 4)}</ImageWithFallback>
     </span>
     <span className="min-w-0"><strong className="block text-base text-ink">{segment.label}</strong><span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><Building2 size={12}/>{chamberLabels[locale][segment.chamber]}</span><span className="mt-0.5 block text-xs text-muted">{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} – {segment.endsOn ? formatDate(segment.endsOn, locale, segment.endsOnPrecision) : (locale === "ro" ? "prezent" : "present")}</span></span>
     {segment.sourceUrl ? <ExternalLink size={14} className="ml-auto shrink-0 text-brand"/> : null}
   </>;
-  const className = "flex min-w-[210px] items-center gap-3 border border-line bg-white p-2 shadow-sm";
+  const className = "flex min-w-[210px] items-center gap-3 border border-line bg-surface p-2 shadow-sm";
   if (isNamedParty && segment.partySlug) return <Link href={`/${locale}/parties/${segment.partySlug}`} className={`${className} hover:border-brand`}>{content}</Link>;
   if (segment.sourceUrl) return <a href={segment.sourceUrl} target="_blank" rel="noreferrer" className={`${className} hover:border-brand`}>{content}</a>;
   return <div className={className}>{content}</div>;

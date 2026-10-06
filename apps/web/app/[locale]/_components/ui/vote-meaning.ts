@@ -14,6 +14,10 @@ export const VOTE_STYLE: Record<VoteKind, { text: string; badge: string; fill: s
   absent: { text: "text-vote-absent", badge: "bg-line text-vote-absent", fill: "bg-vote-absent-fill", ring: "ring-vote-absent-fill" }
 };
 
+/**
+ * The "absent" kind is a seat the official name list has no vote for. The sources publish only who was counted present, never why someone is missing,
+ * so it is worded as what is known ("no vote recorded"), not as a reason. A secret ballot has no seat map at all, so this is never that.
+ */
 /** Hex values for SVG seats (the same colours as the tokens in globals.css). */
 export const VOTE_FILL_HEX: Record<VoteKind, string> = {
   for: "#16a34a",
@@ -24,8 +28,8 @@ export const VOTE_FILL_HEX: Record<VoteKind, string> = {
 };
 
 export const VOTE_LABEL: Record<"ro" | "en", Record<VoteKind, string>> = {
-  ro: { for: "Pentru", against: "Contra", abstain: "Abținere", present: "Prezent, nu a votat", absent: "Absent" },
-  en: { for: "For", against: "Against", abstain: "Abstained", present: "Present, did not vote", absent: "Absent" }
+  ro: { for: "Pentru", against: "Contra", abstain: "Abținere", present: "Prezent, nu a votat", absent: "Fără vot înregistrat" },
+  en: { for: "For", against: "Against", abstain: "Abstained", present: "Present, did not vote", absent: "No vote recorded" }
 };
 
 /** The same meaning for the stored choice names used by the data layer. */

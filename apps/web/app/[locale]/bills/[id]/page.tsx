@@ -91,7 +91,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
 
       {dossier ? <BillFatePanel dossier={dossier} steps={procedureSteps} locale={locale} /> : null}
 
-      {sponsorContexts.length ? <section className="mt-5 border border-line bg-white p-4 rounded-card"><h2 className="font-serif text-xl font-semibold text-ink">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,member,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-brand pl-3"><strong className="block [overflow-wrap:anywhere] text-ink">{member?<Link className="underline decoration-brand/40 underline-offset-2 hover:decoration-brand" href={`/${locale}/members/${member.slug}`}>{sponsor.name}</Link>:sponsor.name}</strong><span className="text-xs text-muted">{party?.shortName??group?.shortName??sponsor.groupLabel??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{(group?.chamber??sponsor.memberChamber)?` · ${chamberLabels[locale][(group?.chamber??sponsor.memberChamber)!]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<details className="mt-4 border-t border-line pt-3"><summary className="cursor-pointer text-sm font-semibold text-brand">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</summary><div className="mt-4 space-y-5">{sponsorGroups.map(([label,contexts])=><section key={label}><h3 className="text-xs font-bold uppercase tracking-wide text-muted">{label} · {contexts.length}</h3><ul className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">{contexts.map(({sponsor,member})=><li key={sponsor.id} className="[overflow-wrap:anywhere] text-sm text-ink">{member?<Link className="underline decoration-brand/40 underline-offset-2 hover:decoration-brand" href={`/${locale}/members/${member.slug}`}>{sponsor.name}</Link>:sponsor.name}</li>)}</ul></section>)}</div></details>:null}</section>:null}
+      {sponsorContexts.length ? <section className="mt-5 border border-line bg-surface p-4 rounded-card"><h2 className="font-serif text-xl font-semibold text-ink">{locale === "ro" ? `Inițiatori (${sponsorContexts.length})` : `Sponsors (${sponsorContexts.length})`}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{sponsorPreview.map(({sponsor,member,party,group})=><div key={sponsor.id} className="min-w-0 border-l-2 border-brand pl-3"><strong className="block [overflow-wrap:anywhere] text-ink">{member?<Link className="underline decoration-brand/40 underline-offset-2 hover:decoration-brand" href={`/${locale}/members/${member.slug}`}>{sponsor.name}</Link>:sponsor.name}</strong><span className="text-xs text-muted">{party?.shortName??group?.shortName??sponsor.groupLabel??(sponsor.sponsorType==="government"?(locale==="ro"?"Guvern":"Government"):(locale==="ro"?"Apartenență neidentificată":"Affiliation not identified"))}{(group?.chamber??sponsor.memberChamber)?` · ${chamberLabels[locale][(group?.chamber??sponsor.memberChamber)!]}`:""}</span></div>)}</div>{sponsorContexts.length>sponsorPreview.length?<details className="mt-4 border-t border-line pt-3"><summary className="cursor-pointer text-sm font-semibold text-brand">{locale==="ro"?`Vezi toți cei ${sponsorContexts.length} de inițiatori`:`See all ${sponsorContexts.length} sponsors`}</summary><div className="mt-4 space-y-5">{sponsorGroups.map(([label,contexts])=><section key={label}><h3 className="text-xs font-bold uppercase tracking-wide text-muted">{label} · {contexts.length}</h3><ul className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">{contexts.map(({sponsor,member})=><li key={sponsor.id} className="[overflow-wrap:anywhere] text-sm text-ink">{member?<Link className="underline decoration-brand/40 underline-offset-2 hover:decoration-brand" href={`/${locale}/members/${member.slug}`}>{sponsor.name}</Link>:sponsor.name}</li>)}</ul></section>)}</div></details>:null}</section>:null}
 
       <GovernmentContextPanel context={governmentContext} billSponsors={sponsorContexts} locale={locale} />
 
@@ -100,7 +100,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
           {procedureSteps.some((step) => step.source) ? (
             <BillTimeline steps={procedureSteps} documents={documents} locale={locale} title={labels.timeline} />
           ) : (
-            <div className="min-w-0 border border-line bg-white">
+            <div className="min-w-0 border border-line bg-surface">
               <div className="border-b border-line px-4 py-3 font-semibold">{labels.timeline}</div>
               <div className="divide-y divide-line">
                 {timeline.map((item) => (
@@ -136,7 +136,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
             }}
           />
 
-          <div className="border border-line bg-white">
+          <div className="border border-line bg-surface">
             <div className="border-b border-line px-4 py-3 font-semibold">{messages.nav.votes}</div>
             <div className="divide-y divide-line">
               {votes.map((vote) => (
@@ -150,7 +150,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
           </div>
 
           {committees.length > 0 ? (
-            <div className="border border-line bg-white">
+            <div className="border border-line bg-surface">
               <div className="border-b border-line px-4 py-3 font-semibold">{labels.committees}</div>
               <div className="divide-y divide-line">
                 {committees.map((committee) => (
@@ -162,7 +162,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
             </div>
           ) : null}
 
-          <details className="border border-line bg-white">
+          <details className="border border-line bg-surface">
             <summary className="cursor-pointer border-b border-line px-4 py-3 font-semibold">{labels.documents} ({documents.length})</summary>
             <div className="divide-y divide-line">
               {documents.map((document) => (

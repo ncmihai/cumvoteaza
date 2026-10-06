@@ -135,7 +135,11 @@ export interface MemberDirectoryItem {
   party?: Party;
   profilePhotoUrl?: string;
   voteCount?: number;
+  /** Votes at which the member is not on the name list (current legislature only); `eligibleVotes` is how many votes had a list. */
   absenceCount?: number;
+  eligibleVotes?: number;
+  /** The person held a post in the Government during this mandate (a minister who is also a member votes in the plenary far less often). */
+  inGovernment?: boolean;
   groupSwitchCount?: number;
   serviceDays?: number;
 }
@@ -303,7 +307,7 @@ const getCachedBillPageData = unstable_cache(
 const getCachedMemberDirectoryData = unstable_cache(
   async (filters?: MemberDirectoryFilters) =>
     timed("data.member-directory", () => getMemberDirectoryDataUncached(filters)),
-  ["member-directory-data-integrity-v4"],
+  ["member-directory-data-integrity-v6"],
   { revalidate: 600, tags: [CACHE_TAGS.members, CACHE_TAGS.search] }
 );
 
@@ -721,6 +725,9 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
       session.db.execute<MemberDirectoryRow>(sql`
         with
         ${stats.ctes}
+        nominal_votes as (
+          select v.num, v.chamber::text as chamber, v.held_on from votes v where exists (select 1 from individual_vote_rows x where x.vote_num = v.num)
+        ),
         scoped as (
           select
             m.id as member_id,
@@ -752,7 +759,9 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
             p.color as party_color,
             photo_asset.id as profile_photo_asset_id,
             coalesce(vote_stats.vote_count, 0)::int as vote_count,
-            coalesce(vote_stats.absence_count, 0)::int as absence_count,
+            coalesce(absence_stats.absences, 0)::int as absence_count,
+            absence_stats.eligible as eligible_votes,
+            exists (select 1 from government_roles gr where gr.person_id = m.person_id and gr.starts_on <= coalesce(mm.ends_on, current_date) and coalesce(gr.ends_on, date '9999-12-31') >= mm.starts_on) as in_government,
             ${stats.select}
             row_number() over (partition by coalesce(m.person_id, m.id) order by mm.starts_on desc, mm.id desc) as rn
           from member_mandates mm
@@ -774,7 +783,7 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
             select sa.id
             from stored_assets sa
             where sa.entity_id = m.id and sa.asset_type = 'photo' and sa.fetch_status = 'stored'
-            order by (sa.legislature_id = mm.legislature_id) desc, sa.updated_at desc
+            order by (sa.legislature_id = mm.legislature_id) desc, coalesce(sa.width, 0) asc, sa.updated_at desc
             limit 1
           ) photo_asset on true
           left join lateral (
@@ -787,6 +796,15 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
               and mla.legislature_id = mm.legislature_id
               and mla.chamber = mm.chamber
           ) vote_stats on true
+          -- Absences at votes (current legislature only: the name lists of earlier ones are incomplete): the votes with a name list held in the member's chamber
+          -- (and joint sittings) during the mandate, minus the ones in which the member is on the list. The list does not say why someone is not on it.
+          left join lateral (
+            select e.n as eligible, greatest(0, e.n - p.n)::int as absences
+            from (select count(*)::int as n from nominal_votes nv where (nv.chamber = mm.chamber::text or nv.chamber = 'joint') and nv.held_on between mm.starts_on and coalesce(mm.ends_on, current_date)) e,
+                 (select count(*)::int as n from individual_vote_rows r join nominal_votes nv on nv.num = r.vote_num
+                  where r.member_num = m.num and r.choice::text in ('for', 'against', 'abstention', 'present_not_voting') and nv.held_on between mm.starts_on and coalesce(mm.ends_on, current_date)) p
+            where mm.legislature_id = (select id from legislatures order by starts_on desc limit 1)
+          ) absence_stats on true
           ${stats.joins}
           ${where}
         )
@@ -1544,6 +1562,8 @@ function mapMemberDirectoryRow(row: MemberDirectoryRow): MemberDirectoryItem {
     profilePhotoUrl: row.profile_photo_asset_id ? `/api/assets/${encodeURIComponent(row.profile_photo_asset_id)}` : undefined,
     voteCount: Number(row.vote_count ?? 0),
     absenceCount: Number(row.absence_count ?? 0),
+    eligibleVotes: row.eligible_votes === null || row.eligible_votes === undefined ? undefined : Number(row.eligible_votes),
+    inGovernment: Boolean(row.in_government),
     groupSwitchCount: Number(row.stat_switches ?? 0),
     serviceDays: Number(row.stat_seniority_days ?? 0)
   };
@@ -3049,6 +3069,8 @@ type MemberDirectoryRow = {
   profile_photo_asset_id: string | null;
   vote_count: number;
   absence_count: number;
+  eligible_votes: number | null;
+  in_government: boolean;
   stat_switches: number;
   stat_seniority_days: number;
 };

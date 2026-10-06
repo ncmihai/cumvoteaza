@@ -70,7 +70,7 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
   const groupMarks = await getGroupMarks(groups);
 
   const ro = locale === "ro";
-  const absentSeats = seatVotes.filter((seat) => seat.choice === "absent").length;
+  const absentSeats = seatVotes.filter((seat) => seat.choice === "absent" || seat.choice === "unknown").length;
   const counts = countsOfTotals({ ...vote.totals, absent: absentSeats });
   const kinds: Array<{ kind: VoteKind; value: number }> = [
     { kind: "for", value: counts.for ?? 0 },

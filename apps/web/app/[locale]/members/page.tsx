@@ -104,16 +104,17 @@ export default async function MembersPage({
         <div className="min-w-0 overflow-x-auto pb-1 2xl:justify-self-end">
           <nav aria-label={locale === "ro" ? "Sortarea parlamentarilor" : "Member sorting"} className="flex w-max min-w-full items-center 2xl:min-w-0">
             <span className="mr-3 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">{locale === "ro" ? "Sortează" : "Sort"}</span>
-            {memberSortOptions(locale).map((option) => <SortLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, county: filters.county, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</SortLink>)}
+            {memberSortOptions(locale).filter((option) => option.value !== "absent" || filters.legislature === currentLegislatureId).map((option) => <SortLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, county: filters.county, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</SortLink>)}
           </nav>
         </div>
       </div>
+      {filters.sort === "absent" ? <p className="mt-3 rounded-card border border-line bg-wash px-4 py-3 text-sm leading-6 text-ink-soft">{locale === "ro" ? "O absență la vot înseamnă că lista nominală oficială nu are niciun vot pentru parlamentar. Sursa numără drept prezenți doar pe cei cu vot înregistrat și nu spune de ce lipsește cineva (absență, concediu, alt motiv). Se numără doar votele cu listă nominală, în camera parlamentarului și în ședințele comune, cât timp a avut mandatul; votul secret nu are listă și nu intră în număr. Parlamentarii care au avut și o funcție în Guvern sunt marcați: ei apar mult mai rar pe listele din plen." : "An absence at a vote means the official name list has no vote for the member. The source counts only people with a recorded vote as present and does not say why someone is missing (absence, leave, another reason). Only votes with a name list count, in the member's chamber and in joint sittings, while they held the mandate; a secret ballot has no list and is not counted. Members who also held a post in the Government are marked: they appear on the plenary lists far less often."}</p> : null}
 
       <section className="mt-3 space-y-2">
-        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-line bg-white px-3 py-3 transition hover:border-brand hover:bg-wash rounded-control">
+        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, eligibleVotes, inGovernment, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-line bg-white px-3 py-3 transition hover:border-brand hover:bg-wash rounded-control">
           <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-wash font-serif text-xl font-bold text-muted"><ImageWithFallback src={profilePhotoUrl} alt="" className="h-full w-full object-cover">{initials(member.displayName)}</ImageWithFallback></div>
-          <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-ink">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span></div><p className="mt-1 truncate text-xs text-muted">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
-          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} absenceCount={absenceCount} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-line pl-5 text-sm font-semibold text-brand md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-brand md:hidden" size={18} /></div>
+          <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-ink">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span>{filters.sort === "absent" && inGovernment ? <span className="rounded-full bg-brand-soft px-2 py-0.5 font-semibold text-brand-strong">{locale === "ro" ? "A avut o funcție în Guvern în acest mandat" : "Held a government post in this term"}</span> : null}</div><p className="mt-1 truncate text-xs text-muted">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
+          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} absenceCount={absenceCount} eligibleVotes={eligibleVotes} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-line pl-5 text-sm font-semibold text-brand md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-brand md:hidden" size={18} /></div>
         </Link>)}
         {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pb-2 pt-4"><span className="text-sm text-muted">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand rounded-control" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center bg-ink px-4 py-2 text-sm font-semibold !text-white transition hover:bg-ink" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
@@ -189,14 +190,14 @@ function memberSortOptions(locale: AppLocale): Array<{ value: string; label: str
     ? [
         { value: "", label: "Nume" },
         { value: "votes", label: "Cele mai multe voturi documentate" },
-        { value: "absent", label: "Cele mai multe absențe documentate" },
+        { value: "absent", label: "Cele mai multe absențe la vot" },
         { value: "seniority", label: "Cel mai mult timp în Parlament" },
         { value: "switches", label: "Cele mai multe schimbări" }
       ]
     : [
         { value: "", label: "Name" },
         { value: "votes", label: "Most documented votes" },
-        { value: "absent", label: "Most documented absences" },
+        { value: "absent", label: "Most absences at votes" },
         { value: "seniority", label: "Longest service" },
         { value: "switches", label: "Most switches" }
       ];
@@ -224,14 +225,14 @@ function SortLink({ href, active, children }: { href: string; active: boolean; c
   return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-ink bg-ink !text-white" : "border-line-strong bg-white text-ink-soft hover:z-10 hover:border-brand hover:bg-[#f4f8fd]"}`}>{children}</Link>;
 }
 
-function RankingMetric({ locale, sort, voteCount, absenceCount, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; absenceCount?: number; groupSwitchCount?: number; serviceDays?: number }) {
+function RankingMetric({ locale, sort, voteCount, absenceCount, eligibleVotes, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; absenceCount?: number; eligibleVotes?: number; groupSwitchCount?: number; serviceDays?: number }) {
   const value = sort === "switches" ? groupSwitchCount ?? 0 : sort === "seniority" ? Math.floor((serviceDays ?? 0) / 365) : sort === "absent" ? absenceCount ?? 0 : voteCount ?? 0;
   const label = sort === "switches"
     ? (locale === "ro" ? "schimbări" : "switches")
     : sort === "seniority"
       ? (locale === "ro" ? "ani" : "years")
       : sort === "absent"
-        ? (locale === "ro" ? "absențe documentate" : "documented absences")
+        ? (locale === "ro" ? `absențe la vot${eligibleVotes ? ` din ${eligibleVotes}` : ""}` : `absences at votes${eligibleVotes ? ` of ${eligibleVotes}` : ""}`)
       : (locale === "ro" ? "voturi documentate" : "documented votes");
   return <div className="max-w-24 text-right max-[374px]:hidden"><strong className="block font-serif text-2xl text-ink">{value}</strong><span className="block text-xs leading-tight text-muted">{label}</span></div>;
 }

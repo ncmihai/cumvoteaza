@@ -55,7 +55,7 @@ export function BillDocumentTextToggle({
         {open ? labels.hide : labels.show}
       </button>
       {open ? (
-        <div className="mt-3 max-h-80 overflow-auto border border-line bg-wash p-3 text-sm leading-6 text-ink-soft">
+        <div tabIndex={0} role="region" aria-label={labels.status} className="mt-3 max-h-80 overflow-auto border border-line bg-wash p-3 text-sm leading-6 text-ink-soft">
           <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-line pb-2 text-xs text-muted">
             <span className="border border-line bg-white px-2 py-1 font-semibold uppercase text-ink-soft rounded-control">{labels.status}</span>
             <span>{labels.note}</span>

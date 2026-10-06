@@ -24,7 +24,7 @@ export const voteChoiceLabels: Record<Locale, Record<VoteChoice, string>> = {
     abstention: "Abținere",
     present_not_voting: "Prezent, nu a votat",
     absent: "Absent",
-    unknown: "Necunoscut"
+    unknown: "Fără vot înregistrat"
   },
   en: {
     for: "For",
@@ -32,7 +32,7 @@ export const voteChoiceLabels: Record<Locale, Record<VoteChoice, string>> = {
     abstention: "Abstention",
     present_not_voting: "Present, did not vote",
     absent: "Absent",
-    unknown: "Unknown"
+    unknown: "No vote recorded"
   }
 };
 

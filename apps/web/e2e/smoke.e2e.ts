@@ -93,6 +93,21 @@ test("a vote page shows the result, the counts and the official source @db", asy
   await expect(page.locator('main a[href*="cdep.ro"], main a[href*="senat.ro"]').first()).toBeVisible();
 });
 
+test("a vote with a name list draws the seat map: its chamber illustration loads and a missing vote is never called unknown @db", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  page.on("console", (message) => { if (message.type() === "error" && !/status of 404/.test(message.text())) errors.push(message.text()); });
+  const href = await firstHref(page, "/ro/votes?chamber=deputies", "/ro/votes/");
+  test.skip(!href, "no Chamber vote on the list");
+  await page.goto(href!);
+  const dais = page.locator('img[src*="dais"]');
+  test.skip((await dais.count()) === 0, "this vote has no name list, so no seat map");
+  await dais.first().scrollIntoViewIfNeeded();
+  await expect.poll(() => dais.first().evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await expect(page.locator("main")).not.toContainText("Necunoscut");
+  expect(errors).toEqual([]);
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
