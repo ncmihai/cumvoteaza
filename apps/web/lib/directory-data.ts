@@ -52,7 +52,7 @@ async function getGovernmentIndexUncached(): Promise<GovernmentIndexEntry[] | un
   }
 }
 
-const getCachedPartyIndex = unstable_cache(() => timed("data.party-index", getPartyIndexUncached), ["party-index-v1"], { revalidate: 900, tags: [CACHE_TAGS.parties, CACHE_TAGS.composition] });
+const getCachedPartyIndex = unstable_cache(() => timed("data.party-index", getPartyIndexUncached), ["party-index-v2"], { revalidate: 900, tags: [CACHE_TAGS.parties, CACHE_TAGS.composition] });
 const getCachedGovernmentIndex = unstable_cache(() => timed("data.government-index", getGovernmentIndexUncached), ["government-index-v1"], { revalidate: 900, tags: [CACHE_TAGS.governments] });
 
 export const getPartyIndex = () => getCachedPartyIndex();

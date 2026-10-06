@@ -295,6 +295,13 @@
       "when": 1791279211833,
       "tag": "0041_updater_records",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791287903676,
+      "tag": "0042_party_kind_and_logo",
+      "breakpoints": true
     }
   ]
 }

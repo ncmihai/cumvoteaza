@@ -395,6 +395,21 @@ export async function getCurrentMemberSlug(slugOrId: string): Promise<string | u
   }
 }
 
+/** The current slug of a party row folded into its organisation's single row (D-029): the old per-legislature id or slug still opens the right page. */
+export async function getCurrentPartySlug(slugOrId: string): Promise<string | undefined> {
+  if (!process.env.DATABASE_URL) return undefined;
+  const session = createWebDbSession();
+  try {
+    const [row] = await session.db.execute<{ slug: string }>(sql`
+      select p.slug from id_aliases a join parties p on p.id = a.canonical_id
+      where (a.kind = 'party-slug' and a.alias_id = ${`slug:${slugOrId}`}) or (a.kind = 'party' and a.alias_id = ${slugOrId})
+      limit 1`);
+    return row?.slug;
+  } finally {
+    await session.close();
+  }
+}
+
 /** The current slug of a bill merged into another record of the same dossier (D22). */
 export async function getCurrentBillSlug(slugOrId: string): Promise<string | undefined> {
   if (!process.env.DATABASE_URL) return undefined;

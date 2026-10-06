@@ -47,7 +47,7 @@ export async function writePoliticalEntityCandidates(options: {
         select
           p.id as entity_id,
           case
-            when p.id like 'party-formation-%' then 'historical_formation'
+            when (p.id like 'party-formation-%' or p.id like 'party-org-%') then 'historical_formation'
             else 'party'
           end as entity_kind,
           p.short_name as label,
@@ -70,7 +70,7 @@ export async function writePoliticalEntityCandidates(options: {
         select
           pg.id as entity_id,
           case
-            when pg.party_id is null or pg.party_id like 'party-formation-%' then 'historical_formation'
+            when pg.party_id is null or pg.party_id like 'party-formation-%' or pg.party_id like 'party-org-%' then 'historical_formation'
             else 'parliamentary_group'
           end as entity_kind,
           pg.short_name as label,

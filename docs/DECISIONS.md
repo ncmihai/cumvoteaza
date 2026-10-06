@@ -18,10 +18,6 @@ Each Open question has a recommendation; the owner decides.
 - Constraints: summaries are model output, so they need the evidence link and review rules (D-008: model output never auto-publishes, or is clearly labeled as unreviewed); cost must stay near zero.
 - The existing (disabled) explanation code and its 3 tables are kept until this is decided.
 
-### Q19 — The President's record: decorations and individual pardons
-- Decrees awarding decorations and granting individual pardons are a large share of the 36,677 and name private people.
-- **Recommendation:** count them by type and year, store no private person's name; full detail for promulgations, returned laws, Constitutional Court referrals, designations and appointments (public office holders).
-
 ---
 
 
@@ -58,6 +54,7 @@ Each Open question has a recommendation; the owner decides.
 - **Navigation:** top bar Voturi · Proiecte de lege · Parlamentari · Partide · Guvern (Președinte when it exists); "Date și metodă" in the footer. **Home (Q12):** a combination: search and county picker, latest decisions, "what changed", Parliament now, trust strip.
 - **Motion:** subtle and once (seat wave, counts, bars, timelines), always off under reduced motion. **Pages in the first wave:** home, vote, bill, member, party and compositions.
 - **Process (Q20):** code-first with screenshots at desktop and phone, Figma later (the Figma connection works; the plan's call limit is unchecked, so nothing depends on it).
+- **Confirmed later the same day:** home as the combination (Q12); logo **B**, the question mark of seats (with a simplified favicon, since the dots blur at tab-icon size); Sprint 11 is two sprints (11a, 11b); **Q19 closed: decorations and individual pardons are counted by type and year in the President's record and never name a private person.**
 
 ### D-028 — Backlog and the Feature track (2026-10-06)
 - **Backlog:** the rest of Sprint 9 (the morning runs, the daily job, three automatic days) and all of Sprint 10 (BC250 worker, `/admin` v1, Linux OCR) move to the Backlog in PLAN.md, with open downloads (F-1), law texts and diffs (F-6) and the "later" items.

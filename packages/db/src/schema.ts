@@ -234,7 +234,14 @@ export const parties = pgTable("parties", {
   slug: text("slug").notNull(),
   shortName: text("short_name").notNull(),
   name: text("name").notNull(),
-  color: varchar("color", { length: 16 }).notNull()
+  color: varchar("color", { length: 16 }).notNull(),
+  /** party | minority_organisation | minority_group | independent | unaffiliated (D-029): one row per organisation, not per legislature. */
+  kind: text("kind").notNull().default("party"),
+  /** False when the only name we hold is the abbreviation the Chamber prints ("FD", "PLS"); the page then says the full name is not recorded. */
+  fullNameKnown: boolean("full_name_known").notNull().default(true),
+  /** The stored image of the party's own logo as the Chamber publishes it, linked only where one party clearly owns the image (D-029). */
+  logoAssetId: text("logo_asset_id").references(() => storedAssets.id),
+  logoSourceUrl: text("logo_source_url")
 }, (table) => ({
   slugIdx: uniqueIndex("parties_slug_idx").on(table.slug)
 }));

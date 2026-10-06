@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Building2, ExternalLink, UsersRound } from "lucide-react";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
 import { getCurrentCompositionData } from "@/lib/composition-data";
-import { getPartyPageData } from "@/lib/data";
+import { getCurrentPartySlug, getPartyPageData } from "@/lib/data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { selectCurrentPartyState } from "@/lib/public-presentation";
 import { EngagementTracker } from "../../_components/EngagementTracker";
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 export default async function PartyPage({params}:{params:Promise<{locale:string;slug:string}>}){
- const {locale:rawLocale,slug}=await params; const locale:AppLocale=isLocale(rawLocale)?rawLocale:"ro"; const [data,currentComposition]=await Promise.all([getPartyPageData(slug),getCurrentCompositionData("official")]); if(!data)notFound();
+ const {locale:rawLocale,slug}=await params; const locale:AppLocale=isLocale(rawLocale)?rawLocale:"ro"; const [data,currentComposition]=await Promise.all([getPartyPageData(slug),getCurrentCompositionData("official")]); if(!data){const currentSlug=await getCurrentPartySlug(slug);if(currentSlug&&currentSlug!==slug)permanentRedirect(`/${rawLocale}/parties/${currentSlug}`);notFound()}
  const {party,members,legislatureSummaries,groupTotals,votes,formationEvents,governmentParticipations,tribunalSources}=data;
  const logoUrl=legislatureSummaries.flatMap(x=>x.logoUrls)[0];
  const currentLeg=legislatureSummaries[0]?.legislature.id; const current=legislatureSummaries.filter(x=>!currentLeg||x.legislature.id===currentLeg);

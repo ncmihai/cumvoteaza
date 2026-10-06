@@ -13,6 +13,7 @@ import { importMotions } from "./motions-import";
 import { backupLocalData } from "./backup";
 import { publishCoverage } from "./coverage/publish";
 import { removeTestVotes } from "./repair/remove-test-votes";
+import { mergeParties } from "./repair/merge-parties";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
 import { revalidateSite } from "./site-revalidate";
@@ -548,6 +549,21 @@ async function main() {
     try {
       const result = await removeTestVotes(session.db, { persist: hasFlag("persist"), repoRoot });
       console.log(JSON.stringify({ persisted: hasFlag("persist"), ...result }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "repair:merge-parties") {
+    // D-029: the parties table held one row per organisation per legislature ("party-formation-2020-..."); this folds them into one row per
+    // organisation with a kind, keeps the old ids and slugs as aliases, and links each party to the Chamber's logo where one party clearly owns it.
+    // Dry run unless --persist; then npm run ingest:refresh-read-models and ingest:site:revalidate.
+    const session = createDbSession();
+    try {
+      const result = await mergeParties(session.db, { persist: hasFlag("persist") });
+      console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {
       await session.close();

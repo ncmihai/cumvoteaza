@@ -24,6 +24,7 @@ import {
   type ParsedRoster
 } from "./parsers/roster";
 import { cleanText, slugify } from "./parsers/utils";
+import { organisationIdentity } from "./parties/organisation";
 import { membershipPeriods, periodWithin, type DatedMembershipRow, type MembershipPeriod } from "./membership-periods";
 import { CDEP_PROFILE_POLICY, persistRoster } from "./persist";
 
@@ -415,15 +416,19 @@ function groupFromLink(link: CdepLink, legislature: Legislature, chamber: Chambe
   };
 }
 
-function historicalFormation(label: string, legislatureYear: string): Party {
+/** An organisation the importer does not know by name: one row per organisation, whatever the legislature (D-029). */
+function historicalFormation(label: string, _legislatureYear: string): Party {
   const cleanLabel = cleanText(label);
-  const slug = slugify(cleanLabel);
+  const shortName = cleanLabel.length <= 24 ? cleanLabel : acronym(cleanLabel) || cleanLabel.slice(0, 24);
+  const identity = organisationIdentity(cleanLabel, shortName);
   return {
-    id: `party-formation-${legislatureYear}-${slug}`,
-    slug: `formation-${legislatureYear}-${slug}`,
-    shortName: cleanLabel.length <= 24 ? cleanLabel : acronym(cleanLabel) || cleanLabel.slice(0, 24),
-    name: cleanLabel,
-    color: "#64748b"
+    id: identity.id,
+    slug: identity.slug,
+    shortName: identity.shortName,
+    name: identity.name,
+    color: "#64748b",
+    kind: identity.kind,
+    fullNameKnown: identity.fullNameKnown
   };
 }
 
@@ -495,7 +500,7 @@ function diagnoseRoster(roster: ParsedRoster): {
   historicalFormations: number;
 } {
   const missingConstituencies = roster.mandates.filter((mandate) => !mandate.constituency).length;
-  const historicalFormations = roster.parties.filter((party) => party.id.startsWith("party-formation-")).length;
+  const historicalFormations = roster.parties.filter((party) => (party.id.startsWith("party-formation-") || party.id.startsWith("party-org-"))).length;
   const warnings = [];
   if (missingConstituencies) warnings.push(`${missingConstituencies} mandates have no official constituency link.`);
   if (historicalFormations) warnings.push(`${historicalFormations} labels are stored as historical formations, not canonical parties.`);

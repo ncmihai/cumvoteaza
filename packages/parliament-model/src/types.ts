@@ -187,6 +187,9 @@ export interface Party {
   shortName: string;
   name: string;
   color: string;
+  /** Set for organisations the importer creates itself (D-029); a conflict never overwrites the stored kind. */
+  kind?: "party" | "minority_organisation" | "minority_group" | "independent" | "unaffiliated";
+  fullNameKnown?: boolean;
 }
 
 export interface ParliamentaryGroup {
