@@ -7,8 +7,8 @@ import { refreshReadModels } from "../read-models";
 import { revalidateSite } from "../site-revalidate";
 import { reportToGitHub } from "./github";
 import { catchUpWindow, decideRunStatus, integrityVerdict, issueFor, type HeldItem, type IntegrityCount, type RunReport, type StepResult } from "./plan";
-import { DEFAULT_LIMITS, stepBillImport, stepBillPages, stepDecrees, stepVoteLists, stepVotes, type Limits, type RunState, type StepContext } from "./steps";
-import { beat, finishRun, insertRevisions, lastSuccess, newRunId, recoverStaleRuns, runInProgress, startRun } from "./store";
+import { DEFAULT_LIMITS, stepBillImport, stepBillPages, stepDecrees, stepRosters, stepVoteLists, stepVotes, type Limits, type RunState, type StepContext } from "./steps";
+import { beat, finishRun, insertRevisions, lastCompleted, newRunId, recoverStaleRuns, runInProgress, startRun } from "./store";
 
 export class RunInProgressError extends Error {
   constructor(readonly runId: string, readonly since: string) {
@@ -21,7 +21,7 @@ export interface CatchUpOptions {
   /** Without it, the run fetches and checks but writes nothing to the database and records nothing. */
   persist: boolean;
   trigger: "manual" | "schedule" | "request";
-  /** Steps to leave out: vote-lists, votes, bill-pages, bill-import, decrees. */
+  /** Steps to leave out: vote-lists, rosters, votes, bill-pages, bill-import, decrees. */
   skip?: string[];
   openIssue?: boolean;
   /** Purge the public site's caches when publishing (default); off for a rehearsal on a copy. */
@@ -62,7 +62,8 @@ export async function catchUp(options: CatchUpOptions): Promise<RunReport> {
       const running = await runInProgress(db);
       if (running) throw new RunInProgressError(running.id, running.startedAt);
     }
-    const window = catchUpWindow({ lastSuccessAt: await lastSuccess(db), today });
+    const last = await lastCompleted(db);
+    const window = catchUpWindow({ lastSuccessAt: last?.finishedAt, today, heldDates: (last?.held ?? []).filter((item) => item.kind === "vote" && item.date).map((item) => item.date!) });
     log(`Run ${runId} (${options.trigger}${options.persist ? "" : ", dry run"}): looking at ${window.from} to ${window.to}.`);
     if (options.persist) {
       await startRun(db, { id: runId, trigger: options.trigger, workerId, gitSha: gitSha(options.repoRoot) });
@@ -71,7 +72,7 @@ export async function catchUp(options: CatchUpOptions): Promise<RunReport> {
     const integrityBefore = countsOf(await runIntegrityChecks(db));
     const ctx: StepContext = { repoRoot: options.repoRoot, db, persist: options.persist, runId, window, today, limits: { ...DEFAULT_LIMITS, ...options.limits }, state, log };
 
-    const plan: Array<[string, (context: StepContext) => Promise<StepResult>]> = [["vote-lists", stepVoteLists], ["votes", stepVotes], ["bill-pages", stepBillPages], ["bill-import", stepBillImport], ["decrees", stepDecrees]];
+    const plan: Array<[string, (context: StepContext) => Promise<StepResult>]> = [["vote-lists", stepVoteLists], ["rosters", stepRosters], ["votes", stepVotes], ["bill-pages", stepBillPages], ["bill-import", stepBillImport], ["decrees", stepDecrees]];
     for (const [name, step] of plan) {
       if (options.skip?.includes(name)) {
         steps.push({ step: name, status: "skipped", startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), notes: ["left out on request"] });

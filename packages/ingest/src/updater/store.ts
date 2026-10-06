@@ -29,6 +29,12 @@ export async function lastSuccess(db: DbClient): Promise<string | undefined> {
   return rows[0]?.finished_at;
 }
 
+/** The last run that got to the end (published, nothing new, or held back some items; not a failed one), with what it held. */
+export async function lastCompleted(db: DbClient): Promise<{ finishedAt: string; held: HeldItem[] } | undefined> {
+  const rows = [...(await db.execute<{ finished_at: string; held: HeldItem[] }>(sql`select finished_at::text, held from updater_runs where status in ('published', 'nothing_new', 'held') and finished_at is not null order by finished_at desc limit 1`))];
+  return rows[0] ? { finishedAt: rows[0].finished_at, held: rows[0].held ?? [] } : undefined;
+}
+
 export async function startRun(db: DbClient, run: { id: string; trigger: string; workerId: string; gitSha?: string }) {
   await db.execute(sql`insert into updater_runs (id, trigger, worker_id, git_sha) values (${run.id}, ${run.trigger}, ${run.workerId}, ${run.gitSha ?? null})`);
 }

@@ -57,7 +57,8 @@ Each Open question has a recommendation; the owner decides.
 - **Hold and publish (D-008) without a staging copy:** every item passes its own gate before it is written (a vote must agree with the official list, a dossier page must be a real page); a failed item is held, listed and not written. After the writes the integrity checks must not be worse than before the run; if they are, the run is held and the read models and caches are not refreshed. A held run opens a GitHub issue (or comments on the open one), never silently.
 - **What is recorded** (migration 0041): `updater_runs` (steps, counts, held items, status), `worker_heartbeats` (is a worker alive), `updater_jobs` (a request waits until a worker takes it; the admin of Sprint 10 will write them), `data_revisions` (field, old value, new value, source for bill fates, stages, law and gazette numbers, and new votes and bills: the base of the later history feature).
 - **Limits:** at most 150 requests per source per run at 3 s apart (the Chamber's bot protection answers a captcha after about 230); a run that finds the previous one still "running" for under 3 hours stops; over 3 hours it marks it failed and goes on.
-- **Not in v1:** roster changes (a new member shows up as a held vote with an unknown name, and the roster import stays manual), OCR, the admin screen.
+- **Roster changes (added 6 Oct):** each run compares the official roster pages of the legislature (2 requests) with the profiles we hold; a member we hold no profile for is reported as a held item with the Sprint 6 steps to add them (crawl the profile, import, identity resolution) and is never imported automatically (a person is a sensitive record, D-014). Votes held for an unknown name are asked for again on every run until they are in, however long that takes (up to the 60-day cap).
+- **Not in v1:** OCR, the admin screen (Sprint 10).
 
 ### D-022 — Vote scope for 2024–2028 (2026-10-04, closes Q14)
 

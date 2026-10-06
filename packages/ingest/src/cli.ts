@@ -12,6 +12,7 @@ import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "
 import { importMotions } from "./motions-import";
 import { backupLocalData } from "./backup";
 import { publishCoverage } from "./coverage/publish";
+import { removeTestVotes } from "./repair/remove-test-votes";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
 import { revalidateSite } from "./site-revalidate";
@@ -537,6 +538,20 @@ async function main() {
     const snapshots = await publishCoverage({ repoRoot, today, from: flag("from") ?? "2024-12-21", years: numberListFlag("years") ?? [2024, 2025, 2026], persist: hasFlag("persist") });
     console.log(JSON.stringify(snapshots.map((item) => ({ ...item, payload: item.id === "votes" ? { totals: (item.payload as { totals: unknown }).totals, daysFetched: (item.payload as { daysFetched: unknown }).daysFetched } : { rows: (item.payload as { rows: unknown }).rows } })), null, 2));
     console.log(hasFlag("persist") ? "Published. Then npm run ingest:site:revalidate --tags=coverage." : "Dry run only. Re-run with --persist to write.");
+    return;
+  }
+
+  if (command === "repair:remove-test-votes") {
+    // The Chamber's own "vot test" ballots (voting-system tests) are not parliamentary acts and the vote gate already leaves them out; this removes the
+    // ones imported before that, after saving them under data/imports. Dry run unless --persist; then npm run ingest:refresh-read-models and ingest:site:revalidate.
+    const session = createDbSession();
+    try {
+      const result = await removeTestVotes(session.db, { persist: hasFlag("persist"), repoRoot });
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), ...result }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

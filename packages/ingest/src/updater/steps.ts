@@ -1,16 +1,18 @@
 import { sql } from "drizzle-orm";
 import type { DbClient } from "@cumsevoteaza/db";
 import { dossierItemsFromLists, planDossierFetch } from "../coverage/fetch-bill-dossiers";
-import { RawCache } from "../coverage/raw-cache";
+import { decodeOfficialBytes, RawCache } from "../coverage/raw-cache";
 import { COVERAGE_RAW_DIR, runCoverageFetch } from "../coverage/run-fetch";
 import { runBillDossierFetch, runBillListFetch } from "../coverage/run-bills-seats";
 import { runVoteBackfill } from "../coverage/run-vote-backfill";
+import { PoliteFetcher } from "../coverage/polite-fetcher";
 import { fillGazetteNumbers } from "../dossiers/gazette-fill";
 import { legislatieToken, searchByTitle } from "../dossiers/gazette-lookup";
 import { importBillDossiers } from "../dossiers/import";
 import { applyBillMergePlan, loadBillRecords, planBillMerges } from "../identity/bill-merge";
 import { cabinetDecrees, diffDossier, pickBillPagesToRefresh, type BillPageState, type DossierSnapshot, type HeldItem, type StepResult } from "./plan";
-import { insertRevisions, seenEntities, type NewRevision } from "./store";
+import { looksComplete, missingMembers, parseRosterPage, storedProfileKeys, type OfficialMember } from "./roster-check";
+import { seenEntities, type NewRevision } from "./store";
 
 export interface Limits {
   /** Requests to each official source in one run (the Chamber's bot protection answers a captcha after about 230). */
@@ -85,12 +87,37 @@ export async function stepVoteLists(ctx: StepContext): Promise<StepResult> {
   return stepResult("vote-lists", started, blocked ? "failed" : "ok", { counts, notes });
 }
 
+
+/** 1b. The official rosters of the current legislature against the members we hold: a member we have no profile for is reported (not imported) with the steps to add them. */
+export async function stepRosters(ctx: StepContext): Promise<StepResult> {
+  const started = now();
+  const label = [...(await ctx.db.execute<{ label: string }>(sql`select label from legislatures order by starts_on desc limit 1`))][0]?.label;
+  if (!label) return stepResult("rosters", started, "skipped", { notes: ["no legislature is recorded"] });
+  const legislature = label.slice(0, 4);
+  const cache = new RawCache(COVERAGE_RAW_DIR(ctx.repoRoot));
+  const fetcher = new PoliteFetcher({ maxRequests: 6, delayMs: ctx.limits.delayMs });
+  const official: OfficialMember[] = [];
+  for (const chamber of ["deputies", "senate"] as const) {
+    const url = `https://www.cdep.ro/ords/pls/parlam/structura.de?leg=${legislature}${chamber === "senate" ? "&cam=1" : ""}`;
+    const response = await fetcher.get(url);
+    if (response.status !== 200) throw new Error(`${chamber} roster: HTTP ${response.status}`);
+    await cache.write("cdep-roster", `${chamber}-${legislature}`, response.body, { url, status: response.status });
+    const members = parseRosterPage(decodeOfficialBytes(response.body, response.contentType), chamber, legislature);
+    if (!looksComplete(chamber, members)) return stepResult("rosters", started, "failed", { counts: { listed: members.length }, notes: [`the ${chamber} roster page lists only ${members.length} members: its shape may have changed`] });
+    official.push(...members);
+  }
+  const stored = storedProfileKeys([...(await ctx.db.execute<{ source_ids: Record<string, string> | null }>(sql`select source_ids from members where source_ids ? 'cdepProfileKey'`))]);
+  const missing = missingMembers(official, stored, legislature);
+  const held = missing.map((member): HeldItem => ({ kind: "roster", id: `${member.chamber}:idm${member.idm}`, reasons: [`${member.name} is on the official roster and we hold no profile for them`], url: member.url }));
+  return stepResult("rosters", started, "ok", { counts: { official: official.length, missing: missing.length }, held });
+}
+
 /** 2. The votes we lack, through the gates of the vote backfill (each page must agree with the official list before it is written). */
 export async function stepVotes(ctx: StepContext): Promise<StepResult> {
   const started = now();
   ctx.state.maxVoteNumBefore = await maxVoteNum(ctx.db);
   const result = await runVoteBackfill({ repoRoot: ctx.repoRoot, from: ctx.window.from, to: ctx.window.to, sources: ["cdep", "senate"], limit: ctx.limits.votesPerRun, batch: 25, maxHeld: 3, maxRequests: ctx.limits.requestsPerSource, delayMs: ctx.limits.delayMs, persist: ctx.persist, offline: false, log: ctx.log });
-  const held: HeldItem[] = result.held.map((item) => ({ kind: "vote" as const, id: `${item.source}:${item.officialId}`, reasons: item.reasons, url: item.url }));
+  const held: HeldItem[] = result.held.map((item) => ({ kind: "vote" as const, id: `${item.source}:${item.officialId}`, reasons: item.reasons, url: item.url, date: item.date }));
   const notes: string[] = [];
   if (result.stopped) notes.push(result.stopped);
   if (result.integrity?.grew.length) notes.push(`checks that grew: ${result.integrity.grew.join(", ")}`);

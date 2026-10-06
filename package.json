@@ -59,6 +59,7 @@
     "ingest:bills:dossiers:import": "npm --workspace @cumsevoteaza/ingest run bills:dossiers:import --",
     "ingest:bills:gazette:fill": "npm --workspace @cumsevoteaza/ingest run bills:gazette:fill --",
     "ingest:coverage:publish": "npm --workspace @cumsevoteaza/ingest run coverage:publish --",
+    "ingest:repair:remove-test-votes": "npm --workspace @cumsevoteaza/ingest run repair:remove-test-votes --",
     "ingest:updater:catch-up": "npm --workspace @cumsevoteaza/ingest run updater:catch-up --",
     "ingest:updater:status": "npm --workspace @cumsevoteaza/ingest run updater:status --",
     "ingest:updater:request": "npm --workspace @cumsevoteaza/ingest run updater:request --",

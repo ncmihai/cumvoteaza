@@ -15,6 +15,15 @@ describe("catchUpWindow", () => {
   });
 });
 
+describe("catchUpWindow and held votes", () => {
+  it("goes back to a vote that was held until it is in, however long ago", () => {
+    expect(catchUpWindow({ lastSuccessAt: "2026-10-09T05:10:00Z", today: "2026-10-10", heldDates: ["2026-10-06"] })).toEqual({ from: "2026-10-05", to: "2026-10-10" });
+  });
+  it("still never goes back more than the cap", () => {
+    expect(catchUpWindow({ lastSuccessAt: "2026-10-09T05:10:00Z", today: "2026-10-10", heldDates: ["2026-01-02"], maxDays: 30 })).toEqual({ from: "2026-09-10", to: "2026-10-10" });
+  });
+});
+
 describe("integrityVerdict", () => {
   const before = [{ name: "a_error", severity: "error" as const, count: 0 }, { name: "b_warning", severity: "warning" as const, count: 4 }, { name: "c_error", severity: "error" as const, count: 2 }];
   it("blocks on a grown error check and only reports a grown warning", () => {
@@ -61,6 +70,12 @@ describe("issueFor", () => {
     const issue = issueFor({ id: "run-3", status: "nothing_new", startedAt: "2026-10-08T05:00:00Z", trigger: "schedule", steps: [], held: [{ kind: "decree", id: "decret-801-2026", reasons: ["a decree that may change the cabinet: Decret nr. 801"] }], integrity: { worse: [], grew: [] }, counts: {} });
     expect(issue.title).toBe("[updater] possible cabinet change 2026-10-08");
     expect(issue.body).toContain("To look at (nothing was held back)");
+  });
+  it("tells the owner how to add a missing member", () => {
+    const issue = issueFor({ id: "run-4", status: "held", startedAt: "2026-10-09T05:00:00Z", trigger: "schedule", steps: [], held: [{ kind: "roster", id: "deputies:idm337", reasons: ["Nume Prenume is on the official roster and we hold no profile for them"], url: "https://www.cdep.ro/ords/pls/parlam/structura.mp?idm=337&cam=2&leg=2024" }], integrity: { worse: [], grew: [] }, counts: {} });
+    expect(issue.body).toContain("A member is missing from our roster");
+    expect(issue.body).toContain("cdep_history_probe.py crawl --seed-url");
+    expect(issue.body).toContain("roster `deputies:idm337`");
   });
   it("says so when a run failed with an error", () => {
     const issue = issueFor({ id: "run-2", status: "failed", startedAt: "2026-10-07T05:00:00Z", trigger: "manual", steps: [], held: [], integrity: { worse: [], grew: [] }, counts: {}, error: "HTTP 503" });

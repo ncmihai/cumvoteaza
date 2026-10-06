@@ -7,10 +7,12 @@ export type StepStatus = "ok" | "skipped" | "held" | "failed";
 export type RunStatus = "published" | "held" | "failed" | "nothing_new";
 
 export interface HeldItem {
-  kind: "vote" | "dossier" | "decree" | "integrity" | "request";
+  kind: "vote" | "dossier" | "decree" | "integrity" | "request" | "roster";
   id: string;
   reasons: string[];
   url?: string;
+  /** A vote's sitting day: the next run looks at it again until the vote is in. */
+  date?: string;
 }
 
 export interface StepResult {
@@ -31,11 +33,13 @@ const dayOf = (date: Date) => date.toISOString().slice(0, 10);
  * The days a run looks at. It starts a few days before the last successful run (a chamber may publish a vote list late) and never goes back
  * further than `maxDays`; a first run looks at the last `firstRunDays`.
  */
-export function catchUpWindow(input: { lastSuccessAt?: string; today: string; lookbackDays?: number; firstRunDays?: number; maxDays?: number }): { from: string; to: string } {
+export function catchUpWindow(input: { lastSuccessAt?: string; today: string; lookbackDays?: number; firstRunDays?: number; maxDays?: number; heldDates?: string[] }): { from: string; to: string } {
   const lookback = input.lookbackDays ?? 3;
   const todayMs = Date.parse(`${input.today}T00:00:00Z`);
   const earliest = todayMs - (input.maxDays ?? 60) * DAY;
-  const start = input.lastSuccessAt ? Date.parse(`${input.lastSuccessAt.slice(0, 10)}T00:00:00Z`) - lookback * DAY : todayMs - (input.firstRunDays ?? 14) * DAY;
+  let start = input.lastSuccessAt ? Date.parse(`${input.lastSuccessAt.slice(0, 10)}T00:00:00Z`) - lookback * DAY : todayMs - (input.firstRunDays ?? 14) * DAY;
+  // A vote held back (a name not in the roster yet) is asked for again until it is in, however long that takes.
+  for (const date of input.heldDates ?? []) start = Math.min(start, Date.parse(`${date.slice(0, 10)}T00:00:00Z`) - DAY);
   return { from: dayOf(new Date(Math.min(Math.max(start, earliest), todayMs))), to: input.today };
 }
 
@@ -65,6 +69,16 @@ export function decideRunStatus(input: { steps: StepResult[]; integrityWorse: st
   return input.changes > 0 ? "published" : "nothing_new";
 }
 
+/** What to do when the official roster lists someone we do not hold (the Sprint 6 flow; nothing is imported automatically because a person is a sensitive record, D-014). */
+const ROSTER_RUNBOOK = [
+  "**A member is missing from our roster.** Add them with the Sprint 6 flow, one step at a time, dry run first:",
+  "1. `python3 tools/cdep-history-probe/cdep_history_probe.py crawl --seed-url <the profile address above> --limit-profiles 6 --delay 2` (the new member and the one they replace; the crawl merges into `data/cdep-history/parsed`, it replaces nothing)",
+  "2. `npm run prod -- ingest:cdep-history:import --legislature=2024` (dry run), then the same with `--persist`",
+  "3. `npm run prod -- ingest:identity:resolve` (dry run), then with `--persist`; `ingest:refresh-read-models`",
+  "4. `ingest:updater:catch-up --persist`: the votes that were held for the missing name are imported on that run.",
+  ""
+];
+
 export interface RunReport {
   id: string;
   status: RunStatus;
@@ -91,6 +105,7 @@ export function issueFor(report: RunReport): { title: string; body: string; key:
     "**Steps:**",
     ...report.steps.map((step) => `- ${step.step}: ${step.status}${step.counts ? ` ${JSON.stringify(step.counts)}` : ""}${step.notes?.length ? ` — ${step.notes.join("; ")}` : ""}`),
     "",
+    ...(report.held.some((item) => item.kind === "roster") ? ROSTER_RUNBOOK : []),
     "Next: look at the held items above, fix the cause (a parser rule, a roster import, a source change) and run `ingest:updater:catch-up --persist` again; a held vote is retried on the next run."
   ];
   return { title: `${key} ${date}`, body: lines.join("\n"), key };
