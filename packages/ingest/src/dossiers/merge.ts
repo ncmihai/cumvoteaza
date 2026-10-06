@@ -171,7 +171,8 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
   // The stage line of the page that has seen the latest step.
   const latest = (page: ParsedDossier | undefined) => page?.steps.reduce((max, step) => (step.occurredOn > max ? step.occurredOn : max), "") ?? "";
   const stagePage = latest(senate) >= latest(cdep) ? (senate ?? cdep) : cdep;
-  const stage = stagePage?.stage ?? cdep?.stage ?? senate?.stage;
+  // A blank stage cell (the Chamber leaves it empty for some bills) is no stage: the other page's line is used.
+  const stage = stagePage?.stage || cdep?.stage || senate?.stage || undefined;
 
   const memberFirst = (list: DossierInitiator[]) => list.filter((item) => item.kind === "member").length > 0;
   const initiators = cdep && memberFirst(cdep.initiators) ? cdep.initiators : senate && senate.initiators.length ? senate.initiators : cdep?.initiators ?? [];

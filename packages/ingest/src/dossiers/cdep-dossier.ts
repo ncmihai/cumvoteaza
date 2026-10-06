@@ -96,7 +96,7 @@ export function parseCdepDossier(html: string, sourceUrl: string): ParsedDossier
   });
   const text = (label: RegExp) => {
     const entry = [...labelCells].find(([key]) => label.test(fold(key)));
-    return entry ? squash($(entry[1]).text()) : undefined;
+    return entry ? squash($(entry[1]).text()) || undefined : undefined;
   };
   const cellOf = (label: RegExp) => [...labelCells].find(([key]) => label.test(fold(key)))?.[1];
 
@@ -152,7 +152,7 @@ export function parseCdepDossier(html: string, sourceUrl: string): ParsedDossier
   if (govAddress && /\d/.test(govAddress) && !registrationList.some((item) => item.body === "government")) registrationList.push({ body: "government", number: govAddress });
   // A promulgated bill's stage cell prints the law's number as a link followed by the law's title: keep the number ("Lege 53/2026").
   const lawLink = stageCell ? $(stageCell).find("a").toArray().map((anchor) => squash($(anchor).text())).find((value) => /^Lege \d+\/\d{4}$/i.test(value)) : undefined;
-  const stage = lawLink ?? stageText;
+  const stage = lawLink ?? (stageText || undefined);
 
   return {
     source: "cdep",

@@ -100,6 +100,8 @@ export function typeStepWording(original: string): TypedWording {
   if (/devine legea nr|promulgat(a)? prin decret/.test(f)) return base("promulgation");
   if (/publicat(a)? in monitorul oficial/.test(f)) return base("published");
   if (/trimis(a)? la promulgare|trimitere la presedintele romaniei pentru promulgare/.test(f)) return base("sent_to_president");
+  // A letter from the Presidency (the row carries the document itself); nothing more is said, so it stays a plain step.
+  if (/^adresa administratiei prezidentiale$/.test(f)) return base("other");
   if (/(depunere|depus|depusa) la secretarul general.*(constitutionalitat)/.test(f)) return base("constitutional_window");
   if (/retras de catre initiator|retragerea initiativei|solicita retragerea|retras(a)? de|solicitarea initiatorilor de retragere|de retragere a (propunerii|proiectului)/.test(f)) return base("withdrawn");
   if (/incetarea procedurii legislative/.test(f)) return base("procedure_ended");

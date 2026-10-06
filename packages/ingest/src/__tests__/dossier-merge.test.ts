@@ -75,3 +75,20 @@ describe("pages that approve different ordinances", () => {
     expect(groupPages([withTitle(chamberPage, "Propunere legislativă pentru modificarea Legii nr.95/2006"), senatePage])).toHaveLength(1);
   });
 });
+
+describe("a blank stage cell", () => {
+  const html = `<html><head><title>PL-x nr. 216/2026</title></head><body><table>
+    <tr valign=top><td bgcolor="#fff0d8">Stadiu:</td><td>&nbsp;</td></tr>
+  </table></body></html>`;
+
+  it("is no stage on the Chamber page", () => {
+    expect(parseCdepDossier(html, "https://www.cdep.ro/x").stage).toBeUndefined();
+  });
+
+  it("does not hide the stage the Senate page prints", () => {
+    const chamberPage = { ...page("cdep", "PL-x 216/2026", [{ body: "cdep", number: "216", date: "2026-05-04" }, { body: "senate", number: "L654", year: 2025 }], [step("cdep", "deputies", "2026-06-10", "registered")]), stage: "" };
+    const senatePage = { ...page("senate", "L654/2025", [{ body: "senate", number: "L654", date: "2025-12-11" }], [step("senate", "senate", "2026-03-02", "registered")]), stage: "Trimis la Cameră pentru dezbatere" };
+    const [group] = groupPages([chamberPage, senatePage]);
+    expect(mergeDossiers(group!).stage).toBe("Trimis la Cameră pentru dezbatere");
+  });
+});

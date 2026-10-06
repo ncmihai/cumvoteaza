@@ -147,3 +147,9 @@ describe("wording found in the full corpus of 2024-2026", () => {
     expect(typeStepWording(sentence)).toMatchObject({ recognised: true, ...expected });
   });
 });
+
+describe("the Presidency's letter", () => {
+  it("is a recognised plain step, not wording the typing does not know", () => {
+    expect(typeStepWording("Adresa Administraţiei Prezidenţiale")).toMatchObject({ type: "other", recognised: true });
+  });
+});

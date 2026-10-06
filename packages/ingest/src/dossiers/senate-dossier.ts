@@ -45,7 +45,7 @@ export function parseSenateDossier(html: string, sourceUrl: string): ParsedDossi
   const cellOf = (label: RegExp) => [...labelCells].find(([key]) => label.test(fold(key)))?.[1];
   const text = (label: RegExp) => {
     const cell = cellOf(label);
-    return cell ? squash($(cell).text()) : undefined;
+    return cell ? squash($(cell).text()) || undefined : undefined;
   };
 
   const heading = $(".lista-legis-panel-2 h4").first();
