@@ -29,7 +29,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <LatestDecisions votes={votes.items} locale={locale} />
       <div className="mx-auto grid max-w-page grid-cols-1 gap-10 px-4 py-10 lg:grid-cols-[1.15fr_1fr] lg:px-8">
         <ChangesFeed changes={changes} locale={locale} />
-        <ParliamentNow chambers={composition.chambers} locale={locale} />
+        <ParliamentNow chambers={composition.chambers} locale={locale} sitting={{ deputies: counties.reduce((sum, county) => sum + county.deputies, 0), senate: counties.reduce((sum, county) => sum + county.senators, 0) }} />
       </div>
       <TrustStrip coverage={coverage} checkedAt={checkedAt} locale={locale} />
     </main>

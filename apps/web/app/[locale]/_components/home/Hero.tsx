@@ -13,7 +13,11 @@ type Locale = "ro" | "en";
 export function Hero({ locale, counties, chamber, today }: { locale: Locale; counties: CountyOption[]; chamber?: ChamberComposition; today: string }) {
   const ro = locale === "ro";
   const groups = chamber?.groups ?? [];
-  const seats = groups.flatMap((entry) => Array.from({ length: entry.seats }, () => ({ color: entry.group.color, title: entry.group.shortName })));
+  const registered = groups.flatMap((entry) => Array.from({ length: entry.seats }, () => ({ color: entry.group.color, title: entry.group.shortName })));
+  // Sitting deputies by their mandates (one per seat); a member with no registered group is drawn as a grey seat and said so, never left out.
+  const sitting = counties.reduce((sum, county) => sum + county.deputies, 0);
+  const unplaced = sitting > registered.length ? sitting - registered.length : 0;
+  const seats = [...registered, ...Array.from({ length: unplaced }, () => ({ color: "#cbd5e1", title: ro ? "Fără grup înregistrat" : "No registered group" }))];
   const total = seats.length;
   const legend = groups.slice(0, 6);
   const rest = groups.slice(6);
@@ -70,6 +74,7 @@ export function Hero({ locale, counties, chamber, today }: { locale: Locale; cou
                 </li>
               ))}
             </ul>
+            {unplaced > 0 ? <p className="mt-2 text-xs text-muted"><span aria-hidden="true" className="mr-1.5 inline-block size-2.5 rounded-full bg-line-strong align-middle" />{ro ? `${unplaced} deputat fără grup înregistrat în datele noastre (listele oficiale îl trec la neafiliați; în verificare).` : `${unplaced} deputy with no registered group in our data (the official lists show an unaffiliated member; being checked).`}</p> : null}
             {rest.length > 0 ? <p className="mt-2 text-xs text-muted">{ro ? `și încă ${rest.length} grupuri, cu ${rest.reduce((sum, entry) => sum + entry.seats, 0)} mandate. Ordinea este după mărime, nu politică.` : `and ${rest.length} more groups with ${rest.reduce((sum, entry) => sum + entry.seats, 0)} seats. The order is by size, not political.`}</p> : <p className="mt-2 text-xs text-muted">{ro ? "Ordinea este după mărimea grupului, nu politică." : "The order is by group size, not political."}</p>}
           </div>
         ) : null}
