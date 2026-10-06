@@ -47,6 +47,9 @@ export interface VotePreviewGroup {
   shortName: string;
   name: string;
   color: string;
+  /** The party's own short name and logo where the group belongs to one party that owns an image (D-029). */
+  partyShortName?: string;
+  logoAssetId?: string;
   for: number;
   against: number;
   abstention: number;
@@ -140,7 +143,7 @@ const getCachedDirectoryFilterOptions = unstable_cache(
 
 const getCachedVoteExplorerData = unstable_cache(
   async (query: ExplorerQuery = {}) => timed("explorer.votes", () => getVoteExplorerDataUncached(query)),
-  ["vote-explorer-data-integrity-v2"],
+  ["vote-explorer-data-integrity-v3"],
   { revalidate: 600, tags: [CACHE_TAGS.votes] }
 );
 
@@ -237,6 +240,8 @@ async function getVoteExplorerDataUncached(query: ExplorerQuery = {}): Promise<E
             'shortName', pg.short_name,
             'name', pg.name,
             'color', pg.color,
+            'partyShortName', (select p.short_name from parties p where p.id = pg.party_id),
+            'logoAssetId', (select p.logo_asset_id from parties p where p.id = pg.party_id),
             'for', grouped.for_count,
             'against', grouped.against,
             'abstention', grouped.abstention,
@@ -635,6 +640,8 @@ function mapVotePreviewGroups(value: unknown): VotePreviewGroup[] {
       shortName: String(item.shortName ?? item.groupId ?? "—"),
       name: String(item.name ?? item.shortName ?? item.groupId ?? "—"),
       color: String(item.color ?? "#64748b"),
+      partyShortName: typeof item.partyShortName === "string" ? item.partyShortName : undefined,
+      logoAssetId: typeof item.logoAssetId === "string" ? item.logoAssetId : undefined,
       for: Number(item.for ?? 0),
       against: Number(item.against ?? 0),
       abstention: Number(item.abstention ?? 0),

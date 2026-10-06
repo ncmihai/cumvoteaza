@@ -119,6 +119,27 @@ describe("public presentation contracts", () => {
     expect(result.endsOn).toBeUndefined();
   });
 
+  it("shows the same party in the same chamber across several legislatures as one stint with its legislatures listed (Zamfir: PSD in 2019-2020, 2020-2024, 2024-2028)", () => {
+    const result = presentMemberCareer([
+      { ...career("pnl", "PNL", "2016-12-21", "2018-06-01", "pnl"), legislatureId: "leg-2016" },
+      { ...career("psd-1", "PSD", "2019-09-01", "2020-12-20", "psd"), legislatureId: "leg-2016" },
+      { ...career("psd-2", "PSD", "2020-12-21", "2024-12-20", "psd"), legislatureId: "leg-2020" },
+      { ...career("psd-3", "PSD", "2024-12-21", undefined, "psd"), legislatureId: "leg-2024" }
+    ]);
+    expect(result.segments.map((segment) => segment.label)).toEqual(["PNL", "PSD"]);
+    expect(result.segments[1]).toMatchObject({ startsOn: "2019-09-01", endsOn: undefined, legislatureIds: ["leg-2016", "leg-2020", "leg-2024"] });
+    expect(result.legislatureCount).toBe(3);
+  });
+
+  it("keeps a party stint apart when the member left parliament in between or changed chamber", () => {
+    const result = presentMemberCareer([
+      career("a", "PSD", "2016-12-21", "2018-01-01", "psd"),
+      career("b", "PSD", "2020-12-21", "2024-12-20", "psd"),
+      { ...career("c", "PSD", "2024-12-21", undefined, "psd"), chamber: "senate" }
+    ]);
+    expect(result.segments).toHaveLength(3);
+  });
+
   it("flags overlapping different affiliations instead of inventing a transition order", () => {
     const result = presentMemberCareer([
       career("a", "ALDE", "2016-12-21", "2020-12-20", "alde"),

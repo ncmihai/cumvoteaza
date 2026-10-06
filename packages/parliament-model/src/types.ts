@@ -666,6 +666,8 @@ export interface MemberCareerSegment {
   endsOn?: string;
   endsOnPrecision?: DatePrecision;
   legislatureId?: string;
+  /** Every legislature a merged stint covers (the same party in the same chamber across several terms is one stint). */
+  legislatureIds?: string[];
   chamber: ChamberId;
   label: string;
   details?: string;

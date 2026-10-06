@@ -126,7 +126,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
       </div>
     </header>
 
-    <MemberCareerTimeline career={career} locale={locale}/>
+    <MemberCareerTimeline career={career} locale={locale} memberSlug={member.slug} legislatures={legislatures} selectedLegislatureId={selectedLegislature?.id}/>
     <PublicCareerTimeline events={publicCareerEvents} locale={locale}/>
 
     <div className="mt-8 flex flex-wrap items-center gap-2" aria-label={ro ? "Legislatura" : "Legislature"}>

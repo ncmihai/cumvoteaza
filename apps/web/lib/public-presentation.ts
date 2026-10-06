@@ -275,7 +275,6 @@ export function presentMemberCareer(
       previous.label === segment.label &&
       previous.partySlug === segment.partySlug &&
       previous.chamber === segment.chamber &&
-      previous.legislatureId === segment.legislatureId &&
       periodsTouch(previous.endsOn, segment.startsOn)
     ) {
       const endsOn = laterDate(previous.endsOn, segment.endsOn);
@@ -285,11 +284,12 @@ export function presentMemberCareer(
       previous.governance = mergeGovernanceContexts(previous.governance, segment.governance);
       previous.logoUrl ??= segment.logoUrl;
       previous.color ??= segment.color;
+      if (segment.legislatureId && !previous.legislatureIds?.includes(segment.legislatureId)) previous.legislatureIds = [...(previous.legislatureIds ?? []), segment.legislatureId];
       continue;
     }
-    normalized.push({ ...segment, events: [...(segment.events ?? [])], governance: [...(segment.governance ?? [])] });
+    normalized.push({ ...segment, legislatureIds: segment.legislatureId ? [segment.legislatureId] : [], events: [...(segment.events ?? [])], governance: [...(segment.governance ?? [])] });
   }
-  const legislatureIds = new Set(normalized.map((segment) => segment.legislatureId).filter(Boolean));
+  const legislatureIds = new Set(normalized.flatMap((segment) => segment.legislatureIds ?? []));
   const knownLegislatures = new Set(legislatures.map((legislature) => legislature.id));
   const legislatureCount = [...legislatureIds].filter((id) => !knownLegislatures.size || knownLegislatures.has(id!)).length;
   const affiliationCount = new Set(normalized.map((segment) => segment.partySlug ?? segment.label)).size;

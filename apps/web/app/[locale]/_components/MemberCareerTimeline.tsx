@@ -1,75 +1,90 @@
 import Link from "next/link";
-import { ArrowRight, Building2, CalendarDays, ExternalLink } from "lucide-react";
-import { chamberLabels, formatDate, type Locale, type MemberCareerSegment } from "@cumsevoteaza/parliament-model";
+import type { CSSProperties } from "react";
+import { Building2, ExternalLink } from "lucide-react";
+import { chamberLabels, formatDate, type Legislature, type Locale, type MemberCareerSegment } from "@cumsevoteaza/parliament-model";
 import type { MemberCareerPresentation } from "@/lib/public-presentation";
 import { ImageWithFallback } from "./ImageWithFallback";
 
-export function MemberCareerTimeline({ career, locale }: { career: MemberCareerPresentation; locale: Locale }) {
+const NEUTRAL = "var(--color-line-strong)";
+
+function isUnaffiliatedLabel(label: string): boolean {
+  return /^(independent|independentă|neafiliat|neafiliată|neafiliați|unaffiliated)$/i.test(label.trim());
+}
+
+/** A party's colour for the line; the unaffiliated have none and are drawn neutral. */
+function colourOf(segment: MemberCareerSegment): string {
+  return isUnaffiliatedLabel(segment.label) ? NEUTRAL : segment.color ?? "var(--color-brand)";
+}
+
+/**
+ * The member's parliamentary path as one card per stint: the same party in the same chamber across several legislatures is one card that lists its legislatures
+ * as small links, and a line in the party's colour joins one card to the next (it fades from one party's colour to the other's at a change).
+ */
+export function MemberCareerTimeline({ career, locale, memberSlug, legislatures = [], selectedLegislatureId }: { career: MemberCareerPresentation; locale: Locale; memberSlug: string; legislatures?: Legislature[]; selectedLegislatureId?: string }) {
   if (!career.segments.length) return null;
   const copy = labels[locale];
-  const openEnded = !career.endsOn;
+  const legislatureLabel = (id: string) => legislatures.find((item) => item.id === id)?.label ?? id.replace(/^leg-/, "");
+  const showChanges = career.hasAmbiguousDates ? career.segments.length > 0 : career.segments.length > 1;
 
-  return <section className="mt-5 border border-line bg-wash px-4 py-4 md:px-5">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 className="font-serif text-2xl font-semibold text-ink md:text-3xl">{copy.title}</h2>
-        <p className="mt-1 text-sm text-muted">{career.hasChanges ? copy.changed(career.affiliationCount, career.legislatureCount) : copy.single}</p>
-        {career.hasAmbiguousDates ? <p className="mt-1 text-xs font-medium text-vote-abstain">{copy.ambiguous}</p> : null}
-      </div>
-      {career.legislatureCount > 1 ? <span className="border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-muted rounded-control">{career.legislatureCount} {copy.legislatures}</span> : null}
+  return <section className="mt-5 rounded-card border border-line bg-wash px-4 py-5 md:px-6">
+    <div>
+      <h2 className="font-display text-2xl font-bold text-ink md:text-3xl">{copy.title}</h2>
+      <p className="mt-1 text-sm text-muted">{career.hasChanges ? copy.changed(career.affiliationCount, career.legislatureCount) : copy.single}</p>
+      {career.hasAmbiguousDates ? <p className="mt-1 text-xs font-medium text-vote-abstain">{copy.ambiguous}</p> : null}
     </div>
 
-    <div className="mt-5 hidden md:block">
-      <div className="grid grid-cols-[150px_minmax(0,1fr)_120px] items-center gap-3">
-        <Endpoint icon={<CalendarDays/>} value={formatDate(career.startsOn!, locale, career.startsOnPrecision)} label={copy.start}/>
-        <div tabIndex={0} role="region" aria-label={locale === "ro" ? "Parcursul în funcții" : "Career path"} className="relative min-w-0 overflow-x-auto px-2 py-2">
-          <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 bg-brand" aria-hidden="true"/>
-          <ol className="relative z-10 flex min-w-max justify-around gap-3 px-3">
-            {career.segments.map((segment, index) => <li key={segment.id} className="flex items-center gap-2">
-              {index > 0 && !career.hasAmbiguousDates ? <span className="h-3 w-3 shrink-0 rounded-full border-2 border-white bg-brand shadow" title={copy.transition}/> : null}
-              <CareerCard segment={segment} locale={locale}/>
-            </li>)}
-          </ol>
-        </div>
-        <Endpoint icon={<CalendarDays/>} value={openEnded ? copy.present : formatDate(career.endsOn!, locale, career.endsOnPrecision)} label={openEnded ? copy.inOffice : copy.ended}/>
-      </div>
+    <div tabIndex={0} role="region" aria-label={locale === "ro" ? "Parcursul în partide" : "Path through parties"} className="mt-5 overflow-x-auto pb-2">
+      <ol className="flex flex-col items-start md:w-full md:min-w-fit md:flex-row md:items-stretch">
+        {career.segments.map((segment, index) => {
+          const previous = career.segments[index - 1];
+          return <li key={segment.id} className="flex flex-col items-start md:flex-1 md:flex-row md:items-center">
+            {previous && !career.hasAmbiguousDates ? <span aria-hidden="true" title={copy.transition} className="ml-8 h-6 w-1 shrink-0 rounded-full md:ml-0 md:h-1 md:w-8 bg-[linear-gradient(to_bottom,var(--from),var(--to))] md:bg-[linear-gradient(to_right,var(--from),var(--to))]" style={{ "--from": colourOf(previous), "--to": colourOf(segment) } as CSSProperties} /> : previous ? <span aria-hidden="true" className="ml-8 h-4 w-1 shrink-0 md:ml-0 md:h-1 md:w-4" /> : null}
+            <StintCard segment={segment} locale={locale} memberSlug={memberSlug} legislatureLabel={legislatureLabel} selectedLegislatureId={selectedLegislatureId} />
+          </li>;
+        })}
+      </ol>
     </div>
 
-    <ol className="mt-5 space-y-3 md:hidden">
-      {career.segments.map((segment, index) => <li key={segment.id} className="relative border-l-2 border-brand pl-4">
-        <span className="absolute -left-[6px] top-4 h-2.5 w-2.5 rounded-full border-2 border-white bg-brand" aria-hidden="true"/>
-        <p className="mb-1 text-xs font-semibold text-muted">{index === 0 ? copy.start : copy.transition} · {formatDate(segment.startsOn, locale, segment.startsOnPrecision)}</p>
-        <CareerCard segment={segment} locale={locale}/>
-      </li>)}
-      <li className="flex items-center gap-2 pl-4 text-sm font-semibold text-ink"><CalendarDays size={17}/>{openEnded ? copy.present : formatDate(career.endsOn!, locale, career.endsOnPrecision)}</li>
-    </ol>
-
-    {career.hasChanges ? <div className="mt-4 border-t border-line pt-3"><p className="text-xs font-bold uppercase tracking-wide text-muted">{career.hasAmbiguousDates ? copy.documentedAffiliations : copy.documentedChanges}</p><div className="mt-2 flex flex-wrap gap-2">{career.segments.slice(career.hasAmbiguousDates ? 0 : 1).map((segment) => <span key={`${segment.id}-change`} className="inline-flex items-center gap-1.5 bg-surface px-2.5 py-1.5 text-xs text-ink">{career.hasAmbiguousDates ? null : <><ArrowRight size={13}/>{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} · </>}{segment.label}{career.hasAmbiguousDates && segment.legislatureId ? ` · ${segment.legislatureId.replace(/^leg-/, "")}` : null}</span>)}</div></div> : null}
+    {showChanges ? <div className="mt-3 border-t border-line pt-4">
+      <p className="text-sm font-semibold text-ink-soft">{career.hasAmbiguousDates ? copy.documentedAffiliations : copy.documentedChanges}</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {career.segments.map((segment) => <li key={`${segment.id}-change`} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-ink">
+          <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colourOf(segment) }} />
+          {career.hasAmbiguousDates ? null : <span className="text-muted">{copy.since} {formatDate(segment.startsOn, locale, segment.startsOnPrecision)} ·</span>}
+          <strong className="font-semibold">{segment.label}</strong>
+        </li>)}
+      </ul>
+    </div> : null}
   </section>;
 }
 
-function CareerCard({ segment, locale }: { segment: MemberCareerSegment; locale: Locale }) {
+function StintCard({ segment, locale, memberSlug, legislatureLabel, selectedLegislatureId }: { segment: MemberCareerSegment; locale: Locale; memberSlug: string; legislatureLabel: (id: string) => string; selectedLegislatureId?: string }) {
+  const copy = labels[locale];
   const isNamedParty = !isUnaffiliatedLabel(segment.label);
-  const content = <>
-    <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden border border-line bg-surface text-xs font-bold" style={{ color: segment.color ?? "var(--color-ink)" }}>
-      <ImageWithFallback src={isNamedParty && segment.partySlug ? segment.logoUrl : undefined} alt="" className="h-full w-full object-contain p-1">{segment.label.slice(0, 4)}</ImageWithFallback>
-    </span>
-    <span className="min-w-0"><strong className="block text-base text-ink">{segment.label}</strong><span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><Building2 size={12}/>{chamberLabels[locale][segment.chamber]}</span><span className="mt-0.5 block text-xs text-muted">{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} – {segment.endsOn ? formatDate(segment.endsOn, locale, segment.endsOnPrecision) : (locale === "ro" ? "prezent" : "present")}</span></span>
-    {segment.sourceUrl ? <ExternalLink size={14} className="ml-auto shrink-0 text-brand"/> : null}
-  </>;
-  const className = "flex min-w-[210px] items-center gap-3 border border-line bg-surface p-2 shadow-sm";
-  if (isNamedParty && segment.partySlug) return <Link href={`/${locale}/parties/${segment.partySlug}`} className={`${className} hover:border-brand`}>{content}</Link>;
-  if (segment.sourceUrl) return <a href={segment.sourceUrl} target="_blank" rel="noreferrer" className={`${className} hover:border-brand`}>{content}</a>;
-  return <div className={className}>{content}</div>;
+  const ids = segment.legislatureIds?.length ? segment.legislatureIds : segment.legislatureId ? [segment.legislatureId] : [];
+  const ended = segment.endsOn ? formatDate(segment.endsOn, locale, segment.endsOnPrecision) : copy.present;
+  const name = isNamedParty && segment.partySlug
+    ? <Link href={`/${locale}/parties/${segment.partySlug}`} className="font-display text-lg font-bold leading-tight text-ink hover:text-brand">{segment.label}</Link>
+    : <strong className="font-display text-lg font-bold leading-tight text-ink">{segment.label}</strong>;
+  return <div className="flex w-[17.5rem] shrink-0 flex-col gap-2 md:w-auto md:min-w-[12.5rem] md:flex-1 rounded-card border border-line border-t-4 bg-surface p-3.5 shadow-sm" style={{ borderTopColor: colourOf(segment) }}>
+    <div className="flex items-center gap-3">
+      <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-surface text-xs font-bold ring-1 ring-line" style={{ color: segment.color ?? "var(--color-ink)" }}>
+        <ImageWithFallback src={isNamedParty && segment.partySlug ? segment.logoUrl : undefined} alt="" className="h-full w-full object-contain p-1">{segment.label.slice(0, 4)}</ImageWithFallback>
+      </span>
+      <div className="min-w-0 flex-1">
+        {name}
+        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted"><Building2 size={12} aria-hidden="true"/>{chamberLabels[locale][segment.chamber]}</p>
+      </div>
+      {segment.sourceUrl ? <a href={segment.sourceUrl} target="_blank" rel="noreferrer" aria-label={copy.source} className="shrink-0 rounded-full p-1 text-brand hover:bg-brand-soft"><ExternalLink size={14} aria-hidden="true"/></a> : null}
+    </div>
+    <p className="text-sm font-medium text-ink-soft">{formatDate(segment.startsOn, locale, segment.startsOnPrecision)} – {ended}</p>
+    {ids.length ? <ul className="flex flex-wrap gap-1.5" aria-label={copy.legislatures}>
+      {ids.map((id) => <li key={id}><Link href={`/${locale}/members/${memberSlug}?legislature=${encodeURIComponent(id)}`} aria-current={id === selectedLegislatureId ? "true" : undefined} title={copy.seeLegislature} className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium transition ${id === selectedLegislatureId ? "border-brand bg-brand-soft text-brand-strong" : "border-line text-ink-soft hover:border-brand hover:text-brand"}`}>{legislatureLabel(id)}</Link></li>)}
+    </ul> : null}
+  </div>;
 }
-
-function isUnaffiliatedLabel(label: string): boolean {
-  return /^(independent|independentă|neafiliat|neafiliată|unaffiliated)$/i.test(label.trim());
-}
-
-function Endpoint({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) { return <div className="flex items-center gap-2 text-ink"><span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5">{icon}</span><span><strong className="block font-serif text-base leading-5">{value}</strong><small className="text-muted">{label}</small></span></div>; }
 
 const labels = {
-  ro: { title: "Traseu parlamentar", single: "Un singur partid în istoricul parlamentar documentat.", changed: (parties: number, legislatures: number) => parties === 1 ? `Același partid în ${legislatures || 1} legislaturi.` : `${parties} afilieri documentate în ${legislatures || 1} legislaturi.`, ambiguous: "Sursele confirmă afilierile, dar nu datează exact toate schimbările.", legislatures: "legislaturi", start: "Începutul traseului", present: "prezent", inOffice: "În mandat", ended: "Sfârșitul mandatului", transition: "Schimbare documentată", documentedChanges: "Schimbări în traseu", documentedAffiliations: "Afilieri documentate" },
-  en: { title: "Parliamentary path", single: "One party in the documented parliamentary record.", changed: (parties: number, legislatures: number) => parties === 1 ? `The same party across ${legislatures || 1} terms.` : `${parties} documented affiliations across ${legislatures || 1} terms.`, ambiguous: "Sources confirm the affiliations but do not date every change precisely.", legislatures: "terms", start: "Path started", present: "present", inOffice: "In office", ended: "Mandate ended", transition: "Documented change", documentedChanges: "Changes in the path", documentedAffiliations: "Documented affiliations" }
+  ro: { title: "Traseu parlamentar", single: "Un singur partid în istoricul parlamentar documentat.", changed: (parties: number, legislatures: number) => parties === 1 ? `Același partid în ${legislatures || 1} legislaturi.` : `${parties} afilieri documentate în ${legislatures || 1} legislaturi.`, ambiguous: "Sursele confirmă afilierile, dar nu datează exact toate schimbările.", legislatures: "Legislaturi", seeLegislature: "Vezi această legislatură", present: "prezent", transition: "Schimbare documentată", documentedChanges: "Partide, cu data de când a fost în fiecare", documentedAffiliations: "Afilieri documentate", since: "din", source: "Sursa oficială" },
+  en: { title: "Parliamentary path", single: "One party in the documented parliamentary record.", changed: (parties: number, legislatures: number) => parties === 1 ? `The same party across ${legislatures || 1} terms.` : `${parties} documented affiliations across ${legislatures || 1} terms.`, ambiguous: "Sources confirm the affiliations but do not date every change precisely.", legislatures: "Legislatures", seeLegislature: "See this legislature", present: "present", transition: "Documented change", documentedChanges: "Parties, with the date from which each", documentedAffiliations: "Documented affiliations", since: "from", source: "Official source" }
 };
