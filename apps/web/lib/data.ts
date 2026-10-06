@@ -36,7 +36,7 @@ import { chamberSeatCount } from "./chamber-seat-counts";
 import { uniqueNominalVotes } from "./vote-integrity";
 import { dataUnavailable, requireDatabase } from "./data-availability";
 import { getBillExplorerData, getVoteExplorerData } from "./explorer-data";
-import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
+import { CACHE_TAGS, coalesce, createWebDbSession, timed } from "./server-db";
 
 export interface VotePageData {
   groupLogoUrls?: Record<string, string>;
@@ -287,13 +287,13 @@ const getCachedBillDirectoryData = unstable_cache(
 );
 
 const getCachedVotePageData = unstable_cache(
-  async (id: string) => timed(`data.vote.${id}`, () => getVotePageDataUncached(id)),
+  async (id: string) => timed(`data.vote.${id}`, () => coalesce(`vote:${id}`, () => getVotePageDataUncached(id))),
   ["vote-page-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.votes] }
 );
 
 const getCachedBillPageData = unstable_cache(
-  async (id: string) => timed(`data.bill.${id}`, () => getBillPageDataUncached(id)),
+  async (id: string) => timed(`data.bill.${id}`, () => coalesce(`bill:${id}`, () => getBillPageDataUncached(id))),
   ["bill-page-data"],
   { revalidate: 900, tags: [CACHE_TAGS.bills] }
 );
@@ -307,13 +307,13 @@ const getCachedMemberDirectoryData = unstable_cache(
 
 const getCachedMemberPageData = unstable_cache(
   async (slug: string, options: { legislature?: string } = {}) =>
-    timed(`data.member.${slug}`, () => getMemberPageDataUncached(slug, options)),
+    timed(`data.member.${slug}`, () => coalesce(`member:${slug}:${options.legislature ?? ""}`, () => getMemberPageDataUncached(slug, options))),
   ["member-page-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.members] }
 );
 
 const getCachedPartyPageData = unstable_cache(
-  async (slug: string) => timed(`data.party.${slug}`, () => getPartyPageDataUncached(slug)),
+  async (slug: string) => timed(`data.party.${slug}`, () => coalesce(`party:${slug}`, () => getPartyPageDataUncached(slug))),
   ["party-page-data-integrity-v2"],
   { revalidate: 900, tags: [CACHE_TAGS.parties, CACHE_TAGS.members] }
 );

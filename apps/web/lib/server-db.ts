@@ -21,6 +21,20 @@ export function selectCacheTags(list: string | null | undefined): { tags: string
   return { tags: wanted.filter((item) => all.includes(item)), unknown: wanted.filter((item) => !all.includes(item)) };
 }
 
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * Callers that ask for the same thing at the same moment share one run: a page and its title (generateMetadata) both read the same record,
+ * and on a first visit neither is cached yet.
+ */
+export function coalesce<T>(key: string, work: () => Promise<T>): Promise<T> {
+  const running = inFlight.get(key) as Promise<T> | undefined;
+  if (running) return running;
+  const promise = work().finally(() => inFlight.delete(key));
+  inFlight.set(key, promise);
+  return promise;
+}
+
 export function createWebDbSession() {
   return createPooledDbSession();
 }
