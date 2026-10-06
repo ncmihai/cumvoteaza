@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseCdepDossier } from "../dossiers/cdep-dossier";
-import { groupPages, keysOfPage, mergeDossiers } from "../dossiers/merge";
+import { approvedOrdinance, groupPages, keysOfPage, mergeDossiers } from "../dossiers/merge";
 import type { DossierStep, ParsedDossier } from "../dossiers/types";
 
 const step = (source: "cdep" | "senate", chamber: DossierStep["chamber"], occurredOn: string, type: DossierStep["type"]): DossierStep => ({ source, chamber, occurredOn, order: 0, type, text: type, documents: [] });
@@ -52,5 +52,26 @@ describe("two Chamber pages that name the same Senate number", () => {
     expect(groups).toHaveLength(2);
     expect(groups[0]!.pages.map((item) => item.selfId)).toEqual(["PL-x 34/2026", "L588/2025"]);
     expect(groups[1]!.pages.map((item) => item.selfId)).toEqual(["PL-x 35/2026"]);
+  });
+});
+
+describe("pages that approve different ordinances", () => {
+  const withTitle = (item: ParsedDossier, title: string): ParsedDossier => ({ ...item, title });
+  const chamberPage = withTitle(page("cdep", "PL-x 35/2026", [{ body: "cdep", number: "35", date: "2026-02-09" }, { body: "senate", number: "L588", year: 2025 }], []), "Proiect de Lege privind aprobarea Ordonanţei de urgenţă a Guvernului nr.76/2025 pentru modificarea Ordonanţei de urgenţă a Guvernului nr.36/2023");
+  const senatePage = withTitle(page("senate", "L588/2025", [{ body: "senate", number: "L588", date: "2025-12-11" }], []), "Proiect de lege privind aprobarea Ordonanţei de urgenţã a Guvernului nr.74/2025 pentru prorogarea unor termene");
+
+  it("names the ordinance the bill approves, the first one in the title", () => {
+    expect(approvedOrdinance(chamberPage.title)).toBe("76/2025");
+    expect(approvedOrdinance(senatePage.title)).toBe("74/2025");
+    expect(approvedOrdinance("Propunere legislativă pentru modificarea Legii nr.95/2006")).toBeUndefined();
+  });
+
+  it("stay two bills even when the Chamber page prints the Senate's number by mistake", () => {
+    expect(groupPages([chamberPage, senatePage])).toHaveLength(2);
+  });
+
+  it("join when the titles agree or name no ordinance", () => {
+    expect(groupPages([chamberPage, withTitle(senatePage, "Proiect de lege privind aprobarea Ordonanţei de urgenţã a Guvernului nr.76/2025 pentru modificarea")])).toHaveLength(1);
+    expect(groupPages([withTitle(chamberPage, "Propunere legislativă pentru modificarea Legii nr.95/2006"), senatePage])).toHaveLength(1);
   });
 });

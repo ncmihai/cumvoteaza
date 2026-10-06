@@ -42,6 +42,12 @@ export interface PageGroup {
   keys: BillKeys;
 }
 
+/** The ordinance a "bill approving an ordinance" names first ("OUG nr.74/2025" -> "74/2025"); undefined when the title names none. Two pages that approve different ordinances are not one bill. */
+export function approvedOrdinance(title: string | undefined): string | undefined {
+  const match = fold(title ?? "").match(/(?:ordonant\w*|oug|o\.u\.g\.|og)\s*(?:de urgenta\s*)?(?:a guvernului\s*)?nr\.?\s*(\d+)\s*\/\s*(\d{4})/);
+  return match ? `${match[1]}/${match[2]}` : undefined;
+}
+
 /**
  * Pages to bills: pages that share any identifier are one bill. Two different Chamber pages are never one bill, though:
  * when the Senate sent one bill down twice, the Chamber registered it twice (PL-x 34/2026 and PL-x 35/2026) and both pages name the same Senate number.
@@ -55,6 +61,10 @@ export function groupPages(pages: ParsedDossier[]): PageGroup[] {
     const rootA = find(a);
     const rootB = find(b);
     if (rootA === rootB || chamberPages[rootA]! + chamberPages[rootB]! > 1) return;
+    // A page that carries another bill's number by mistake (the Chamber printed L588/2025 on a bill that approves a different ordinance) must not pull that bill's dossier in.
+    const ordinanceA = approvedOrdinance(pages[a]!.title);
+    const ordinanceB = approvedOrdinance(pages[b]!.title);
+    if (ordinanceA && ordinanceB && ordinanceA !== ordinanceB) return;
     parent[rootB] = rootA;
     chamberPages[rootA] = chamberPages[rootA]! + chamberPages[rootB]!;
   };

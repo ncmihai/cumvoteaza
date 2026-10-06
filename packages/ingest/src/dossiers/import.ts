@@ -11,7 +11,7 @@ import { snapshotFor } from "../parsers/utils";
 import { parseCdepDossier } from "./cdep-dossier";
 import { groupPages, mergeDossiers, type PageGroup } from "./merge";
 import type { NameCandidate } from "./member-match";
-import { documentKey, indexExistingBills, planBill, summarisePlans, type BillPlan, type ExistingBill, type PlanContext, type PlanSummary } from "./plan";
+import { contradicts, documentKey, indexExistingBills, planBill, summarisePlans, type BillPlan, type ExistingBill, type PlanContext, type PlanSummary } from "./plan";
 import { parseSenateDossier } from "./senate-dossier";
 import type { ParsedDossier } from "./types";
 
@@ -113,7 +113,8 @@ async function loadContext(db: Db): Promise<PlanContext> {
   }
 
   const slugs = await db.execute<{ slug: string }>(sql`select slug from bills`);
-  return { existingBills, profileKeyToMember, candidatesByChamber, voteByRef, slugsTaken: new Set([...slugs].map((row) => row.slug)) };
+  const aliases = await db.execute<{ alias_id: string }>(sql`select alias_id from id_aliases where alias_id like 'bill-%'`);
+  return { existingBills, profileKeyToMember, candidatesByChamber, voteByRef, slugsTaken: new Set([...slugs].map((row) => row.slug)), aliasIds: new Set([...aliases].map((row) => row.alias_id)) };
 }
 
 export async function planDossierImport(db: Db, repoRoot: string, options: { only?: string[]; limit?: number }): Promise<{ plans: BillPlan[]; summary: PlanSummary; pagesRead: { cdep: number; senate: number }; unreadable: Array<{ key: string; error: string }> }> {
@@ -133,6 +134,7 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
   };
   // A stored bill belongs to one dossier. When two dossiers both resolve to it (the stored copy shares a Chamber or Senate number with a bill it is not, an older mislink),
   // the dossier whose own numbers name that bill keeps it and the other one moves on to its next match, or becomes a bill of its own.
+  const shadowed: BillPlan[] = [];
   const planned = groups.map((group) => ({ group, plan: planGroup(group), excluded: new Set<string>() }));
   for (let round = 0; round < 5; round++) {
     const holders = new Map<string, typeof planned>();
@@ -150,10 +152,20 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
     }
     if (!changed) break;
   }
-  const plans = planned.map((item) => item.plan);
+  // A new bill under the id of a record that was merged away earlier (the second Chamber registration of a bill, folded into the first) would shadow its redirect: left out, and reported.
+  const plansByBill = new Map(planned.map((item) => [item.plan.billId, item.plan]));
+  const plans = planned.flatMap((item) => {
+    const plan = item.plan;
+    if (!(plan.isNew && context.aliasIds.has(plan.billId))) return [plan];
+    // The id of an old merge. Undone only when the dossier it was folded into approves a different ordinance (the merge rested on a number the Chamber printed on the wrong bill).
+    const keeper = [...item.excluded].map((id) => plansByBill.get(id)).find(Boolean);
+    if (keeper && contradicts(keeper.bill.title, plan.bill.title)) return [{ ...plan, unmerge: true }];
+    shadowed.push(plan);
+    return [];
+  });
   // Two dossiers that resolve to one bill id would collide: the first wins, the report says which were left out.
   const seen = new Set<string>();
-  const leftOut: BillPlan[] = [];
+  const leftOut: BillPlan[] = [...shadowed];
   const unique = plans.filter((plan) => (seen.has(plan.billId) ? (leftOut.push(plan), false) : (seen.add(plan.billId), true)));
   return { plans: unique, summary: summarisePlans(unique, leftOut), pagesRead: { cdep: pages.filter((page) => page.parsed.source === "cdep").length, senate: pages.filter((page) => page.parsed.source === "senate").length }, unreadable };
 }
@@ -183,6 +195,7 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
 
       for (const plan of group) {
         const values = { title: plan.bill.title, identifiers: plan.bill.identifiers, chamberOfOrigin: plan.bill.chamberOfOrigin, decisionChamber: plan.bill.decisionChamber as "deputies" | "senate" | null, status: plan.bill.status, lawType: plan.bill.lawType as "ordinary" | "organic" | "constitutional" | null, sourceSnapshotIds: plan.bill.sourceSnapshotIds };
+        if (plan.unmerge) await tx.execute(sql`delete from id_aliases where alias_id in (${plan.billId}, ${`slug:${plan.slug}`})`);
         if (plan.isNew) await tx.insert(schema.bills).values({ id: plan.billId, slug: plan.slug, ...values }).onConflictDoNothing();
         else await tx.update(schema.bills).set(values).where(sql`${schema.bills.id} = ${plan.billId}`);
       }
@@ -263,6 +276,16 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
       );
       for (const part of chunks(stepRows, 250)) await tx.insert(schema.billProcedureSteps).values(part);
       written.steps += stepRows.length;
+
+      // The documents this importer made for these bills (ids ending -d<hash>) follow the pages as a whole: one a re-read no longer lists (it came from a page that was
+      // wrongly tied to the bill) is removed, unless something has been built on it (extracted text, a ministry relation). Documents held before are never touched.
+      const keepDocumentIds = new Set(group.flatMap((plan) => plan.documents.flatMap((document) => docIdByBillAndKey.get(`${plan.billId}|${documentKey(document.url)}`) ?? [])));
+      const keep = keepDocumentIds.size ? sql`and d.id not in (${sql.join([...keepDocumentIds].map((id) => sql`${id}`), sql`, `)})` : sql``;
+      await tx.execute(sql`
+        delete from documents d where d.bill_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)}) and d.id ~ '-d[0-9a-f]{10}$' ${keep}
+          and not exists (select 1 from bill_document_text_chunks c where c.document_id = d.id)
+          and not exists (select 1 from bill_ministry_relations r where r.document_id = d.id)
+          and not exists (select 1 from bill_procedure_steps s where s.document_id = d.id)`);
 
       // The compact timeline (read models, member activity and the lists date a bill from its events) follows the steps.
       await tx.delete(schema.billEvents).where(inArray(schema.billEvents.billId, ids));
@@ -347,6 +370,7 @@ function renderMarkdown(result: DossierImportResult, generatedAt: string): strin
     "",
     `Votes linked to a bill by the dossier: ${s.voteLinksToWrite}. Votes the dossier ties to another bill than the one stored: ${s.voteConflicts.length}.`,
     `Bills that answer to two stored records (to merge by hand): ${s.duplicateBills.length}.`,
+    ...(s.unmergedBills.length ? [`Bills re-created because an old merge put two different laws into one: ${s.unmergedBills.join(", ")}.`] : []),
     `Dossiers left out because another dossier resolved to the same bill: ${s.collidingDossiers.length}.`,
     ...s.collidingDossiers.map((item) => `- ${item.bill}: kept ${JSON.stringify(item.keptIdentifiers)}; left out ${JSON.stringify(item.leftOutIdentifiers)} (${item.leftOutSteps} steps, ${item.leftOutOutcome})`),
     "",
