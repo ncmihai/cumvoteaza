@@ -13,6 +13,7 @@ Each Open question has a recommendation; the owner decides.
 ### Q21 — Sorting the members list by activity or absences
 - The members list can be sorted by "most documented votes" and "most documented absences". D-029 says no rankings, leaderboards or "best / worst" lists of individuals; sorting everyone by absences is exactly such a ranking, and a count of absences also mixes real absences with gaps in a source.
 - **Recommendation:** remove both sorts; keep name, party and county. Attendance and agreement stay on each person's own page, with their formulas.
+- 2026-10-06: at the owner's request the absence sort now counts real absences (votes with a name list held in the member's chamber and in joint sittings during the mandate, minus the votes where the member has a recorded vote), only for the current legislature, with the meaning written above the list and a marker on members who held a government post (they top the list: Buzoianu 974 of 1,317, Țoiu 941, Miruță 934). It is still a ranking of individuals, so the question stays open: keep, or remove as recommended.
 
 ### Q10 — Vercel Hobby is non-commercial
 - Fine for now. Any donations or ads would require a paid plan or another host.
@@ -60,6 +61,11 @@ Each Open question has a recommendation; the owner decides.
 - **Process (Q20):** code-first with screenshots at desktop and phone, Figma later (the Figma connection works; the plan's call limit is unchecked, so nothing depends on it).
 - **Type and palette (picked 6 Oct):** T1 = Bricolage Grotesque (headings, big numbers) + Inter (text), P3 = "indigo pop" (ink #14122B, indigo #4338CA, highlight lime #A3E635 drawn as a ring or mark, never as a vote colour); vote colours are fixed and do not change with the palette; contrast is tested before the values are final.
 - **Confirmed later the same day:** home as the combination (Q12); logo **B**, the question mark of seats (with a simplified favicon, since the dots blur at tab-icon size); Sprint 11 is two sprints (11a, 11b); **Q19 closed: decorations and individual pardons are counted by type and year in the President's record and never name a private person.**
+
+### D-030 — A seat with no vote on the name list (2026-10-06)
+- The vote map used to call such seats "Necunoscut" with a question mark, which read like a secret ballot or a data error. It is neither: a secret ballot has no name list and no map at all. These are members who held a seat in the chamber that day but have no vote on the official list. For the Chamber the list simply omits them; for the Senate 563 votes list some senators with no vote ticked (3,274 rows). Checked on every vote with a name list: the source's own "present" total equals the people with a recorded vote in all 1,305 Chamber votes, all 141 joint votes and 672 of 681 Senate votes (the other 9 are the known announced-versus-listed shortfalls), so these members are not counted as present.
+- **Wording:** "Fără vot înregistrat" / "No vote recorded", a pale seat with a slash, counted in the result card, with a note under the map. Never "absent" on the map and never a reason: the sources do not say why. The same label is used in the table, bars and member vote history. The members list calls the same thing "absențe la vot", with its definition shown (see Q21).
+- The amber "does not reconcile" note is gone (it fired for every vote because absentees have no row). Notes remain only where the list holds more votes than announced or fewer (the Senate L181/2025 case), and a muted line when the map has fewer seats than the chamber's legal count.
 
 ### D-028 — Backlog and the Feature track (2026-10-06)
 - **Backlog:** the rest of Sprint 9 (the morning runs, the daily job, three automatic days) and all of Sprint 10 (BC250 worker, `/admin` v1, Linux OCR) move to the Backlog in PLAN.md, with open downloads (F-1), law texts and diffs (F-6) and the "later" items.

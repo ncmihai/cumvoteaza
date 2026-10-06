@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { formatDate, type Locale } from "@cumsevoteaza/parliament-model";
 import type { CompositionMode, CompositionTimelineStop } from "@/lib/composition-data";
 import { Hemicycle } from "./ui/Hemicycle";
+import { PartyMark } from "./ui/PartyMark";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 
 export function CompositionTimeline({ locale, mode, stops, currentStopId }: { locale: Locale; mode: CompositionMode; stops: CompositionTimelineStop[]; currentStopId?: string }) {
@@ -52,12 +53,12 @@ export function CompositionTimeline({ locale, mode, stops, currentStopId }: { lo
 
       <section className="grid gap-4 lg:grid-cols-2">{active.chambers.map((chamber) => <article key={chamber.chamber} className="border border-line bg-surface p-4 rounded-card">
         <Hemicycle seats={seatColoursByGroup(chamber.seats)} summary={`${chamber.chamber === "senate" ? "Senat" : "Camera Deputaților"}: ${chamber.groups.slice().sort((a, b) => b.seats - a.seats).map((group) => `${group.group.shortName} ${group.seats}`).join(", ")}`}/>
-        <div className="mt-3 border-t border-line pt-3"><h3 className="text-xs font-bold uppercase tracking-wide text-muted">{copy.largestGroups}</h3><div className="mt-2 space-y-1.5">{chamber.groups.slice().sort((a, b) => b.seats - a.seats).slice(0, 4).map((group) => <div key={group.group.id} className="grid grid-cols-[1fr_auto] items-center gap-3 text-xs"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full" style={{background: group.group.color}}/>{group.party?.shortName ?? group.group.shortName}</span><strong>{group.seats}</strong></div>)}</div></div>
+        <div className="mt-3 border-t border-line pt-3"><h3 className="text-xs font-bold uppercase tracking-wide text-muted">{copy.largestGroups}</h3><div className="mt-2 space-y-1.5">{chamber.groups.slice().sort((a, b) => b.seats - a.seats).slice(0, 4).map((group) => <div key={group.group.id} className="grid grid-cols-[1fr_auto] items-center gap-3 text-xs"><span className="flex items-center gap-2"><PartyMark party={{ shortName: group.party?.shortName ?? group.group.shortName, color: group.group.color, logoAssetId: group.party?.logoAssetId }} size={16}/>{group.party?.shortName ?? group.group.shortName}</span><strong>{group.seats}</strong></div>)}</div></div>
       </article>)}</section>
 
       <section className="border border-line bg-surface p-5 rounded-card">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-brand">{copy.peopleEyebrow}</p><h3 className="mt-1 font-serif text-2xl font-semibold text-ink">{copy.people}</h3></div><Link href={`/${locale}/members?legislature=${active.legislature.id}`} className="inline-flex items-center gap-1 text-sm font-bold text-brand">{copy.allMembers}<ArrowRight size={15}/></Link></div>
-        {representativeMembers.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{representativeMembers.map(({member, group}) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="border border-line px-3 py-2 hover:border-brand hover:bg-wash"><strong className="block truncate text-sm text-ink">{presentMemberIdentity(member).name}</strong><span className="mt-1 block text-xs text-muted">{group?.shortName ?? copy.unaffiliated}</span></Link>)}</div> : <p className="mt-3 text-sm text-muted">{copy.noMembers}</p>}
+        {representativeMembers.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{representativeMembers.map(({member, group}) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="border border-line px-3 py-2 hover:border-brand hover:bg-wash"><strong className="block truncate text-sm text-ink">{presentMemberIdentity(member).name}</strong><span className="mt-1 flex items-center gap-1.5 text-xs text-muted">{group ? <PartyMark party={{ shortName: group.shortName, color: group.color }} size={16}/> : null}{group?.shortName ?? copy.unaffiliated}</span></Link>)}</div> : <p className="mt-3 text-sm text-muted">{copy.noMembers}</p>}
       </section>
 
       <section className="border border-line bg-surface">
