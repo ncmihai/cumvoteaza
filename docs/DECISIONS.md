@@ -54,6 +54,7 @@ Each Open question has a recommendation; the owner decides.
 - **Navigation:** top bar Voturi · Proiecte de lege · Parlamentari · Partide · Guvern (Președinte when it exists); "Date și metodă" in the footer. **Home (Q12):** a combination: search and county picker, latest decisions, "what changed", Parliament now, trust strip.
 - **Motion:** subtle and once (seat wave, counts, bars, timelines), always off under reduced motion. **Pages in the first wave:** home, vote, bill, member, party and compositions.
 - **Process (Q20):** code-first with screenshots at desktop and phone, Figma later (the Figma connection works; the plan's call limit is unchecked, so nothing depends on it).
+- **Type and palette (picked 6 Oct):** T1 = Bricolage Grotesque (headings, big numbers) + Inter (text), P3 = "indigo pop" (ink #14122B, indigo #4338CA, highlight lime #A3E635 drawn as a ring or mark, never as a vote colour); vote colours are fixed and do not change with the palette; contrast is tested before the values are final.
 - **Confirmed later the same day:** home as the combination (Q12); logo **B**, the question mark of seats (with a simplified favicon, since the dots blur at tab-icon size); Sprint 11 is two sprints (11a, 11b); **Q19 closed: decorations and individual pardons are counted by type and year in the President's record and never name a private person.**
 
 ### D-028 — Backlog and the Feature track (2026-10-06)
