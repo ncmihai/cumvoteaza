@@ -2,26 +2,48 @@ import Link from "next/link";
 import { getLastCatchUp } from "@/lib/coverage-data";
 import type { AppLocale } from "@/lib/i18n";
 import { SITE } from "@/lib/site";
+import { BrandLogo } from "./BrandLogo";
 
 export async function SiteFooter({ locale }: { locale: AppLocale }) {
   const ro = locale === "ro";
   const checked = await getLastCatchUp();
   const checkedText = checked ? new Intl.DateTimeFormat(ro ? "ro-RO" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Bucharest" }).format(new Date(checked.replace(" ", "T").replace(/\+00$/, "Z"))) : undefined;
+  const at = (path: string) => `/${locale}${path}`;
+  const link = "text-sm text-ink-soft hover:text-brand";
   return (
-    <footer className="border-t border-slate-300 bg-white">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 text-sm text-[#4b608a] lg:px-9">
-        <p className="max-w-xl">{ro ? "Date din paginile oficiale ale Parlamentului și ale portalului legislativ, cu legătura către sursă. Nu suntem o instituție publică." : "Data from the official pages of Parliament and the legislative portal, with a link to the source. We are not a public body."}{checkedText ? <span className="mt-1 block text-xs">{ro ? `Sursele oficiale au fost verificate ultima dată: ${checkedText}.` : `The official sources were last checked: ${checkedText}.`}</span> : null}</p>
-        <nav aria-label={ro ? "Explorează" : "Explore"} className="flex flex-wrap gap-x-5 gap-y-2 font-semibold text-[#061a47]">
-          <Link href={`/${locale}/parties`} className="hover:text-[#075fc6]">{ro ? "Partide" : "Parties"}</Link>
-          <Link href={`/${locale}/governments`} className="hover:text-[#075fc6]">{ro ? "Guverne" : "Governments"}</Link>
-          <Link href={`/${locale}/leadership`} className="hover:text-[#075fc6]">{ro ? "Conducerea Parlamentului" : "Parliament's leadership"}</Link>
-          <Link href={`/${locale}/ministries`} className="hover:text-[#075fc6]">{ro ? "Ministere" : "Ministries"}</Link>
-          <Link href={`/${locale}/motions`} className="hover:text-[#075fc6]">{ro ? "Moțiuni" : "Motions"}</Link>
+    <footer className="mt-16 border-t border-line bg-surface">
+      <div className="mx-auto grid max-w-page gap-10 px-4 py-10 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
+        <div className="max-w-md">
+          <Link href={at("")} className="inline-flex items-center gap-2.5" aria-label="CumVoteaza">
+            <BrandLogo size={30} />
+            <span className="font-display text-lg font-bold text-ink">Cum<span className="text-brand">Voteaza</span></span>
+          </Link>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {ro ? "Un registru independent al voturilor, proiectelor de lege și al parlamentarilor României, construit pe paginile oficiale ale Parlamentului și ale portalului legislativ, cu legătura către sursă la fiecare cifră. Nu suntem o instituție publică." : "An independent record of Romania's votes, bills and members of parliament, built on the official pages of Parliament and the legislative portal, with a link to the source for every figure. We are not a public body."}
+          </p>
+          {checkedText ? <p className="mt-3 text-xs text-muted">{ro ? `Sursele oficiale au fost verificate ultima dată: ${checkedText}.` : `The official sources were last checked: ${checkedText}.`}</p> : null}
+        </div>
+        <nav aria-label={ro ? "Explorează" : "Explore"}>
+          <p className="mb-3 text-sm font-semibold text-ink">{ro ? "Explorează" : "Explore"}</p>
+          <ul className="grid gap-2">
+            <li><Link href={at("/votes")} className={link}>{ro ? "Voturi" : "Votes"}</Link></li>
+            <li><Link href={at("/bills")} className={link}>{ro ? "Proiecte de lege" : "Bills"}</Link></li>
+            <li><Link href={at("/members")} className={link}>{ro ? "Parlamentari" : "Members"}</Link></li>
+            <li><Link href={at("/compozitii")} className={link}>{ro ? "Compoziția Parlamentului" : "Composition of Parliament"}</Link></li>
+            <li><Link href={at("/leadership")} className={link}>{ro ? "Conducerea Parlamentului" : "Parliament's leadership"}</Link></li>
+            <li><Link href={at("/parties")} className={link}>{ro ? "Partide" : "Parties"}</Link></li>
+            <li><Link href={at("/governments")} className={link}>{ro ? "Guverne" : "Governments"}</Link></li>
+            <li><Link href={at("/ministries")} className={link}>{ro ? "Ministere" : "Ministries"}</Link></li>
+            <li><Link href={at("/motions")} className={link}>{ro ? "Moțiuni" : "Motions"}</Link></li>
+          </ul>
         </nav>
-        <nav aria-label={ro ? "Despre site" : "About the site"} className="flex flex-wrap gap-x-5 gap-y-2 font-semibold text-[#061a47]">
-          <Link href={`/${locale}/methodology`} className="hover:text-[#075fc6]">{ro ? "Metodologie și acoperire" : "Methodology and coverage"}</Link>
-          <a href={SITE.repoUrl} className="hover:text-[#075fc6]">{ro ? "Cod sursă" : "Source code"}</a>
-          <a href={SITE.issuesUrl} className="hover:text-[#075fc6]">{ro ? "Raportează o greșeală" : "Report a mistake"}</a>
+        <nav aria-label={ro ? "Despre site" : "About the site"}>
+          <p className="mb-3 text-sm font-semibold text-ink">{ro ? "Despre site" : "About the site"}</p>
+          <ul className="grid gap-2">
+            <li><Link href={at("/methodology")} className={link}>{ro ? "Date și metodă" : "Data and method"}</Link></li>
+            <li><a href={SITE.repoUrl} className={link}>{ro ? "Cod sursă" : "Source code"}</a></li>
+            <li><a href={SITE.issuesUrl} className={link}>{ro ? "Raportează o greșeală" : "Report a mistake"}</a></li>
+          </ul>
         </nav>
       </div>
     </footer>

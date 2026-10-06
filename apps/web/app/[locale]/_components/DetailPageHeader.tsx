@@ -15,12 +15,12 @@ export function DetailPageHeader({ eyebrow, title, subtitle, media, trailing, ch
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-[18rem]">
-            {eyebrow ? <div className="text-xs font-bold uppercase tracking-wide text-[#075fc6] [overflow-wrap:anywhere]">{eyebrow}</div> : null}
-            <h1 className={`mt-2 max-w-5xl font-serif font-semibold leading-[1.05] tracking-[-.03em] text-[#050e2c] [overflow-wrap:anywhere] ${typeof title === "string" && title.length > 120 ? "text-2xl sm:text-3xl lg:text-4xl" : "text-3xl sm:text-4xl lg:text-5xl xl:text-6xl"}`}>{title}</h1>
+            {eyebrow ? <div className="text-xs font-bold uppercase tracking-wide text-brand [overflow-wrap:anywhere]">{eyebrow}</div> : null}
+            <h1 className={`mt-2 max-w-5xl font-serif font-semibold leading-[1.05] tracking-[-.03em] text-ink [overflow-wrap:anywhere] ${typeof title === "string" && title.length > 120 ? "text-2xl sm:text-3xl lg:text-4xl" : "text-3xl sm:text-4xl lg:text-5xl xl:text-6xl"}`}>{title}</h1>
           </div>
           {trailing ? <div className="shrink-0">{trailing}</div> : null}
         </div>
-        {subtitle ? <div className="mt-3 max-w-4xl font-serif text-base leading-7 text-[#4b608a] [overflow-wrap:anywhere] lg:text-lg">{subtitle}</div> : null}
+        {subtitle ? <div className="mt-3 max-w-4xl font-serif text-base leading-7 text-muted [overflow-wrap:anywhere] lg:text-lg">{subtitle}</div> : null}
         {children ? <div className="min-w-0">{children}</div> : null}
       </div>
     </div>

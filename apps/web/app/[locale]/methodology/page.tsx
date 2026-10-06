@@ -18,10 +18,10 @@ function Status({ status, ro }: { status: CoverageStatus; ro: boolean }) {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mt-6 border border-slate-300 bg-white p-5"><h2 className="font-serif text-2xl font-semibold text-[#061a47]">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-[#34496f]">{children}</div></section>;
+  return <section className="mt-6 border border-slate-300 bg-white p-5"><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
 }
 
-const th = "px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-[#4b608a]";
+const th = "px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted";
 const td = "px-2 py-2 align-top";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -38,10 +38,10 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
   const date = (value?: string) => (value ? formatDate(value.slice(0, 10), locale) : "–");
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-76px)] max-w-[1100px] bg-[#fbfaf6] px-4 py-7 md:px-8 lg:px-10">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#075fc6]">{ro ? "Metodologie și acoperire" : "Methodology and coverage"}</p>
-      <h1 className="mt-1 font-serif text-4xl font-semibold leading-tight text-[#061a47] md:text-5xl">{ro ? "Ce știm, de unde vine și ce lipsește" : "What we know, where it comes from, and what is missing"}</h1>
-      <p className="mt-3 max-w-3xl text-base leading-7 text-[#4b608a]">
+    <main className="mx-auto min-h-[calc(100vh-76px)] max-w-[1100px] bg-canvas px-4 py-7 md:px-8 lg:px-10">
+      <p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Metodologie și acoperire" : "Methodology and coverage"}</p>
+      <h1 className="mt-1 font-serif text-4xl font-semibold leading-tight text-ink md:text-5xl">{ro ? "Ce știm, de unde vine și ce lipsește" : "What we know, where it comes from, and what is missing"}</h1>
+      <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
         {ro
           ? "Fiecare număr de pe site vine dintr-o pagină oficială a Camerei Deputaților, a Senatului sau a portalului legislativ și păstrează legătura către ea. Pagina aceasta spune ce este acoperit, cum calculăm ce nu publică sursa și ce nu avem încă."
           : "Every number on this site comes from an official page of the Chamber of Deputies, the Senate or the legislative portal, and keeps the link to it. This page says what is covered, how we work out what the source does not publish, and what we do not have yet."}
@@ -49,9 +49,9 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
 
       <Section title={ro ? "Sursele" : "Sources"}>
         <ul className="list-disc space-y-1 pl-5">
-          <li><a className="font-semibold text-[#061a47] underline" href={SITE.sources[0].url}>cdep.ro</a> — {ro ? "voturile Camerei, proiectele legislative, fișele deputaților, structura Camerei." : "the Chamber's votes, bills, deputies' profiles and structure."}</li>
-          <li><a className="font-semibold text-[#061a47] underline" href={SITE.sources[1].url}>senat.ro</a> — {ro ? "voturile Senatului, proiectele și dosarele lor, fișele senatorilor." : "the Senate's votes, bills and their files, senators' cards."}</li>
-          <li><a className="font-semibold text-[#061a47] underline" href={SITE.sources[2].url}>legislatie.just.ro</a> — {ro ? "numărul Monitorului Oficial al legilor (când pagina Parlamentului nu îl are)." : "the Official Gazette number of laws (when Parliament's own page does not have it)."}</li>
+          <li><a className="font-semibold text-ink underline" href={SITE.sources[0].url}>cdep.ro</a> — {ro ? "voturile Camerei, proiectele legislative, fișele deputaților, structura Camerei." : "the Chamber's votes, bills, deputies' profiles and structure."}</li>
+          <li><a className="font-semibold text-ink underline" href={SITE.sources[1].url}>senat.ro</a> — {ro ? "voturile Senatului, proiectele și dosarele lor, fișele senatorilor." : "the Senate's votes, bills and their files, senators' cards."}</li>
+          <li><a className="font-semibold text-ink underline" href={SITE.sources[2].url}>legislatie.just.ro</a> — {ro ? "numărul Monitorului Oficial al legilor (când pagina Parlamentului nu îl are)." : "the Official Gazette number of laws (when Parliament's own page does not have it)."}</li>
         </ul>
         <p>{ro ? "Fiecare pagină păstrează sursa și data la care a fost citită. Ce calculăm noi, nu sursa, este numit ca atare." : "Each page keeps its source and the date it was read. What we calculate ourselves, rather than the source, is labelled as such."}</p>
       </Section>
@@ -67,7 +67,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
               <tbody className="divide-y divide-slate-200">
                 {data.votes.map((row) => (
                   <tr key={`${row.legislature}-${row.chamber}`}>
-                    <td className={`${td} font-semibold text-[#061a47]`}>{row.legislature}</td>
+                    <td className={`${td} font-semibold text-ink`}>{row.legislature}</td>
                     <td className={td}>{voteChamberLabels[locale][row.chamber]}</td>
                     <td className={`${td} text-right tabular-nums`}>{n(row.votes)}</td>
                     <td className={`${td} text-right tabular-nums`}>{n(row.nominalVotes)}</td>
@@ -93,7 +93,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
               <thead><tr className="border-b border-slate-300"><th className={th}>{ro ? "Legislatura" : "Legislature"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Locuri legale" : "Legal seats"}</th><th className={`${th} text-right`}>{ro ? "Mandate deschise" : "Open mandates"}</th><th className={`${th} text-right`}>{ro ? "Mandate deținute" : "Mandates held"}</th></tr></thead>
               <tbody className="divide-y divide-slate-200">
                 {data.seats.map((row) => (
-                  <tr key={`${row.legislature}-${row.chamber}`}><td className={`${td} font-semibold text-[#061a47]`}>{row.legislature}</td><td className={td}>{voteChamberLabels[locale][row.chamber]}</td><td className={`${td} text-right tabular-nums`}>{row.seats ? n(row.seats) : "–"}</td><td className={`${td} text-right tabular-nums`}>{row.openMandates === undefined ? "–" : n(row.openMandates)}</td><td className={`${td} text-right tabular-nums`}>{n(row.mandatesEver)}</td></tr>
+                  <tr key={`${row.legislature}-${row.chamber}`}><td className={`${td} font-semibold text-ink`}>{row.legislature}</td><td className={td}>{voteChamberLabels[locale][row.chamber]}</td><td className={`${td} text-right tabular-nums`}>{row.seats ? n(row.seats) : "–"}</td><td className={`${td} text-right tabular-nums`}>{row.openMandates === undefined ? "–" : n(row.openMandates)}</td><td className={`${td} text-right tabular-nums`}>{n(row.mandatesEver)}</td></tr>
                 ))}
               </tbody>
             </table></div>
@@ -110,11 +110,11 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
             </p>
             {data.officialBills?.rows.length ? (
               <div className="overflow-x-auto"><table className="w-full min-w-[460px] border-collapse text-sm">
-                <caption className="pb-2 text-left text-xs text-[#4b608a]">{ro ? `Listele oficiale de proiecte pe an față de ce avem (verificat la ${date(data.officialBills.generatedOn)}).` : `The official yearly bill lists against what we hold (checked on ${date(data.officialBills.generatedOn)}).`}</caption>
+                <caption className="pb-2 text-left text-xs text-muted">{ro ? `Listele oficiale de proiecte pe an față de ce avem (verificat la ${date(data.officialBills.generatedOn)}).` : `The official yearly bill lists against what we hold (checked on ${date(data.officialBills.generatedOn)}).`}</caption>
                 <thead><tr className="border-b border-slate-300"><th className={th}>{ro ? "An" : "Year"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Pe lista oficială" : "On the official list"}</th><th className={`${th} text-right`}>{ro ? "Le avem" : "Held"}</th><th className={`${th} text-right`}>%</th></tr></thead>
                 <tbody className="divide-y divide-slate-200">
                   {[...data.officialBills.rows].sort((a, b) => b.year - a.year || a.chamber.localeCompare(b.chamber)).map((row) => (
-                    <tr key={`${row.year}-${row.chamber}`}><td className={`${td} font-semibold text-[#061a47]`}>{row.year}</td><td className={td}>{voteChamberLabels[locale][row.chamber]}</td><td className={`${td} text-right tabular-nums`}>{n(row.official)}</td><td className={`${td} text-right tabular-nums`}>{n(row.held)}</td><td className={`${td} text-right tabular-nums`}>{pct(row.percent)}</td></tr>
+                    <tr key={`${row.year}-${row.chamber}`}><td className={`${td} font-semibold text-ink`}>{row.year}</td><td className={td}>{voteChamberLabels[locale][row.chamber]}</td><td className={`${td} text-right tabular-nums`}>{n(row.official)}</td><td className={`${td} text-right tabular-nums`}>{n(row.held)}</td><td className={`${td} text-right tabular-nums`}>{pct(row.percent)}</td></tr>
                   ))}
                 </tbody>
               </table></div>
@@ -152,8 +152,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
       </Section>
 
       <Section title={ro ? "Reutilizare și corecturi" : "Reuse and corrections"}>
-        <p>{ro ? <>Codul sursă este public pe <a className="font-semibold text-[#061a47] underline" href={SITE.repoUrl}>GitHub</a>. Datele vor fi oferite pentru descărcare sub licența <a className="font-semibold text-[#061a47] underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> (cu menționarea sursei); descărcările nu sunt încă disponibile.</> : <>The source code is public on <a className="font-semibold text-[#061a47] underline" href={SITE.repoUrl}>GitHub</a>. The data will be offered for download under the <a className="font-semibold text-[#061a47] underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> licence (credit the source); downloads are not available yet.</>}</p>
-        <p>{ro ? <>Ai găsit o greșeală? <a className="font-semibold text-[#061a47] underline" href={SITE.issuesUrl}>Deschide o sesizare</a> cu adresa paginii și ce nu se potrivește cu sursa oficială.</> : <>Found a mistake? <a className="font-semibold text-[#061a47] underline" href={SITE.issuesUrl}>Open an issue</a> with the page address and what differs from the official source.</>}</p>
+        <p>{ro ? <>Codul sursă este public pe <a className="font-semibold text-ink underline" href={SITE.repoUrl}>GitHub</a>. Datele vor fi oferite pentru descărcare sub licența <a className="font-semibold text-ink underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> (cu menționarea sursei); descărcările nu sunt încă disponibile.</> : <>The source code is public on <a className="font-semibold text-ink underline" href={SITE.repoUrl}>GitHub</a>. The data will be offered for download under the <a className="font-semibold text-ink underline" href={SITE.dataLicence.url}>{SITE.dataLicence.name}</a> licence (credit the source); downloads are not available yet.</>}</p>
+        <p>{ro ? <>Ai găsit o greșeală? <a className="font-semibold text-ink underline" href={SITE.issuesUrl}>Deschide o sesizare</a> cu adresa paginii și ce nu se potrivește cu sursa oficială.</> : <>Found a mistake? <a className="font-semibold text-ink underline" href={SITE.issuesUrl}>Open an issue</a> with the page address and what differs from the official source.</>}</p>
       </Section>
     </main>
   );

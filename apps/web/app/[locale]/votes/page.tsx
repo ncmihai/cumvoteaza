@@ -41,14 +41,14 @@ export default async function VotesPage({
       </div>
       {sittings.length > 0 ? (
         <section className="mt-8 border border-slate-300 bg-white p-5" aria-labelledby="sitting-summaries">
-          <h2 id="sitting-summaries" className="font-serif text-2xl font-semibold text-[#061a47]">{sittingLabels.title}</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-[#4b608a]">{sittingLabels.note}</p>
+          <h2 id="sitting-summaries" className="font-serif text-2xl font-semibold text-ink">{sittingLabels.title}</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted">{sittingLabels.note}</p>
           <div className="mt-3 divide-y divide-slate-200">
             {sittings.map((sitting) => (
               <div key={sitting.id} className="grid gap-1 py-3 text-sm sm:grid-cols-[200px_minmax(0,1fr)_auto]">
-                <span className="text-xs font-bold text-[#4b608a]">{formatDate(sitting.heldOn, locale)} · {voteChamberLabels[locale][sitting.chamber]}</span>
-                <span className="text-[#061a47]">{sittingLabels.votes}: {sitting.voteCount}</span>
-                <a className="text-xs font-bold text-[#075fc6] underline" href={sitting.officialUrl} rel="noreferrer">{sittingLabels.link}</a>
+                <span className="text-xs font-bold text-muted">{formatDate(sitting.heldOn, locale)} · {voteChamberLabels[locale][sitting.chamber]}</span>
+                <span className="text-ink">{sittingLabels.votes}: {sitting.voteCount}</span>
+                <a className="text-xs font-bold text-brand underline" href={sitting.officialUrl} rel="noreferrer">{sittingLabels.link}</a>
               </div>
             ))}
           </div>

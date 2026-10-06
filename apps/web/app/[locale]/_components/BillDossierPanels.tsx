@@ -6,7 +6,7 @@ import type { AppLocale } from "@/lib/i18n";
 const TONE_CLASSES = {
   done: "border-emerald-700 bg-emerald-50 text-emerald-950",
   stopped: "border-slate-500 bg-slate-100 text-slate-900",
-  open: "border-[#075fc6] bg-[#eef5ff] text-[#061a47]"
+  open: "border-brand bg-[#eef5ff] text-ink"
 } as const;
 
 const VERDICT_CLASSES: Record<string, string> = {
@@ -34,7 +34,7 @@ export function BillFatePanel({ dossier, locale }: { dossier: BillDossier; local
         {dossier.outcomeOn && dossier.outcome === "promulgated" ? <p className="mt-1 text-xs opacity-80">{ro ? "Promulgată la" : "Promulgated on"} {formatDate(dossier.outcomeOn, locale)}</p> : null}
       </div>
       <div className="min-w-0 border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800">
-        {facts.length ? <p className="font-medium text-[#061a47]">{facts.join(" · ")}</p> : null}
+        {facts.length ? <p className="font-medium text-ink">{facts.join(" · ")}</p> : null}
         {dossier.registrations.length ? (
           <ul className="mt-1 space-y-0.5 text-slate-700">
             {dossier.registrations.map((registration) => (
@@ -64,7 +64,7 @@ export function BillTimeline({ steps, documents, locale, title }: { steps: BillP
       <div>
         {lanes.map((lane, laneIndex) => (
           <div key={`${lane.chamber}-${laneIndex}`} className="border-b border-slate-200 last:border-b-0">
-            <div className="bg-[#f3f6fb] px-4 py-2 text-xs font-bold uppercase tracking-wide text-[#4b608a]">{stepChamberLabel(lane.chamber, locale)}</div>
+            <div className="bg-[#f3f6fb] px-4 py-2 text-xs font-bold uppercase tracking-wide text-muted">{stepChamberLabel(lane.chamber, locale)}</div>
             <div className="divide-y divide-slate-100">
               {lane.steps.map((step) => {
                 const document = step.documentId ? documentById.get(step.documentId) : undefined;
@@ -81,11 +81,11 @@ export function BillTimeline({ steps, documents, locale, title }: { steps: BillP
                       {body ? <div className="mt-0.5 text-sm font-medium text-teal-800 [overflow-wrap:anywhere]">{body}</div> : null}
                       {verdict ? <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-semibold ${VERDICT_CLASSES[step.verdict ?? ""] ?? "bg-slate-100 text-slate-800"}`}>{verdict}{step.documentNumber ? ` · nr. ${step.documentNumber}` : ""}</span> : step.documentNumber ? <div className="mt-0.5 text-xs text-slate-600">nr. {step.documentNumber}</div> : null}
                       {deadlines ? <div className="mt-1 text-xs text-slate-600">{deadlines}</div> : null}
-                      {result ? <div className="mt-1 text-sm text-slate-800">{result}{step.voteId ? <>{" · "}<Link className="font-semibold text-[#075fc6] underline" href={`/${locale}/votes/${step.voteId}`}>{ro ? "voturile nominale" : "roll call"}</Link></> : null}</div> : step.voteId ? <div className="mt-1 text-sm"><Link className="font-semibold text-[#075fc6] underline" href={`/${locale}/votes/${step.voteId}`}>{ro ? "Votul nominal" : "Roll call"}</Link></div> : null}
+                      {result ? <div className="mt-1 text-sm text-slate-800">{result}{step.voteId ? <>{" · "}<Link className="font-semibold text-brand underline" href={`/${locale}/votes/${step.voteId}`}>{ro ? "voturile nominale" : "roll call"}</Link></> : null}</div> : step.voteId ? <div className="mt-1 text-sm"><Link className="font-semibold text-brand underline" href={`/${locale}/votes/${step.voteId}`}>{ro ? "Votul nominal" : "Roll call"}</Link></div> : null}
                       {step.note ? <div className="mt-1 text-xs text-slate-500 [overflow-wrap:anywhere]">{step.note}</div> : null}
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-                        {document ? <a href={document.url} target="_blank" rel="noreferrer" className="underline text-[#075fc6]">{document.label.replace(/\s+—\s+.*$/, "")}</a> : null}
-                        {step.stenogramUrl ? <a href={step.stenogramUrl} target="_blank" rel="noreferrer" className="underline text-[#075fc6]">{ro ? "Stenograma ședinței" : "Sitting stenogram"}</a> : null}
+                        {document ? <a href={document.url} target="_blank" rel="noreferrer" className="underline text-brand">{document.label.replace(/\s+—\s+.*$/, "")}</a> : null}
+                        {step.stenogramUrl ? <a href={step.stenogramUrl} target="_blank" rel="noreferrer" className="underline text-brand">{ro ? "Stenograma ședinței" : "Sitting stenogram"}</a> : null}
                       </div>
                     </div>
                   </div>

@@ -100,7 +100,7 @@ export function CompositionSeatMap({ locale, chamber, seats }: CompositionSeatMa
               <Link
                 href={profileHref}
                 className={[
-                  "absolute left-1/2 top-0 z-[600] min-w-max -translate-x-1/2 -translate-y-[calc(100%+8px)] border border-slate-300 bg-white px-2 py-1 text-left text-[11px] font-medium leading-tight text-slate-950 shadow-md",
+                  "absolute left-1/2 top-0 z-[600] min-w-max -translate-x-1/2 -translate-y-[calc(100%+8px)] border border-slate-300 bg-white px-2 py-1 text-left text-xs font-medium leading-tight text-slate-950 shadow-md",
                   pinned ? "block" : "pointer-events-none hidden group-hover/seat:block group-focus-within/seat:block"
                 ].join(" ")}
               >
@@ -156,7 +156,7 @@ export function CompositionSeatMapPreview({
         ))}
         <div className="pointer-events-none absolute left-1/2 top-[76%] -translate-x-1/2 text-center">
           <div className="text-3xl font-semibold leading-none text-slate-950">{seats.length}</div>
-          <div className="mt-0.5 text-[10px] font-semibold uppercase text-slate-500">{labels.seats}</div>
+          <div className="mt-0.5 text-xs font-semibold uppercase text-slate-500">{labels.seats}</div>
         </div>
       </div>
     </>

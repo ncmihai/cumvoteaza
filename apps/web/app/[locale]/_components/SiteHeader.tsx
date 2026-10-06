@@ -1,30 +1,112 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, X } from "lucide-react";
+import { ChevronDown, Menu, Search, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { AppLocale } from "@/lib/i18n";
 import { BrandLogo } from "./BrandLogo";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
-export function SiteHeader({ locale, labels }: { locale: AppLocale; labels: { today: string; votes: string; bills: string; members: string; compositions: string; tagline: string; search: string } }) {
+interface NavItem {
+  key: string;
+  label: string;
+  href: string;
+  /** Path prefixes (after the language) that make this item the current one. */
+  match: string[];
+  children?: Array<{ label: string; href: string; hint: string }>;
+}
+
+function navigation(locale: AppLocale): NavItem[] {
+  const ro = locale === "ro";
+  const at = (path: string) => `/${locale}${path}`;
+  return [
+    { key: "votes", label: ro ? "Voturi" : "Votes", href: at("/votes"), match: ["/votes"] },
+    { key: "bills", label: ro ? "Proiecte de lege" : "Bills", href: at("/bills"), match: ["/bills"] },
+    {
+      key: "members", label: ro ? "Parlamentari" : "Members", href: at("/members"), match: ["/members", "/compozitii", "/leadership"],
+      children: [
+        { label: ro ? "Toți parlamentarii" : "All members", href: at("/members"), hint: ro ? "Deputați și senatori, după județ sau partid" : "Deputies and senators, by county or party" },
+        { label: ro ? "Compoziția Parlamentului" : "Composition of Parliament", href: at("/compozitii"), hint: ro ? "Locurile fiecărui partid, acum și în timp" : "Each party's seats, now and over time" },
+        { label: ro ? "Conducerea" : "Leadership", href: at("/leadership"), hint: ro ? "Birouri permanente, lideri de grup, comisii" : "Permanent bureaus, group leaders, committees" }
+      ]
+    },
+    { key: "parties", label: ro ? "Partide" : "Parties", href: at("/parties"), match: ["/parties"] },
+    {
+      key: "government", label: ro ? "Guvern" : "Government", href: at("/governments"), match: ["/governments", "/ministries", "/motions"],
+      children: [
+        { label: ro ? "Guverne" : "Governments", href: at("/governments"), hint: ro ? "Prim-miniștri, formare, schimbări" : "Prime ministers, formation, changes" },
+        { label: ro ? "Ministere" : "Ministries", href: at("/ministries"), hint: ro ? "Cine a condus fiecare minister" : "Who has led each ministry" },
+        { label: ro ? "Moțiuni" : "Motions", href: at("/motions"), hint: ro ? "Moțiuni de cenzură și simple, cu semnatari" : "Censure and simple motions, with signatories" }
+      ]
+    }
+  ];
+}
+
+export function SiteHeader({ locale }: { locale: AppLocale }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const ro = locale === "ro";
+  const items = navigation(locale);
+  const path = pathname.replace(/^\/(?:ro|en)(?=\/|$)/, "") || "/";
+  const isActive = (item: NavItem) => item.match.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
   useEffect(() => setMenuOpen(false), [pathname]);
   useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false);
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const links: Array<[string, string, string]> = [["today", `/${locale}`, labels.today], ["votes", `/${locale}/votes`, labels.votes], ["bills", `/${locale}/bills`, labels.bills], ["members", `/${locale}/members`, labels.members], ["compositions", `/${locale}/compozitii`, labels.compositions]];
-  return <header className="sticky top-0 z-50 border-b border-slate-300 bg-white/95 backdrop-blur"><div className="relative mx-auto flex min-h-[62px] max-w-[1440px] items-center gap-5 px-4 md:min-h-[76px] lg:px-9">
-    <Link href={`/${locale}`} aria-label="CumVoteaza" className="flex shrink-0 items-center gap-3"><BrandLogo /><strong className="hidden font-serif text-xl leading-5 text-[#071a3a] sm:block">CumVoteaza</strong></Link>
-    <nav className="ml-auto hidden items-center gap-1 text-sm text-slate-700 lg:flex" aria-label={locale === "ro" ? "Navigare principală" : "Main navigation"}>{links.map(([key,href,label])=>{const active=key==="today"?pathname===href:key!=="today"&&pathname.startsWith(href);return <Link key={key} href={href} className={`relative whitespace-nowrap px-3 py-5 transition hover:text-[#071a3a] ${active?"font-semibold text-[#071a3a] after:absolute after:inset-x-3 after:bottom-0 after:h-1 after:bg-[#071a3a]":""}`}>{label}</Link>})}</nav>
-    <Link href={`/${locale}/votes`} aria-label={locale === "ro" ? "Caută voturi" : "Search votes"} title={locale === "ro" ? "Caută voturi" : "Search votes"} className="ml-auto rounded-full p-2 text-[#071a3a] hover:bg-slate-100 lg:ml-0"><Search size={21} /></Link><LocaleSwitcher locale={locale} />
-    <button type="button" className="rounded-md border border-slate-300 p-2 text-[#071a3a] hover:bg-slate-100 lg:hidden" aria-label={menuOpen ? (locale === "ro" ? "Închide meniul" : "Close menu") : (locale === "ro" ? "Deschide meniul" : "Open menu")} aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
-    {menuOpen ? <nav className="absolute inset-x-0 top-full grid border-y border-slate-300 bg-white p-3 shadow-lg lg:hidden" aria-label={locale === "ro" ? "Navigare mobilă" : "Mobile navigation"}>{links.map(([key,href,label])=>{const active=key==="today"?pathname===href:key!=="today"&&pathname.startsWith(href);return <Link key={key} href={href} onClick={() => setMenuOpen(false)} className={`border-l-4 px-4 py-3 text-sm ${active?"border-[#071a3a] bg-slate-50 font-semibold text-[#071a3a]":"border-transparent text-slate-700"}`}>{label}</Link>})}</nav> : null}
-  </div></header>;
+  return (
+    <header className="sticky top-0 z-50 border-b border-line bg-surface/90 backdrop-blur">
+      <div className="relative mx-auto flex h-16 max-w-page items-center gap-4 px-4 lg:px-8">
+        <Link href={`/${locale}`} aria-label={ro ? "CumVoteaza, prima pagină" : "CumVoteaza, home"} className="flex shrink-0 items-center gap-2.5">
+          <BrandLogo size={34} />
+          <span className="font-display text-xl font-bold tracking-tight text-ink">Cum<span className="text-brand">Voteaza</span></span>
+        </Link>
+        <nav className="ml-4 hidden items-center gap-0.5 lg:flex" aria-label={ro ? "Navigare principală" : "Main navigation"}>
+          {items.map((item) => (
+            <div key={item.key} className="group relative">
+              <Link href={item.href} aria-current={isActive(item) ? "page" : undefined} className={`inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${isActive(item) ? "bg-brand-soft text-brand-strong" : "text-ink-soft hover:bg-wash hover:text-ink"}`}>
+                {item.label}
+                {item.children ? <ChevronDown size={14} aria-hidden="true" className="opacity-60 transition-transform group-hover:rotate-180 group-focus-within:rotate-180" /> : null}
+              </Link>
+              {item.children ? (
+                <div className="invisible absolute left-0 top-full z-50 w-72 pt-2 opacity-0 transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                  <div className="rounded-card border border-line bg-surface p-1.5 shadow-lift">
+                    {item.children.map((child) => (
+                      <Link key={child.href} href={child.href} className="block rounded-control px-3 py-2.5 hover:bg-wash">
+                        <span className="block text-sm font-semibold text-ink">{child.label}</span>
+                        <span className="block text-xs text-muted">{child.hint}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </nav>
+        <div className="ml-auto flex items-center gap-2">
+          <Link href={`/${locale}/votes`} className="hidden items-center gap-2 rounded-full border border-line px-3.5 py-2 text-sm text-muted hover:border-line-strong hover:text-ink xl:flex" aria-label={ro ? "Caută voturi, proiecte și parlamentari" : "Search votes, bills and members"}>
+            <Search size={16} aria-hidden="true" />
+            {ro ? "Caută voturi, proiecte…" : "Search votes, bills…"}
+          </Link>
+          <Link href={`/${locale}/votes`} className="rounded-full p-2.5 text-ink hover:bg-wash xl:hidden" aria-label={ro ? "Caută" : "Search"}><Search size={20} /></Link>
+          <LocaleSwitcher locale={locale} />
+          <button type="button" className="rounded-control border border-line p-2 text-ink hover:bg-wash lg:hidden" aria-label={menuOpen ? (ro ? "Închide meniul" : "Close menu") : (ro ? "Deschide meniul" : "Open menu")} aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+        {menuOpen ? (
+          <nav className="absolute inset-x-0 top-full max-h-[80vh] overflow-y-auto border-b border-line bg-surface p-3 shadow-lift lg:hidden" aria-label={ro ? "Navigare mobilă" : "Mobile navigation"}>
+            {items.map((item) => (
+              <div key={item.key} className="py-1">
+                <Link href={item.href} aria-current={isActive(item) ? "page" : undefined} className={`block rounded-control px-3 py-2.5 text-base font-semibold ${isActive(item) ? "bg-brand-soft text-brand-strong" : "text-ink"}`}>{item.label}</Link>
+                {item.children ? <div className="ml-3 border-l border-line pl-2">{item.children.map((child) => <Link key={child.href} href={child.href} className="block rounded-control px-3 py-2 text-sm text-ink-soft hover:bg-wash">{child.label}</Link>)}</div> : null}
+              </div>
+            ))}
+          </nav>
+        ) : null}
+      </div>
+    </header>
+  );
 }

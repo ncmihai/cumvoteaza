@@ -1,15 +1,37 @@
-import { getHomeDashboardData, getVoteExplorerData } from "@/lib/explorer-data";
+import { getCurrentCompositionData } from "@/lib/composition-data";
+import { getCoveragePageData, getLastCatchUp } from "@/lib/coverage-data";
+import { getVoteExplorerData } from "@/lib/explorer-data";
+import { getCountyOptions, getRecentChanges } from "@/lib/home-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
-import { HomepageExperience } from "./_components/HomepageExperience";
+import { ChangesFeed } from "./_components/home/ChangesFeed";
+import { Hero } from "./_components/home/Hero";
+import { LatestDecisions } from "./_components/home/LatestDecisions";
+import { ParliamentNow } from "./_components/home/ParliamentNow";
+import { TrustStrip } from "./_components/home/TrustStrip";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
-  const [dashboard, voteFeed] = await Promise.all([getHomeDashboardData(locale), getVoteExplorerData({ limit: 8 })]);
-  const votes = [...dashboard.latestVotes, ...voteFeed.items]
-    .filter((item, index, items) => items.findIndex((candidate) => candidate.vote.id === item.vote.id) === index)
-    .sort((left, right) => right.hotCount - left.hotCount || right.vote.heldOn.localeCompare(left.vote.heldOn));
-  return <><div className="mx-auto max-w-[1440px] px-4 pt-6 md:px-8 lg:px-10"></div><HomepageExperience locale={locale} votes={votes} /></>;
+  const [votes, composition, counties, changes, coverage, checkedAt] = await Promise.all([
+    getVoteExplorerData({ limit: 7 }),
+    getCurrentCompositionData("official"),
+    getCountyOptions(locale),
+    getRecentChanges(locale, 6),
+    getCoveragePageData(),
+    getLastCatchUp()
+  ]);
+  const deputies = composition.chambers.find((chamber) => chamber.chamber === "deputies");
+  return (
+    <main>
+      <Hero locale={locale} counties={counties} chamber={deputies} today={new Date().toISOString().slice(0, 10)} />
+      <LatestDecisions votes={votes.items} locale={locale} />
+      <div className="mx-auto grid max-w-page grid-cols-1 gap-10 px-4 py-10 lg:grid-cols-[1.15fr_1fr] lg:px-8">
+        <ChangesFeed changes={changes} locale={locale} />
+        <ParliamentNow chambers={composition.chambers} locale={locale} />
+      </div>
+      <TrustStrip coverage={coverage} checkedAt={checkedAt} locale={locale} />
+    </main>
+  );
 }

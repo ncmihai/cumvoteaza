@@ -202,6 +202,8 @@ export interface MemberLegislatureActivityData {
 type MemberDirectoryFilters = {
   chamber?: string;
   group?: string;
+  /** A county or constituency, as written without capitals and accents ("arges", "bistrita-nasaud", "diaspora"). */
+  county?: string;
   q?: string;
   legislature?: string;
   sort?: string;
@@ -301,7 +303,7 @@ const getCachedBillPageData = unstable_cache(
 const getCachedMemberDirectoryData = unstable_cache(
   async (filters?: MemberDirectoryFilters) =>
     timed("data.member-directory", () => getMemberDirectoryDataUncached(filters)),
-  ["member-directory-data-integrity-v3"],
+  ["member-directory-data-integrity-v4"],
   { revalidate: 600, tags: [CACHE_TAGS.members, CACHE_TAGS.search] }
 );
 
@@ -1269,7 +1271,10 @@ function mapParty(row: typeof schema.parties.$inferSelect): Party {
     slug: row.slug,
     shortName: row.shortName,
     name: row.name,
-    color: row.color
+    color: row.color,
+    kind: (row.kind as Party["kind"]) ?? undefined,
+    fullNameKnown: row.fullNameKnown,
+    logoAssetId: row.logoAssetId ?? undefined
   };
 }
 
@@ -2245,10 +2250,11 @@ function filterDirectoryItems(
   return items
     .filter((item) => !filters?.chamber || item.mandate?.chamber === filters.chamber)
     .filter((item) => !filters?.legislature || item.mandate?.legislatureId === filters.legislature)
+    .filter((item) => !filters?.county || normalizeSearch(item.mandate?.constituency) === normalizeSearch(filters.county))
     .filter((item) => groupFilters.length === 0 || groupFilters.some((groupFilter) => matchesMemberGroupFilter(item, groupFilter)))
     .filter((item) => {
       if (!query) return true;
-      return [item.member.displayName, item.member.firstName, item.member.lastName, item.group?.shortName, item.party?.shortName]
+      return [item.member.displayName, item.member.firstName, item.member.lastName, item.group?.shortName, item.party?.shortName, item.mandate?.constituency]
         .map(normalizeSearch)
         .some((value) => value.includes(query));
     })
@@ -2267,10 +2273,13 @@ function memberDirectoryConditions(filters?: MemberDirectoryFilters) {
   if (filters?.legislature) {
     conditions.push(sql`mm.legislature_id = ${filters.legislature}`);
   }
+  if (filters?.county?.trim()) {
+    conditions.push(sql`${normalizedSql(sql`mm.constituency`)} = ${normalizeSearch(filters.county)}`);
+  }
   if (filters?.q?.trim()) {
     const pattern = `%${normalizeSearch(filters.q)}%`;
     conditions.push(sql`(
-      ${normalizedSql(sql`m.display_name || ' ' || m.slug || ' ' || coalesce(pg.short_name, '') || ' ' || coalesce(p.short_name, '')`)} like ${pattern}
+      ${normalizedSql(sql`m.display_name || ' ' || m.slug || ' ' || coalesce(pg.short_name, '') || ' ' || coalesce(p.short_name, '') || ' ' || coalesce(mm.constituency, '')`)} like ${pattern}
       or exists (
         select 1
         from entity_search_index esi

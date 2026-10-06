@@ -190,6 +190,8 @@ export interface Party {
   /** Set for organisations the importer creates itself (D-029); a conflict never overwrites the stored kind. */
   kind?: "party" | "minority_organisation" | "minority_group" | "independent" | "unaffiliated";
   fullNameKnown?: boolean;
+  /** The stored image of the party's own logo (stored_assets id, served at /api/assets/<id>); absent when no party clearly owns an image (D-029). */
+  logoAssetId?: string;
 }
 
 export interface ParliamentaryGroup {

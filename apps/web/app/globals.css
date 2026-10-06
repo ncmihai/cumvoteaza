@@ -1,45 +1,83 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens (D-029). One place for colour, type, shape and motion: pages use these names (text-ink, bg-wash, border-line, text-brand,
+ * text-vote-for ...) and never a hex value of their own. Dark mode later is a second set of the same names.
+ * Type: Bricolage Grotesque for headings and big numbers, Inter for reading (both self-hosted by next/font in the layout).
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* `font-serif` is on every heading of the first UI; it now means the display face. */
+  --font-serif: var(--font-bricolage), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #14122b;
+  --color-ink-soft: #34325a;
+  --color-muted: #5e5c7a;
+  --color-faint: #8e8ca8;
+  --color-line: #dcdbea;
+  --color-line-strong: #bdbbd6;
+  --color-canvas: #f7f7fc;
+  --color-wash: #eef0ff;
+  --color-surface: #ffffff;
+  --color-brand: #4338ca;
+  --color-brand-strong: #3730a3;
+  --color-brand-soft: #e0e7ff;
+  /* The lit seat: a ring or a small mark, never a fill that could be read as a vote. */
+  --color-highlight: #a3e635;
+
+  /* Vote meaning is fixed everywhere and always paired with an icon shape. text = readable on white (AA), bg = badge tint, fill = seats and bars. */
+  --color-vote-for: #15803d;
+  --color-vote-for-bg: #dcfce7;
+  --color-vote-for-fill: #16a34a;
+  --color-vote-against: #b91c1c;
+  --color-vote-against-bg: #fee2e2;
+  --color-vote-against-fill: #dc2626;
+  --color-vote-abstain: #b45309;
+  --color-vote-abstain-bg: #fef3c7;
+  --color-vote-abstain-fill: #d97706;
+  --color-vote-present: #475569;
+  --color-vote-present-bg: #e2e8f0;
+  --color-vote-present-fill: #94a3b8;
+  --color-vote-absent: #64748b;
+  --color-vote-absent-fill: #cbd5e1;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --shadow-lift: 0 1px 2px rgb(20 18 43 / 0.06), 0 6px 16px rgb(20 18 43 / 0.06);
+  --container-page: 80rem;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
 :root {
-  --background: #f6f8f7;
-  --foreground: #0f172a;
-  --muted: #64748b;
-  --line: #cbd5e1;
-  --surface: #ffffff;
-  --accent: #309898;
-  --accent-warm: #ff9f00;
-  --accent-orange: #f4631e;
-  --accent-red: #cb0404;
+  --dur-fast: 120ms;
+  --dur-base: 240ms;
+  --dur-slow: 600ms;
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  background:
-    linear-gradient(180deg, rgba(48, 152, 152, 0.07), rgba(255, 159, 0, 0.04) 240px, transparent 520px),
-    var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  overflow-x: hidden;
+html {
+  scroll-padding-top: 5.5rem;
 }
 
-/* Match the information density of an 80% browser zoom on wide desktop screens.
-   `zoom` scales the layout itself; the earlier transform only scaled the picture and left
-   blank scroll space and a narrow page on long pages (tester #6, #7). */
-@media screen and (min-width: 1200px) {
-  body {
-    zoom: 0.8;
-  }
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 h1,
 h2,
 h3 {
-  font-family: Georgia, "Times New Roman", serif;
-  letter-spacing: -0.025em;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 a {
@@ -51,4 +89,74 @@ button,
 input,
 select {
   font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* A block that fades up once when it first scrolls into view (see Reveal). It is only hidden after the page has loaded and only if it starts below the fold,
+   so content is always visible without JavaScript and nothing flashes. */
+.reveal {
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
+}
+.reveal.is-armed:not(.is-in) {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Chart motion: seats appear in a wave, bar segments grow from the left, numbers rise. All play once on load; none under reduced motion. */
+.seat {
+  animation: seat-in var(--dur-slow) var(--ease-out) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes seat-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+.split-seg {
+  transform-origin: left center;
+  animation: grow-x var(--dur-slow) var(--ease-out) both;
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@property --n {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+.count-up {
+  counter-reset: n var(--n);
+  animation: count-up var(--dur-slow) var(--ease-out) both;
+}
+.count-up::after {
+  content: counter(n);
+}
+@keyframes count-up {
+  from {
+    --n: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal.is-armed:not(.is-in) {
+    opacity: 1;
+    transform: none;
+  }
 }

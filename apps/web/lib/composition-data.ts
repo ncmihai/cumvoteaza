@@ -32,7 +32,7 @@ export interface ChamberComposition {
   seats: CompositionSeat[];
   groups: Array<{
     group: Pick<ParliamentaryGroup, "id" | "shortName" | "name" | "color">;
-    party?: Pick<Party, "id" | "slug" | "shortName" | "name" | "color">;
+    party?: Pick<Party, "id" | "slug" | "shortName" | "name" | "color" | "logoAssetId">;
     seats: number;
     alignment: GovernanceAlignment;
   }>;
@@ -436,13 +436,14 @@ function compactGroup(group: ParliamentaryGroup): Pick<ParliamentaryGroup, "id" 
   };
 }
 
-function compactParty(party: Party): Pick<Party, "id" | "slug" | "shortName" | "name" | "color"> {
+function compactParty(party: Party): Pick<Party, "id" | "slug" | "shortName" | "name" | "color" | "logoAssetId"> {
   return {
     id: party.id,
     slug: party.slug,
     shortName: party.shortName,
     name: party.name,
-    color: party.color
+    color: party.color,
+    logoAssetId: party.logoAssetId
   };
 }
 
@@ -659,7 +660,8 @@ function mapCompositionRows(input: {
       slug: row.slug,
       shortName: row.shortName,
       name: row.name,
-      color: row.color
+      color: row.color,
+      logoAssetId: row.logoAssetId ?? undefined
     })),
     memberAlignments: input.memberAlignmentRows.map((row) => ({
       targetId: row.memberId,

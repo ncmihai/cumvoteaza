@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { TITLE_TEMPLATE } from "@/lib/page-metadata";
 import { SiteFooter } from "./_components/SiteFooter";
 import { SiteHeader } from "./_components/SiteHeader";
 import "../globals.css";
+
+// Self-hosted at build time (no request to Google when a visitor opens a page). latin-ext carries ș ț ă â î in their correct comma-below forms.
+const bricolage = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], variable: "--font-bricolage", display: "swap", axes: ["opsz"] });
+const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "cumsevoteaza", template: TITLE_TEMPLATE },
@@ -33,11 +38,11 @@ export default async function LocaleLayout({
 
   return (
     // Root layout (D23): each locale declares its own language to browsers and screen readers.
-    <html lang={locale}>
+    <html lang={locale} className={`${bricolage.variable} ${inter.variable}`}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <div className="min-h-screen">
-            <SiteHeader locale={locale} labels={{ today: locale === "ro" ? "Astăzi" : "Today", votes: messages.nav.votes, bills: messages.nav.bills, members: messages.nav.members, compositions: messages.nav.compositions, tagline: locale === "ro" ? "Voturi. Oameni. Decizii care contează." : "Votes. People. Decisions that matter.", search: locale === "ro" ? "Caută" : "Search" }} />
+            <SiteHeader locale={locale} />
             {children}
             <SiteFooter locale={locale} />
           </div>
