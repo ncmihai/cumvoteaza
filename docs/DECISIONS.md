@@ -18,6 +18,21 @@ Each Open question has a recommendation; the owner decides.
 - Constraints: summaries are model output, so they need the evidence link and review rules (D-008: model output never auto-publishes, or is clearly labeled as unreviewed); cost must stay near zero.
 - The existing (disabled) explanation code and its 3 tables are kept until this is decided.
 
+### Q17 — Does the new look come before the data sprints?
+- **Recommendation: yes (Sprint 11 first).** Four of the five data sprints add pages (documents on the bill page, CVs and questions on the member page, a President section, money and results on the party page); on the old look they would be built twice. The crawls in the data sprints are mostly waiting, so design work fits in the gaps. Risk: a revamp has no natural end, so Sprint 11 is capped at five core pages and the rest waits for the sweep (Sprint 16).
+
+### Q18 — Where do party logos come from?
+- The `parties` table holds only a colour. Logos are needed for about 25 parties (those with seats or an election list), not 221.
+- **Recommendation:** take each logo from an official source where one exists (the electoral authorities' party register or the electoral sign on the lists); otherwise from Wikimedia Commons with the file's own licence; store `logo_source_url` and `logo_licence` for every logo; self-host the files; a party with no usable logo gets a coloured monogram, never a redrawn or guessed logo; remove on request. Party logos are mostly registered signs: showing them to identify the party in a factual, non-commercial record is normal practice, but this is not legal advice and the methodology page should say so.
+
+### Q19 — The President's record: decorations and individual pardons
+- Decrees awarding decorations and granting individual pardons are a large share of the 36,677 and name private people.
+- **Recommendation:** count them by type and year, store no private person's name; full detail for promulgations, returned laws, Constitutional Court referrals, designations and appointments (public office holders).
+
+### Q20 — Figma plan limits and the design workflow
+- Figma is connected (account `ncmihai`, team "Mihai n's team", Starter tier, Full seat). As far as I remember, Figma's rate-limit page gives Starter plans only a handful of MCP tool calls per month (6, as I recall); the owner should check the page linked from the connection and tell me what applies.
+- **Recommendation:** if the limit is that low, Figma is for the design exploration only (the owner draws or I generate the five core screens in a few batched calls, the owner reviews them there), and the real work happens in code with screenshots in the browser pane; if the owner has a seat without that limit, I read the frames directly and take tokens from them.
+
 ---
 
 
@@ -43,6 +58,13 @@ Each Open question has a recommendation; the owner decides.
 | D-016 | 2026-10-03 | Keep working against production during the current build-out; create a Neon `dev` branch once the core is stable. | Owner: "we are in a dev-like working phase". |
 | D-017 | 2026-10-03 | **One admin inside the website (`/admin`, GitHub login), and the BC250 as a worker, not a server.** They communicate through the database: the admin writes job requests, the worker polls, runs, and reports progress and a heartbeat (the admin shows whether the worker is connected). The worker does not need to be always on; requests wait. | No home network exposure, one stack, analysis pages can graduate to public. |
 | D-018 | 2026-10-03 | Retire the cockpit (archived on a branch first) and do the audit cut list, **except Gemini/vote explanations**, which stay for a future summaries feature (Q12). Digi Storage stays; only the unused Vercel Blob and generic FTP upload routes go. | Owner, after the audit. |
+
+### D-028 — Backlog and the Feature track (2026-10-06)
+- **Backlog:** the rest of Sprint 9 (the morning runs, the daily job, three automatic days) and all of Sprint 10 (BC250 worker, `/admin` v1, Linux OCR) move to the Backlog in PLAN.md, with open downloads (F-1), law texts and diffs (F-6) and the "later" items.
+- **Principle 6 bent knowingly:** D2 (no unattended updater) goes from P1 to P2 because the updater exists and the owner runs it by hand. Compensating rule: the daily catch-up must not lapse for more than a week; if it does, feature work pauses until it runs again. The footer already shows when the official sources were last checked.
+- **Feature track and its order (owner's):** UI foundation (Sprint 11), bill extensions (12), MP enrichment (13), the President's record from 2014 (14), party money and elections (15), UI sweep (16). This puts the presidency before party money; D-021 had them the other way round, the later choice wins.
+- **UI revamp scope (owner's words):** icons, the party's logo wherever a party name appears, animated charts, reworked elements; the open points are Q17 (order), Q18 (logo sources) and Q20 (Figma).
+- Each data sprint starts with a source check of a few pages (with the owner's OK) before anything is designed or stored.
 
 ### D-026 — Sprint 8 decisions (2026-10-06, closes Q8, Q9, Q16 and the data licence)
 - **Older legislatures (Q16):** member and career histories stay public; vote coverage is labelled "partial" per legislature, on the legislature's page and on the methodology page, until a backfill exists. **A full import of the older legislatures (votes, bills, rosters back to 1990) stays on the roadmap as its own later sprint; the labels come off one legislature at a time as each is imported and verified.**
