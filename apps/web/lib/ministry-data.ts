@@ -63,10 +63,12 @@ export interface MinistryView {
 const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v4"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
 
 export async function getMinistries(): Promise<MinistryView[]> {
+  if (!process.env.DATABASE_URL) return [];
   return getCachedMinistries();
 }
 
 export async function getMinistry(slug: string): Promise<MinistryView | undefined> {
+  if (!process.env.DATABASE_URL) return undefined;
   const session = createWebDbSession();
   try {
     const ministry = await session.db.select().from(schema.ministries).where(eq(schema.ministries.slug, slug)).limit(1);

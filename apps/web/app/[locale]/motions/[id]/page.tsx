@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { clip } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
@@ -6,6 +8,12 @@ import { getMotionPage } from "@/lib/motion-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 
 const outcome = { ro: { adopted: "Adoptată", rejected: "Respinsă", unknown: "Fără vot" }, en: { adopted: "Adopted", rejected: "Rejected", unknown: "No vote" } } as const;
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
+  const { locale, id } = await params;
+  const data = await getMotionPage(id);
+  return { title: data ? clip(data.motion.title) : (locale === "en" ? "Motion not found" : "Moțiune negăsită") };
+}
 
 export default async function MotionPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: rawLocale, id } = await params;

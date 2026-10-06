@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { ArrowRight, Building2, Clock3, ShieldCheck } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getMinistries } from "@/lib/ministry-data";
 import type { AppLocale } from "@/lib/i18n";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Ministere și miniștri", en: "Ministries and ministers" });
+}
 
 export default async function MinistriesPage({ params }: { params: Promise<{ locale: AppLocale }> }) {
   const { locale } = await params;

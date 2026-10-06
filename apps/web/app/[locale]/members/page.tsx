@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { chamberLabels } from "@cumsevoteaza/parliament-model";
 import { getMemberDirectoryData } from "@/lib/data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
@@ -8,6 +10,10 @@ import { ImageWithFallback } from "../_components/ImageWithFallback";
 import { ArrowRight, Building2, Filter, MapPin, Search } from "lucide-react";
 import { DismissibleDetails } from "../_components/DismissibleDetails";
 import { presentMemberIdentity } from "@/lib/public-presentation";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Parlamentari", en: "Members" });
+}
 
 export default async function MembersPage({
   params,

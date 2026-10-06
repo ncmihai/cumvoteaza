@@ -1,6 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
-import { CACHE_TAGS } from "@/lib/server-db";
+import { CACHE_TAGS, selectCacheTags } from "@/lib/server-db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,21 +15,17 @@ export async function GET(request: Request) {
   }
 
   if (requestParam(request, "revalidateOnly") === "1") {
-    revalidatePublicReadTags();
+    const selected = selectCacheTags(requestParam(request, "tags"));
+    if (selected.unknown.length) return NextResponse.json({ error: `Unknown cache tags: ${selected.unknown.join(", ")}`, known: Object.values(CACHE_TAGS) }, { status: 400 });
+    for (const tag of selected.tags) revalidateTag(tag, "max");
     return NextResponse.json({
       ok: true,
       mode: "revalidate-only",
-      tags: Object.values(CACHE_TAGS)
+      tags: selected.tags
     });
   }
 
   return NextResponse.json({ error: "Direct production imports are retired. Imports run through the worker and the integrity checks." }, { status: 410 });
-}
-
-function revalidatePublicReadTags() {
-  for (const tag of Object.values(CACHE_TAGS)) {
-    revalidateTag(tag, "max");
-  }
 }
 
 function requestParam(request: Request, name: string): string | null {

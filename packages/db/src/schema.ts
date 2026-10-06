@@ -986,6 +986,19 @@ export const voteSittingSummaries = pgTable("vote_sitting_summaries", {
   heldOnIdx: index("vote_sitting_summaries_held_on_idx").on(table.heldOn)
 }));
 
+/**
+ * What the official lists say against what we hold, published for the methodology page (Sprint 8): one row per scope
+ * ("votes", "bills"), rewritten by `coverage:publish` from the saved official lists. `payload` is the report's own rows.
+ */
+export const coverageSnapshots = pgTable("coverage_snapshots", {
+  id: text("id").primaryKey(),
+  generatedOn: date("generated_on").notNull(),
+  rangeFrom: date("range_from"),
+  rangeTo: date("range_to"),
+  payload: jsonb("payload").$type<unknown>().notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow()
+});
+
 export const voteCoverageSummaries = pgTable("vote_coverage_summaries", {
   voteId: text("vote_id").primaryKey().references(() => votes.id),
   coverageLevel: text("coverage_level").notNull().default("source_only"),

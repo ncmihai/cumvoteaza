@@ -8,11 +8,7 @@ Each Open question has a recommendation; the owner decides.
 
 ## Open
 
-### Q8 — Repo visibility
-- Public today so it can be reviewed. If it goes private: GitHub Actions minutes become limited, and the tester needs access. Vercel Hobby works either way.
 
-### Q9 — Name and domain
-- Site is `cumvoteaza`, repo is `cumvoteaza`, package/folder/DB is `cumsevoteaza`, docs mention `cumsevoteaza.ro`. Pick one name. A domain is optional.
 
 ### Q10 — Vercel Hobby is non-commercial
 - Fine for now. Any donations or ads would require a paid plan or another host.
@@ -24,9 +20,6 @@ Each Open question has a recommendation; the owner decides.
 
 ---
 
-### Q16 — Older legislatures: show partial data or hide it?
-- 2020–2024 has 133 votes and earlier legislatures 1, but full member and career histories. Showing votes there without a label implies completeness.
-- **Leaning:** show the histories, label vote coverage per legislature ("partial") on the page, and say so on the methodology page (F4) until a backfill exists.
 
 ## Decided
 
@@ -50,6 +43,13 @@ Each Open question has a recommendation; the owner decides.
 | D-016 | 2026-10-03 | Keep working against production during the current build-out; create a Neon `dev` branch once the core is stable. | Owner: "we are in a dev-like working phase". |
 | D-017 | 2026-10-03 | **One admin inside the website (`/admin`, GitHub login), and the BC250 as a worker, not a server.** They communicate through the database: the admin writes job requests, the worker polls, runs, and reports progress and a heartbeat (the admin shows whether the worker is connected). The worker does not need to be always on; requests wait. | No home network exposure, one stack, analysis pages can graduate to public. |
 | D-018 | 2026-10-03 | Retire the cockpit (archived on a branch first) and do the audit cut list, **except Gemini/vote explanations**, which stay for a future summaries feature (Q12). Digi Storage stays; only the unused Vercel Blob and generic FTP upload routes go. | Owner, after the audit. |
+
+### D-026 — Sprint 8 decisions (2026-10-06, closes Q8, Q9, Q16 and the data licence)
+- **Older legislatures (Q16):** member and career histories stay public; vote coverage is labelled "partial" per legislature, on the legislature's page and on the methodology page, until a backfill exists. **A full import of the older legislatures (votes, bills, rosters back to 1990) stays on the roadmap as its own later sprint; the labels come off one legislature at a time as each is imported and verified.**
+- **Repository (Q8):** stays public (review by the tester, unlimited Actions minutes, "source-linked" works for the code too).
+- **Name (Q9):** unchanged for now: the site is `cumsevoteaza` (page title, repo folder, packages) and shows "CumVoteaza" in the header; a change is possible later and the new pages take the name from one constant (`apps/web/lib/site.ts`), so it is one edit.
+- **Data licence:** CC BY 4.0 for the open downloads that come later (credit the site and keep each row's source link). The facts themselves are official public records. Not legal advice; the methodology page states that downloads are not offered yet.
+- **Hosting (Q10):** unchanged: Vercel Hobby is non-commercial, which is fine without ads or donations.
 
 ### D-022 — Vote scope for 2024–2028 (2026-10-04, closes Q14)
 

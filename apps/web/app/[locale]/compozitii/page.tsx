@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { ArrowRight, BookOpen, Building2, CalendarRange, Clock3, ExternalLink, Info, Landmark, Users } from "lucide-react";
 import { chamberLabels, formatDate, type GovernanceAlignment } from "@cumsevoteaza/parliament-model";
 import { getCompositionTimelineData, type CompositionMode, type CompositionTimelineStop } from "@/lib/composition-data";
@@ -6,6 +8,10 @@ import { type AppLocale } from "@/lib/i18n";
 import { CompositionTimeline } from "../_components/CompositionTimeline";
 import { CompositionSeatMap } from "../_components/CompositionSeatMap";
 import { presentMemberIdentity } from "@/lib/public-presentation";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Compoziția Parlamentului", en: "Parliament composition" });
+}
 
 export default async function CompositionsPage({ params, searchParams }: { params: Promise<{ locale: AppLocale }>; searchParams: Promise<{ view?: string; mode?: string; cabinet?: string }> }) {
   const { locale } = await params;

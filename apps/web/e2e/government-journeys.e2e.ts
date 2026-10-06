@@ -18,23 +18,23 @@ test.describe("touch input", () => {
 
 for (const locale of ["ro", "en"]) {
   test(`${locale} ministry history connects cabinet, person and official evidence`, async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
     await page.goto(`/${locale}/ministries`);
     await expect(page.locator("h1")).toContainText(locale === "ro" ? "Ministere" : "Ministries");
     const ministry = page.locator(`main a[href^="/${locale}/ministries/"]`).first();
     await expect(ministry).toBeVisible();
     const ministryHref = await ministry.getAttribute("href");
-    await ministry.click();
-    await expect(page).toHaveURL(new RegExp(`${ministryHref}$`), { timeout: 20_000 });
-    await expect(page.getByRole("heading", { name: locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history", exact: true })).toBeVisible({ timeout: 20_000 });
+    // A ministry page reads whole tables: on a cold server the first navigation can take longer than a click's default wait.
+    await Promise.all([page.waitForURL(new RegExp(`${ministryHref}$`), { timeout: 60_000 }), ministry.click()]);
+    await expect(page.getByRole("heading", { name: locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history", exact: true })).toBeVisible({ timeout: 30_000 });
     for (const width of [320, 375, 768, 854, 1024, 1280, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
     }
     const history = page.locator("section").filter({ has: page.getByRole("heading", { name: locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history", exact: true }) });
     await expect(history.locator('a[target="_blank"]').first()).toHaveAttribute("href", /^https?:\/\//);
-    await history.locator(`a[href^="/${locale}/governments/"]`).first().click();
-    await expect(page.locator("h1")).toContainText(locale === "ro" ? "Guvernul" : "Government");
+    await Promise.all([page.waitForURL(new RegExp(`/${locale}/governments/`), { timeout: 60_000 }), history.locator(`a[href^="/${locale}/governments/"]`).first().click()]);
+    await expect(page.locator("h1")).toContainText(locale === "ro" ? "Guvernul" : "Government", { timeout: 30_000 });
     for (const width of [320, 375, 768, 854, 1024, 1280, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
@@ -45,7 +45,8 @@ for (const locale of ["ro", "en"]) {
     const person = page.locator(`main a[href^="/${locale}/members/"]`).first();
     const name = await person.textContent();
     await person.click();
-    await expect(page.locator("h1")).toContainText(name!.trim());
+    // The cabinet lists the person's usual name ("Ilie Bolojan"), the profile the full one ("Ilie-Gavril Bolojan"): the surname must carry over.
+    await expect(page.locator("h1")).toContainText(name!.trim().split(/\s+/).pop()!);
     await expect(page.getByRole("heading", { name: locale === "ro" ? "Roluri în Guvern" : "Government roles", exact: true })).toBeVisible();
   });
 }

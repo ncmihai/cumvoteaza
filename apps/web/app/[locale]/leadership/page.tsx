@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getLeadership, type LeadershipPerson } from "@/lib/leadership-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
@@ -17,6 +19,10 @@ function People({ people, locale }: { people: LeadershipPerson[]; locale: AppLoc
       ))}
     </ul>
   );
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Conducerea Parlamentului", en: "Parliament's leadership" });
 }
 
 export default async function LeadershipPage({ params }: { params: Promise<{ locale: string }> }) {

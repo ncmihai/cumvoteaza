@@ -9,8 +9,17 @@ export const CACHE_TAGS = {
   composition: "composition",
   ministries: "ministries",
   governments: "governments",
+  coverage: "coverage",
   search: "search"
 } as const;
+
+/** The cache tags a purge names ("votes,bills"); without a list, every tag. Unknown names are returned so the caller can refuse them. */
+export function selectCacheTags(list: string | null | undefined): { tags: string[]; unknown: string[] } {
+  const all = Object.values(CACHE_TAGS) as string[];
+  const wanted = (list ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+  if (wanted.length === 0) return { tags: all, unknown: [] };
+  return { tags: wanted.filter((item) => all.includes(item)), unknown: wanted.filter((item) => !all.includes(item)) };
+}
 
 export function createWebDbSession() {
   return createPooledDbSession();

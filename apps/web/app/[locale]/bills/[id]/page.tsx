@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { clip } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
 import { getBillTextComparisons } from "@/lib/bill-text-features";
@@ -20,6 +22,15 @@ import { HotButton } from "../../_components/HotButton";
 import { SourceBadge } from "../../_components/SourceBadge";
 import { ShareButton } from "../../_components/ShareButton";
 import { DetailPageHeader } from "../../_components/DetailPageHeader";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
+  const { locale: rawLocale, id } = await params;
+  const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
+  const data = await getBillPageData(id);
+  if (!data) return { title: locale === "ro" ? "Proiect negăsit" : "Bill not found" };
+  const presentation = presentBill(data.bill);
+  return { title: `${presentation.identifier}: ${clip(presentation.heading, 70)}` };
+}
 
 export default async function BillPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: rawLocale, id } = await params;

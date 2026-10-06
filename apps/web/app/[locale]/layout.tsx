@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
+import { TITLE_TEMPLATE } from "@/lib/page-metadata";
+import { SiteFooter } from "./_components/SiteFooter";
 import { SiteHeader } from "./_components/SiteHeader";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "cumsevoteaza",
+  title: { default: "cumsevoteaza", template: TITLE_TEMPLATE },
   description: "Romanian Parliament votes, bills, and parliamentary career history."
 };
 
@@ -37,6 +39,7 @@ export default async function LocaleLayout({
           <div className="min-h-screen">
             <SiteHeader locale={locale} labels={{ today: locale === "ro" ? "Astăzi" : "Today", votes: messages.nav.votes, bills: messages.nav.bills, members: messages.nav.members, compositions: messages.nav.compositions, tagline: locale === "ro" ? "Voturi. Oameni. Decizii care contează." : "Votes. People. Decisions that matter.", search: locale === "ro" ? "Caută" : "Search" }} />
             {children}
+            <SiteFooter locale={locale} />
           </div>
         </NextIntlClientProvider>
       </body>

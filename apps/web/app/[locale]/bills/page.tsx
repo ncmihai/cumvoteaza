@@ -1,8 +1,14 @@
 import { getBillExplorerData, getDirectoryFilterOptions, parseExplorerFilters } from "@/lib/explorer-data";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { BillDirectoryExplorer, type DirectoryLabels } from "../_components/ExplorerDirectories";
 import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Proiecte legislative", en: "Bills" });
+}
 
 export default async function BillsPage({
   params,

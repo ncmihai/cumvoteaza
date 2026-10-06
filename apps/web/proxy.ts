@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unmatchedRewrite } from "./lib/unmatched-route";
 
 const cookieName = "cumsevoteaza_access";
 
 export function proxy(request: NextRequest) {
   const password = process.env.CUMSEVOTEAZA_SITE_PASSWORD;
-  if (request.nextUrl.pathname === "/api/cron/daily-import" && process.env.CRON_SECRET && request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`) return NextResponse.next();
+  const rewriteTo = unmatchedRewrite(request.nextUrl.pathname);
+  const pass = () => (rewriteTo ? NextResponse.rewrite(new URL(rewriteTo, request.url)) : NextResponse.next());
+  if (request.nextUrl.pathname === "/api/cron/daily-import" && process.env.CRON_SECRET && request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`) return pass();
 
   if (!password || isPublicAsset(request.nextUrl.pathname)) {
-    return NextResponse.next();
+    return pass();
   }
 
   if (request.cookies.get(cookieName)?.value === password) {
-    return NextResponse.next();
+    return pass();
   }
 
   const access = request.nextUrl.searchParams.get("access");

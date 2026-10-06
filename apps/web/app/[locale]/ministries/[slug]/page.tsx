@@ -1,9 +1,17 @@
 import Link from "next/link";
+
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Building2, ExternalLink, GitMerge, Landmark, Vote } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getMinistry } from "@/lib/ministry-data";
 import type { AppLocale } from "@/lib/i18n";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const ministry = await getMinistry(slug);
+  return { title: ministry ? ministry.name : (locale === "en" ? "Ministry not found" : "Minister negăsit") };
+}
 
 export default async function MinistryPage({ params }: { params: Promise<{ locale: AppLocale; slug: string }> }) {
   const { locale, slug } = await params;

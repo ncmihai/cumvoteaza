@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Building2, ExternalLink, UsersRound } from "lucide-react";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
@@ -10,6 +12,12 @@ import { EngagementTracker } from "../../_components/EngagementTracker";
 import { ShareButton } from "../../_components/ShareButton";
 import { ImageWithFallback } from "../../_components/ImageWithFallback";
 import { DetailPageHeader } from "../../_components/DetailPageHeader";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const data = await getPartyPageData(slug);
+  return { title: data ? data.party.name : (locale === "en" ? "Party not found" : "Partid negăsit") };
+}
 
 export default async function PartyPage({params}:{params:Promise<{locale:string;slug:string}>}){
  const {locale:rawLocale,slug}=await params; const locale:AppLocale=isLocale(rawLocale)?rawLocale:"ro"; const [data,currentComposition]=await Promise.all([getPartyPageData(slug),getCurrentCompositionData("official")]); if(!data)notFound();

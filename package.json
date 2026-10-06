@@ -58,6 +58,7 @@
     "ingest:bills:dossiers:fetch": "npm --workspace @cumsevoteaza/ingest run bills:dossiers:fetch --",
     "ingest:bills:dossiers:import": "npm --workspace @cumsevoteaza/ingest run bills:dossiers:import --",
     "ingest:bills:gazette:fill": "npm --workspace @cumsevoteaza/ingest run bills:gazette:fill --",
+    "ingest:coverage:publish": "npm --workspace @cumsevoteaza/ingest run coverage:publish --",
     "ingest:members:coverage": "npm --workspace @cumsevoteaza/ingest run members:coverage --",
     "ingest:spotcheck:pack": "npm --workspace @cumsevoteaza/ingest run spotcheck:pack --",
     "ingest:identity:link-government-people": "npm --workspace @cumsevoteaza/ingest run identity:link-government-people --",

@@ -36,3 +36,42 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  browser:
+    # The smoke tests that need no data: language and redirects, 404s, page titles of the list pages, the footer, no horizontal overflow, no application errors.
+    # Tests tagged @db need a database and run locally (npm run test:responsive in apps/web).
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Browser smoke tests (no database)
+        run: npx playwright test e2e/smoke.e2e.ts --grep-invert @db
+        working-directory: apps/web
+        env:
+          CI: "true"
+          DATABASE_URL: ""
+
+      - name: Keep the traces of a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          retention-days: 7
+

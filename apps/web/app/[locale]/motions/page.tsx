@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
 import { getMotionList } from "@/lib/motion-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 
 const outcome = { ro: { adopted: "Adoptată", rejected: "Respinsă", unknown: "Fără vot" }, en: { adopted: "Adopted", rejected: "Rejected", unknown: "No vote" } } as const;
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Moțiuni", en: "Motions" });
+}
 
 export default async function MotionsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;

@@ -1,10 +1,16 @@
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
+import { titled } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import { getSittingSummaries } from "@/lib/sitting-summaries";
 import { getDirectoryFilterOptions, getVoteExplorerData, parseExplorerFilters } from "@/lib/explorer-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { VoteDirectoryExplorer, type DirectoryLabels } from "../_components/ExplorerDirectories";
 import { EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return titled(params, { ro: "Voturi", en: "Votes" });
+}
 
 export default async function VotesPage({
   params,

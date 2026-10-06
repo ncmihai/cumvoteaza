@@ -1,9 +1,17 @@
 import Link from "next/link";
+
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Landmark } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getGovernmentView } from "@/lib/ministry-data";
 import type { AppLocale } from "@/lib/i18n";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const government = await getGovernmentView(slug);
+  return { title: government ? (locale === "en" ? `${government.name} government` : `Guvernul ${government.name}`) : (locale === "en" ? "Government not found" : "Guvern negăsit") };
+}
 
 export default async function GovernmentPage({ params }: { params: Promise<{ locale: AppLocale; slug: string }> }) {
   const { locale, slug } = await params;

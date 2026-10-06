@@ -281,6 +281,13 @@
       "when": 1791227612828,
       "tag": "0039_dossier_step_types",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791276486125,
+      "tag": "0040_coverage_snapshots",
+      "breakpoints": true
     }
   ]
 }

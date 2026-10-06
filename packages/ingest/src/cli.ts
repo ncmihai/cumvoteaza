@@ -544,6 +544,36 @@ async function main() {
     return;
   }
 
+  if (command === "coverage:publish") {
+    // Sprint 8 (F4): the numbers behind the methodology page, what the official lists say against what we hold: votes (since the start of the
+    // current legislature) and bills (2024–2026). Offline apart from the database; dry run unless --persist (rewrites two rows of coverage_snapshots).
+    const today = new Date().toISOString().slice(0, 10);
+    const from = flag("from") ?? "2024-12-21";
+    const years = numberListFlag("years") ?? [2024, 2025, 2026];
+    const votes = await runCoverageReport({ repoRoot, from, to: today, today });
+    const bills = await runBillCoverageReport({ repoRoot, years, today });
+    const snapshots = [
+      { id: "votes", rangeFrom: from, rangeTo: today, payload: { totals: votes.report.totals, months: votes.report.rows.map((row) => ({ month: row.month, chamber: row.chamber, official: row.official, held: row.held, missing: row.missing, percent: row.percent })), daysFetched: votes.report.daysFetched, tests: votes.report.rows.reduce((sum, row) => sum + (row.tests ?? 0), 0), totalsMismatches: votes.report.totalsMismatches.length, storedNotOnOfficialList: votes.report.storedNotOnOfficialList.length, storedUnverifiable: votes.report.storedUnverifiable.count } },
+      { id: "bills", rangeFrom: `${years[0]}-01-01`, rangeTo: `${years.at(-1)}-12-31`, payload: { rows: bills.report.rows.map((row) => ({ chamber: row.chamber, year: row.year, official: row.official, held: row.held, missing: row.missing, percent: row.percent })), listCountMismatches: bills.report.listCountMismatches.length, missingLists: bills.missingLists } }
+    ];
+    console.log(JSON.stringify(snapshots.map((item) => ({ ...item, payload: item.id === "votes" ? { totals: (item.payload as { totals: unknown }).totals, daysFetched: (item.payload as { daysFetched: unknown }).daysFetched } : { rows: (item.payload as { rows: unknown }).rows } })), null, 2));
+    if (hasFlag("persist")) {
+      const session = createDbSession();
+      try {
+        for (const item of snapshots) {
+          await session.db.execute(sql`
+            insert into coverage_snapshots (id, generated_on, range_from, range_to, payload, published_at)
+            values (${item.id}, ${today}::date, ${item.rangeFrom}::date, ${item.rangeTo}::date, ${JSON.stringify(item.payload)}::jsonb, now())
+            on conflict (id) do update set generated_on = excluded.generated_on, range_from = excluded.range_from, range_to = excluded.range_to, payload = excluded.payload, published_at = excluded.published_at`);
+        }
+      } finally {
+        await session.close();
+      }
+      console.log("Published. Then npm run ingest:site:revalidate.");
+    } else console.log("Dry run only. Re-run with --persist to write.");
+    return;
+  }
+
   if (command === "members:coverage") {
     // Sprint 2 (F1): seats against sitting members per legislature. Database only, read-only.
     console.log(renderSeatCoverageMarkdown(await runSeatCoverage()));
@@ -663,7 +693,9 @@ async function main() {
     const secret = process.env.CRON_SECRET ?? readRootEnvValue("CRON_SECRET");
     if (!secret) throw new Error("CRON_SECRET is not set in the environment or .env");
     const site = flag("site") ?? "https://cumvoteaza.vercel.app";
-    const response = await fetch(`${site}/api/cron/daily-import?revalidateOnly=1`, { headers: { authorization: `Bearer ${secret}` } });
+    // --tags=votes,bills purges only those caches (home, votes, bills, members, parties, composition, ministries, governments, coverage, search); without it, all of them.
+    const tags = flag("tags");
+    const response = await fetch(`${site}/api/cron/daily-import?revalidateOnly=1${tags ? `&tags=${encodeURIComponent(tags)}` : ""}`, { headers: { authorization: `Bearer ${secret}` } });
     console.log(response.status, await response.text());
     if (!response.ok) process.exitCode = 1;
     return;

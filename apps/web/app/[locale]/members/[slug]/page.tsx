@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Building2, CalendarDays, ExternalLink, FileText, Landmark, MapPin, UserRound, UsersRound } from "lucide-react";
 import { chamberLabels, formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
@@ -13,6 +15,13 @@ import { DetailPageHeader } from "../../_components/DetailPageHeader";
 import { getGovernmentRolesForPerson } from "@/lib/ministry-data";
 import { PublicCareerTimeline, type PublicCareerEvent } from "../../_components/PublicCareerTimeline";
 import { OfficialActivityPanel } from "../../_components/OfficialActivityPanel";
+
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string }> }): Promise<Metadata> {
+  const { locale: rawLocale, slug } = await params;
+  const { legislature } = await searchParams;
+  const data = await getMemberPageData(slug, { legislature });
+  return { title: data ? data.member.displayName : (rawLocale === "en" ? "Member not found" : "Parlamentar negăsit") };
+}
 
 export default async function MemberPage({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string; fromVote?: string }> }) {
   const { locale: rawLocale, slug } = await params;

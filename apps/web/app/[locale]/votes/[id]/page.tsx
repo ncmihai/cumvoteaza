@@ -1,4 +1,6 @@
 import { VoteExplanation } from "@/app/[locale]/_components/VoteExplanation";
+import { clip } from "@/lib/page-metadata";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDate, voteChamberLabels, voteChoiceLabels } from "@cumsevoteaza/parliament-model";
@@ -17,6 +19,15 @@ import { ShareButton } from "../../_components/ShareButton";
 import { VoteBillDossierPanel } from "../../_components/VoteBillDossierPanel";
 import { JointVoteBreakdown } from "../../_components/JointVoteBreakdown";
 import { VoteChamberExplorer } from "../../_components/VoteChamberExplorer";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
+  const { locale: rawLocale, id } = await params;
+  const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
+  const data = await getVotePageData(id);
+  if (!data) return { title: locale === "ro" ? "Vot negăsit" : "Vote not found" };
+  const presentation = presentVote(data.vote, { locale, bill: data.bill, source: data.source });
+  return { title: `${clip(presentation.heading)} · ${formatDate(data.vote.heldOn, locale)}` };
+}
 
 export default async function VotePage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: rawLocale, id } = await params;
