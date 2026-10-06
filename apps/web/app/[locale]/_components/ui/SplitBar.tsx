@@ -14,7 +14,7 @@ export function countsOfTotals(totals: { for: number; against: number; abstentio
 export function SplitBar({ counts, locale = "ro", height = "h-2.5", showAbsent = false }: { counts: VoteCounts; locale?: "ro" | "en"; height?: string; showAbsent?: boolean }) {
   const kinds = VOTE_KINDS.filter((kind) => (showAbsent || kind !== "absent") && (counts[kind] ?? 0) > 0);
   const total = kinds.reduce((sum, kind) => sum + (counts[kind] ?? 0), 0);
-  const description = VOTE_KINDS.filter((kind) => (counts[kind] ?? 0) > 0 && (showAbsent || kind !== "absent")).map((kind) => `${VOTE_LABEL[locale][kind]} ${counts[kind]}`).join(", ");
+  const description = VOTE_KINDS.filter((kind) => (counts[kind] ?? 0) > 0 && (showAbsent || kind !== "absent")).map((kind) => `${VOTE_LABEL[locale][kind]} ${counts[kind]}`).join(", ") || (locale === "ro" ? "Fără voturi" : "No votes");
   return (
     <div role="img" aria-label={description} className={`flex w-full gap-px overflow-hidden rounded-full bg-line ${height}`}>
       {total === 0

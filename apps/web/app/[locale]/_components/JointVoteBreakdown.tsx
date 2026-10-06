@@ -2,7 +2,7 @@ import type { IndividualVote, ParliamentaryGroup, VoteChoice } from "@cumsevotea
 import type { AppLocale } from "@/lib/i18n";
 
 const CHOICES: Array<Exclude<VoteChoice, "absent" | "unknown">> = ["for", "against", "abstention", "present_not_voting"];
-const COLORS: Record<(typeof CHOICES)[number], string> = { for: "#16804a", against: "#c22c3a", abstention: "#b77912", present_not_voting: "#7547a8" };
+const COLORS: Record<(typeof CHOICES)[number], string> = { for: "#16a34a", against: "#dc2626", abstention: "#d97706", present_not_voting: "#94a3b8" };
 const LABELS = {
   ro: { for: "Pentru", against: "Contra", abstention: "Abținere", present_not_voting: "Prezent, nu a votat" },
   en: { for: "For", against: "Against", abstention: "Abstention", present_not_voting: "Present, not voting" }
@@ -60,7 +60,7 @@ export function JointVoteBreakdown({ locale, nominalVotes, groups }: { locale: A
         const n = total(row.tally);
         return <div key={row.label} className="grid grid-cols-[minmax(110px,170px)_minmax(0,1fr)_auto] items-center gap-3 text-xs">
           <span className="font-semibold text-ink">{row.label}</span>
-          <div className="flex h-5 overflow-hidden bg-slate-100" role="img" aria-label={CHOICES.map((choice) => `${labels[choice]} ${row.tally[choice]}`).join(", ")}>
+          <div className="flex h-5 overflow-hidden rounded-full bg-line" role="img" aria-label={CHOICES.map((choice) => `${labels[choice]} ${row.tally[choice]}`).join(", ")}>
             {CHOICES.map((choice) => row.tally[choice] ? <div key={choice} style={{ width: `${(row.tally[choice] / n) * 100}%`, background: COLORS[choice] }} title={`${labels[choice]}: ${row.tally[choice]}`}/> : null)}
           </div>
           <span className="tabular-nums text-muted">{n}</span>

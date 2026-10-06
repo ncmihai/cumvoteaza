@@ -8,6 +8,7 @@ import { ArrowRight, Building2, CalendarDays, FileText } from "lucide-react";
 import { getVotePageData } from "@/lib/data";
 import { getDocumentConfidenceMap } from "@/lib/document-confidence";
 import { getHotCount } from "@/lib/explorer-data";
+import { getGroupMarks } from "@/lib/party-marks";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { presentVote } from "@/lib/public-presentation";
 import { confidenceForSource } from "@/lib/source-confidence";
@@ -66,6 +67,7 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
     billSponsorContexts.map((item) => item.member?.displayName ?? item.sponsor.name ?? "").filter(Boolean)
   ).slice(0, 4);
   const presentation = presentVote(vote, { locale, bill, source });
+  const groupMarks = await getGroupMarks(groups);
 
   const ro = locale === "ro";
   const absentSeats = seatVotes.filter((seat) => seat.choice === "absent").length;
@@ -111,16 +113,16 @@ export default async function VotePage({ params }: { params: Promise<{ locale: s
         <div className="mt-4"><SplitBar counts={counts} locale={locale} height="h-3.5" showAbsent/></div>
         <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5">
           {kinds.filter((item) => item.value > 0 || item.kind !== "absent").map(({ kind, value }) => (
-            <div key={kind} className="flex items-start gap-3">
-              <VoteDot kind={kind} size={28} locale={locale}/>
-              <div className="flex min-w-0 flex-col-reverse"><dt className="mt-1 text-xs leading-4 text-muted">{VOTE_LABEL[locale][kind]}</dt><dd className={`font-display text-3xl font-bold leading-none ${VOTE_STYLE[kind].text}`}><CountUp value={value}/></dd></div>
+            <div key={kind} className="flex flex-col-reverse gap-1">
+              <dt className="pl-10 text-xs leading-4 text-muted">{VOTE_LABEL[locale][kind]}</dt>
+              <dd className={`flex items-center gap-2.5 font-display text-3xl font-bold leading-none ${VOTE_STYLE[kind].text}`}><VoteDot kind={kind} size={28} locale={locale}/><CountUp value={value}/></dd>
             </div>
           ))}
         </dl>
         <p className="mt-5 border-t border-line pt-4 text-sm text-ink-soft"><strong className="font-display text-lg text-ink tabular-nums">{vote.totals.present}</strong> {ro ? "parlamentari prezenți la vot" : "members present for the vote"}</p>
         <div className="mt-5 flex flex-wrap gap-2"><HotButton entityType="vote" entityId={vote.id} initialCount={hotCount} label={labels.publicInterest}/></div>
       </aside>
-      <div className="min-w-0 rounded-card border border-line bg-surface p-4 sm:p-6">{individualVotes.length === 0 && groupTotals.length === 0 ? <p role="note" className="rounded-card border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{ro ? "Pentru acest vot sursa oficială publică doar totalurile, nu și lista nominală (de exemplu, la un vot secret). De aceea nu afișăm harta votului și nu completăm voturile individuale." : "For this vote the official source publishes only the totals, not a name list (for example, in a secret ballot). So we show no seat map and do not fill in individual votes."}</p> : vote.chamber === "joint" ? <JointVoteBreakdown locale={locale} nominalVotes={individualVotes} groups={groups}/> : <VoteChamberExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} members={members} seatVotes={seatVotes} seatConstituencies={seatConstituencies} seatPhotoUrls={seatPhotoUrls} nominalVotes={individualVotes} groupTotals={groupTotals} officialTotals={vote.totals} capacity={data.seatCapacity}/>}</div>
+      <div className="min-w-0 rounded-card border border-line bg-surface p-4 sm:p-6">{individualVotes.length === 0 && groupTotals.length === 0 ? <p role="note" className="rounded-card border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{ro ? "Pentru acest vot sursa oficială publică doar totalurile, nu și lista nominală (de exemplu, la un vot secret). De aceea nu afișăm harta votului și nu completăm voturile individuale." : "For this vote the official source publishes only the totals, not a name list (for example, in a secret ballot). So we show no seat map and do not fill in individual votes."}</p> : vote.chamber === "joint" ? <JointVoteBreakdown locale={locale} nominalVotes={individualVotes} groups={groups}/> : <VoteChamberExplorer voteId={vote.id} locale={locale} chamber={vote.chamber} groups={groups} members={members} seatVotes={seatVotes} seatConstituencies={seatConstituencies} seatPhotoUrls={seatPhotoUrls} nominalVotes={individualVotes} groupTotals={groupTotals} officialTotals={vote.totals} capacity={data.seatCapacity} groupMarks={groupMarks}/>}</div>
     </div>
     <details className="mt-6 rounded-card border border-line bg-surface p-5"><summary className="cursor-pointer font-display text-xl font-bold text-ink">{locale === "ro" ? "Detalii oficiale și context" : "Official details and context"}</summary><div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"><div className="min-w-0">{process.env.GEMINI_EXPLANATIONS_ENABLED === "1" ? <VoteExplanation id={vote.id} locale={locale}/> : null}<GovernmentContextPanel context={governmentContext} locale={locale}/>{bill ? <div className="mt-6"><VoteBillDossierPanel locale={locale} bill={bill} billHref={`/${locale}/bills/${bill.slug}`} voteDate={vote.heldOn} procedureSteps={billProcedureSteps} documents={billDocuments} documentConfidence={Object.fromEntries(billDocumentConfidence)} sponsorNames={sponsorNames} sponsorOverflowCount={Math.max(0, billSponsorContexts.length - sponsorNames.length)} sponsorContexts={billSponsorContexts} labels={labels}/></div> : null}</div><aside>{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale}/> : null}</aside></div></details>
   </main>;
