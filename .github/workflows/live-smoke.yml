@@ -1,7 +1,7 @@
 name: Live smoke
 
-# The browser smoke tests (apps/web/e2e/smoke.e2e.ts) against the live site: language and redirects, 404s, page titles,
-# a vote, the joint-sitting chart, a member, a bill, the methodology page, the footer, no overflow on a phone.
+# The browser tests against the live site: the smoke tests (language and redirects, 404s, page titles, a vote, the joint-sitting chart, a member, a bill,
+# the methodology page, the footer, no overflow on a phone), the accessibility scan (axe) of the core pages on desktop and phone, and the first-visit weight budgets.
 # Every morning, and on request. A failure e-mails the owner (GitHub does that for a failed scheduled run) and keeps the traces.
 on:
   schedule:
@@ -33,8 +33,8 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: apps/web
 
-      - name: Smoke tests against the live site
-        run: npx playwright test e2e/smoke.e2e.ts
+      - name: Browser tests against the live site
+        run: npx playwright test e2e/smoke.e2e.ts e2e/accessibility.e2e.ts e2e/weight.e2e.ts
         working-directory: apps/web
         env:
           BASE_URL: ${{ github.event.inputs.base_url || 'https://cumvoteaza.vercel.app' }}

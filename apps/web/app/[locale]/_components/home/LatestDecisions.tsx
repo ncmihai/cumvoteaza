@@ -4,7 +4,6 @@ import { formatDate } from "@cumsevoteaza/parliament-model";
 import type { VoteExplorerItem } from "@/lib/explorer-data";
 import { presentVote } from "@/lib/public-presentation";
 import { OutcomeBadge } from "../ui/OutcomeBadge";
-import { Reveal } from "../ui/Reveal";
 import { SectionHeader } from "../ui/SectionHeader";
 import { SplitBar, countsOfTotals } from "../ui/SplitBar";
 import { VOTE_LABEL, VOTE_STYLE } from "../ui/vote-meaning";
@@ -58,9 +57,9 @@ export function LatestDecisions({ votes, locale }: { votes: VoteExplorerItem[]; 
     <section className="mx-auto max-w-page px-4 py-10 lg:px-8">
       <SectionHeader eyebrow={ro ? "Voturi" : "Votes"} title={ro ? "Ultimele decizii" : "Latest decisions"} href={`/${locale}/votes`} linkLabel={ro ? "Toate voturile" : "All votes"} />
       <div className="mt-6 grid grid-cols-1 gap-4">
-        <Reveal><VoteCard item={featured!} locale={locale} featured /></Reveal>
+        <div className="reveal"><VoteCard item={featured!} locale={locale} featured /></div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {others.slice(0, 6).map((item, index) => <Reveal key={item.vote.id} delay={index * 60}><VoteCard item={item} locale={locale} /></Reveal>)}
+          {others.slice(0, 6).map((item, index) => <div key={item.vote.id} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}><VoteCard item={item} locale={locale} /></div>)}
         </div>
       </div>
       <p className="mt-4 flex items-center gap-2 text-sm text-muted"><ArrowRight size={14} aria-hidden="true" />{ro ? "Rezultatul este calculat după regula din Constituție pentru fiecare tip de vot; o regulă care depinde de tipul legii este spusă ca atare." : "The result is computed by the Constitution's rule for each kind of vote; a rule that depends on the type of law is stated as such."}</p>

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ChamberComposition } from "@/lib/composition-data";
 import { PartyMark } from "../ui/PartyMark";
-import { Reveal } from "../ui/Reveal";
 import { SectionHeader } from "../ui/SectionHeader";
 
 type Locale = "ro" | "en";
@@ -43,7 +42,7 @@ export function ParliamentNow({ chambers, locale, sitting }: { chambers: Chamber
     <section>
       <SectionHeader eyebrow={ro ? "Parlamentul" : "Parliament"} title={ro ? "Parlamentul acum" : "Parliament now"} href={`/${locale}/compozitii`} linkLabel={ro ? "Compoziția completă" : "Full composition"} />
       <div className="mt-6 grid grid-cols-1 gap-4">
-        {ordered.map((chamber, index) => <Reveal key={chamber.chamber} delay={index * 80}><SeatBar chamber={chamber} locale={locale} sitting={chamber.chamber === "senate" ? sitting?.senate : sitting?.deputies} /></Reveal>)}
+        {ordered.map((chamber, index) => <div key={chamber.chamber} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}><SeatBar chamber={chamber} locale={locale} sitting={chamber.chamber === "senate" ? sitting?.senate : sitting?.deputies} /></div>)}
       </div>
       <p className="mt-4 text-sm text-muted">
         <Link href={`/${locale}/governments`} className="font-semibold text-brand hover:text-brand-strong">{ro ? "Guvernul și moțiunile →" : "The government and motions →"}</Link>

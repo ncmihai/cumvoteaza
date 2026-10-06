@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export interface PartyMarkParty {
   shortName: string;
   color: string;
@@ -31,7 +33,8 @@ function isLight(hex: string): boolean {
 export function PartyMark({ party, size = 24, className = "" }: { party: PartyMarkParty; size?: 16 | 24 | 40 | 72; className?: string }) {
   const box = { width: size, height: size };
   if (party.logoAssetId) {
-    return <img src={`/api/assets/${encodeURIComponent(party.logoAssetId)}`} alt="" loading="lazy" decoding="async" className={`shrink-0 rounded-md bg-white object-contain ring-1 ring-line ${className}`} style={box} />;
+    // Through the image optimizer: the stored file can be far larger than the 16-72 px it is shown at.
+    return <Image src={`/api/assets/${encodeURIComponent(party.logoAssetId)}`} alt="" width={size} height={size} sizes={`${size}px`} className={`shrink-0 rounded-md bg-white object-contain ring-1 ring-line ${className}`} style={box} />;
   }
   const text = monogramOf(party.shortName);
   const fontSize = Math.max(8, Math.round(size * (text.length > 3 ? 0.3 : 0.36)));

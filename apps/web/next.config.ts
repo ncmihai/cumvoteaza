@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: workspaceRoot
   },
+  // Party logos are served through the image optimizer (D-029): the Chamber publishes some at 1,000 px (the AUR file is 1.3 MB) and the site shows them at 16-72 px.
+  images: { localPatterns: [{ pathname: "/api/assets/**" }], formats: ["image/webp"], minimumCacheTTL: 2678400 },
+  // The social-card route reads its two static fonts from disk; make sure they ship with its function.
+  outputFileTracingIncludes: { "/[locale]/opengraph-image": ["./app/fonts/og/*.ttf"] },
   transpilePackages: ["@cumsevoteaza/parliament-model", "@cumsevoteaza/db", "@cumsevoteaza/ingest"],
   // The root layout lives under [locale] (D23), so "/" and unmatched URLs are handled here and in global-not-found.
   experimental: { globalNotFound: true },
