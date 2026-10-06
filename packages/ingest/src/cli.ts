@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
@@ -10,6 +11,10 @@ import { importBillText, importBillTextBatch } from "./bill-text";
 import { findBillsNeedingLawType, persistBillLawTypes, readBillLawTypes } from "./bill-law-type";
 import { importMotions } from "./motions-import";
 import { backupLocalData } from "./backup";
+import { publishCoverage } from "./coverage/publish";
+import { catchUp, RunInProgressError } from "./updater/catch-up";
+import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
+import { revalidateSite } from "./site-revalidate";
 import { runCoverageFetch } from "./coverage/run-fetch";
 import { runCoverageReport } from "./coverage/run-report";
 import { runVoteBackfill } from "./coverage/run-vote-backfill";
@@ -18,7 +23,7 @@ import { repairCrossLegislatureMembers } from "./identity/cross-legislature-repa
 import { fetchChamberBureau, importChamberBureau } from "./leadership/run-chamber-bureau";
 import { fetchSenateCards, importSenateCards } from "./leadership/run-senate-cards";
 import { writeSpotCheckPack } from "./coverage/spot-check-pack";
-import { legislatieToken, lawGazette, searchActs } from "./dossiers/gazette-lookup";
+import { fillGazetteNumbers } from "./dossiers/gazette-fill";
 import { importBillDossiers } from "./dossiers/import";
 import { renderSeatCoverageMarkdown, runBillCoverageReport, runBillDossierFetch, runBillListFetch, runSeatCoverage } from "./coverage/run-bills-seats";
 import { auditBillTextQuality } from "./bill-text-quality-audit";
@@ -493,30 +498,12 @@ async function main() {
   }
 
   if (command === "bills:gazette:fill") {
-    // Sprint 7 (D36): the Official Gazette number of promulgated laws whose dossier pages do not print it (a Chamber-only page, or a law published after
-    // the page was saved), from legislatie.just.ro's search by law number and year. The law's own date must equal the promulgation date or nothing is written.
+    // Sprint 7 (D36): the Official Gazette number of promulgated laws whose dossier pages do not print it, from legislatie.just.ro.
     // Dry run unless --persist; one request per law, --delay-ms apart.
     const session = createDbSession();
     try {
-      const rows = [...(await session.db.execute<{ bill_id: string; law_number: string; law_year: number; decree_on: string | null }>(sql`
-        select d.bill_id, d.law_number, d.law_year, d.decree_on::text as decree_on from bill_dossiers d
-        where d.outcome = 'promulgated' and d.gazette_number is null and d.law_number is not null and d.law_year is not null
-        order by d.law_year, d.law_number::int`))];
-      const token = rows.length ? await legislatieToken() : "";
-      const found: Array<{ bill: string; law: string; gazetteNumber: string; gazetteOn: string }> = [];
-      const notFound: Array<{ bill: string; law: string; reason: string }> = [];
-      for (const row of rows) {
-        const law = `${row.law_number}/${row.law_year}`;
-        await new Promise((resolve) => setTimeout(resolve, numberFlag("delay-ms") ?? 1500));
-        const gazette = lawGazette(await searchActs(token, row.law_year, row.law_number), row.law_number);
-        if (!gazette) notFound.push({ bill: row.bill_id, law, reason: "no published law with that number and year yet" });
-        else if (row.decree_on && gazette.lawOn !== row.decree_on.slice(0, 10)) notFound.push({ bill: row.bill_id, law, reason: `the law is dated ${gazette.lawOn}, the promulgation decree ${row.decree_on.slice(0, 10)}` });
-        else found.push({ bill: row.bill_id, law, gazetteNumber: gazette.gazetteNumber, gazetteOn: gazette.gazetteOn });
-      }
-      if (hasFlag("persist")) {
-        for (const item of found) await session.db.execute(sql`update bill_dossiers set gazette_number = ${item.gazetteNumber}, gazette_on = ${item.gazetteOn}::date where bill_id = ${item.bill} and gazette_number is null`);
-      }
-      console.log(JSON.stringify({ persisted: hasFlag("persist"), withoutGazette: rows.length, found, notFound }, null, 2));
+      const result = await fillGazetteNumbers(session.db, { persist: hasFlag("persist"), delayMs: numberFlag("delay-ms") ?? 1500 });
+      console.log(JSON.stringify({ persisted: hasFlag("persist"), ...result }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write, then npm run ingest:refresh-read-models.");
     } finally {
       await session.close();
@@ -545,32 +532,81 @@ async function main() {
   }
 
   if (command === "coverage:publish") {
-    // Sprint 8 (F4): the numbers behind the methodology page, what the official lists say against what we hold: votes (since the start of the
-    // current legislature) and bills (2024–2026). Offline apart from the database; dry run unless --persist (rewrites two rows of coverage_snapshots).
+    // Sprint 8 (F4): the numbers behind the methodology page. Dry run unless --persist (rewrites two rows of coverage_snapshots).
     const today = new Date().toISOString().slice(0, 10);
-    const from = flag("from") ?? "2024-12-21";
-    const years = numberListFlag("years") ?? [2024, 2025, 2026];
-    const votes = await runCoverageReport({ repoRoot, from, to: today, today });
-    const bills = await runBillCoverageReport({ repoRoot, years, today });
-    const snapshots = [
-      { id: "votes", rangeFrom: from, rangeTo: today, payload: { totals: votes.report.totals, months: votes.report.rows.map((row) => ({ month: row.month, chamber: row.chamber, official: row.official, held: row.held, missing: row.missing, percent: row.percent })), daysFetched: votes.report.daysFetched, tests: votes.report.rows.reduce((sum, row) => sum + (row.tests ?? 0), 0), totalsMismatches: votes.report.totalsMismatches.length, storedNotOnOfficialList: votes.report.storedNotOnOfficialList.length, storedUnverifiable: votes.report.storedUnverifiable.count } },
-      { id: "bills", rangeFrom: `${years[0]}-01-01`, rangeTo: `${years.at(-1)}-12-31`, payload: { rows: bills.report.rows.map((row) => ({ chamber: row.chamber, year: row.year, official: row.official, held: row.held, missing: row.missing, percent: row.percent })), listCountMismatches: bills.report.listCountMismatches.length, missingLists: bills.missingLists } }
-    ];
+    const snapshots = await publishCoverage({ repoRoot, today, from: flag("from") ?? "2024-12-21", years: numberListFlag("years") ?? [2024, 2025, 2026], persist: hasFlag("persist") });
     console.log(JSON.stringify(snapshots.map((item) => ({ ...item, payload: item.id === "votes" ? { totals: (item.payload as { totals: unknown }).totals, daysFetched: (item.payload as { daysFetched: unknown }).daysFetched } : { rows: (item.payload as { rows: unknown }).rows } })), null, 2));
-    if (hasFlag("persist")) {
-      const session = createDbSession();
-      try {
-        for (const item of snapshots) {
-          await session.db.execute(sql`
-            insert into coverage_snapshots (id, generated_on, range_from, range_to, payload, published_at)
-            values (${item.id}, ${today}::date, ${item.rangeFrom}::date, ${item.rangeTo}::date, ${JSON.stringify(item.payload)}::jsonb, now())
-            on conflict (id) do update set generated_on = excluded.generated_on, range_from = excluded.range_from, range_to = excluded.range_to, payload = excluded.payload, published_at = excluded.published_at`);
-        }
-      } finally {
-        await session.close();
+    console.log(hasFlag("persist") ? "Published. Then npm run ingest:site:revalidate --tags=coverage." : "Dry run only. Re-run with --persist to write.");
+    return;
+  }
+
+  if (command === "updater:catch-up") {
+    // Sprint 9 (D-027): one catch-up from the last successful run: vote lists, votes, new bills and changed bill pages, dossier import, gazette numbers,
+    // then (if the checks stay as good as before) read models, coverage numbers and the site's caches. Without --persist it fetches and checks but
+    // writes nothing and records nothing. A held or failed run opens (or comments on) a GitHub issue unless --no-issue.
+    try {
+      const report = await catchUp({
+        repoRoot,
+        persist: hasFlag("persist"),
+        trigger: (flag("trigger") as "manual" | "schedule" | "request" | undefined) ?? "manual",
+        skip: listFlag("skip"),
+        openIssue: !hasFlag("no-issue"),
+        purge: !hasFlag("no-purge"),
+        limits: { ...(numberFlag("requests") ? { requestsPerSource: numberFlag("requests")! } : {}), ...(numberFlag("pages") ? { billPagesPerRun: numberFlag("pages")! } : {}), ...(numberFlag("votes") ? { votesPerRun: numberFlag("votes")! } : {}), ...(numberFlag("delay-ms") ? { delayMs: numberFlag("delay-ms")! } : {}) },
+        log: (line) => console.log(line)
+      });
+      console.log(JSON.stringify({ ...report, steps: report.steps.map((step) => ({ step: step.step, status: step.status, counts: step.counts, notes: step.notes, held: step.held?.length })) }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run: nothing was written or recorded. Re-run with --persist.");
+      if (report.status === "failed") process.exitCode = 1;
+    } catch (error) {
+      if (error instanceof RunInProgressError) {
+        console.log(error.message);
+        process.exitCode = 2;
+      } else throw error;
+    }
+    return;
+  }
+
+  if (command === "updater:status") {
+    const session = createDbSession();
+    try {
+      console.log(JSON.stringify(await updaterStatus(session.db), null, 2));
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "updater:request") {
+    // A request waits in updater_jobs until a worker (updater:work) takes it; the admin of Sprint 10 will write these too.
+    const session = createDbSession();
+    try {
+      console.log(`Queued ${await requestJob(session.db, { requestedBy: flag("by") ?? "cli" })}`);
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "updater:work") {
+    // Takes the oldest queued request, if any, and runs a catch-up for it; says so in the heartbeat either way.
+    const session = createDbSession();
+    try {
+      const worker = { workerId: os.hostname(), host: os.hostname(), state: "idle" as const };
+      await beat(session.db, worker);
+      const job = await claimJob(session.db);
+      if (!job) {
+        console.log("No request is waiting.");
+        return;
       }
-      console.log("Published. Then npm run ingest:site:revalidate.");
-    } else console.log("Dry run only. Re-run with --persist to write.");
+      console.log(`Taking ${job.id}`);
+      const report = await catchUp({ repoRoot, persist: true, trigger: "request", openIssue: !hasFlag("no-issue"), log: (line) => console.log(line) });
+      await finishJob(session.db, { id: job.id, ok: report.status !== "failed", runId: report.id, error: report.error });
+      console.log(JSON.stringify({ job: job.id, run: report.id, status: report.status }));
+      if (report.status === "failed") process.exitCode = 1;
+    } finally {
+      await session.close();
+    }
     return;
   }
 
@@ -689,15 +725,10 @@ async function main() {
   }
 
   if (command === "site:revalidate") {
-    // Purges the public site's cached data (profiles, directories) after a data repair or import.
-    const secret = process.env.CRON_SECRET ?? readRootEnvValue("CRON_SECRET");
-    if (!secret) throw new Error("CRON_SECRET is not set in the environment or .env");
-    const site = flag("site") ?? "https://cumvoteaza.vercel.app";
-    // --tags=votes,bills purges only those caches (home, votes, bills, members, parties, composition, ministries, governments, coverage, search); without it, all of them.
-    const tags = flag("tags");
-    const response = await fetch(`${site}/api/cron/daily-import?revalidateOnly=1${tags ? `&tags=${encodeURIComponent(tags)}` : ""}`, { headers: { authorization: `Bearer ${secret}` } });
-    console.log(response.status, await response.text());
-    if (!response.ok) process.exitCode = 1;
+    // Purges the public site's cached data (profiles, directories) after a data repair or import; --tags=votes,bills purges only those.
+    const result = await revalidateSite({ repoRoot, site: flag("site"), tags: flag("tags") });
+    console.log(result.status, result.body);
+    if (!result.ok) process.exitCode = 1;
     return;
   }
 

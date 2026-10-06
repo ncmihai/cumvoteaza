@@ -999,6 +999,71 @@ export const coverageSnapshots = pgTable("coverage_snapshots", {
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+/**
+ * D-027: the updater's records. A run is one catch-up (dry runs are not recorded); a job is a request that waits for a worker;
+ * a heartbeat says a worker is alive; a revision is one field of one entity that changed, with the old and new value and the source.
+ */
+export const updaterRuns = pgTable("updater_runs", {
+  id: text("id").primaryKey(),
+  trigger: text("trigger").notNull(),
+  workerId: text("worker_id").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  /** running | published | held | failed | nothing_new */
+  status: text("status").notNull().default("running"),
+  gitSha: text("git_sha"),
+  steps: jsonb("steps").$type<unknown[]>().notNull().default([]),
+  held: jsonb("held").$type<unknown[]>().notNull().default([]),
+  counts: jsonb("counts").$type<Record<string, number>>().notNull().default({}),
+  issueUrl: text("issue_url"),
+  note: text("note")
+}, (table) => ({
+  startedIdx: index("updater_runs_started_idx").on(table.startedAt),
+  statusIdx: index("updater_runs_status_idx").on(table.status, table.startedAt)
+}));
+
+export const workerHeartbeats = pgTable("worker_heartbeats", {
+  workerId: text("worker_id").primaryKey(),
+  host: text("host").notNull(),
+  version: text("version"),
+  /** idle | running */
+  state: text("state").notNull().default("idle"),
+  currentRunId: text("current_run_id"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const updaterJobs = pgTable("updater_jobs", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull().default("catch_up"),
+  /** queued | running | done | failed */
+  status: text("status").notNull().default("queued"),
+  requestedBy: text("requested_by").notNull(),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  runId: text("run_id"),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  error: text("error")
+}, (table) => ({
+  statusIdx: index("updater_jobs_status_idx").on(table.status, table.requestedAt)
+}));
+
+export const dataRevisions = pgTable("data_revisions", {
+  id: text("id").primaryKey(),
+  runId: text("run_id").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  /** "created" for a new entity, otherwise the field that changed. */
+  field: text("field").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  sourceUrl: text("source_url"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => ({
+  entityIdx: index("data_revisions_entity_idx").on(table.entityType, table.entityId, table.recordedAt),
+  runIdx: index("data_revisions_run_idx").on(table.runId)
+}));
+
 export const voteCoverageSummaries = pgTable("vote_coverage_summaries", {
   voteId: text("vote_id").primaryKey().references(() => votes.id),
   coverageLevel: text("coverage_level").notNull().default("source_only"),

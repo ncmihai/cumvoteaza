@@ -42,6 +42,8 @@ export interface CoveragePageData {
   bills: { bills: number; withDossier: number; steps: number; promulgated: number; promulgatedWithGazette: number; sponsors: number; sponsorsLinked: number; lastReadAt?: string };
   lastUpdate: Array<{ chamber: CoveredChamber; lastVoteOn?: string; lastFetchedAt?: string }>;
   counts: { votes: number; bills: number; members: number; documents: number };
+  /** The updater's last good catch-up (ISO), when there is one. */
+  lastCatchUp?: string;
 }
 
 const THRESHOLD = 99;
@@ -137,15 +139,36 @@ async function getCoveragePageDataUncached(): Promise<CoveragePageData | undefin
       ...official,
       bills: { bills: billRow?.bills ?? 0, withDossier: billRow?.with_dossier ?? 0, steps: stepRow?.steps ?? 0, promulgated: billRow?.promulgated ?? 0, promulgatedWithGazette: billRow?.with_gazette ?? 0, sponsors: sponsorRow?.sponsors ?? 0, sponsorsLinked: sponsorRow?.linked ?? 0, lastReadAt: billRow?.last_read ?? undefined },
       lastUpdate: (["deputies", "senate", "joint"] as const).map((chamber) => { const row = updateRows.find((item) => item.chamber === chamber); return { chamber, lastVoteOn: row?.last_vote, lastFetchedAt: row?.last_fetched ?? undefined }; }),
-      counts: { votes: countRow?.votes ?? 0, bills: countRow?.bills ?? 0, members: countRow?.members ?? 0, documents: countRow?.documents ?? 0 }
+      counts: { votes: countRow?.votes ?? 0, bills: countRow?.bills ?? 0, members: countRow?.members ?? 0, documents: countRow?.documents ?? 0 },
+      lastCatchUp: await getLastCatchUpUncached()
     };
   } finally {
     await session.close();
   }
 }
 
-const getCachedCoveragePageData = unstable_cache(() => timed("data.coverage", getCoveragePageDataUncached), ["coverage-page-data-v2"], { revalidate: 1800, tags: [CACHE_TAGS.coverage] });
+const getCachedCoveragePageData = unstable_cache(() => timed("data.coverage", getCoveragePageDataUncached), ["coverage-page-data-v3"], { revalidate: 1800, tags: [CACHE_TAGS.coverage] });
 
 export async function getCoveragePageData(): Promise<CoveragePageData | undefined> {
   return getCachedCoveragePageData();
+}
+
+/** When the updater last finished a catch-up that found its sources in order (a published run, or one that found nothing new), as an ISO time. */
+async function getLastCatchUpUncached(): Promise<string | undefined> {
+  if (!process.env.DATABASE_URL) return undefined;
+  const session = createWebDbSession();
+  try {
+    const rows = [...(await session.db.execute<{ finished_at: string }>(sql`select finished_at::text as finished_at from updater_runs where status in ('published', 'nothing_new') and finished_at is not null order by finished_at desc limit 1`))];
+    return rows[0]?.finished_at;
+  } catch {
+    return undefined; // the table arrives with migration 0041
+  } finally {
+    await session.close();
+  }
+}
+
+const getCachedLastCatchUp = unstable_cache(() => timed("data.last-catch-up", getLastCatchUpUncached), ["last-catch-up-v1"], { revalidate: 900, tags: [CACHE_TAGS.coverage] });
+
+export async function getLastCatchUp(): Promise<string | undefined> {
+  return getCachedLastCatchUp();
 }

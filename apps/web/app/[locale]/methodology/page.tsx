@@ -122,10 +122,11 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           </Section>
 
           <Section title={ro ? "Ultima actualizare" : "Last update"}>
-            <p>{ro ? "Importurile se rulează încă la cerere, nu automat; data de mai jos este a celui mai recent vot păstrat și a ultimei pagini oficiale citite pentru el." : "Imports are still run on request, not automatically; the dates below are the most recent vote we hold and the last official page read for it."}</p>
+            <p>{ro ? "Actualizarea porneşte la cerere sau o dată pe zi (nu în timp real); datele de mai jos sunt ale celui mai recent vot păstrat și ale ultimei pagini oficiale citite pentru el." : "Updating starts on request or once a day (not in real time); the dates below are the most recent vote we hold and the last official page read for it."}</p>
             <ul className="space-y-1">
               {data.lastUpdate.map((item) => <li key={item.chamber}><strong>{voteChamberLabels[locale][item.chamber]}</strong>: {ro ? "ultimul vot" : "last vote"} {date(item.lastVoteOn)}; {ro ? "pagină citită" : "page read"} {date(item.lastFetchedAt)}</li>)}
               <li><strong>{ro ? "Dosarele proiectelor" : "Bill files"}</strong>: {ro ? "citite la" : "read on"} {date(data.bills.lastReadAt)}</li>
+              {data.lastCatchUp ? <li><strong>{ro ? "Ultima verificare automată a surselor" : "Last automatic check of the sources"}</strong>: {date(data.lastCatchUp)}</li> : null}
             </ul>
           </Section>
         </>
@@ -146,7 +147,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           <li>{ro ? "Voturile legislaturilor dinainte de 2024 sunt incomplete (Parțial); un import complet, înapoi până în 1990, este planificat separat." : "Votes of legislatures before 2024 are incomplete (Partial); a full import back to 1990 is planned separately."}</li>
           <li>{ro ? "Proiectele de dinainte de 2024 apar doar când le menționează un vot sau un proiect mai nou; pentru unele proiecte încă nu avem dosarul citit." : "Bills from before 2024 appear only when a vote or a newer bill refers to them; for some bills we do not have the file read yet."}</li>
           <li>{ro ? "Nu avem dezbaterile din plen, amendamentele pe articole și documentele comisiilor, doar pașii și documentele principale ale fiecărui proiect." : "We do not have plenary debates, article-level amendments or committee documents, only each bill's steps and main documents."}</li>
-          <li>{ro ? "Actualizarea nu este încă automată: ultima citire este scrisă mai sus." : "Updating is not automatic yet: the last read is written above."}</li>
+          <li>{ro ? "Actualizarea nu este în timp real: ultima verificare este scrisă mai sus; ce publică Camerele după ea apare la următoarea." : "Updating is not in real time: the last check is written above; what the Chambers publish after it appears at the next one."}</li>
         </ul>
       </Section>
 

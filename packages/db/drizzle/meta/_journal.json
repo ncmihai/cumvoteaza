@@ -288,6 +288,13 @@
       "when": 1791276486125,
       "tag": "0040_coverage_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791279211833,
+      "tag": "0041_updater_records",
+      "breakpoints": true
     }
   ]
 }

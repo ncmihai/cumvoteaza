@@ -71,3 +71,10 @@ export async function searchActs(token: string, year: number, number: string): P
   const answer = await soap("Search", `<Search xmlns="${NS}"><SearchModel xmlns:a="http://schemas.datacontract.org/2004/07/FreeWebService" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">${model}</SearchModel><tokenKey>${token}</tokenKey></Search>`);
   return parseLegislatieSearch(answer);
 }
+
+/** Acts of the year whose title holds the word (first page of the results; the portal answers ten at a time). Decrees of the Presidency among them are what the cabinet watcher looks at. */
+export async function searchByTitle(token: string, year: number, word: string, page = 0): Promise<LegislatieAct[]> {
+  const model = `<a:NumarPagina>${page}</a:NumarPagina><a:RezultatePagina>50</a:RezultatePagina><a:SearchAn>${year}</a:SearchAn><a:SearchNumar i:nil="true"/><a:SearchText i:nil="true"/><a:SearchTitlu>${word.replace(/[<>&]/g, "")}</a:SearchTitlu>`;
+  const answer = await soap("Search", `<Search xmlns="${NS}"><SearchModel xmlns:a="http://schemas.datacontract.org/2004/07/FreeWebService" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">${model}</SearchModel><tokenKey>${token}</tokenKey></Search>`);
+  return parseLegislatieSearch(answer);
+}
