@@ -47,6 +47,7 @@
     "coverage:publish": "tsx src/cli.ts coverage:publish",
     "repair:remove-test-votes": "tsx src/cli.ts repair:remove-test-votes",
     "repair:merge-parties": "tsx src/cli.ts repair:merge-parties",
+    "repair:current-seat-links": "tsx src/cli.ts repair:current-seat-links",
     "updater:catch-up": "tsx src/cli.ts updater:catch-up",
     "updater:status": "tsx src/cli.ts updater:status",
     "updater:request": "tsx src/cli.ts updater:request",

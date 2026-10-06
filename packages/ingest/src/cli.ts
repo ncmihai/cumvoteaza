@@ -14,6 +14,7 @@ import { backupLocalData } from "./backup";
 import { publishCoverage } from "./coverage/publish";
 import { removeTestVotes } from "./repair/remove-test-votes";
 import { mergeParties } from "./repair/merge-parties";
+import { fillCurrentSeatLinks } from "./repair/current-seat-links";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
 import { revalidateSite } from "./site-revalidate";
@@ -563,6 +564,20 @@ async function main() {
     const session = createDbSession();
     try {
       const result = await mergeParties(session.db, { persist: hasFlag("persist") });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "repair:current-seat-links") {
+    // Sprint 11a: a sitting member with no group (the roster lists one) and the organisation of each national-minority member (named on the profile page).
+    // Only adds rows, only for members that have none, only from pages already saved. Dry run unless --persist; then ingest:refresh-read-models and ingest:site:revalidate.
+    const session = createDbSession();
+    try {
+      const result = await fillCurrentSeatLinks(session.db, { persist: hasFlag("persist"), repoRoot });
       console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {
