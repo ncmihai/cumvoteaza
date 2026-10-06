@@ -18,21 +18,9 @@ Each Open question has a recommendation; the owner decides.
 - Constraints: summaries are model output, so they need the evidence link and review rules (D-008: model output never auto-publishes, or is clearly labeled as unreviewed); cost must stay near zero.
 - The existing (disabled) explanation code and its 3 tables are kept until this is decided.
 
-### Q17 — Does the new look come before the data sprints?
-- **Recommendation: yes (Sprint 11 first).** Four of the five data sprints add pages (documents on the bill page, CVs and questions on the member page, a President section, money and results on the party page); on the old look they would be built twice. The crawls in the data sprints are mostly waiting, so design work fits in the gaps. Risk: a revamp has no natural end, so Sprint 11 is capped at five core pages and the rest waits for the sweep (Sprint 16).
-
-### Q18 — Where do party logos come from?
-- The `parties` table holds only a colour. Logos are needed for about 25 parties (those with seats or an election list), not 221.
-- **Found on 6 Oct 2026, changes the starting point:** the Chamber's own profile pages carry a party logo and we already store them (`stored_assets`, type `party_logo`): 4,306 copies, one per member, but only **77 distinct images** (about 44 KB each, shown 110 px wide on the member page). So the official source exists and is in hand; what is missing is one file per party, linked to `parties`. The member photos are also stored, but they are small (150 px wide at most, about 3 KB), so large portraits would look blurry unless a larger official photo exists (source check).
-- **Recommendation:** take each logo from an official source where one exists (the electoral authorities' party register or the electoral sign on the lists); otherwise from Wikimedia Commons with the file's own licence; store `logo_source_url` and `logo_licence` for every logo; self-host the files; a party with no usable logo gets a coloured monogram, never a redrawn or guessed logo; remove on request. Party logos are mostly registered signs: showing them to identify the party in a factual, non-commercial record is normal practice, but this is not legal advice and the methodology page should say so.
-
 ### Q19 — The President's record: decorations and individual pardons
 - Decrees awarding decorations and granting individual pardons are a large share of the 36,677 and name private people.
 - **Recommendation:** count them by type and year, store no private person's name; full detail for promulgations, returned laws, Constitutional Court referrals, designations and appointments (public office holders).
-
-### Q20 — Figma plan limits and the design workflow
-- Figma is connected (account `ncmihai`, team "Mihai n's team", Starter tier, Full seat). As far as I remember, Figma's rate-limit page gives Starter plans only a handful of MCP tool calls per month (6, as I recall); the owner should check the page linked from the connection and tell me what applies.
-- **Recommendation:** if the limit is that low, Figma is for the design exploration only (the owner draws or I generate the five core screens in a few batched calls, the owner reviews them there), and the real work happens in code with screenshots in the browser pane; if the owner has a seat without that limit, I read the frames directly and take tokens from them.
 
 ---
 
@@ -59,6 +47,17 @@ Each Open question has a recommendation; the owner decides.
 | D-016 | 2026-10-03 | Keep working against production during the current build-out; create a Neon `dev` branch once the core is stable. | Owner: "we are in a dev-like working phase". |
 | D-017 | 2026-10-03 | **One admin inside the website (`/admin`, GitHub login), and the BC250 as a worker, not a server.** They communicate through the database: the admin writes job requests, the worker polls, runs, and reports progress and a heartbeat (the admin shows whether the worker is connected). The worker does not need to be always on; requests wait. | No home network exposure, one stack, analysis pages can graduate to public. |
 | D-018 | 2026-10-03 | Retire the cockpit (archived on a branch first) and do the audit cut list, **except Gemini/vote explanations**, which stay for a future summaries feature (Q12). Digi Storage stays; only the unused Vercel Blob and generic FTP upload routes go. | Owner, after the audit. |
+
+### D-029 — The UI revamp: owner's answers (2026-10-06, closes Q17, Q18 and Q20)
+- **Order (Q17):** the new look comes first (Sprints 11a and 11b), because four of the five data sprints add pages. 11a is the foundation, Home and the Vote page; 11b is Member, Party and the parties directory, Bill and Compositions. The rest waits for Sprint 16.
+- **Feeling:** it should have personality without being "wow": about 70% sharper data product (strong contrast, data first) and 30% friendly (rounded, warm wording). The current site is "a lot of things and nothing": flat, generic, and not uniform because parts of the first-ever UI were never updated (measured in the UI plan). Citizens and journalists equally; density: both work, so desktop stays dense with nothing under 12 px.
+- **Name and logo:** "CumVoteaza" stays in the header; a new logomark is chosen from six drawn options (A–F, F = the current icon). Never the Parliament's emblem or name. Dark mode later, designed in from the start (tokens).
+- **Colours and logos (Q18):** party colour on seats and chips, vote shown by icon shape and fill; party logos are the Chamber's own, already stored (77 distinct images from its profile pages), with a coloured monogram where there is none. Photos: larger official portraits (1200 × 1600 px) exist for 71% of sitting deputies and are fetched later by the owner's crawl.
+- **Parties directory:** one row per organisation (221 rows are 80 distinct names), national-minority organisations grouped in one dropdown section, a legislature selector, independents and unaffiliated collapsed.
+- **Text on the site:** only our fixed help text (written once, reviewed by the owner) and official texts; model-written summaries only later, labelled and human-approved (Q12). Derived numbers: attendance and agreement with the group's line for 2024–2028 with the formula on the methodology page, no rankings or best/worst lists.
+- **Navigation:** top bar Voturi · Proiecte de lege · Parlamentari · Partide · Guvern (Președinte when it exists); "Date și metodă" in the footer. **Home (Q12):** a combination: search and county picker, latest decisions, "what changed", Parliament now, trust strip.
+- **Motion:** subtle and once (seat wave, counts, bars, timelines), always off under reduced motion. **Pages in the first wave:** home, vote, bill, member, party and compositions.
+- **Process (Q20):** code-first with screenshots at desktop and phone, Figma later (the Figma connection works; the plan's call limit is unchecked, so nothing depends on it).
 
 ### D-028 — Backlog and the Feature track (2026-10-06)
 - **Backlog:** the rest of Sprint 9 (the morning runs, the daily job, three automatic days) and all of Sprint 10 (BC250 worker, `/admin` v1, Linux OCR) move to the Backlog in PLAN.md, with open downloads (F-1), law texts and diffs (F-6) and the "later" items.
