@@ -936,6 +936,28 @@ export const billOrdinances = pgTable("bill_ordinances", {
 }));
 
 /**
+ * Bills the Senate's Legislative Bulletin marks "prioritate legislativă" (D-034, Sprint 12c), one row per bill and session: where the label was read (the bulletin,
+ * its page) and the other labels printed with it. The bulletin does not say who asked for the label.
+ */
+export const billPriorityFlags = pgTable("bill_priority_flags", {
+  billId: text("bill_id").notNull().references(() => bills.id, { onDelete: "cascade" }),
+  /** "2025-1" (the first ordinary session of 2025, February to June) or "2025-2" (September to December). */
+  sessionId: text("session_id").notNull(),
+  sessionLabel: text("session_label").notNull(),
+  sessionStartsOn: date("session_starts_on").notNull(),
+  sessionEndsOn: date("session_ends_on").notNull(),
+  bulletinUrl: text("bulletin_url").notNull(),
+  bulletinPage: integer("bulletin_page").notNull(),
+  senateNumber: text("senate_number").notNull(),
+  urgency: boolean("urgency").notNull().default(false),
+  /** ordinary | organic, as printed beside the label. */
+  lawKind: text("law_kind")
+}, (table) => ({
+  pk: primaryKey({ columns: [table.billId, table.sessionId] }),
+  sessionIdx: index("bill_priority_flags_session_idx").on(table.sessionId)
+}));
+
+/**
  * Every document a dossier step prints, in the page's order (D-032). `bill_procedure_steps.document_id` keeps the first one; this table keeps all of them, so a
  * registration step shows its Legislative Council opinion and the Government's decision, and a report its annexes and the .doc copy beside the .pdf.
  * Rewritten with the steps (the steps are replaced as a whole on every import).

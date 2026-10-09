@@ -18,6 +18,7 @@ import { fillCurrentSeatLinks } from "./repair/current-seat-links";
 import { formatFeedback, listFeedback, markFeedback } from "./feedback";
 import { linkStepDocuments } from "./dossiers/import";
 import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from "./dossiers/ordinances";
+import { fetchBulletins, importPriorities } from "./dossiers/priorities";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
@@ -573,6 +574,28 @@ async function main() {
     try {
       const result = await importOrdinances(session.db, { repoRoot, persist: hasFlag("persist") });
       console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "bills:priorities:fetch") {
+    // Sprint 12c (D-034): the Senate's Legislative Bulletin of each ordinary session since February 2024 (five PDFs, 4 s apart), saved under data/coverage/raw/senate-bulletin.
+    // Plan only without --live.
+    const result = await fetchBulletins({ repoRoot, live: hasFlag("live"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "bills:priorities:import") {
+    // Sprint 12c (D-034): bill_priority_flags from the saved bulletins ("prioritate legislativă"). Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importPriorities(session.db, { repoRoot, persist: hasFlag("persist") });
+      console.log(JSON.stringify({ ...result, sessions: result.sessions.map((item) => ({ ...item, unmatched: item.unmatched.slice(0, 30) })) }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {
       await session.close();

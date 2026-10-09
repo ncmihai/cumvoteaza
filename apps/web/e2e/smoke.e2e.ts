@@ -127,6 +127,16 @@ test("an approval bill shows the Government ordinance it approves, with the link
   await expect(card.getByRole("link", { name: /legislatie\.just\.ro/ })).toHaveAttribute("href", /^https?:\/\/legislatie\.just\.ro\//);
 });
 
+test("a bill the Senate's bulletin marks as a legislative priority says so and links the bulletin page @db", async ({ page }) => {
+  const response = await page.goto("/ro/bills/l488-2024");
+  test.skip(response?.status() === 404, "the sample bill is not on this site");
+  const note = page.getByText(/Eticheta „prioritate legislativă”/);
+  // The bulletin flags are imported by the owner (Sprint 12c); until then this site has none, and this test says nothing there.
+  test.skip((await note.count()) === 0, "the priority flags have not been imported on this site yet");
+  await expect(page.locator("header").getByText("Prioritate legislativă").first()).toBeVisible();
+  await expect(note.locator("a").first()).toHaveAttribute("href", /^https:\/\/www\.senat\.ro\/.*\.pdf#page=\d+$/);
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));

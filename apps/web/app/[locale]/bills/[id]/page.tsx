@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Flag } from "lucide-react";
 import { clip } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -44,7 +45,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
     if (currentSlug && currentSlug !== id) permanentRedirect(`/${rawLocale}/bills/${currentSlug}`);
     notFound();
   }
-  const { bill, dossier, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts, ordinances = [] } = data;
+  const { bill, dossier, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts, ordinances = [], priorityFlags = [] } = data;
   const [hotCount, comparisons, documentConfidence] = await Promise.all([
     getHotCount("bill", bill.id),
     getBillTextComparisons(bill.id),
@@ -83,10 +84,12 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
             <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-strong">{presentation.identifier}</span>
             {bill.chamberOfOrigin !== "unknown" ? <span className="rounded-full bg-wash px-3 py-1 font-medium text-ink-soft">{locale === "ro" ? "Cameră de origine" : "Origin"}: {labels.chambers[bill.chamberOfOrigin]}</span> : <span className="rounded-full bg-wash px-3 py-1 font-medium text-muted">{locale === "ro" ? "Camera de origine nu a fost identificată" : "Source chamber not identified"}</span>}
             {bill.decisionChamber ? <span className="rounded-full bg-wash px-3 py-1 font-medium text-ink-soft">{labels.decisionChamber}: {labels.chambers[bill.decisionChamber]}</span> : null}
+            {priorityFlags.length ? <span className="inline-flex items-center gap-1.5 rounded-full bg-vote-abstain-bg px-3 py-1 font-semibold text-vote-abstain"><Flag size={14} aria-hidden="true" />{locale === "ro" ? "Prioritate legislativă" : "Legislative priority"}</span> : null}
           </div>
           <h1 lang="ro" className={`mt-3 font-display font-bold tracking-tight text-ink [overflow-wrap:anywhere] ${presentation.heading.length > 220 ? "text-xl leading-snug sm:text-2xl" : presentation.heading.length > 110 ? "text-2xl leading-tight sm:text-3xl" : "text-3xl leading-[1.1] sm:text-4xl lg:text-[2.6rem]"}`}>{presentation.heading}</h1>
           {locale === "en" ? <p className="mt-2 text-sm font-medium text-muted">Official parliamentary title, in Romanian</p> : null}
           {presentation.status !== "—" ? <p className="mt-2 text-lg text-ink-soft">{presentation.status}</p> : null}
+          {priorityFlags.length ? <p className="mt-2 text-sm leading-6 text-muted">{locale === "ro" ? <>Eticheta „prioritate legislativă” este tipărită de Senat în Buletinul legislativ, la {priorityFlags.length > 1 ? "sesiunile" : "sesiunea"} </> : <>The label “legislative priority” is printed by the Senate in its Legislative Bulletin, for the {priorityFlags.length > 1 ? "sessions" : "session"} </>}{priorityFlags.map((flag, index) => <span key={flag.sessionLabel}>{index ? ", " : ""}<a href={`${flag.bulletinUrl}#page=${flag.bulletinPage}`} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">{flag.sessionLabel} ({locale === "ro" ? "p." : "p."} {flag.bulletinPage})</a></span>)}. {locale === "ro" ? "Buletinul nu spune cine a cerut eticheta." : "The bulletin does not say who asked for the label."}</p> : null}
           {alternateIdentifiers.length ? <p className="mt-2 text-sm text-muted">{locale === "ro" ? "Alte numere" : "Other numbers"}: {alternateIdentifiers.join(", ")}</p> : null}
         </div>
         <div className="flex flex-col items-start gap-2"><HotButton entityType="bill" entityId={bill.id} initialCount={hotCount} label={labels.publicInterest} />{source ? <SourceBadge source={source} label={messages.common.source} confidence={confidenceForSource(source)} locale={locale} /> : null}</div>

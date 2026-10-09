@@ -95,7 +95,17 @@ export interface BillPageData {
   sponsorContexts: BillSponsorContext[];
   /** The Government ordinance the bill's title says it approves (D-033), with what the legislative portal says about it. */
   ordinances?: BillOrdinance[];
+  /** The sessions in which the Senate's Legislative Bulletin marks the bill "prioritate legislativă" (D-034), oldest first. */
+  priorityFlags?: BillPriorityFlag[];
   sourceKind: "database";
+}
+
+export interface BillPriorityFlag {
+  sessionLabel: string;
+  bulletinUrl: string;
+  bulletinPage: number;
+  urgency: boolean;
+  lawKind?: "ordinary" | "organic";
 }
 
 export interface BillOrdinance {
@@ -310,7 +320,7 @@ const getCachedVotePageData = unstable_cache(
 
 const getCachedBillPageData = unstable_cache(
   async (id: string) => timed(`data.bill.${id}`, () => coalesce(`bill:${id}`, () => getBillPageDataUncached(id))),
-  ["bill-page-data-ordinances-v1"],
+  ["bill-page-data-priorities-v1"],
   { revalidate: 900, tags: [CACHE_TAGS.bills] }
 );
 
@@ -702,6 +712,10 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       year: Number(row.year),
       ...(row.issued_on && row.title && row.portal_url ? { act: { issuedOn: row.issued_on, title: row.title, issuer: row.issuer ?? "Guvernul României", ...(row.gazette_number ? { gazetteNumber: row.gazette_number } : {}), ...(row.gazette_on ? { gazetteOn: row.gazette_on } : {}), portalUrl: row.portal_url } } : {})
     }));
+    // The Senate bulletin's "prioritate legislativă" label (D-034). A site deployed before the table exists simply shows none.
+    const priorityRows = await session.db.execute<{ session_label: string; bulletin_url: string; bulletin_page: number; urgency: boolean; law_kind: string | null }>(sql`
+      select session_label, bulletin_url, bulletin_page, urgency, law_kind from bill_priority_flags where bill_id = ${billRow.id} order by session_starts_on`).catch(() => []);
+    const priorityFlags: BillPriorityFlag[] = [...priorityRows].map((row) => ({ sessionLabel: row.session_label, bulletinUrl: row.bulletin_url, bulletinPage: Number(row.bulletin_page), urgency: Boolean(row.urgency), ...(row.law_kind === "ordinary" || row.law_kind === "organic" ? { lawKind: row.law_kind } : {}) }));
     const events = eventRows.map(mapBillEvent).sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
     const sponsorContexts: BillSponsorContext[] = events[0]
       ? await loadBillSponsorContexts(session.db, sponsorRows.map(mapBillSponsor), events[0].occurredOn)
@@ -725,6 +739,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       source: sourceRow ? mapSource(sourceRow) : undefined,
       governmentContext,
       ordinances,
+      priorityFlags,
       sponsorContexts: governmentContext ? sponsorContexts.map((item) => ({
         ...item,
         ...resolvePartyAlignment(item.party?.id, governmentContext)

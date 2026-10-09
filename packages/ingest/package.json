@@ -46,6 +46,8 @@
     "bills:dossiers:link-documents": "tsx src/cli.ts bills:dossiers:link-documents",
     "bills:ordinances:fetch": "tsx src/cli.ts bills:ordinances:fetch",
     "bills:ordinances:import": "tsx src/cli.ts bills:ordinances:import",
+    "bills:priorities:fetch": "tsx src/cli.ts bills:priorities:fetch",
+    "bills:priorities:import": "tsx src/cli.ts bills:priorities:import",
     "bills:gazette:fill": "tsx src/cli.ts bills:gazette:fill",
     "coverage:publish": "tsx src/cli.ts coverage:publish",
     "repair:remove-test-votes": "tsx src/cli.ts repair:remove-test-votes",
