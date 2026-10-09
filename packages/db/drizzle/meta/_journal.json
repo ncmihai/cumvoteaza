@@ -372,6 +372,13 @@
       "when": 1791576221986,
       "tag": "0052_presidential_decrees",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1791577062798,
+      "tag": "0053_elections",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,8 @@ import { fetchQuestions } from "./members/questions-fetch";
 import { importQuestions } from "./members/questions";
 import { fetchDecreePages } from "./presidency/decrees-fetch";
 import { importDecrees } from "./presidency/decrees";
+import { fetchElectionFiles } from "./elections/fetch";
+import { importElections } from "./elections/import";
 import { fetchReports, importReports, listReportSources } from "./dossiers/committee-reports";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
@@ -632,6 +634,27 @@ async function main() {
     const session = createDbSession();
     try {
       const result = await importDecrees(session.db, { repoRoot, persist: hasFlag("persist"), since: flag("since") ?? "2014-01-01" });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "elections:fetch") {
+    // Sprint 15 (D-038): the open-data files of the parliamentary elections of 2016 and 2020 (data.gov.ro, 12 files), saved under data/coverage/raw. Plan only without --live.
+    const result = await fetchElectionFiles({ repoRoot, live: hasFlag("live"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "elections:import") {
+    // Sprint 15 (D-038): elections and election_list_results (2016 and 2020) from the saved open-data files. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importElections(session.db, { repoRoot, persist: hasFlag("persist") });
       console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {

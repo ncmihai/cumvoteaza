@@ -1,3 +1,4 @@
+import { getPartyElections } from "@/lib/election-data";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -41,6 +42,7 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
   }
   const { party, legislatureSummaries, groupTotals, votes, formationEvents, governmentParticipations, tribunalSources } = data;
   const members = await getPartyCurrentMembers(party.id);
+  const electionResults = await getPartyElections(party.id);
   const kind = (party.kind ?? "party") as keyof (typeof KIND_LABEL)["ro"];
   const chamberSeats = (chamber: "deputies" | "senate") => {
     const entry = composition.chambers.find((candidate) => candidate.chamber === chamber);
@@ -144,6 +146,22 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
                   </tbody>
                 </table>
               </div>
+            </section>
+          ) : null}
+
+          {electionResults.length > 0 ? (
+            <section aria-labelledby="election-results">
+              <SectionHeader eyebrow={ro ? "Alegeri" : "Elections"} title={ro ? "La alegerile parlamentare" : "At the parliamentary elections"} href={`/${locale}/elections`} linkLabel={ro ? "Toate rezultatele" : "All results"} />
+              <div className="mt-5 overflow-x-auto rounded-card border border-line bg-surface" tabIndex={0} role="region" aria-label={ro ? "Rezultate electorale" : "Election results"}>
+                <table className="w-full min-w-[28rem] border-collapse text-sm">
+                  <caption className="sr-only">{ro ? "Voturile și mandatele partidului la fiecare alegere" : "The party's votes and mandates at each election"}</caption>
+                  <thead className="bg-wash text-left text-xs text-ink-soft"><tr><th scope="col" className="px-4 py-2 font-semibold">{ro ? "Alegerea" : "Election"}</th><th scope="col" className="px-4 py-2 font-semibold">{ro ? "Camera" : "Chamber"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Voturi" : "Votes"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">%</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Mandate" : "Mandates"}</th></tr></thead>
+                  <tbody className="divide-y divide-line">
+                    {electionResults.map((row) => <tr key={`${row.election.id}-${row.chamber}`}><td className="px-4 py-2 font-medium text-ink"><Link href={`/${locale}/elections?election=${row.election.id}&chamber=${row.chamber}`} className="hover:text-brand">{row.election.heldOn.slice(0, 4)}</Link></td><td className="px-4 py-2 text-ink-soft">{row.chamber === "senate" ? (ro ? "Senat" : "Senate") : ro ? "Camera Deputaților" : "Chamber of Deputies"}</td><td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.votes.toLocaleString(ro ? "ro-RO" : "en-GB")}</td><td className="px-4 py-2 text-right tabular-nums text-ink-soft">{(row.share * 100).toLocaleString(ro ? "ro-RO" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td><td className="px-4 py-2 text-right font-semibold tabular-nums text-ink">{row.mandates}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Din datele deschise ale AEP, doar alegerile din 2016 și 2020 (cele din 2024 nu sunt acolo). Un partid care a candidat într-o alianță apare sub numele alianței, nu aici." : "From the AEP's open data, only the 2016 and 2020 elections (2024 is not there). A party that ran in an alliance appears under the alliance's name, not here."}</p>
             </section>
           ) : null}
         </div>

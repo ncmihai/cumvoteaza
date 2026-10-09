@@ -1166,6 +1166,42 @@ export const presidentialDecrees = pgTable("presidential_decrees", {
   issuedIdx: index("presidential_decrees_issued_idx").on(table.issuedOn)
 }));
 
+/**
+ * The parliamentary elections whose results the Permanent Electoral Authority publishes as open data (Sprint 15, D-038): 2016 and 2020. The 2024 elections are not in that open data
+ * (their results sit on a site that answers a browser check to any program), so they are not here and the site says so.
+ */
+export const elections = pgTable("elections", {
+  id: text("id").primaryKey(),
+  labelRo: text("label_ro").notNull(),
+  labelEn: text("label_en").notNull(),
+  heldOn: date("held_on").notNull(),
+  /** The legislature the election produced, by the year it began ("2020"). */
+  legislatureYear: text("legislature_year").notNull(),
+  portalUrl: text("portal_url").notNull(),
+  license: text("license").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+});
+
+/**
+ * The votes and mandates of each list in each circumscription of one election and chamber: the sum over its polling stations and the votes by mail, as the AEP's files give them.
+ * `party_id` is set only where the list's printed name is exactly a party we hold; an alliance or a minority organisation stays a name.
+ */
+export const electionListResults = pgTable("election_list_results", {
+  electionId: text("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
+  chamber: chamberEnum("chamber").notNull(),
+  circumscriptionNumber: integer("circumscription_number").notNull(),
+  circumscription: text("circumscription").notNull(),
+  listName: text("list_name").notNull(),
+  votes: integer("votes").notNull(),
+  mandates: integer("mandates").notNull().default(0),
+  partyId: text("party_id").references(() => parties.id),
+  independent: boolean("independent").notNull().default(false)
+}, (table) => ({
+  pk: primaryKey({ columns: [table.electionId, table.chamber, table.circumscriptionNumber, table.listName] }),
+  partyIdx: index("election_list_results_party_idx").on(table.partyId),
+  scopeIdx: index("election_list_results_scope_idx").on(table.electionId, table.chamber)
+}));
+
 export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {
   id: text("id").primaryKey(),
   documentId: text("document_id").notNull().references(() => documents.id),

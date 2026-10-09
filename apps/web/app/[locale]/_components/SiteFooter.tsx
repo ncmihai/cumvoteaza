@@ -31,6 +31,7 @@ export async function SiteFooter({ locale }: { locale: AppLocale }) {
             <li><Link href={at("/members")} className={link}>{ro ? "Parlamentari" : "Members"}</Link></li>
             <li><Link href={at("/compozitii")} className={link}>{ro ? "Compoziția Parlamentului" : "Composition of Parliament"}</Link></li>
             <li><Link href={at("/leadership")} className={link}>{ro ? "Conducerea Parlamentului" : "Parliament's leadership"}</Link></li>
+            <li><Link href={at("/elections")} className={link}>{ro ? "Alegeri parlamentare" : "Parliamentary elections"}</Link></li>
             <li><Link href={at("/parties")} className={link}>{ro ? "Partide" : "Parties"}</Link></li>
             <li><Link href={at("/governments")} className={link}>{ro ? "Guverne" : "Governments"}</Link></li>
             <li><Link href={at("/ministries")} className={link}>{ro ? "Ministere" : "Ministries"}</Link></li>

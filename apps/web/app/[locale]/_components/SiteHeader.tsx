@@ -24,11 +24,12 @@ function navigation(locale: AppLocale): NavItem[] {
     { key: "votes", label: ro ? "Voturi" : "Votes", href: at("/votes"), match: ["/votes"] },
     { key: "bills", label: ro ? "Proiecte de lege" : "Bills", href: at("/bills"), match: ["/bills"] },
     {
-      key: "members", label: ro ? "Parlamentari" : "Members", href: at("/members"), match: ["/members", "/compozitii", "/leadership"],
+      key: "members", label: ro ? "Parlamentari" : "Members", href: at("/members"), match: ["/members", "/compozitii", "/leadership", "/elections"],
       children: [
         { label: ro ? "Toți parlamentarii" : "All members", href: at("/members"), hint: ro ? "Deputați și senatori, după județ sau partid" : "Deputies and senators, by county or party" },
         { label: ro ? "Compoziția Parlamentului" : "Composition of Parliament", href: at("/compozitii"), hint: ro ? "Locurile fiecărui partid, acum și în timp" : "Each party's seats, now and over time" },
-        { label: ro ? "Conducerea" : "Leadership", href: at("/leadership"), hint: ro ? "Birouri permanente, lideri de grup, comisii" : "Permanent bureaus, group leaders, committees" }
+        { label: ro ? "Conducerea" : "Leadership", href: at("/leadership"), hint: ro ? "Birouri permanente, lideri de grup, comisii" : "Permanent bureaus, group leaders, committees" },
+        { label: ro ? "Alegeri parlamentare" : "Parliamentary elections", href: at("/elections"), hint: ro ? "Voturi și mandate pe liste, 2016 și 2020" : "Votes and mandates by list, 2016 and 2020" }
       ]
     },
     { key: "parties", label: ro ? "Partide" : "Parties", href: at("/parties"), match: ["/parties"] },

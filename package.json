@@ -67,6 +67,8 @@
     "ingest:members:questions:import": "npm --workspace @cumsevoteaza/ingest run members:questions:import --",
     "ingest:presidency:decrees:fetch": "npm --workspace @cumsevoteaza/ingest run presidency:decrees:fetch --",
     "ingest:presidency:decrees:import": "npm --workspace @cumsevoteaza/ingest run presidency:decrees:import --",
+    "ingest:elections:fetch": "npm --workspace @cumsevoteaza/ingest run elections:fetch --",
+    "ingest:elections:import": "npm --workspace @cumsevoteaza/ingest run elections:import --",
     "ingest:members:profile-facts:import": "npm --workspace @cumsevoteaza/ingest run members:profile-facts:import --",
     "ingest:bills:reports:fetch": "npm --workspace @cumsevoteaza/ingest run bills:reports:fetch --",
     "ingest:bills:reports:import": "npm --workspace @cumsevoteaza/ingest run bills:reports:import --",

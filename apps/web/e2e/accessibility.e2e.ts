@@ -87,6 +87,11 @@ for (const size of sizes) {
       expect(await violations(page)).toEqual([]);
     });
 
+    test("the elections page @db", async ({ page }) => {
+      await page.goto("/ro/elections");
+      expect(await violations(page)).toEqual([]);
+    });
+
     test("the presidency page, with its table of types and years @db", async ({ page }) => {
       await page.goto("/ro/presidency");
       expect(await violations(page)).toEqual([]);
