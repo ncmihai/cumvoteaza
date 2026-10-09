@@ -181,6 +181,16 @@ test("the elections page gives each list's votes and mandates, and a party page 
   await expect(page.getByRole("table", { name: "Voturile și mandatele partidului la fiecare alegere" })).toBeVisible();
 });
 
+test("a member of the 2020 legislature says which list the seat was won on, with the circumscription's results @db", async ({ page }) => {
+  const response = await page.goto("/ro/members/mirela-elena-adomnicai?legislature=leg-2020-2024");
+  test.skip(response?.status() === 404, "the sample member is not on this site");
+  const section = page.getByRole("region", { name: "Cum a ajuns aici" });
+  // The election results are imported by the owner (Sprint 15); until then this site has none, and this test says nothing there.
+  test.skip((await section.count()) === 0, "the election results have not been imported on this site yet");
+  await expect(section).toContainText("Partidul Social Democrat");
+  await expect(section.getByRole("link", { name: /Rezultatele circumscripției/ })).toHaveAttribute("href", /\/ro\/elections\?election=parl-2020&chamber=deputies&circ=\d+/);
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));

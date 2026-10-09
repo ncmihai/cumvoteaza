@@ -24,3 +24,16 @@ export function countyLabel(constituency: string, locale: "ro" | "en"): string {
   if (key === "diaspora") return locale === "ro" ? "Diaspora" : "Diaspora";
   return titleCaseRo(constituency);
 }
+
+const SMALL_WORDS = new Set(["din", "de", "a", "al", "ai", "ale", "și", "pentru", "cu", "la", "în", "cel"]);
+const ACRONYMS = new Set(["usr", "plus", "aur", "udmr", "psd", "pnl", "pmp", "alde", "ro.as.it."]);
+
+/** A name the AEP prints in capitals, written the usual way: "ALIANȚA USR PLUS" → "Alianța USR PLUS", "UNIUNEA DEMOCRATĂ MAGHIARĂ DIN ROMÂNIA" → "Uniunea Democrată Maghiară din România", "BISTRIȚA-NĂSĂUD" → "Bistrița-Năsăud". */
+export function officialCase(value: string): string {
+  return normalizeRomanian(value).toLowerCase().split(/(\s+)/).map((word, index) => {
+    if (/^\s+$/.test(word)) return word;
+    if (ACRONYMS.has(word)) return word.toUpperCase();
+    if (index > 0 && SMALL_WORDS.has(word)) return word;
+    return word.replace(/(^|[-“"(])(\p{L})/gu, (_, before: string, letter: string) => `${before}${letter.toUpperCase()}`);
+  }).join("");
+}

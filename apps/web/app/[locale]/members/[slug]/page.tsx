@@ -26,6 +26,8 @@ import { OfficialActivityPanel } from "../../_components/OfficialActivityPanel";
 import { MemberBodiesPanel } from "../../_components/MemberBodiesPanel";
 import { QuestionsSummary } from "../../_components/QuestionsSummary";
 import { getQuestionsView } from "@/lib/question-data";
+import { getMandateElection } from "@/lib/election-data";
+import { officialCase } from "@/lib/text";
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string }> }): Promise<Metadata> {
   const { locale: rawLocale, slug } = await params;
@@ -48,6 +50,10 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity, birth, cv, bodies } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
   const questionsView = await getQuestionsView({ memberSlug: slug });
+  // The list the mandate was won on, where the AEP's open data covers that election (2016, 2020).
+  const mandateElection = mandate && selectedLegislature && (mandate.chamber === "deputies" || mandate.chamber === "senate")
+    ? await getMandateElection({ legislatureYear: selectedLegislature.label.slice(0, 4), chamber: mandate.chamber, constituency: mandate.constituency, partyName: party?.name })
+    : undefined;
   const voteStats = mandate ? await getMemberVoteStats(member.id, mandate.chamber, mandate.startsOn, mandate.endsOn ?? undefined) : undefined;
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
@@ -167,6 +173,15 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
 
       <div className="min-w-0 space-y-6">
         <OfficialActivityPanel items={officialActivity} locale={locale} />
+        {mandateElection ? (
+          <section className="rounded-card border border-line bg-surface p-6" aria-labelledby="mandate-election">
+            <h2 id="mandate-election" className="font-display text-2xl font-bold text-ink">{ro ? "Cum a ajuns aici" : "How they got the seat"}</h2>
+            <p className="mt-3 text-sm leading-6 text-ink-soft">{ro
+              ? `Mandat obținut pe lista ${officialCase(mandateElection.listName)} în circumscripția ${officialCase(mandateElection.circumscription)}, la alegerile din ${mandateElection.election.heldOn.slice(0, 4)}: lista a avut ${mandateElection.votes.toLocaleString("ro-RO")} de voturi (${(mandateElection.share * 100).toLocaleString("ro-RO", { maximumFractionDigits: 1 })}% în circumscripție) și ${mandateElection.mandates} ${mandateElection.mandates === 1 ? "mandat" : "mandate"}.`
+              : `Seat won on the ${officialCase(mandateElection.listName)} list in the ${officialCase(mandateElection.circumscription)} circumscription at the ${mandateElection.election.heldOn.slice(0, 4)} elections: the list had ${mandateElection.votes.toLocaleString("en-GB")} votes (${(mandateElection.share * 100).toLocaleString("en-GB", { maximumFractionDigits: 1 })}% in the circumscription) and ${mandateElection.mandates} ${mandateElection.mandates === 1 ? "mandate" : "mandates"}.`}</p>
+            <Link href={`/${locale}/elections?election=${mandateElection.election.id}&chamber=${mandateElection.chamber}&circ=${mandateElection.circumscriptionNumber}`} className="mt-2 inline-flex text-sm font-bold text-brand hover:text-brand-strong">{ro ? "Rezultatele circumscripției →" : "The circumscription's results →"}</Link>
+          </section>
+        ) : null}
         <QuestionsSummary view={questionsView} locale={locale} filter={`member=${encodeURIComponent(slug)}`} as="asker" />
         <MemberBodiesPanel bodies={bodies} locale={locale} />
         {governmentRoles.length ? (

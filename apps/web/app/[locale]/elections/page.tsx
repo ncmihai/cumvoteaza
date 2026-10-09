@@ -4,7 +4,7 @@ import { ExternalLink, Vote } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getElectionView } from "@/lib/election-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
-import { normalizeRomanian } from "@/lib/text";
+import { officialCase } from "@/lib/text";
 import { titled } from "@/lib/page-metadata";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -13,17 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 type Query = { election?: string; chamber?: string; circ?: string };
 
-const SMALL_WORDS = new Set(["din", "de", "a", "al", "ai", "ale", "și", "pentru", "cu", "la", "în", "cel"]);
-const ACRONYMS = new Set(["usr", "plus", "aur", "udmr", "psd", "pnl", "pmp", "alde", "ro.as.it."]);
-
-/** A list or a county as the AEP prints it, in capitals, written the usual way: "ALIANȚA USR PLUS" → "Alianța USR PLUS", "UNIUNEA DEMOCRATĂ MAGHIARĂ DIN ROMÂNIA" → "Uniunea Democrată Maghiară din România". */
-const titleCase = (value: string) =>
-  normalizeRomanian(value).toLowerCase().split(/(\s+)/).map((word, index) => {
-    if (/^\s+$/.test(word)) return word;
-    if (ACRONYMS.has(word)) return word.toUpperCase();
-    if (index > 0 && SMALL_WORDS.has(word)) return word;
-    return word.replace(/(^|[-“"(])(\p{L})/gu, (_, before: string, letter: string) => `${before}${letter.toUpperCase()}`);
-  }).join("");
+const titleCase = officialCase;
 
 export default async function ElectionsPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<Query> }) {
   const { locale: rawLocale } = await params;

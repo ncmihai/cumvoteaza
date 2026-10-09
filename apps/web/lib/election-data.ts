@@ -130,3 +130,69 @@ const cachedPartyElections = unstable_cache(async (partyId: string) => queryPart
 export function getPartyElections(partyId: string): Promise<PartyElectionRow[]> {
   return cachedPartyElections(partyId);
 }
+
+export interface MandateElection {
+  election: ElectionInfo;
+  chamber: "deputies" | "senate";
+  circumscription: string;
+  circumscriptionNumber: number;
+  listName: string;
+  votes: number;
+  /** The list's share of the circumscription's list votes. */
+  share: number;
+  /** The mandates the list won in the circumscription. */
+  mandates: number;
+}
+
+const foldKey = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const bareKey = (value: string) => foldKey(value).replace(/^partidul /, "");
+
+async function queryElectionRows(electionId: string, chamber: "deputies" | "senate") {
+  if (!process.env.DATABASE_URL) return [];
+  const session = createWebDbSession();
+  try {
+    const rows = await session.db.execute<{ circumscription_number: number; circumscription: string; list_name: string; votes: number; mandates: number; independent: boolean }>(sql`
+      select circumscription_number, circumscription, list_name, votes, mandates, independent from election_list_results where election_id = ${electionId} and chamber = ${chamber}`);
+    return [...rows].map((row) => ({ circumscriptionNumber: Number(row.circumscription_number), circumscription: row.circumscription, listName: row.list_name, votes: Number(row.votes), mandates: Number(row.mandates), independent: Boolean(row.independent) }));
+  } catch {
+    return [];
+  } finally {
+    await session.close();
+  }
+}
+
+const cachedElectionRows = unstable_cache(async (electionId: string, chamber: "deputies" | "senate") => queryElectionRows(electionId, chamber), ["election-rows-v1"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+
+/**
+ * The list a mandate was won on, where the open data covers that election: the election that began the mandate's legislature (2016, 2020), the mandate's chamber and constituency, and the list whose
+ * printed name is the party the member was elected for, with or without "Partidul". Nothing when any of these does not match exactly.
+ */
+export async function getMandateElection(options: { legislatureYear: string; chamber: "deputies" | "senate"; constituency?: string; partyName?: string }): Promise<MandateElection | undefined> {
+  if (!options.constituency || !options.partyName) return undefined;
+  const electionId = `parl-${options.legislatureYear}`;
+  const rows = await cachedElectionRows(electionId, options.chamber);
+  if (rows.length === 0) return undefined;
+  const circumscriptionKey = foldKey(options.constituency);
+  const inCircumscription = rows.filter((row) => foldKey(row.circumscription) === circumscriptionKey || foldKey(row.circumscription).replace(/^municipiul /, "") === circumscriptionKey);
+  const list = inCircumscription.find((row) => !row.independent && bareKey(row.listName) === bareKey(options.partyName!));
+  if (!list) return undefined;
+  const total = inCircumscription.reduce((sum, row) => sum + row.votes, 0);
+  const info = [...(await getElectionInfo())].find((item) => item.id === electionId);
+  if (!info) return undefined;
+  return { election: info, chamber: options.chamber, circumscription: list.circumscription, circumscriptionNumber: list.circumscriptionNumber, listName: list.listName, votes: list.votes, share: total ? list.votes / total : 0, mandates: list.mandates };
+}
+
+async function queryElectionInfo(): Promise<ElectionInfo[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const session = createWebDbSession();
+  try {
+    const rows = await session.db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string }>(sql`select id, label_ro, label_en, held_on::text, legislature_year, portal_url, license from elections`);
+    return [...rows].map((row) => ({ id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license }));
+  } catch {
+    return [];
+  } finally {
+    await session.close();
+  }
+}
+
+const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v1"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
