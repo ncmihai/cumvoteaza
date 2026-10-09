@@ -200,6 +200,8 @@ export interface MemberPageData {
   sponsoredBills: Bill[];
   /** Counts the institution itself publishes about this member (Senate cards), with the date they were read. */
   officialActivity: MemberOfficialActivityItem[];
+  /** The date of birth the Chamber prints on the member's profile, with that page (D-036); absent when no page prints one or the person's profiles disagree. */
+  birth?: { date: string; sourceUrl: string };
   sourceKind: "database";
 }
 
@@ -343,7 +345,7 @@ const getCachedMemberDirectoryData = unstable_cache(
 const getCachedMemberPageData = unstable_cache(
   async (slug: string, options: { legislature?: string } = {}) =>
     timed(`data.member.${slug}`, () => coalesce(`member:${slug}:${options.legislature ?? ""}`, () => getMemberPageDataUncached(slug, options))),
-  ["member-page-data-integrity-v2"],
+  ["member-page-data-integrity-v3"],
   { revalidate: 900, tags: [CACHE_TAGS.members] }
 );
 
@@ -1046,6 +1048,11 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       .from(schema.memberOfficialActivity)
       .where(and(inArray(schema.memberOfficialActivity.memberId, memberIds), eq(schema.memberOfficialActivity.legislatureId, selectedLegislature?.id ?? "")))
       .catch(() => []);
+    // The date of birth; the table exists once migration 0048 is applied.
+    const biographyRows = memberRow.personId
+      ? await session.db.select().from(schema.personBiographies).where(eq(schema.personBiographies.personId, memberRow.personId)).catch(() => [])
+      : [];
+    const biography = biographyRows[0];
 
     return {
       member,
@@ -1064,6 +1071,7 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       votes: selectedVotes.individualVotes,
       voteRecords: selectedVotes.voteRecords,
       sponsoredBills,
+      ...(biography?.birthDate && biography.birthDateSourceUrl ? { birth: { date: biography.birthDate, sourceUrl: biography.birthDateSourceUrl } } : {}),
       officialActivity: officialActivityRows.map((row) => ({ metric: row.metric, value: row.value, outOf: row.outOf ?? undefined, detail: row.detail ?? undefined, asOf: row.asOf, sourceUrl: row.sourceUrl, chamber: row.chamber === "senate" ? "senate" as const : "deputies" as const })),
       sourceKind: "database"
     };

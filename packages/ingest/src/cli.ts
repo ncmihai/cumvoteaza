@@ -19,6 +19,7 @@ import { formatFeedback, listFeedback, markFeedback } from "./feedback";
 import { linkStepDocuments } from "./dossiers/import";
 import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from "./dossiers/ordinances";
 import { fetchBulletins, importPriorities } from "./dossiers/priorities";
+import { importProfileFacts } from "./members/profile-facts";
 import { fetchReports, importReports, listReportSources } from "./dossiers/committee-reports";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
@@ -575,6 +576,19 @@ async function main() {
     try {
       const result = await importOrdinances(session.db, { repoRoot, persist: hasFlag("persist") });
       console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "members:profile-facts:import") {
+    // Sprint 13a (D-036): date of birth (the header of every saved Chamber profile page) and the deputies' published counts. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importProfileFacts(session.db, { repoRoot, persist: hasFlag("persist") });
+      console.log(JSON.stringify({ ...result, sittingWithoutBirth: result.sittingWithoutBirth.slice(0, 40), disagreements: result.disagreements.slice(0, 40) }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {
       await session.close();

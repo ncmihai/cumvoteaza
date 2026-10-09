@@ -3,7 +3,7 @@ import { formatDate } from "@cumsevoteaza/parliament-model";
 import type { MemberOfficialActivityItem } from "@/lib/data";
 import type { AppLocale } from "@/lib/i18n";
 
-const ORDER = ["initiatives", "speeches", "evote_attendance", "questions", "interpellations", "interpellations_prime_minister", "political_declarations", "motions_signed"] as const;
+const ORDER = ["initiatives", "speeches", "evote_attendance", "questions", "interpellations", "questions_and_interpellations", "interpellations_prime_minister", "political_declarations", "motions_signed"] as const;
 
 const LABELS: Record<(typeof ORDER)[number], { ro: string; en: string }> = {
   initiatives: { ro: "Inițiative legislative", en: "Legislative initiatives" },
@@ -11,6 +11,7 @@ const LABELS: Record<(typeof ORDER)[number], { ro: string; en: string }> = {
   evote_attendance: { ro: "Prezență la votul electronic", en: "Electronic-vote attendance" },
   questions: { ro: "Întrebări", en: "Questions" },
   interpellations: { ro: "Interpelări", en: "Interpellations" },
+  questions_and_interpellations: { ro: "Întrebări și interpelări", en: "Questions and interpellations" },
   interpellations_prime_minister: { ro: "Interpelări adresate prim-ministrului", en: "Interpellations to the Prime Minister" },
   political_declarations: { ro: "Declarații politice", en: "Political declarations" },
   motions_signed: { ro: "Moțiuni semnate", en: "Motions signed" }

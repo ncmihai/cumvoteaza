@@ -337,6 +337,13 @@
       "when": 1791571437777,
       "tag": "0047_committee_report_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791572950789,
+      "tag": "0048_person_biographies",
+      "breakpoints": true
     }
   ]
 }

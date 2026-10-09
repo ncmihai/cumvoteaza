@@ -272,6 +272,18 @@ export const people = pgTable("people", {
 }));
 
 /**
+ * What an official page says about the person themselves (Sprint 13, D-036): the date of birth printed in the header of the Chamber's profile pages,
+ * with the page it comes from. Nothing here is guessed or taken from a third party; a person whose profiles disagree has no date. Marital status and
+ * children are never stored (D-021).
+ */
+export const personBiographies = pgTable("person_biographies", {
+  personId: text("person_id").primaryKey().references(() => people.id, { onDelete: "cascade" }),
+  birthDate: date("birth_date"),
+  birthDateSourceUrl: text("birth_date_source_url"),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+});
+
+/**
  * Retired person/member IDs and the ID that replaced them. Every importer resolves IDs through this
  * table, so a merge is never undone by re-running an old import that still derives the old ID.
  */

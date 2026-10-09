@@ -137,6 +137,16 @@ test("a bill the Senate's bulletin marks as a legislative priority says so and l
   await expect(note.locator("a").first()).toHaveAttribute("href", /^https:\/\/www\.senat\.ro\/.*\.pdf#page=\d+$/);
 });
 
+test("a member's date of birth comes with the official profile it was read from @db", async ({ page }) => {
+  const response = await page.goto("/ro/members/mirela-elena-adomnicai");
+  test.skip(response?.status() === 404, "the sample member is not on this site");
+  const fact = page.locator("dl div").filter({ hasText: "Data nașterii" }).first();
+  // The dates are imported by the owner (Sprint 13a); until then this site has none, and this test says nothing there.
+  test.skip((await fact.count()) === 0, "the dates of birth have not been imported on this site yet");
+  await expect(fact.locator("time")).toHaveAttribute("datetime", "1970-08-15");
+  await expect(fact.getByRole("link", { name: /Sursa datei nașterii/ })).toHaveAttribute("href", /^https:\/\/(www\.)?cdep\.ro\/ords\/pls\/parlam\/structura\.mp\?/);
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));

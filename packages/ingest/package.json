@@ -48,6 +48,7 @@
     "bills:ordinances:import": "tsx src/cli.ts bills:ordinances:import",
     "bills:priorities:fetch": "tsx src/cli.ts bills:priorities:fetch",
     "bills:priorities:import": "tsx src/cli.ts bills:priorities:import",
+    "members:profile-facts:import": "tsx src/cli.ts members:profile-facts:import",
     "bills:reports:fetch": "tsx src/cli.ts bills:reports:fetch",
     "bills:reports:import": "tsx src/cli.ts bills:reports:import",
     "bills:gazette:fill": "tsx src/cli.ts bills:gazette:fill",
