@@ -279,6 +279,15 @@ test.describe("on a phone", () => {
     }
   });
 
+  test("the header and the home page fit phones down to 320 px, with no sideways scroll", async ({ page }) => {
+    for (const width of [320, 340, 360]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/ro");
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `sideways scroll at ${width} px`).toBeLessThanOrEqual(0);
+    }
+  });
+
   test("a bill's title is readable: wider than a few letters @db", async ({ page }) => {
     const href = await firstHref(page, "/ro/bills", "/ro/bills/");
     test.skip(!href, "no bill on the list");

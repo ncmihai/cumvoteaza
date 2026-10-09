@@ -18,7 +18,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
   const visibleAlignments = context.alignments.filter((item) => item.alignment !== "opposition" && item.alignment !== "unknown");
 
   return (
-    <section className="mt-6 border border-line bg-white">
+    <section className="mt-6 rounded-card border border-line bg-surface">
       <div className="grid gap-4 p-4 md:grid-cols-[1fr_2fr]">
         <div>
           <div className="text-xs font-semibold uppercase text-brand-strong">{labels.title}</div>
@@ -41,7 +41,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
               {visibleAlignments.map((item) => (
                 <span
                   key={`${item.party.id}-${item.alignment}-${item.startsOn}`}
-                  className="inline-flex items-center gap-2 border border-line px-2 py-1 text-sm text-ink-soft"
+                  className="inline-flex items-center gap-2 border border-line px-2 py-1 text-sm text-ink-soft rounded-control"
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.party.color }} />
                   <span className="font-medium">{item.party.shortName}</span>
@@ -65,7 +65,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
           <div className="text-xs font-semibold uppercase text-muted">{labels.voteGroupContext}</div>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {voteGroups.map((item) => (
-              <div key={`${item.group.id}-${item.totals.id}`} className="border border-line px-3 py-2 text-sm">
+              <div key={`${item.group.id}-${item.totals.id}`} className="border border-line px-3 py-2 text-sm rounded-control">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-2 font-medium text-ink">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.group.color }} />
@@ -94,7 +94,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
           <div className="text-xs font-semibold uppercase text-muted">{labels.sponsorContext}</div>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {billSponsors.map((item) => (
-              <div key={item.sponsor.id} className="border border-line px-3 py-2 text-sm">
+              <div key={item.sponsor.id} className="border border-line px-3 py-2 text-sm rounded-control">
                 <div className="font-medium text-ink">
                   {item.member ? (
                     <Link href={`/${locale}/members/${item.member.slug}`} className="underline">

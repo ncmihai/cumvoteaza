@@ -56,7 +56,7 @@ export function JointVoteBreakdown({ locale, nominalVotes, groups, groupMarks = 
       : "Deputies and senators vote together; majorities are counted against all parliamentarians combined."}</p>
     <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{CHOICES.map((choice) => <li key={choice} className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-3" style={{ background: COLORS[choice] }}/>{labels[choice]}</li>)}</ul>
     {sections.map((section) => section.rows.length ? <div key={section.title} className="mt-5">
-      <h3 className="font-serif text-lg font-semibold text-ink">{section.title}</h3>
+      <h3 className="font-display text-lg font-bold text-ink">{section.title}</h3>
       <div className="mt-2 grid gap-2">{section.rows.map((row) => {
         const n = total(row.tally);
         return <div key={row.label} className="grid grid-cols-[minmax(110px,170px)_minmax(0,1fr)_auto] items-center gap-3 text-xs">

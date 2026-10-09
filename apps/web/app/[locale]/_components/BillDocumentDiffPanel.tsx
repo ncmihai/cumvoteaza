@@ -12,7 +12,7 @@ export function BillDocumentDiffPanel({
   if (comparisons.length === 0) return null;
 
   return (
-    <section className="border border-line bg-white">
+    <section className="rounded-card border border-line bg-surface">
       <details>
         <summary className="cursor-pointer border-b border-line px-4 py-3 font-semibold text-ink">
           {labels.title}
@@ -21,7 +21,7 @@ export function BillDocumentDiffPanel({
           <p className="text-sm text-muted">{labels.note}</p>
           <div className="mt-4 space-y-4">
             {comparisons.map((comparison) => (
-              <div key={`${comparison.from.documentId}-${comparison.to.documentId}`} className="border border-line">
+              <div key={`${comparison.from.documentId}-${comparison.to.documentId}`} className="border border-line rounded-control">
                 <div className="border-b border-line bg-wash px-3 py-2 text-sm">
                   <span className="font-semibold">{comparison.from.documentKind}</span>
                   {" -> "}

@@ -57,7 +57,7 @@ export function PartyMark({ party, size = 24, className = "" }: { party: PartyMa
   const box = { width: size, height: size };
   if (party.logoAssetId) {
     // Through the image optimizer: the stored file can be far larger than the 16-72 px it is shown at.
-    return <Image src={`/api/assets/${encodeURIComponent(party.logoAssetId)}`} alt="" width={size} height={size} sizes={`${size}px`} className={`shrink-0 rounded-md bg-white object-contain ring-1 ring-line ${className}`} style={box} />;
+    return <Image src={`/api/assets/${encodeURIComponent(party.logoAssetId)}`} alt="" width={size} height={size} sizes={`${size}px`} className={`shrink-0 rounded-md bg-surface object-contain ring-1 ring-line ${className}`} style={box} />;
   }
   const text = monogramOf(party.shortName);
   const fontSize = Math.max(8, Math.round(size * (text.length > 3 ? 0.3 : 0.36)));

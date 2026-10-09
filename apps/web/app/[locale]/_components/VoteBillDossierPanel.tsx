@@ -70,7 +70,7 @@ export function VoteBillDossierPanel({
   const storedTextDocuments = documents.filter((document) => document.textStatus === "stored");
 
   return (
-    <section className="mt-3 max-w-5xl border border-line bg-white text-sm">
+    <section className="mt-3 max-w-5xl rounded-card border border-line bg-surface text-sm">
       <div className="p-4">
         <div className="text-xs font-semibold uppercase text-brand-strong">{labels.billDossier}</div>
         <Link href={billHref} className="font-medium text-ink underline">
@@ -95,12 +95,12 @@ export function VoteBillDossierPanel({
         {sponsorContexts.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {sponsorContexts.slice(0, 8).map((item) => (
-              <span key={item.sponsor.id} className="inline-flex items-center gap-1 border border-line px-2 py-1 text-xs text-ink-soft">
+              <span key={item.sponsor.id} className="inline-flex items-center gap-1 border border-line px-2 py-1 text-xs text-ink-soft rounded-control">
                 <span className="font-medium">{item.group?.shortName ?? item.party?.shortName ?? item.sponsor.name}</span>
                 <span className="text-muted">{alignmentLabel(item.alignment, locale)}</span>
               </span>
             ))}
-            {sponsorContexts.length > 8 ? <span className="border border-line px-2 py-1 text-xs text-muted">+{sponsorContexts.length - 8}</span> : null}
+            {sponsorContexts.length > 8 ? <span className="border border-line px-2 py-1 text-xs text-muted rounded-control">+{sponsorContexts.length - 8}</span> : null}
           </div>
         ) : null}
       </div>
@@ -137,7 +137,7 @@ export function VoteBillDossierPanel({
         <div className="border-t border-line">
           <section className="p-4">
             <div className="font-semibold text-ink">{labels.fullProcedure}</div>
-            <ol className="mt-3 divide-y divide-line border border-line">
+            <ol className="mt-3 divide-y divide-line border border-line rounded-control">
               {procedureSteps.map((step) => (
                 <li key={step.id} className="grid gap-2 md:grid-cols-[8rem_1fr]">
                   <div className="bg-wash px-3 py-3 text-sm font-semibold text-muted">
@@ -159,7 +159,7 @@ export function VoteBillDossierPanel({
             {storedTextDocuments.length > 0 ? (
               <div className="mt-3 grid gap-3">
                 {storedTextDocuments.map((document) => (
-                  <div key={document.id} className="border border-line p-3">
+                  <div key={document.id} className="border border-line p-3 rounded-control">
                     <div className="font-medium text-ink">{document.label}</div>
                     <div className="mt-1 text-xs uppercase text-muted">
                       {document.documentKind ? labels.documentKinds[document.documentKind] ?? document.documentKind : labels.documentKinds.other}
@@ -197,7 +197,7 @@ export function VoteBillDossierPanel({
                     href={document.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="border border-line px-3 py-2 text-sm hover:bg-wash"
+                    className="border border-line px-3 py-2 text-sm hover:bg-wash rounded-control"
                   >
                     <span className="font-medium text-ink underline">{document.label}</span>
                     <span className="mt-1 block text-xs uppercase text-muted">

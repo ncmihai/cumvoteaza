@@ -43,10 +43,10 @@ export function BillTextSearch({
   }
 
   return (
-    <section className="border border-line bg-white p-4 rounded-card">
+    <section className="border border-line bg-surface p-4 rounded-card">
       <h2 className="font-semibold text-ink">{labels.title}</h2>
       <div className="mt-3 flex gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2 border border-line px-3 py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2 border border-line px-3 py-2 rounded-control">
           <Search size={16} className="text-muted" aria-hidden="true" />
           <input
             value={query}
@@ -69,7 +69,7 @@ export function BillTextSearch({
       {results.length > 0 ? (
         <div className="mt-4 grid gap-3">
           {results.map((result) => (
-            <div key={result.documentId} className="border border-line px-3 py-2 text-sm">
+            <div key={result.documentId} className="border border-line px-3 py-2 text-sm rounded-control">
               <div className="font-medium text-ink">{result.label}</div>
               <div className="mt-1 text-xs uppercase text-muted">{result.documentKind}</div>
               <div className="mt-2 space-y-2">

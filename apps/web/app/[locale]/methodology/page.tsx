@@ -20,7 +20,7 @@ function Status({ status, ro }: { status: CoverageStatus; ro: boolean }) {
 }
 
 function Section({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
-  return <section id={id} className="mt-6 border border-line bg-white p-5 rounded-card"><h2 className="font-serif text-2xl font-semibold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
+  return <section id={id} className="mt-6 border border-line bg-surface p-5 rounded-card"><h2 className="font-display text-xl font-bold text-ink">{title}</h2><div className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">{children}</div></section>;
 }
 
 const th = "px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted";
@@ -40,9 +40,9 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
   const date = (value?: string) => (value ? formatDate(value.slice(0, 10), locale) : "–");
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-76px)] max-w-[1100px] bg-canvas px-4 py-7 md:px-8 lg:px-10">
+    <main className="mx-auto max-w-page px-4 py-7 md:px-8 lg:px-10">
       <p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Metodologie și acoperire" : "Methodology and coverage"}</p>
-      <h1 className="mt-1 font-serif text-4xl font-semibold leading-tight text-ink md:text-5xl">{ro ? "Ce știm, de unde vine și ce lipsește" : "What we know, where it comes from, and what is missing"}</h1>
+      <h1 className="mt-1 font-display text-4xl font-bold leading-tight text-ink md:text-5xl">{ro ? "Ce știm, de unde vine și ce lipsește" : "What we know, where it comes from, and what is missing"}</h1>
       <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
         {ro
           ? "Fiecare număr de pe site vine dintr-o pagină oficială a Camerei Deputaților, a Senatului sau a portalului legislativ și păstrează legătura către ea. Pagina aceasta spune ce este acoperit, cum calculăm ce nu publică sursa și ce nu avem încă."
@@ -54,6 +54,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           <li><a className="font-semibold text-ink underline" href={SITE.sources[0].url}>cdep.ro</a> — {ro ? "voturile Camerei, proiectele legislative, fișele deputaților, structura Camerei." : "the Chamber's votes, bills, deputies' profiles and structure."}</li>
           <li><a className="font-semibold text-ink underline" href={SITE.sources[1].url}>senat.ro</a> — {ro ? "voturile Senatului, proiectele și dosarele lor, fișele senatorilor." : "the Senate's votes, bills and their files, senators' cards."}</li>
           <li><a className="font-semibold text-ink underline" href={SITE.sources[2].url}>legislatie.just.ro</a> — {ro ? "numărul Monitorului Oficial al legilor (când pagina Parlamentului nu îl are)." : "the Official Gazette number of laws (when Parliament's own page does not have it)."}</li>
+          <li><a className="font-semibold text-ink underline" href="https://data.gov.ro">data.gov.ro</a> — {ro ? "datele deschise ale Autorității Electorale Permanente despre alegerile parlamentare din 2016 și 2020." : "the Permanent Electoral Authority's open data on the 2016 and 2020 parliamentary elections."}</li>
         </ul>
         <p>{ro ? "Fiecare pagină păstrează sursa și data la care a fost citită. Ce calculăm noi, nu sursa, este numit ca atare." : "Each page keeps its source and the date it was read. What we calculate ourselves, rather than the source, is labelled as such."}</p>
       </Section>
@@ -144,6 +145,18 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
         </>
       )}
 
+      <Section id="alte-date" title={ro ? "Ce mai citim, și cum" : "What else we read, and how"}>
+        <ul className="list-disc space-y-2 pl-5">
+          <li><strong>{ro ? "Rapoarte și avize" : "Reports and opinions"}</strong>: {ro ? "fiecare document tipărit în dosarul unui proiect (rapoarte, avize ale comisiilor și ale altor organe, punctul de vedere al Guvernului), cu legătura către fișierul oficial; concluzia este cea tipărită în dosar." : "every document printed in a bill's file (reports, opinions of committees and of other bodies, the Government's view), with the link to the official file; the conclusion is the one printed in the file."}</li>
+          <li><strong>{ro ? "Ordonanța din spatele unui proiect de aprobare" : "The ordinance behind an approval bill"}</strong>: {ro ? "numărul ordonanței este citit din titlul proiectului; data, titlul și Monitorul Oficial vin de pe portalul legislativ, doar când tipul, numărul și anul coincid. O ordonanță pe care portalul nu o are rămâne referință, fără dată sau text." : "the ordinance's number is read from the bill's title; its date, title and Official Gazette come from the legislative portal, only when type, number and year agree. An ordinance the portal does not have stays a reference, with no date or text."}</li>
+          <li><strong>{ro ? "Prioritate legislativă" : "Legislative priority"}</strong>: {ro ? "eticheta pe care Senatul o tipărește în Buletinul legislativ al fiecărei sesiuni; nu spune cine a cerut-o." : "the label the Senate prints in each session's Legislative Bulletin; it does not say who asked for it."}</li>
+          <li><strong>{ro ? "Data nașterii, CV, delegații, grupuri de prietenie" : "Date of birth, CV, delegations, friendship groups"}</strong>: {ro ? "data nașterii este cea tipărită în antetul profilului de pe site-ul Camerei; dacă profilurile aceleiași persoane se contrazic, nu afișăm nicio dată. Din CV păstrăm doar legătura și data ultimei actualizări (conține date de contact și de familie pe care nu le păstrăm). Delegațiile și grupurile de prietenie sunt cele din profil." : "the date of birth is the one printed in the header of the profile on the Chamber's site; if one person's profiles disagree, we show no date. From a CV we keep only the link and the date it was last updated (it holds contact and family details we never store). Delegations and friendship groups are those listed on the profile."}</li>
+          <li><strong>{ro ? "Întrebări și interpelări" : "Questions and interpellations"}</strong>: {ro ? "ale deputaților, din paginile oficiale ale Camerei; deputatul este cel legat de pagina lui de profil, destinatarul este legat de un minister numai când numele coincide exact. Lipsa unui răspuns pe pagina oficială nu înseamnă că nu a existat unul." : "of deputies, from the Chamber's official pages; the deputy is the one linked to their profile page, the addressee is linked to a ministry only when the name is exactly that ministry's. No answer on the official page does not mean none exists."}</li>
+          <li><strong>{ro ? "Decretele Președintelui" : "The President's decrees"}</strong>: {ro ? "catalogul portalului legislativ din 2014; tipul fiecărui decret este citit din titlu cu reguli simple, iar cine l-a semnat din semnătura de la sfârșitul lui. Textul decretelor nu este copiat." : "the legislative portal's catalog since 2014; each decree's type is read from its title by plain rules, and who signed it from the signature at its end. The text of the decrees is not copied."}</li>
+          <li><strong>{ro ? "Alegeri" : "Elections"}</strong>: {ro ? "voturile și mandatele fiecărei liste din datele deschise ale AEP (2016, 2020): suma secțiilor de votare și a votului prin corespondență. O listă este legată de un partid numai când numele ei este exact numele partidului." : "the votes and mandates of each list from the AEP's open data (2016, 2020): the sum of the polling stations and the votes by mail. A list is linked to a party only when its name is exactly the party's."}</li>
+        </ul>
+      </Section>
+
       <Section id="cum-calculam" title={ro ? "Cum calculăm" : "How we work things out"}>
         <ul className="list-disc space-y-2 pl-5">
           <li>{ro ? "Rezultatul unui vot este cel de pe pagina oficială. Când Camera nu îl publică, îl calculăm din voturile oficiale și regula de majoritate din Constituție (art. 76), iar pagina votului spune ce regulă am folosit." : "A vote's result is the one on the official page. When the chamber does not publish it, we calculate it from the official votes and the Constitution's majority rule (art. 76), and the vote page says which rule was used."}</li>
@@ -161,6 +174,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           <li>{ro ? "Voturile legislaturilor dinainte de 2024 sunt incomplete (Parțial); un import complet, înapoi până în 1990, este planificat separat." : "Votes of legislatures before 2024 are incomplete (Partial); a full import back to 1990 is planned separately."}</li>
           <li>{ro ? "Proiectele de dinainte de 2024 apar doar când le menționează un vot sau un proiect mai nou; pentru unele proiecte încă nu avem dosarul citit." : "Bills from before 2024 appear only when a vote or a newer bill refers to them; for some bills we do not have the file read yet."}</li>
           <li>{ro ? "Nu avem dezbaterile din plen, amendamentele pe articole și documentele comisiilor, doar pașii și documentele principale ale fiecărui proiect." : "We do not have plenary debates, article-level amendments or committee documents, only each bill's steps and main documents."}</li>
+          <li>{ro ? "Finanțarea partidelor (venituri, donații, subvenții) și rezultatele alegerilor din 2024: se publică pe finantarepartide.ro, roaep.ro și prezenta.roaep.ro, care cer o verificare de browser oricărui program, iar data.gov.ro nu le are. Nu le citim și nu completăm golul din alte surse." : "Party financing (income, donations, subsidies) and the 2024 election results: they are published on finantarepartide.ro, roaep.ro and prezenta.roaep.ro, which ask any program for a browser check, and data.gov.ro does not hold them. We do not read them and do not fill the gap from other sources."}</li>
+          <li>{ro ? "Întrebările și interpelările senatorilor, sancțiunile aplicate parlamentarilor, textul CV-urilor și legile returnate Parlamentului sau trimise la Curtea Constituțională (nu sunt decrete): nu sunt încă citite." : "Senators' questions and interpellations, sanctions on parliamentarians, the text of CVs, and laws returned to Parliament or referred to the Constitutional Court (they are not decrees): not read yet."}</li>
           <li>{ro ? "Actualizarea nu este în timp real: ultima verificare este scrisă mai sus; ce publică Camerele după ea apare la următoarea." : "Updating is not in real time: the last check is written above; what the Chambers publish after it appears at the next one."}</li>
         </ul>
       </Section>

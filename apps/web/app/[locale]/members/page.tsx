@@ -6,7 +6,8 @@ import { getMemberDirectoryData } from "@/lib/data";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
-import { ImageWithFallback } from "../_components/ImageWithFallback";
+import { PersonAvatar } from "../_components/ui/PersonAvatar";
+import { PartyMark } from "../_components/ui/PartyMark";
 import { ArrowRight, Building2, Filter, MapPin, Search } from "lucide-react";
 import { DismissibleDetails } from "../_components/DismissibleDetails";
 import { presentMemberIdentity } from "@/lib/public-presentation";
@@ -51,7 +52,7 @@ export default async function MembersPage({
       <EditorialPageHeader eyebrow={new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date())} title={messages.nav.members} subtitle={locale === "ro" ? "Află cine te reprezintă și cum votează." : "See who represents you and how they vote."} />
 
       <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_150px]">
-      <form action={`/${locale}/members`} className="flex min-w-0 border border-line-strong bg-white focus-within:outline focus-within:outline-3 focus-within:outline-blue-100">
+      <form action={`/${locale}/members`} className="flex min-w-0 overflow-hidden rounded-card border border-line-strong bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-brand">
         {filters.chamber ? <input type="hidden" name="chamber" value={filters.chamber} /> : null}
         {filters.county ? <input type="hidden" name="county" value={filters.county} /> : null}
         {activeGroupFilters.length > 0 ? <input type="hidden" name="group" value={activeGroupFilters.join(",")} /> : null}
@@ -68,11 +69,11 @@ export default async function MembersPage({
             aria-label={locale === "ro" ? "Caută parlamentari" : "Search members"}
           />
         </label>
-        <button className="bg-ink px-6 text-sm font-bold text-white hover:bg-ink" type="submit">
+        <button className="bg-brand px-6 text-sm font-semibold text-white hover:bg-brand-strong" type="submit">
           {locale === "ro" ? "Caută" : "Search"}
         </button>
       </form>
-      <DismissibleDetails className="relative" summary={<summary className="flex h-full min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-line-strong bg-white text-sm font-semibold text-ink"><Filter size={20} />{locale === "ro" ? "Filtre" : "Filters"}</summary>} panelClassName="absolute right-0 z-20 mt-2 max-h-[calc(100vh-7rem)] w-[min(560px,calc(100vw-32px))] overflow-y-auto border border-line bg-white p-4 shadow-xl">
+      <DismissibleDetails className="relative" summary={<summary className="flex h-full min-h-12 cursor-pointer list-none items-center justify-center gap-2 border border-line-strong bg-surface text-sm font-semibold text-ink rounded-control"><Filter size={20} />{locale === "ro" ? "Filtre" : "Filters"}</summary>} panelClassName="absolute right-0 z-20 mt-2 max-h-[calc(100vh-7rem)] w-[min(560px,calc(100vw-32px))] overflow-y-auto border border-line bg-surface p-4 shadow-xl">
       <form action={`/${locale}/members`} className="space-y-4" aria-label={locale === "ro" ? "Filtre parlamentari" : "Member filters"}>
         {filters.q ? <input type="hidden" name="q" value={filters.q}/> : null}
         <div className="grid gap-3 sm:grid-cols-2">
@@ -95,7 +96,7 @@ export default async function MembersPage({
         <FilterSelect label={locale === "ro" ? "Ordonează după" : "Order by"} name="sort" defaultValue={filters.sort ?? ""}>
           {memberSortOptions(locale).map((option) => <option key={option.value || "default"} value={option.value}>{option.label}</option>)}
         </FilterSelect>
-        <div className="grid grid-cols-2 gap-2 border-t border-line pt-3"><Link href={`/${locale}/members`} className="inline-flex min-h-10 items-center justify-center border border-line bg-white px-4 text-sm font-semibold text-ink rounded-control">{locale === "ro" ? "Resetează" : "Reset"}</Link><button type="submit" className="min-h-10 bg-ink px-4 text-sm font-bold text-white hover:bg-ink">{locale === "ro" ? "Aplică" : "Apply"}</button></div>
+        <div className="grid grid-cols-2 gap-2 border-t border-line pt-3"><Link href={`/${locale}/members`} className="inline-flex min-h-10 items-center justify-center border border-line bg-surface px-4 text-sm font-semibold text-ink rounded-control">{locale === "ro" ? "Resetează" : "Reset"}</Link><button type="submit" className="min-h-10 bg-ink px-4 text-sm font-bold text-white hover:bg-ink">{locale === "ro" ? "Aplică" : "Apply"}</button></div>
       </form>
       </DismissibleDetails></div>
 
@@ -111,12 +112,12 @@ export default async function MembersPage({
       {filters.sort === "absent" ? <p className="mt-3 rounded-card border border-line bg-wash px-4 py-3 text-sm leading-6 text-ink-soft">{locale === "ro" ? "O absență la vot înseamnă că lista nominală oficială nu are niciun vot pentru parlamentar. Sursa numără drept prezenți doar pe cei cu vot înregistrat și nu spune de ce lipsește cineva (absență, concediu, alt motiv). Se numără doar votele cu listă nominală, în camera parlamentarului și în ședințele comune, cât timp a avut mandatul; votul secret nu are listă și nu intră în număr. Parlamentarii care au avut și o funcție în Guvern sunt marcați: ei apar mult mai rar pe listele din plen." : "An absence at a vote means the official name list has no vote for the member. The source counts only people with a recorded vote as present and does not say why someone is missing (absence, leave, another reason). Only votes with a name list count, in the member's chamber and in joint sittings, while they held the mandate; a secret ballot has no list and is not counted. Members who also held a post in the Government are marked: they appear on the plenary lists far less often."}</p> : null}
 
       <section className="mt-3 space-y-2">
-        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, eligibleVotes, inGovernment, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border border-line bg-white px-3 py-3 transition hover:border-brand hover:bg-wash rounded-control">
-          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-wash font-serif text-xl font-bold text-muted"><ImageWithFallback src={profilePhotoUrl} alt="" className="h-full w-full object-cover">{initials(member.displayName)}</ImageWithFallback></div>
-          <div className="min-w-0"><h2 className="truncate font-serif text-xl font-semibold text-ink">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ background: party?.color ?? group?.color ?? "#8996a9" }} />{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span>{filters.sort === "absent" && inGovernment ? <span className="rounded-full bg-brand-soft px-2 py-0.5 font-semibold text-brand-strong">{locale === "ro" ? "A avut o funcție în Guvern în acest mandat" : "Held a government post in this term"}</span> : null}</div><p className="mt-1 truncate text-xs text-muted">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
+        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, eligibleVotes, inGovernment, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 rounded-card border border-line bg-surface px-3 py-3 transition hover:border-brand hover:bg-wash">
+          <PersonAvatar name={member.displayName} photoUrl={profilePhotoUrl} size={64} />
+          <div className="min-w-0"><h2 className="truncate font-display text-lg font-bold text-ink">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"><span className="flex items-center gap-1.5">{party || group ? <PartyMark party={{ shortName: party?.shortName ?? group?.shortName ?? "-", color: party?.color ?? group?.color ?? "#64748b", logoAssetId: party?.logoAssetId }} size={16} /> : null}{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span>{filters.sort === "absent" && inGovernment ? <span className="rounded-full bg-brand-soft px-2 py-0.5 font-semibold text-brand-strong">{locale === "ro" ? "A avut o funcție în Guvern în acest mandat" : "Held a government post in this term"}</span> : null}</div><p className="mt-1 truncate text-xs text-muted">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
           <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} absenceCount={absenceCount} eligibleVotes={eligibleVotes} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-line pl-5 text-sm font-semibold text-brand md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-brand md:hidden" size={18} /></div>
         </Link>)}
-        {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pb-2 pt-4"><span className="text-sm text-muted">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand rounded-control" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center bg-ink px-4 py-2 text-sm font-semibold !text-white transition hover:bg-ink" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
+        {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pb-2 pt-4"><span className="text-sm text-muted">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand rounded-control" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center rounded-control bg-brand px-4 py-2 text-sm font-semibold !text-white transition hover:bg-brand-strong" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
     </EditorialPage>
   );
@@ -218,11 +219,11 @@ function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; gro
 }
 
 function FilterSelect({ label, name, defaultValue, children }: { label: string; name: string; defaultValue: string; children: React.ReactNode }) {
-  return <label className="block min-w-0"><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">{label}</span><select aria-label={label} name={name} defaultValue={defaultValue} className="min-h-10 w-full border border-line-strong bg-white px-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand rounded-control">{children}</select></label>;
+  return <label className="block min-w-0"><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">{label}</span><select aria-label={label} name={name} defaultValue={defaultValue} className="min-h-10 w-full border border-line-strong bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand rounded-control">{children}</select></label>;
 }
 
 function SortLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-ink bg-ink !text-white" : "border-line-strong bg-white text-ink-soft hover:z-10 hover:border-brand hover:bg-[#f4f8fd]"}`}>{children}</Link>;
+  return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-ink bg-ink !text-white" : "border-line-strong bg-surface text-ink-soft hover:z-10 hover:border-brand hover:bg-[#f4f8fd]"}`}>{children}</Link>;
 }
 
 function RankingMetric({ locale, sort, voteCount, absenceCount, eligibleVotes, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; absenceCount?: number; eligibleVotes?: number; groupSwitchCount?: number; serviceDays?: number }) {
@@ -234,5 +235,5 @@ function RankingMetric({ locale, sort, voteCount, absenceCount, eligibleVotes, g
       : sort === "absent"
         ? (locale === "ro" ? `absențe la vot${eligibleVotes ? ` din ${eligibleVotes}` : ""}` : `absences at votes${eligibleVotes ? ` of ${eligibleVotes}` : ""}`)
       : (locale === "ro" ? "voturi documentate" : "documented votes");
-  return <div className="max-w-24 text-right max-[374px]:hidden"><strong className="block font-serif text-2xl text-ink">{value}</strong><span className="block text-xs leading-tight text-muted">{label}</span></div>;
+  return <div className="max-w-24 text-right max-[374px]:hidden"><strong className="block font-display text-2xl text-ink">{value}</strong><span className="block text-xs leading-tight text-muted">{label}</span></div>;
 }

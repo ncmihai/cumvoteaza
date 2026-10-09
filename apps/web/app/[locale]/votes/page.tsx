@@ -41,7 +41,7 @@ export default async function VotesPage({
       </div>
       {sittings.length > 0 ? (
         <section className="mt-8 border border-line bg-surface p-5 rounded-card" aria-labelledby="sitting-summaries">
-          <h2 id="sitting-summaries" className="font-serif text-2xl font-semibold text-ink">{sittingLabels.title}</h2>
+          <h2 id="sitting-summaries" className="font-display text-xl font-bold text-ink">{sittingLabels.title}</h2>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-muted">{sittingLabels.note}</p>
           <div className="mt-3 divide-y divide-line">
             {sittings.map((sitting) => (

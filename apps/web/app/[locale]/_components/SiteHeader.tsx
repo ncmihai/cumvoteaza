@@ -64,7 +64,8 @@ export function SiteHeader({ locale }: { locale: AppLocale }) {
       <div className="relative mx-auto flex h-16 max-w-page items-center gap-4 px-4 lg:px-8">
         <Link href={`/${locale}`} aria-label={ro ? "CumVoteaza, prima pagină" : "CumVoteaza, home"} className="flex shrink-0 items-center gap-2.5">
           <BrandLogo size={34} />
-          <span className="font-display text-xl font-bold tracking-tight text-ink">Cum<span className="text-brand">Voteaza</span></span>
+          {/* On a phone narrower than 380 px the logomark alone fits beside the search, the language switch and the menu; the link keeps its name for screen readers (Backlog 3). */}
+          <span className="font-display text-xl font-bold tracking-tight text-ink max-[379px]:sr-only">Cum<span className="text-brand">Voteaza</span></span>
         </Link>
         <nav className="ml-4 hidden items-center gap-0.5 lg:flex" aria-label={ro ? "Navigare principală" : "Main navigation"}>
           {items.map((item) => (
