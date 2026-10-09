@@ -65,7 +65,7 @@ Each Open question has a recommendation; the owner decides.
 ### D-039 — The UI sweep (2026-10-09, Sprint 16)
 - **One look.** Every page now uses the tokens and shapes of D-029: `font-display` headings, 12 px rounded cards on `bg-surface`, pills for badges, no `font-serif`, no `bg-white`, no sharp bordered boxes, no 76 px header offset. Two small pieces join the kit, `PageIntro` (label, title, one sentence) and `Panel` (the card every block of content uses); the motions pages use them, the others keep their own markup in the same classes.
 - **People and parties in the lists.** The members directory rows show the portrait (`PersonAvatar`) and the party's mark (`PartyMark`) instead of a colour dot.
-- **The header on a narrow phone (Backlog 3), decided:** below 380 px the wordmark's visible text is dropped (it stays for screen readers) and the logomark stays; the header now fits 320 px (smoke test at 320, 340 and 360 px). The expected-failure test in `e2e/detail-responsive.e2e.ts` (another session's, uncommitted) will report an unexpected pass.
+- **The header on a narrow phone (Backlog 3), decided:** below 363 px the wordmark's visible text is dropped (it stays for screen readers) and the logomark stays; the header now fits 320 px (smoke test at 320, 340 and 360 px). The expected-failure test in `e2e/detail-responsive.e2e.ts` (another session's, uncommitted) will report an unexpected pass.
 - **Not done:** screenshots at three widths kept as a visual baseline (the browser pane here cannot emulate a 1280 px screen legibly), and a restyle of the remaining one-off layouts beyond the class sweep.
 
 ### D-038 — Party money and elections: what can be read (2026-10-09, Sprint 15 source check)
