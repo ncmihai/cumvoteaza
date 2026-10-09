@@ -1,10 +1,6 @@
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
-import { sql } from "drizzle-orm";
-import * as schema from "@cumsevoteaza/db";
-import type { DbClient } from "@cumsevoteaza/db";
 import { parseLegislatieSearch } from "../dossiers/gazette-lookup";
-import { classifyDecree } from "./decree-types";
+import type { DecreeKind } from "@cumsevoteaza/parliament-model";
+import { fold } from "./text";
 
 /**
  * Sprint 14 (D-037): one presidential decree from the legislative portal's record, and the type its title gives it. The portal's record holds the title ("DECRET nr. 794 din 6 octombrie 2026
@@ -13,7 +9,7 @@ import { classifyDecree } from "./decree-types";
  */
 const MONTHS: Record<string, string> = { ianuarie: "01", februarie: "02", martie: "03", aprilie: "04", mai: "05", iunie: "06", iulie: "07", august: "08", septembrie: "09", octombrie: "10", noiembrie: "11", decembrie: "12" };
 
-export const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+export { fold };
 
 export interface DecreeRecord {
   number: number;
@@ -73,99 +69,35 @@ export function parseDecreePage(xml: string): DecreeRecord[] {
   return records;
 }
 
-export interface ImportDecreesResult {
-  persisted: boolean;
-  pagesRead: number;
-  decrees: number;
-  duplicates: number;
-  from?: string;
-  to?: string;
-  byYear: Array<{ year: number; decrees: number; highestNumber: number; missingNumbers: number }>;
-  byKind: Array<{ kind: string; decrees: number }>;
-  unclassified: { decrees: number; share: number; topSubjects: Array<{ subject: string; count: number }> };
-  signers: Array<{ signer: string; interim: boolean; decrees: number; first: string; last: string }>;
-  withoutGazette: number;
-  written: number;
+/** The kinds of decree whose text names a person holding or taking a public office; the other kinds (decorations, pardons, judges and prosecutors, ranks) never have a name read from them. */
+export const REGISTER_KINDS = new Set<DecreeKind>(["government", "pm_designation", "diplomacy", "constitutional_court", "judiciary_leadership", "presidential_staff"]);
+
+export interface NamedPerson {
+  name: string;
+  /** The sentence of the decree that names them, as printed (cut at 300 characters). */
+  role: string;
 }
 
-/** Every decree of the saved pages, one per (year, number); a decree that appears on two pages is counted once. */
-export async function readSavedDecrees(repoRoot: string): Promise<{ pages: number; decrees: DecreeRecord[]; duplicates: number }> {
-  const dir = path.join(repoRoot, "data/coverage/raw/legislatie-decrees");
-  let names: string[] = [];
-  try {
-    names = (await readdir(dir)).filter((name) => name.endsWith(".xml")).sort();
-  } catch {
-    names = [];
-  }
-  const byRef = new Map<string, DecreeRecord>();
-  let duplicates = 0;
-  for (const name of names) {
-    for (const record of parseDecreePage(await readFile(path.join(dir, name), "utf8"))) {
-      const key = `${record.year}-${record.number}`;
-      if (byRef.has(key)) duplicates += 1;
-      else byRef.set(key, record);
-    }
-  }
-  return { pages: names.length, decrees: [...byRef.values()], duplicates };
-}
+const HONORIFIC_NAME = /\b(?:[Dd]omnul|[Dd]omnului|[Dd]oamna|[Dd]oamnei)\s+([A-ZĂÂÎȘŞȚŢ][\p{L}'’-]*(?:\s+[A-ZĂÂÎȘŞȚŢ][\p{L}'’.-]*){1,4})/gu;
 
 /**
- * Writes `presidential_decrees` from the saved catalog pages (offline). Decrees before `since` are not kept (the pages below the run's end hold older decrees in no order).
- * The report says how many decrees each year has and which numbers are missing from 1 to the highest, how many titles no rule typed, and who signed from when to when.
+ * The people a decree of an office-holding kind names ("Se numește domnul X în funcția de ..."), read from its operative part (after "decretează:" and before the signature),
+ * each with the sentence that names them. Nothing is read from the other kinds.
  */
-export async function importDecrees(db: DbClient, options: { repoRoot: string; persist: boolean; since: string }): Promise<ImportDecreesResult> {
-  const { pages, decrees: all, duplicates } = await readSavedDecrees(options.repoRoot);
-  const decrees = all.filter((decree) => decree.issuedOn >= options.since).sort((a, b) => a.issuedOn.localeCompare(b.issuedOn) || a.number - b.number);
-  const years = new Map<number, number[]>();
-  for (const decree of decrees) years.set(decree.year, [...(years.get(decree.year) ?? []), decree.number]);
-  const byYear = [...years].sort((a, b) => a[0] - b[0]).map(([year, numbers]) => {
-    const present = new Set(numbers);
-    const highest = Math.max(...numbers);
-    return { year, decrees: present.size, highestNumber: highest, missingNumbers: highest - present.size };
-  });
-  const rows = decrees.map((decree) => {
-    const type = classifyDecree(decree.subject);
-    return { decree, type, row: { id: `decree-${decree.year}-${decree.number}`, number: decree.number, year: decree.year, issuedOn: decree.issuedOn, subject: decree.subject, kind: type.kind, action: type.action ?? null, gazetteNumber: decree.gazetteNumber ?? null, gazetteOn: decree.gazetteOn ?? null, signer: decree.signer ?? null, signedAsInterim: decree.signedAsInterim ?? false, portalUrl: decree.portalUrl, portalId: decree.portalId ?? null, readAt: new Date() } satisfies typeof schema.presidentialDecrees.$inferInsert };
-  });
-  const kinds = new Map<string, number>();
-  const others = new Map<string, number>();
-  for (const { decree, type } of rows) {
-    kinds.set(type.kind, (kinds.get(type.kind) ?? 0) + 1);
-    if (type.kind === "other") {
-      const shape = fold(decree.subject).replace(/\d+/g, "N").slice(0, 120);
-      others.set(shape, (others.get(shape) ?? 0) + 1);
+export function namedPersons(kind: DecreeKind, text: string): NamedPerson[] {
+  if (!REGISTER_KINDS.has(kind)) return [];
+  const start = /d\s*e\s*c\s*r\s*e\s*t\s*e\s*a\s*z\s*[ăa]\s*:/i.exec(text);
+  if (!start) return [];
+  const end = text.search(/PRE[SȘŞ]EDINTELE ROM[AÂ]NIEI/);
+  const body = text.slice(start.index + start[0].length, end > start.index ? end : undefined).replace(/^\s*\+?\s*(ARTICOL UNIC|Articolul\s*\d+)\s*/i, "");
+  const sentences = body.split(/(?<=[.;])\s+(?=(?:\+\s*)?[A-ZĂÂÎȘŞȚŢ])/).map((sentence) => sentence.replace(/^\+\s*(ARTICOL UNIC|Articolul\s*\d+)\s*/i, "").trim()).filter(Boolean);
+  const people = new Map<string, NamedPerson>();
+  for (const sentence of sentences) {
+    for (const match of sentence.matchAll(HONORIFIC_NAME)) {
+      const name = match[1]!.replace(/\.$/, "").replace(/\s+/g, " ").trim();
+      if (name.split(" ").length < 2 || people.has(fold(name))) continue;
+      people.set(fold(name), { name, role: sentence.length > 300 ? `${sentence.slice(0, 297)}…` : sentence });
     }
   }
-  const signers = new Map<string, { signer: string; interim: boolean; decrees: number; first: string; last: string }>();
-  for (const { decree } of rows) {
-    if (!decree.signer) continue;
-    const key = `${decree.signer}|${decree.signedAsInterim ? "interim" : ""}`;
-    const current = signers.get(key);
-    signers.set(key, { signer: decree.signer, interim: Boolean(decree.signedAsInterim), decrees: (current?.decrees ?? 0) + 1, first: current && current.first < decree.issuedOn ? current.first : decree.issuedOn, last: current && current.last > decree.issuedOn ? current.last : decree.issuedOn });
-  }
-  const unclassified = kinds.get("other") ?? 0;
-  const result: ImportDecreesResult = {
-    persisted: options.persist,
-    pagesRead: pages,
-    decrees: rows.length,
-    duplicates,
-    ...(rows.length ? { from: decrees[0]!.issuedOn, to: decrees.at(-1)!.issuedOn } : {}),
-    byYear,
-    byKind: [...kinds].sort((a, b) => b[1] - a[1]).map(([kind, count]) => ({ kind, decrees: count })),
-    unclassified: { decrees: unclassified, share: rows.length ? Math.round((unclassified / rows.length) * 1000) / 10 : 0, topSubjects: [...others].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([subject, count]) => ({ subject, count })) },
-    signers: [...signers.values()].sort((a, b) => a.first.localeCompare(b.first)),
-    withoutGazette: rows.filter(({ decree }) => !decree.gazetteNumber).length,
-    written: 0
-  };
-  if (!options.persist || rows.length === 0) return result;
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < rows.length; i += 400) {
-      await tx.insert(schema.presidentialDecrees).values(rows.slice(i, i + 400).map((item) => item.row)).onConflictDoUpdate({
-        target: [schema.presidentialDecrees.year, schema.presidentialDecrees.number],
-        set: { issuedOn: sql`excluded.issued_on`, subject: sql`excluded.subject`, kind: sql`excluded.kind`, action: sql`excluded.action`, gazetteNumber: sql`excluded.gazette_number`, gazetteOn: sql`excluded.gazette_on`, signer: sql`excluded.signer`, signedAsInterim: sql`excluded.signed_as_interim`, portalUrl: sql`excluded.portal_url`, portalId: sql`excluded.portal_id`, readAt: sql`excluded.read_at` }
-      });
-    }
-  });
-  result.written = rows.length;
-  return result;
+  return [...people.values()];
 }

@@ -379,6 +379,20 @@
       "when": 1791577062798,
       "tag": "0053_elections",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791578154206,
+      "tag": "0054_presidential_decree_persons",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791579533420,
+      "tag": "0055_decree_signer_inferred",
+      "breakpoints": true
     }
   ]
 }

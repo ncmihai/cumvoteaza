@@ -55,7 +55,7 @@ export default async function PresidencyPage({ params, searchParams }: { params:
               {view.signers.map((signer) => (
                 <li key={`${signer.signer}-${signer.interim}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
                   <span className="font-semibold text-ink">{personName(signer.signer)}{signer.interim ? <span className="ml-2 rounded-full bg-wash px-2.5 py-0.5 text-xs font-semibold text-ink-soft">{ro ? "interimar" : "acting"}</span> : null}</span>
-                  <span className="text-muted">{formatDate(signer.first, locale)} – {formatDate(signer.last, locale)} · {number(signer.decrees)} {ro ? "decrete" : "decrees"}</span>
+                  <span className="text-muted">{formatDate(signer.first, locale)} – {formatDate(signer.last, locale)} · {number(signer.decrees)} {ro ? "decrete" : "decrees"}{signer.inferred ? (ro ? ` (la ${number(signer.inferred)} semnătura nu a fost citită: semnatarul este cel al decretelor dinainte și de după)` : ` (for ${number(signer.inferred)} the signature was not read: the signer is the one of the decrees before and after)`) : ""}</span>
                 </li>
               ))}
             </ul>
@@ -106,8 +106,13 @@ export default async function PresidencyPage({ params, searchParams }: { params:
                     {item.gazetteNumber ? <span>{ro ? "M. Of." : "Gazette"} {item.gazetteNumber}{item.gazetteOn ? ` · ${formatDate(item.gazetteOn, locale)}` : ""}</span> : null}
                   </div>
                   <p lang="ro" className="mt-1 leading-6 text-ink [overflow-wrap:anywhere]">{normalizeRomanian(item.subject.charAt(0).toUpperCase() + item.subject.slice(1))}</p>
+                  {item.persons.length ? (
+                    <ul className="mt-1.5 space-y-0.5 text-sm text-ink-soft">
+                      {item.persons.map((person) => <li key={person.name}><span className="font-semibold">{person.memberSlug ? <Link href={`/${locale}/members/${person.memberSlug}`} className="text-brand hover:text-brand-strong">{person.name}</Link> : person.name}</span><span className="text-muted"> — {normalizeRomanian(person.role)}</span></li>)}
+                    </ul>
+                  ) : null}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 text-xs">
-                    {item.signer ? <span className="text-muted">{ro ? "Semnat de" : "Signed by"} {personName(item.signer)}{item.signedAsInterim ? (ro ? " (interimar)" : " (acting)") : ""}</span> : null}
+                    {item.signer ? <span className="text-muted">{ro ? "Semnat de" : "Signed by"} {personName(item.signer)}{item.signedAsInterim ? (ro ? " (interimar)" : " (acting)") : ""}{item.signerInferred ? (ro ? " · după decretele din jur" : " · by the decrees around it") : ""}</span> : null}
                     <a href={item.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand hover:text-brand-strong">{ro ? "Textul pe legislatie.just.ro" : "Text on legislatie.just.ro"}<ExternalLink size={12} aria-hidden="true" /></a>
                   </div>
                 </li>

@@ -1,5 +1,5 @@
 import type { DecreeKind } from "@cumsevoteaza/parliament-model";
-import { fold } from "./decrees";
+import { fold } from "./text";
 
 export type { DecreeKind };
 

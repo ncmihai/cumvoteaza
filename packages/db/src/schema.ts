@@ -1157,6 +1157,8 @@ export const presidentialDecrees = pgTable("presidential_decrees", {
   gazetteOn: date("gazette_on"),
   signer: text("signer"),
   signedAsInterim: boolean("signed_as_interim").notNull().default(false),
+  /** True when the signer was not read from this decree's own signature but taken from the decrees signed just before and after it by the same person. */
+  signerInferred: boolean("signer_inferred").notNull().default(false),
   portalUrl: text("portal_url").notNull(),
   portalId: text("portal_id"),
   readAt: timestamp("read_at", { withTimezone: true }).notNull()
@@ -1200,6 +1202,21 @@ export const electionListResults = pgTable("election_list_results", {
   pk: primaryKey({ columns: [table.electionId, table.chamber, table.circumscriptionNumber, table.listName] }),
   partyIdx: index("election_list_results_party_idx").on(table.partyId),
   scopeIdx: index("election_list_results_scope_idx").on(table.electionId, table.chamber)
+}));
+
+/**
+ * The people a presidential decree names when it concerns a public office (a minister, an ambassador, a judge of the Constitutional Court, the head of the judiciary, a presidential adviser),
+ * with the sentence of the decree that names them. Decorations, pardons, judges and prosecutors are never read for names (D-029, Q19). `person_id` is set only when the name is exactly one of our people.
+ */
+export const presidentialDecreePersons = pgTable("presidential_decree_persons", {
+  decreeId: text("decree_id").notNull().references(() => presidentialDecrees.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull(),
+  personId: text("person_id").references(() => people.id)
+}, (table) => ({
+  pk: primaryKey({ columns: [table.decreeId, table.position] }),
+  personIdx: index("presidential_decree_persons_person_idx").on(table.personId)
 }));
 
 export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {

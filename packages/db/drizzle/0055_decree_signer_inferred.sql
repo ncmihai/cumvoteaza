@@ -1,0 +1,1 @@
+ALTER TABLE "presidential_decrees" ADD COLUMN "signer_inferred" boolean DEFAULT false NOT NULL;

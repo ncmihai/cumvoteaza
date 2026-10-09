@@ -23,8 +23,11 @@ import { importProfileFacts } from "./members/profile-facts";
 import { fetchCvPages } from "./members/cv-fetch";
 import { fetchQuestions } from "./members/questions-fetch";
 import { importQuestions } from "./members/questions";
-import { fetchDecreePages } from "./presidency/decrees-fetch";
-import { importDecrees } from "./presidency/decrees";
+import { fetchDecreePages, fetchDecreesByNumber } from "./presidency/decrees-fetch";
+import { fetchDecreeMonths } from "./presidency/portal-search";
+import { importDecrees } from "./presidency/decrees-import";
+import { fetchDecreeTexts, textTargets } from "./presidency/decree-texts";
+import { readSavedDecrees } from "./presidency/decrees-import";
 import { fetchElectionFiles } from "./elections/fetch";
 import { importElections } from "./elections/import";
 import { fetchReports, importReports, listReportSources } from "./dossiers/committee-reports";
@@ -624,6 +627,35 @@ async function main() {
     // Sprint 14 (D-037): the President's decrees, a page of ten at a time (newest first) from the legislative portal, saved under data/coverage/raw/legislatie-decrees.
     // --from and --to are page numbers; one request every --delay-ms (default 3000), at most --limit per run, resumable; plan only without --live.
     const result = await fetchDecreePages({ repoRoot, live: hasFlag("live"), from: numberFlag("from") ?? 1, to: numberFlag("to") ?? 1250, limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 3000, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "presidency:decrees:by-number") {
+    // Sprint 14 (D-037): every decree numbered N (any year), N from --from to --to, from the portal's number search; pages saved under data/coverage/raw/legislatie-decrees (n0170-p1.xml).
+    // One request every --delay-ms (default 2500), at most --limit per run, resumable; plan only without --live.
+    const result = await fetchDecreesByNumber({ repoRoot, live: hasFlag("live"), from: numberFlag("from") ?? 1, to: numberFlag("to") ?? 1800, limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 2500, since: flag("since") ?? "2014-01-01", log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "presidency:decrees:months") {
+    // Sprint 14 (D-037): the President's decrees month by month from the portal's public search (50 a page, counted by the portal), saved under data/coverage/raw/legislatie-decree-list.
+    // --from=2014-01 --to=2026-10; one request every --delay-ms (default 2500), at most --limit per run, resumable; a month that does not add up is read again with smaller pages. Plan only without --live.
+    const now = new Date();
+    const result = await fetchDecreeMonths({ repoRoot, live: hasFlag("live"), from: flag("from") ?? "2014-01", to: flag("to") ?? `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 2500, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "presidency:decrees:texts") {
+    // Sprint 14 (D-037): the portal page of each decree that needs its text (the office-holding kinds, and the first and last decree of every month, for who signed), saved under data/coverage/raw/legislatie-decree-text.
+    // One request every --delay-ms (default 2500), at most --limit per run, resumable; plan only without --live.
+    const saved = await readSavedDecrees(repoRoot);
+    const result = await fetchDecreeTexts({ repoRoot, live: hasFlag("live"), ids: textTargets(saved.decrees.filter((decree) => decree.issuedOn >= (flag("since") ?? "2014-01-01"))), limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 2500, log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
     return;

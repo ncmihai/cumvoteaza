@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDecreePage, signatureOf } from "../presidency/decrees";
+import { namedPersons, parseDecreePage, signatureOf } from "../presidency/decrees";
 import { classifyDecree } from "../presidency/decree-types";
 
 /** A record shaped like the portal's: the title carries the number, the date, the subject, the issuer and the Official Gazette; the text ends with the signature. */
@@ -66,5 +66,31 @@ describe("classifyDecree", () => {
 
   it("leaves a title no rule knows as other", () => {
     expect(classifyDecree("privind un lucru neașteptat").kind).toBe("other");
+  });
+});
+
+describe("namedPersons", () => {
+  it("reads the person a ministerial decree names, with the sentence that names them", () => {
+    const text = "... Președintele României decretează: + ARTICOL UNIC Se desemnează domnul Marian-Cătălin Predoiu, viceprim-ministru, ministrul afacerilor interne, în funcția de ministru al justiției, ad-interim. PREȘEDINTELE ROMÂNIEI NICUȘOR-DANIEL DAN București, 24 aprilie 2026.";
+    expect(namedPersons("government", text)).toEqual([{ name: "Marian-Cătălin Predoiu", role: "Se desemnează domnul Marian-Cătălin Predoiu, viceprim-ministru, ministrul afacerilor interne, în funcția de ministru al justiției, ad-interim." }]);
+  });
+
+  it("reads a recall in two articles and an honorific that starts the sentence, once per person", () => {
+    const text = "Președintele României decretează: + Articolul 1 Domnul Sorin-Dan Mihalache se recheamă din calitatea de ambasador extraordinar și plenipotențiar al României în Republica Cipru. + Articolul 2 Domnul Sorin-Dan Mihalache își va încheia misiunea în termen de cel mult 90 de zile. PREȘEDINTELE ROMÂNIEI NICUȘOR-DANIEL DAN București, 1 martie 2026.";
+    const people = namedPersons("diplomacy", text);
+    expect(people.map((person) => person.name)).toEqual(["Sorin-Dan Mihalache"]);
+    expect(people[0]!.role).toContain("se recheamă din calitatea de ambasador");
+  });
+
+  it("reads nothing from decorations, judges, prosecutors or ranks, whatever the text says", () => {
+    const text = "Președintele României decretează: + ARTICOL UNIC Doamna Goncescu Alina se numește în funcția de judecător la Judecătoria Târgu Mureș. PREȘEDINTELE ROMÂNIEI NICUȘOR-DANIEL DAN București, 5 mai 2025.";
+    expect(namedPersons("magistrates", text)).toEqual([]);
+    expect(namedPersons("decoration", text)).toEqual([]);
+    expect(namedPersons("military", text)).toEqual([]);
+    expect(namedPersons("pardon", text)).toEqual([]);
+  });
+
+  it("reads a decree whose text spaces out the verb ('d e c r e t e a z ă')", () => {
+    expect(namedPersons("presidential_staff", "Președintele României d e c r e t e a z ă: + ARTICOL UNIC Începând cu data de 25 mai 2026, domnul Radu-Ioan Mogoș se numește în funcția de consilier de stat. PREȘEDINTELE ROMÂNIEI NICUȘOR-DANIEL DAN București").map((p) => p.name)).toEqual(["Radu-Ioan Mogoș"]);
   });
 });
