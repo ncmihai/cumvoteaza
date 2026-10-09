@@ -300,7 +300,7 @@ const getCachedVotePageData = unstable_cache(
 
 const getCachedBillPageData = unstable_cache(
   async (id: string) => timed(`data.bill.${id}`, () => coalesce(`bill:${id}`, () => getBillPageDataUncached(id))),
-  ["bill-page-data"],
+  ["bill-page-data-step-documents-v1"],
   { revalidate: 900, tags: [CACHE_TAGS.bills] }
 );
 
@@ -677,6 +677,11 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
     const [sourceRow] = sourceId
       ? await session.db.select().from(schema.sourceSnapshots).where(eq(schema.sourceSnapshots.id, sourceId)).limit(1)
       : [];
+    // Every document each step prints (D-032). A site deployed before the table exists, or before it is filled, simply shows the first document of each step.
+    const stepDocumentRows = await session.db.execute<{ step_id: string; document_id: string }>(sql`
+      select sd.step_id, sd.document_id from bill_step_documents sd join bill_procedure_steps s on s.id = sd.step_id where s.bill_id = ${billRow.id} order by sd.step_id, sd.position`).catch(() => []);
+    const documentIdsByStep = new Map<string, string[]>();
+    for (const row of stepDocumentRows) documentIdsByStep.set(row.step_id, [...(documentIdsByStep.get(row.step_id) ?? []), row.document_id]);
     const events = eventRows.map(mapBillEvent).sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
     const sponsorContexts: BillSponsorContext[] = events[0]
       ? await loadBillSponsorContexts(session.db, sponsorRows.map(mapBillSponsor), events[0].occurredOn)
@@ -693,7 +698,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       dossier: dossierRows[0] ? mapBillDossier(dossierRows[0]) : undefined,
       events,
       procedureSteps: procedureRows
-        .map(mapBillProcedureStep)
+        .map((row) => ({ ...mapBillProcedureStep(row), ...(documentIdsByStep.has(row.id) ? { documentIds: documentIdsByStep.get(row.id) } : {}) }))
         .sort((a, b) => `${a.occurredOn}-${a.displayOrder}`.localeCompare(`${b.occurredOn}-${b.displayOrder}`)),
       documents: documentRows.map(mapDocument),
       votes: voteRows.map(mapVote),

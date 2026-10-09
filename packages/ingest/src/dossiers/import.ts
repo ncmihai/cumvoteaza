@@ -36,7 +36,7 @@ export interface DossierImportResult {
   pagesRead: { cdep: number; senate: number };
   unreadable: Array<{ key: string; error: string }>;
   summary: PlanSummary;
-  written?: { bills: number; steps: number; sponsors: number; documents: number; votesLinked: number; placeholdersRemoved: number };
+  written?: { bills: number; steps: number; stepDocuments: number; sponsors: number; documents: number; votesLinked: number; placeholdersRemoved: number };
   files?: { json: string; markdown: string };
 }
 
@@ -178,7 +178,7 @@ const chunks = <T>(items: T[], size: number): T[][] => {
 
 /** Writes bills in transactions: each bill's steps, sponsors and dossier row are replaced by what the pages say now. */
 export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, log: (line: string) => void = () => {}): Promise<NonNullable<DossierImportResult["written"]>> {
-  const written = { bills: 0, steps: 0, sponsors: 0, documents: 0, votesLinked: 0, placeholdersRemoved: 0 };
+  const written = { bills: 0, steps: 0, stepDocuments: 0, sponsors: 0, documents: 0, votesLinked: 0, placeholdersRemoved: 0 };
   const ownedByAPlan = new Set(plans.map((plan) => plan.billId));
   for (const group of chunks(plans, batch)) {
     await db.transaction(async (tx) => {
@@ -276,6 +276,18 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
       );
       for (const part of chunks(stepRows, 250)) await tx.insert(schema.billProcedureSteps).values(part);
       written.steps += stepRows.length;
+      // Every document each step prints (D-032), in the page's order. The steps above were just written, so the old rows went with them (on delete cascade).
+      const stepDocumentRows = group.flatMap((plan) => plan.steps.flatMap((step) => {
+        const seen = new Set<string>();
+        return (step.documentUrls ?? []).flatMap((url) => {
+          const documentId = docIdByBillAndKey.get(`${plan.billId}|${documentKey(url)}`);
+          if (!documentId || seen.has(documentId)) return [];
+          seen.add(documentId);
+          return [{ stepId: step.id, documentId, position: seen.size }];
+        });
+      }));
+      for (const part of chunks(stepDocumentRows, 500)) await tx.insert(schema.billStepDocuments).values(part).onConflictDoNothing();
+      written.stepDocuments += stepDocumentRows.length;
 
       // The documents this importer made for these bills (ids ending -d<hash>) follow the pages as a whole: one a re-read no longer lists (it came from a page that was
       // wrongly tied to the bill) is removed, unless something has been built on it (extracted text, a ministry relation). Documents held before are never touched.
@@ -285,7 +297,8 @@ export async function applyDossierPlans(db: Db, plans: BillPlan[], batch = 20, l
         delete from documents d where d.bill_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)}) and d.id ~ '-d[0-9a-f]{10}$' ${keep}
           and not exists (select 1 from bill_document_text_chunks c where c.document_id = d.id)
           and not exists (select 1 from bill_ministry_relations r where r.document_id = d.id)
-          and not exists (select 1 from bill_procedure_steps s where s.document_id = d.id)`);
+          and not exists (select 1 from bill_procedure_steps s where s.document_id = d.id)
+          and not exists (select 1 from bill_step_documents sd where sd.document_id = d.id)`);
 
       // The compact timeline (read models, member activity and the lists date a bill from its events) follows the steps.
       await tx.delete(schema.billEvents).where(inArray(schema.billEvents.billId, ids));
@@ -401,6 +414,76 @@ export async function importBillDossiers(options: DossierImportOptions): Promise
     await writeFile(`${base}.json`, JSON.stringify({ ...result, plans: options.only ? planned.plans : undefined }, null, 2));
     await writeFile(`${base}.md`, renderMarkdown(result, stamp));
     result.files = { json: `${base}.json`, markdown: `${base}.md` };
+    return result;
+  } finally {
+    await session.close();
+  }
+}
+
+export interface StepDocumentLinkResult {
+  persisted: boolean;
+  bills: number;
+  /** Steps of the pages that match a stored step (same id, type and date) and print at least one document. */
+  stepsWithDocuments: number;
+  /** Document links the pages give for those steps. */
+  links: number;
+  /** Links not yet stored (the rest were already there). */
+  toWrite: number;
+  written: number;
+  /** Steps whose stored row no longer matches the page (the page changed since the last import): left to the next import, never overwritten here. */
+  stepsNotMatching: number;
+  /** Documents a page prints that are not in `documents` for that bill: left to the next import. */
+  documentsMissing: number;
+  /** Bills the pages describe that are not stored yet. */
+  billsNotStored: number;
+}
+
+/**
+ * D-032: adds `bill_step_documents` for the steps already stored, from the saved pages, without touching anything else (no bill, step, sponsor or document is
+ * written or changed). A step is matched by its id, type and date; one that no longer matches waits for the regular import. Dry run unless `persist`.
+ */
+export async function linkStepDocuments(options: { repoRoot: string; persist: boolean; only?: string[]; log?: (line: string) => void }): Promise<StepDocumentLinkResult> {
+  const session = createDbSession();
+  const log = options.log ?? (() => {});
+  try {
+    const { plans } = await planDossierImport(session.db, options.repoRoot, { only: options.only });
+    const result: StepDocumentLinkResult = { persisted: options.persist, bills: plans.length, stepsWithDocuments: 0, links: 0, toWrite: 0, written: 0, stepsNotMatching: 0, documentsMissing: 0, billsNotStored: 0 };
+    const stored = plans.filter((plan) => !plan.isNew);
+    result.billsNotStored = plans.length - stored.length;
+    for (const group of chunks(stored, 200)) {
+      const ids = group.map((plan) => plan.billId);
+      const idList = sql.join(ids.map((id) => sql`${id}`), sql`, `);
+      const stepRows = await session.db.execute<{ id: string; step_type: string; occurred_on: string }>(sql`select id, step_type::text as step_type, occurred_on::text as occurred_on from bill_procedure_steps where bill_id in (${idList})`);
+      const stepById = new Map([...stepRows].map((row) => [row.id, row]));
+      const documentRows = await session.db.execute<{ id: string; bill_id: string; url: string }>(sql`select id, bill_id, url from documents where bill_id in (${idList})`);
+      const documentIdByKey = new Map([...documentRows].map((row) => [`${row.bill_id}|${documentKey(row.url)}`, row.id]));
+      const existingRows = await session.db.execute<{ step_id: string; document_id: string }>(sql`select sd.step_id, sd.document_id from bill_step_documents sd join bill_procedure_steps s on s.id = sd.step_id where s.bill_id in (${idList})`);
+      const existing = new Set([...existingRows].map((row) => `${row.step_id}|${row.document_id}`));
+      const rows: Array<{ stepId: string; documentId: string; position: number }> = [];
+      for (const plan of group) {
+        for (const step of plan.steps) {
+          if (!step.documentUrls?.length) continue;
+          const row = stepById.get(step.id);
+          if (!row || row.step_type !== step.stepType || row.occurred_on !== step.occurredOn) { result.stepsNotMatching += 1; continue; }
+          result.stepsWithDocuments += 1;
+          const seen = new Set<string>();
+          for (const url of step.documentUrls) {
+            const documentId = documentIdByKey.get(`${plan.billId}|${documentKey(url)}`);
+            if (!documentId) { result.documentsMissing += 1; continue; }
+            if (seen.has(documentId)) continue;
+            seen.add(documentId);
+            result.links += 1;
+            if (!existing.has(`${step.id}|${documentId}`)) rows.push({ stepId: step.id, documentId, position: seen.size });
+          }
+        }
+      }
+      result.toWrite += rows.length;
+      if (options.persist) {
+        for (const part of chunks(rows, 500)) await session.db.insert(schema.billStepDocuments).values(part).onConflictDoNothing();
+        result.written += rows.length;
+        log(`${result.written} links written`);
+      }
+    }
     return result;
   } finally {
     await session.close();

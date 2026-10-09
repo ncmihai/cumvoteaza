@@ -108,6 +108,15 @@ test("a vote with a name list draws the seat map: its chamber illustration loads
   expect(errors).toEqual([]);
 });
 
+test("a bill with committee reports lists them with their files in the reports and opinions panel @db", async ({ page }) => {
+  const response = await page.goto("/ro/bills/l323-2025");
+  test.skip(response?.status() === 404, "the sample bill is not on this site");
+  const panel = page.getByRole("region", { name: "Rapoarte și avize" });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText(/Rapoarte ale comisiilor/)).toBeVisible();
+  await expect(panel.getByRole("link", { name: /PDF/ }).first()).toHaveAttribute("href", /^https?:\/\//);
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));

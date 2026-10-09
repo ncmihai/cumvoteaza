@@ -16,6 +16,7 @@ import { removeTestVotes } from "./repair/remove-test-votes";
 import { mergeParties } from "./repair/merge-parties";
 import { fillCurrentSeatLinks } from "./repair/current-seat-links";
 import { formatFeedback, listFeedback, markFeedback } from "./feedback";
+import { linkStepDocuments } from "./dossiers/import";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
@@ -537,6 +538,15 @@ async function main() {
     const result = await importBillDossiers({ repoRoot, persist: hasFlag("persist"), only: listFlag("only"), limit: numberFlag("limit"), batch: numberFlag("batch"), log: (line) => console.log(line) });
     console.log(JSON.stringify({ ...result, summary: { ...result.summary, unrecognisedWording: result.summary.unrecognisedWording.slice(0, 15), unmatchedSponsorNames: result.summary.unmatchedSponsorNames.slice(0, 10) } }, null, 2));
     if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist to write, then npm run ingest:refresh-read-models.");
+    return;
+  }
+
+  if (command === "bills:dossiers:link-documents") {
+    // Sprint 12a (D-032): every document each dossier step prints, from the saved pages, added to the steps already stored. Writes only bill_step_documents; nothing else changes.
+    // Offline apart from the database. Dry run unless --persist. Then deploy; no read-model refresh is needed.
+    const result = await linkStepDocuments({ repoRoot, persist: hasFlag("persist"), only: listFlag("only"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     return;
   }
 

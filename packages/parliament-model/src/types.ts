@@ -545,7 +545,10 @@ export interface BillProcedureStep {
   title: string;
   description?: string;
   committeeName?: string;
+  /** The first document the step prints. */
   documentId?: string;
+  /** Every document the step prints, in the page's order (D-032), the first included. */
+  documentIds?: string[];
   sourceUrl?: string;
   displayOrder: number;
   /** Read from the dossier pages (Sprint 7): which page, the outside body, what a report or opinion concluded, deadlines, the vote. */

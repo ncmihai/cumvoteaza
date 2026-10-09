@@ -59,6 +59,13 @@ for (const size of sizes) {
       expect(await violations(page)).toEqual([]);
     });
 
+    test("a bill page with reports and opinions @db", async ({ page }) => {
+      const response = await page.goto("/ro/bills/l323-2025");
+      test.skip(response?.status() === 404, "the sample bill is not on this site");
+      await expect(page.getByRole("region", { name: "Rapoarte și avize" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
     test("a party page @db", async ({ page }) => {
       await page.goto("/ro/parties/psd");
       expect(await violations(page)).toEqual([]);

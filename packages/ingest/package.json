@@ -43,6 +43,7 @@
     "bills:coverage": "tsx src/cli.ts bills:coverage",
     "bills:dossiers:fetch": "tsx src/cli.ts bills:dossiers:fetch",
     "bills:dossiers:import": "tsx src/cli.ts bills:dossiers:import",
+    "bills:dossiers:link-documents": "tsx src/cli.ts bills:dossiers:link-documents",
     "bills:gazette:fill": "tsx src/cli.ts bills:gazette:fill",
     "coverage:publish": "tsx src/cli.ts coverage:publish",
     "repair:remove-test-votes": "tsx src/cli.ts repair:remove-test-votes",

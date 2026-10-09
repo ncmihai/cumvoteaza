@@ -12,6 +12,7 @@ import { presentBill } from "@/lib/public-presentation";
 import { confidenceForDocument, confidenceForSource } from "@/lib/source-confidence";
 import { BillDocumentDiffPanel } from "../../_components/BillDocumentDiffPanel";
 import { BillFatePanel, BillTimeline } from "../../_components/BillDossierPanels";
+import { BillReportsOpinions } from "../../_components/BillReportsOpinions";
 import { BillTextSearch } from "../../_components/BillTextSearch";
 import { ConfidenceBadge } from "../../_components/ConfidenceBadge";
 import { EngagementTracker } from "../../_components/EngagementTracker";
@@ -98,6 +99,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
 
       <section className="mt-6 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-5">
+          <BillReportsOpinions steps={procedureSteps} documents={documents} locale={locale} />
           {procedureSteps.some((step) => step.source) ? (
             <BillTimeline steps={procedureSteps} documents={documents} locale={locale} title={labels.timeline} />
           ) : (

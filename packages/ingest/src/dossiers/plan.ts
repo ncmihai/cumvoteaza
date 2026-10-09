@@ -70,6 +70,8 @@ export interface StepRow {
   displayOrder: number;
   /** The first document the step prints; resolved to a `documents` row when written. */
   documentUrl?: string;
+  /** Every document the step prints, in the page's order (D-032); `documentUrl` is the first of them. */
+  documentUrls?: string[];
 }
 
 export interface DocumentRow {
@@ -285,7 +287,8 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
       source: step.source,
       sourceUrl: sourceUrlOf(step.source),
       displayOrder: index,
-      ...(step.documents[0] ? { documentUrl: step.documents[0].url } : {})
+      ...(step.documents[0] ? { documentUrl: step.documents[0].url } : {}),
+      ...(step.documents.length ? { documentUrls: step.documents.map((document) => document.url) } : {})
     };
   });
 

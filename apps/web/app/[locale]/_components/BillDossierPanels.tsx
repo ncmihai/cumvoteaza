@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, CheckCircle2, CircleSlash, Clock, X } from "lucide-react";
-import { formatDate, type BillDossier, type BillProcedureStep, type DocumentSource } from "@cumsevoteaza/parliament-model";
+import { documentFormatOf, formatDate, type BillDossier, type BillProcedureStep, type DocumentSource } from "@cumsevoteaza/parliament-model";
 import { deadlineLine, fateView, groupStepsByChamber, registrationLine, resultLine, stepChamberLabel, stepTypeLabel, verdictLine } from "@/lib/bill-dossier-presentation";
 import type { AppLocale } from "@/lib/i18n";
 
@@ -120,7 +120,7 @@ export function BillTimeline({ steps, documents, locale, title }: { steps: BillP
             <div className="bg-wash px-5 py-2"><span className="rounded-full bg-surface px-3 py-0.5 text-xs font-semibold text-ink-soft ring-1 ring-line">{stepChamberLabel(lane.chamber, locale)}</span></div>
             <ol className="divide-y divide-line">
               {lane.steps.map((step) => {
-                const document = step.documentId ? documentById.get(step.documentId) : undefined;
+                const stepDocuments = (step.documentIds?.length ? step.documentIds : step.documentId ? [step.documentId] : []).flatMap((id) => documentById.get(id) ?? []);
                 const verdict = verdictLine(step, locale);
                 const result = resultLine(step.result, locale);
                 const deadlines = deadlineLine(step, locale);
@@ -137,7 +137,7 @@ export function BillTimeline({ steps, documents, locale, title }: { steps: BillP
                       {result ? <div className="mt-1 text-sm text-ink-soft">{result}{step.voteId ? <>{" · "}<Link className="font-semibold text-brand underline" href={`/${locale}/votes/${step.voteId}`}>{ro ? "voturile nominale" : "roll call"}</Link></> : null}</div> : step.voteId ? <div className="mt-1 text-sm"><Link className="font-semibold text-brand underline" href={`/${locale}/votes/${step.voteId}`}>{ro ? "Votul nominal" : "Roll-call vote"}</Link></div> : null}
                       {step.note ? <div className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">{step.note}</div> : null}
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-                        {document ? <a href={document.url} target="_blank" rel="noreferrer" className="text-brand underline">{document.label.replace(/\s+—\s+.*$/, "")}</a> : null}
+                        {stepDocuments.map((document) => { const format = documentFormatOf(document.url); return <a key={document.id} href={document.url} target="_blank" rel="noreferrer" className="text-brand underline">{document.label.replace(/\s+—\s+.*$/, "") || (ro ? "Document" : "Document")}{format === "pdf" || format === "other" ? "" : ` (${format.toUpperCase()})`}</a>; })}
                         {step.stenogramUrl ? <a href={step.stenogramUrl} target="_blank" rel="noreferrer" className="text-brand underline">{ro ? "Stenograma ședinței" : "Sitting stenogram"}</a> : null}
                       </div>
                     </div>

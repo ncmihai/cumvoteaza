@@ -900,6 +900,20 @@ export const billProcedureSteps = pgTable("bill_procedure_steps", {
 }));
 
 /**
+ * Every document a dossier step prints, in the page's order (D-032). `bill_procedure_steps.document_id` keeps the first one; this table keeps all of them, so a
+ * registration step shows its Legislative Council opinion and the Government's decision, and a report its annexes and the .doc copy beside the .pdf.
+ * Rewritten with the steps (the steps are replaced as a whole on every import).
+ */
+export const billStepDocuments = pgTable("bill_step_documents", {
+  stepId: text("step_id").notNull().references(() => billProcedureSteps.id, { onDelete: "cascade" }),
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  position: integer("position").notNull()
+}, (table) => ({
+  pk: primaryKey({ columns: [table.stepId, table.documentId] }),
+  documentIdx: index("bill_step_documents_document_idx").on(table.documentId)
+}));
+
+/**
  * What a bill's dossier pages say, read as published (D-025): registration numbers, initiative type, urgency,
  * the stage line, the Chamber's summary of the object, and the bill's fate. One row per bill that has been read.
  */
