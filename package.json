@@ -62,6 +62,8 @@
     "ingest:bills:ordinances:import": "npm --workspace @cumsevoteaza/ingest run bills:ordinances:import --",
     "ingest:bills:priorities:fetch": "npm --workspace @cumsevoteaza/ingest run bills:priorities:fetch --",
     "ingest:bills:priorities:import": "npm --workspace @cumsevoteaza/ingest run bills:priorities:import --",
+    "ingest:bills:reports:fetch": "npm --workspace @cumsevoteaza/ingest run bills:reports:fetch --",
+    "ingest:bills:reports:import": "npm --workspace @cumsevoteaza/ingest run bills:reports:import --",
     "ingest:bills:gazette:fill": "npm --workspace @cumsevoteaza/ingest run bills:gazette:fill --",
     "ingest:coverage:publish": "npm --workspace @cumsevoteaza/ingest run coverage:publish --",
     "ingest:repair:remove-test-votes": "npm --workspace @cumsevoteaza/ingest run repair:remove-test-votes --",

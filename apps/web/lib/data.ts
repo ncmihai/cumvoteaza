@@ -97,7 +97,16 @@ export interface BillPageData {
   ordinances?: BillOrdinance[];
   /** The sessions in which the Senate's Legislative Bulletin marks the bill "prioritate legislativă" (D-034), oldest first. */
   priorityFlags?: BillPriorityFlag[];
+  /** What was read from the committees' report PDFs of this bill (D-035), by the report document's id. */
+  reportReadings?: Record<string, ReportReadingView>;
   sourceKind: "database";
+}
+
+export interface ReportReadingView {
+  quality: "clean" | "poor" | "none";
+  pages: number;
+  annexes: Array<{ kind: "admitted" | "rejected"; page: number }>;
+  authors: Array<{ name: string; role: "deputy" | "senator"; group?: string; memberSlug?: string }>;
 }
 
 export interface BillPriorityFlag {
@@ -320,7 +329,7 @@ const getCachedVotePageData = unstable_cache(
 
 const getCachedBillPageData = unstable_cache(
   async (id: string) => timed(`data.bill.${id}`, () => coalesce(`bill:${id}`, () => getBillPageDataUncached(id))),
-  ["bill-page-data-priorities-v1"],
+  ["bill-page-data-reports-v1"],
   { revalidate: 900, tags: [CACHE_TAGS.bills] }
 );
 
@@ -716,6 +725,20 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
     const priorityRows = await session.db.execute<{ session_label: string; bulletin_url: string; bulletin_page: number; urgency: boolean; law_kind: string | null }>(sql`
       select session_label, bulletin_url, bulletin_page, urgency, law_kind from bill_priority_flags where bill_id = ${billRow.id} order by session_starts_on`).catch(() => []);
     const priorityFlags: BillPriorityFlag[] = [...priorityRows].map((row) => ({ sessionLabel: row.session_label, bulletinUrl: row.bulletin_url, bulletinPage: Number(row.bulletin_page), urgency: Boolean(row.urgency), ...(row.law_kind === "ordinary" || row.law_kind === "organic" ? { lawKind: row.law_kind } : {}) }));
+    // What was read from this bill's committee reports (D-035). A site deployed before the tables exist, or before they are filled, simply shows none.
+    const readingRows = await session.db.execute<{ document_id: string; quality: string; pages: number }>(sql`
+      select r.document_id, r.quality, r.pages from committee_report_reads r join documents d on d.id = r.document_id where d.bill_id = ${billRow.id}`).catch(() => []);
+    const reportReadings: Record<string, ReportReadingView> = {};
+    if ([...readingRows].length) {
+      const ids = [...readingRows].map((row) => row.document_id);
+      const idList = sql.join(ids.map((id) => sql`${id}`), sql`, `);
+      const annexRows = await session.db.execute<{ document_id: string; kind: string; page: number }>(sql`select document_id, kind, page from committee_report_annexes where document_id in (${idList}) order by page`).catch(() => []);
+      const authorRows = await session.db.execute<{ document_id: string; name: string; role: string; group_label: string | null; slug: string | null }>(sql`
+        select a.document_id, a.name, a.role, a.group_label, m.slug from committee_report_authors a left join members m on m.id = a.member_id where a.document_id in (${idList}) order by a.document_id, a.position`).catch(() => []);
+      for (const row of readingRows) reportReadings[row.document_id] = { quality: row.quality === "clean" || row.quality === "poor" ? row.quality : "none", pages: Number(row.pages), annexes: [], authors: [] };
+      for (const row of annexRows) reportReadings[row.document_id]?.annexes.push({ kind: row.kind === "rejected" ? "rejected" : "admitted", page: Number(row.page) });
+      for (const row of authorRows) reportReadings[row.document_id]?.authors.push({ name: row.name, role: row.role === "senator" ? "senator" : "deputy", ...(row.group_label ? { group: row.group_label } : {}), ...(row.slug ? { memberSlug: row.slug } : {}) });
+    }
     const events = eventRows.map(mapBillEvent).sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
     const sponsorContexts: BillSponsorContext[] = events[0]
       ? await loadBillSponsorContexts(session.db, sponsorRows.map(mapBillSponsor), events[0].occurredOn)
@@ -740,6 +763,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       governmentContext,
       ordinances,
       priorityFlags,
+      reportReadings,
       sponsorContexts: governmentContext ? sponsorContexts.map((item) => ({
         ...item,
         ...resolvePartyAlignment(item.party?.id, governmentContext)

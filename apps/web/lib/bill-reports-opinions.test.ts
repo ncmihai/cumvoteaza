@@ -13,7 +13,7 @@ describe("buildReportsAndOpinions", () => {
     );
     expect(result.reports).toHaveLength(1);
     expect(result.reports[0]).toMatchObject({ issuer: "Comisia juridică", verdict: "favorable_with_amendments", number: "213", amendments: { admitted: 4, rejected: 1 }, attached: false, date: "2026-03-10" });
-    expect(result.reports[0]!.files).toEqual([{ url: "https://www.senat.ro/legis/PDF/2026/26L1CJ.PDF?nocache=true", format: "pdf", label: "Comisia juridică" }]);
+    expect(result.reports[0]!.files).toEqual([{ documentId: "d1", url: "https://www.senat.ro/legis/PDF/2026/26L1CJ.PDF?nocache=true", format: "pdf", label: "Comisia juridică" }]);
   });
 
   it("shows the .pdf and its .docx copy as one entry, the pdf first", () => {
@@ -23,6 +23,15 @@ describe("buildReportsAndOpinions", () => {
     );
     expect(result.committeeOpinions).toHaveLength(1);
     expect(result.committeeOpinions[0]!.files.map((file) => file.format)).toEqual(["pdf", "docx"]);
+  });
+
+  it("shows the Chamber's .doc copy, kept in a sibling folder, with its .pdf as one report", () => {
+    const result = buildReportsAndOpinions(
+      [step("s1", "committee_report_received", "2026-06-10", { chamber: "deputies", committeeName: "Comisia juridică", documentIds: ["d1", "d2"] })],
+      [doc("d1", "Comisia juridică", "https://www.cdep.ro/comisii/juridica/pdf/2026/rp336.pdf"), doc("d2", "Comisia juridică", "https://www.cdep.ro/comisii/juridica/doc/2026/rp336.doc")]
+    );
+    expect(result.reports).toHaveLength(1);
+    expect(result.reports[0]!.files.map((file) => file.format)).toEqual(["pdf", "doc"]);
   });
 
   it("finds the Legislative Council's opinion printed on the registration step, and the Government's decision stays out", () => {
@@ -66,6 +75,17 @@ describe("buildReportsAndOpinions", () => {
       { issuer: "Comisia B", requestedOn: "2026-01-05", kind: "committee_opinion" },
       { issuer: "Guvernul", requestedOn: "2026-01-06", kind: "government_view" }
     ]);
+  });
+
+  it("attaches what was read from a report's PDF to the report, and to no other entry", () => {
+    const reading = { quality: "clean" as const, pages: 13, annexes: [{ kind: "admitted" as const, page: 4 }], authors: [{ name: "Alexandru – Paul DIMITRIU", role: "deputy" as const, group: "USR" }] };
+    const result = buildReportsAndOpinions(
+      [step("s1", "committee_report_received", "2026-03-10", { committeeName: "Comisia juridică", documentIds: ["d1"] }), step("s2", "committee_opinion_received", "2026-03-11", { committeeName: "Comisia B", documentIds: ["d2"] })],
+      [doc("d1", "Comisia juridică", "https://www.cdep.ro/comisii/juridica/pdf/2026/rp336.pdf"), doc("d2", "Comisia B", "https://www.cdep.ro/comisii/b/pdf/2026/av5.pdf")],
+      { d1: reading, d2: reading }
+    );
+    expect(result.reports[0]!.reading).toEqual(reading);
+    expect(result.committeeOpinions[0]!.reading).toBeUndefined();
   });
 
   it("says nothing for a bill whose dossier names no report or opinion", () => {

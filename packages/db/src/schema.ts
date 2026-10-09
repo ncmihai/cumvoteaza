@@ -8,6 +8,7 @@ import {
   pgTable,
   pgView,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -955,6 +956,43 @@ export const billPriorityFlags = pgTable("bill_priority_flags", {
 }, (table) => ({
   pk: primaryKey({ columns: [table.billId, table.sessionId] }),
   sessionIdx: index("bill_priority_flags_session_idx").on(table.sessionId)
+}));
+
+/**
+ * What was read from the committees' report PDFs (D-035, Sprint 12d): per report document, how many pages, how clean the text is (the Chamber's reports are born
+ * digital, the Senate's are scans with an OCR layer), and, only where it can be read without guessing, where the amendment annexes are and who the annex names.
+ */
+export const committeeReportReads = pgTable("committee_report_reads", {
+  documentId: text("document_id").primaryKey().references(() => documents.id, { onDelete: "cascade" }),
+  pages: integer("pages").notNull(),
+  /** Share of words with a character that does not occur in Romanian text (OCR noise), in percent. */
+  garbledPercent: real("garbled_percent").notNull(),
+  /** clean | poor | none. */
+  quality: text("quality").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+});
+
+export const committeeReportAnnexes = pgTable("committee_report_annexes", {
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  /** admitted | rejected. */
+  kind: text("kind").notNull(),
+  page: integer("page").notNull()
+}, (table) => ({
+  pk: primaryKey({ columns: [table.documentId, table.kind, table.page] })
+}));
+
+export const committeeReportAuthors = pgTable("committee_report_authors", {
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  name: text("name").notNull(),
+  /** deputy | senator. */
+  role: text("role").notNull(),
+  groupLabel: text("group_label"),
+  /** Set only when exactly one member of that chamber has the same words in any order. */
+  memberId: text("member_id").references(() => members.id)
+}, (table) => ({
+  pk: primaryKey({ columns: [table.documentId, table.position] }),
+  memberIdx: index("committee_report_authors_member_idx").on(table.memberId)
 }));
 
 /**

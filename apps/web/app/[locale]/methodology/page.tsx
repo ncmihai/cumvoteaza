@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { titled } from "@/lib/page-metadata";
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
 import { getCoveragePageData, type CoverageStatus, type CoveragePageData } from "@/lib/coverage-data";
+import { getReportReadingStats } from "@/lib/report-reading-stats";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { FeedbackLink } from "../_components/FeedbackLink";
 import { SITE } from "@/lib/site";
@@ -33,7 +34,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
   const { locale: rawLocale } = await params;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const ro = locale === "ro";
-  const data = await getCoveragePageData();
+  const [data, reportStats] = await Promise.all([getCoveragePageData(), getReportReadingStats()]);
   const n = (value: number) => new Intl.NumberFormat(ro ? "ro-RO" : "en-GB").format(value);
   const pct = (value: number | null) => (value === null ? "–" : `${value.toLocaleString(ro ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 })}%`);
   const date = (value?: string) => (value ? formatDate(value.slice(0, 10), locale) : "–");
@@ -121,6 +122,16 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
               </table></div>
             ) : null}
           </Section>
+
+          {reportStats.some((item) => item.read > 0) ? (
+            <Section title={ro ? "Rapoartele comisiilor și amendamentele" : "Committee reports and amendments"}>
+              <p>{ro ? "Din fiecare raport al unei comisii citim doar ce se poate citi fără ghicit: dacă are o anexă de amendamente admise sau respinse și la ce pagină (legătura duce la acea pagină a fișierului oficial), și autorii numiți în anexă. Nu spunem care amendament e al cui, nu numărăm amendamente (formatul anexei diferă de la o comisie la alta) și nu citim nume din copii scanate: un nume citit greșit de OCR e mai rău decât niciun nume. Rapoartele Camerei sunt fișiere digitale cu text curat; cele ale Senatului sunt copii scanate cu un strat de text imperfect." : "From each committee report we read only what can be read without guessing: whether it has an annex of admitted or rejected amendments and on which page (the link leads to that page of the official file), and the authors the annex names. We do not say which amendment is whose, we do not count amendments (the annex layout differs from one committee to the next) and we do not read names from scanned copies: a name misread by OCR is worse than no name. The Chamber's reports are digital files with clean text; the Senate's are scanned copies with an imperfect text layer."}</p>
+              <div tabIndex={0} role="region" aria-label={ro ? "Rapoarte citite" : "Reports read"} className="overflow-x-auto"><table className="w-full min-w-[560px] border-collapse text-sm">
+                <thead><tr className="border-b border-line"><th className={th}>{ro ? "Camera" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Rapoarte" : "Reports"}</th><th className={`${th} text-right`}>{ro ? "Text curat" : "Clean text"}</th><th className={`${th} text-right`}>{ro ? "Text slab" : "Poor text"}</th><th className={`${th} text-right`}>{ro ? "Cu anexă de amendamente" : "With an amendment annex"}</th><th className={`${th} text-right`}>{ro ? "Cu autori numiți" : "With named authors"}</th></tr></thead>
+                <tbody>{reportStats.map((item) => <tr key={item.host} className="border-b border-line last:border-0"><td className="px-3 py-2 font-medium text-ink">{item.host === "senat" ? "Senat" : ro ? "Camera Deputaților" : "Chamber of Deputies"}</td><td className="px-3 py-2 text-right tabular-nums">{n(item.reports)}</td><td className="px-3 py-2 text-right tabular-nums">{n(item.clean)}</td><td className="px-3 py-2 text-right tabular-nums">{n(item.poor + item.none)}</td><td className="px-3 py-2 text-right tabular-nums">{n(item.withAnnex)}</td><td className="px-3 py-2 text-right tabular-nums">{n(item.withAuthors)}</td></tr>)}</tbody>
+              </table></div>
+            </Section>
+          ) : null}
 
           <Section title={ro ? "Ultima actualizare" : "Last update"}>
             <p>{ro ? "Actualizarea porneşte la cerere sau o dată pe zi (nu în timp real); datele de mai jos sunt ale celui mai recent vot păstrat și ale ultimei pagini oficiale citite pentru el." : "Updating starts on request or once a day (not in real time); the dates below are the most recent vote we hold and the last official page read for it."}</p>

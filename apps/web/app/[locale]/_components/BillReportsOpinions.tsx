@@ -2,6 +2,8 @@ import { FileText, Scale } from "lucide-react";
 import { formatDate, type BillProcedureStep, type DocumentSource } from "@cumsevoteaza/parliament-model";
 import { buildReportsAndOpinions, type ReportFile, type ReportOrOpinion } from "@/lib/bill-reports-opinions";
 import { stepChamberLabel, verdictLine } from "@/lib/bill-dossier-presentation";
+import Link from "next/link";
+import type { ReportReadingView } from "@/lib/data";
 import type { AppLocale } from "@/lib/i18n";
 
 const VERDICT_CLASSES: Record<string, string> = {
@@ -17,13 +19,13 @@ const FORMAT_LABEL: Record<ReportFile["format"], string> = { pdf: "PDF", docx: "
  * Every committee report, committee opinion, opinion of an outside body (the Legislative Council, the Economic and Social Council, the Fiscal Council, ...) and the
  * Government's view the dossier names, each with the link to the official file (D-032). A bill whose dossier names none shows no panel.
  */
-export function BillReportsOpinions({ steps, documents, locale }: { steps: BillProcedureStep[]; documents: DocumentSource[]; locale: AppLocale }) {
-  const data = buildReportsAndOpinions(steps, documents);
+export function BillReportsOpinions({ steps, documents, readings = {}, locale }: { steps: BillProcedureStep[]; documents: DocumentSource[]; readings?: Record<string, ReportReadingView>; locale: AppLocale }) {
+  const data = buildReportsAndOpinions(steps, documents, readings);
   if (data.total === 0 && data.requestedWithoutAnswer.length === 0) return null;
   const ro = locale === "ro";
   const copy = ro
-    ? { title: "Rapoarte și avize", reports: "Rapoarte ale comisiilor", committeeOpinions: "Avize ale comisiilor", bodies: "Avize ale altor instituții", government: "Punctul de vedere al Guvernului", requested: "Cerute, fără răspuns pe pagina oficială", requestedNote: "Pagina oficială a proiectului arată cererea, dar nu arată un aviz primit de la acest organ. Nu înseamnă că nu a existat unul.", attached: "depus odată cu proiectul", undated: "data nu este tipărită", note: "Fiecare legătură duce la fișierul oficial, din pagina Camerei sau a Senatului. Nu citim conținutul: concluzia (favorabil, nefavorabil) este cea tipărită în dosar.", none: "Niciun raport sau aviz nu apare încă în dosarul oficial.", number: "nr." }
-    : { title: "Reports and opinions", reports: "Committee reports", committeeOpinions: "Committee opinions", bodies: "Opinions of other bodies", government: "The Government's view", requested: "Requested, no answer on the official page", requestedNote: "The bill's official page shows the request but no opinion received from this body. It does not mean none exists.", attached: "filed with the bill", undated: "date not printed", note: "Each link leads to the official file on the Chamber's or the Senate's site. We do not read the content: the conclusion (favourable, unfavourable) is the one printed in the dossier.", none: "No report or opinion appears in the official dossier yet.", number: "no." };
+    ? { title: "Rapoarte și avize", reports: "Rapoarte ale comisiilor", committeeOpinions: "Avize ale comisiilor", bodies: "Avize ale altor instituții", government: "Punctul de vedere al Guvernului", requested: "Cerute, fără răspuns pe pagina oficială", requestedNote: "Pagina oficială a proiectului arată cererea, dar nu arată un aviz primit de la acest organ. Nu înseamnă că nu a existat unul.", attached: "depus odată cu proiectul", undated: "data nu este tipărită", note: "Fiecare legătură duce la fișierul oficial, din pagina Camerei sau a Senatului. Nu citim conținutul: concluzia (favorabil, nefavorabil) este cea tipărită în dosar.", none: "Niciun raport sau aviz nu apare încă în dosarul oficial.", number: "nr.", annexAdmitted: "Amendamente admise", annexRejected: "Amendamente respinse", authors: "Autori numiți în anexă", authorsNote: "nelegați de un amendament anume", scanned: "Copie scanată: autorii și anexa de amendamente nu se pot citi sigur.", scannedAuthors: "Copie scanată: autorii nu au fost citiți.", page: "p." }
+    : { title: "Reports and opinions", reports: "Committee reports", committeeOpinions: "Committee opinions", bodies: "Opinions of other bodies", government: "The Government's view", requested: "Requested, no answer on the official page", requestedNote: "The bill's official page shows the request but no opinion received from this body. It does not mean none exists.", attached: "filed with the bill", undated: "date not printed", note: "Each link leads to the official file on the Chamber's or the Senate's site. We do not read the content: the conclusion (favourable, unfavourable) is the one printed in the dossier.", none: "No report or opinion appears in the official dossier yet.", number: "no.", annexAdmitted: "Admitted amendments", annexRejected: "Rejected amendments", authors: "Authors named in the annex", authorsNote: "not tied to a particular amendment", scanned: "Scanned copy: the authors and the annex of amendments cannot be read reliably.", scannedAuthors: "Scanned copy: the authors were not read.", page: "p." };
   const count = (entries: ReportOrOpinion[]) => entries.length;
   const opinions = count(data.committeeOpinions) + count(data.bodyOpinions) + count(data.governmentViews);
   return (
@@ -84,6 +86,7 @@ function Entry({ entry, locale, copy }: { entry: ReportOrOpinion; locale: AppLoc
           {entry.number ? <span>· {copy.number} {entry.number}</span> : null}
         </p>
         {verdict ? <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${VERDICT_CLASSES[entry.verdict ?? ""] ?? "bg-wash text-ink-soft"}`}>{verdict}</span> : null}
+        {entry.kind === "report" ? <ReportReadingLine entry={entry} locale={locale} copy={copy} /> : null}
       </div>
       <div className="flex flex-wrap gap-1.5 sm:justify-end">
         {entry.files.map((file) => (
@@ -93,5 +96,29 @@ function Entry({ entry, locale, copy }: { entry: ReportOrOpinion; locale: AppLoc
         ))}
       </div>
     </li>
+  );
+}
+
+/** Where a report's amendment annexes are (a link to that page of the PDF) and who they name, when the text could be read; a scan says so instead of guessing. */
+function ReportReadingLine({ entry, locale, copy }: { entry: ReportOrOpinion; locale: AppLocale; copy: Record<string, string> }) {
+  const reading = entry.reading;
+  const pdf = entry.files.find((file) => file.format === "pdf") ?? entry.files[0];
+  const withAmendments = entry.verdict === "favorable_with_amendments";
+  if (!reading) return null;
+  if (reading.annexes.length === 0 && !(reading.quality !== "clean" && withAmendments)) return null;
+  return (
+    <div className="mt-1.5 space-y-1 text-xs text-ink-soft">
+      {pdf && reading.annexes.length ? (
+        <p className="flex flex-wrap gap-x-3 gap-y-1">
+          {reading.annexes.map((annex) => <a key={`${annex.kind}-${annex.page}`} href={`${pdf.url}#page=${annex.page}`} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">{annex.kind === "admitted" ? copy.annexAdmitted : copy.annexRejected} ({copy.page} {annex.page})</a>)}
+        </p>
+      ) : null}
+      {reading.authors.length ? (
+        <p className="[overflow-wrap:anywhere]"><span className="font-semibold">{copy.authors}:</span> {reading.authors.map((author, index) => (
+          <span key={`${author.name}-${index}`}>{index ? ", " : ""}{author.memberSlug ? <Link href={`/${locale}/members/${author.memberSlug}`} className="text-brand underline">{author.name}</Link> : author.name}{author.group ? ` (${author.group})` : ""}</span>
+        ))} <span className="text-muted">({copy.authorsNote})</span></p>
+      ) : reading.quality !== "clean" && reading.annexes.length ? <p className="text-muted">{copy.scannedAuthors}</p> : null}
+      {reading.quality !== "clean" && !reading.annexes.length && withAmendments ? <p className="text-muted">{copy.scanned}</p> : null}
+    </div>
   );
 }

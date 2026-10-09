@@ -45,7 +45,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
     if (currentSlug && currentSlug !== id) permanentRedirect(`/${rawLocale}/bills/${currentSlug}`);
     notFound();
   }
-  const { bill, dossier, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts, ordinances = [], priorityFlags = [] } = data;
+  const { bill, dossier, events, procedureSteps, documents, votes, source, governmentContext, sponsorContexts, ordinances = [], priorityFlags = [], reportReadings = {} } = data;
   const [hotCount, comparisons, documentConfidence] = await Promise.all([
     getHotCount("bill", bill.id),
     getBillTextComparisons(bill.id),
@@ -104,7 +104,7 @@ export default async function BillPage({ params }: { params: Promise<{ locale: s
       <section className="mt-6 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-5">
           <BillOrdinanceCard ordinances={ordinances} documents={documents} locale={locale} />
-          <BillReportsOpinions steps={procedureSteps} documents={documents} locale={locale} />
+          <BillReportsOpinions steps={procedureSteps} documents={documents} readings={reportReadings} locale={locale} />
           {procedureSteps.some((step) => step.source) ? (
             <BillTimeline steps={procedureSteps} documents={documents} locale={locale} title={labels.timeline} />
           ) : (

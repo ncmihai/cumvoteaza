@@ -19,6 +19,7 @@ import { formatFeedback, listFeedback, markFeedback } from "./feedback";
 import { linkStepDocuments } from "./dossiers/import";
 import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from "./dossiers/ordinances";
 import { fetchBulletins, importPriorities } from "./dossiers/priorities";
+import { fetchReports, importReports, listReportSources } from "./dossiers/committee-reports";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
@@ -596,6 +597,35 @@ async function main() {
     try {
       const result = await importPriorities(session.db, { repoRoot, persist: hasFlag("persist") });
       console.log(JSON.stringify({ ...result, sessions: result.sessions.map((item) => ({ ...item, unmatched: item.unmatched.slice(0, 30) })) }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "bills:reports:fetch") {
+    // Sprint 12d (D-035): the committees' report PDFs of this legislature (about 1,800), saved under data/coverage/raw/committee-report: one request at a time, --delay ms apart
+    // (default 3000, docs/cdep-access.md), --limit new files per run (default 300), --host=cdep|senat. Resumable: what is saved is never fetched again. Plan only without --live.
+    const session = createDbSession();
+    try {
+      const sources = await listReportSources(session.db);
+      const result = await fetchReports({ repoRoot, sources, live: hasFlag("live"), host: (flag("host") as "cdep" | "senat" | undefined), limit: numberFlag("limit") ?? 300, delayMs: numberFlag("delay") ?? 3000, log: (line) => console.log(line) });
+      console.log(JSON.stringify({ ...result, failed: result.failed.slice(0, 30) }, null, 2));
+      if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+      if (result.stoppedBy) process.exitCode = 2;
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "bills:reports:import") {
+    // Sprint 12d (D-035): committee_report_reads, _annexes and _authors from the saved report PDFs. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importReports(session.db, { repoRoot, persist: hasFlag("persist"), log: (line) => console.log(line) });
+      console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {
       await session.close();

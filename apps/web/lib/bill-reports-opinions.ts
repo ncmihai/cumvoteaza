@@ -1,4 +1,5 @@
 import { classifyBillDocument, REPORT_AND_OPINION_ROLES, type BillDocumentFormat, type BillDocumentRole, type BillProcedureStep, type DocumentSource, type StepVerdict } from "@cumsevoteaza/parliament-model";
+import type { ReportReadingView } from "./data";
 
 /**
  * The "Reports and opinions" panel of a bill (D-032, Sprint 12a): every committee report, committee opinion, outside body's opinion and Government view the dossier
@@ -7,6 +8,8 @@ import { classifyBillDocument, REPORT_AND_OPINION_ROLES, type BillDocumentFormat
 export type ReportKind = "report" | "committee_opinion" | "body_opinion" | "government_view";
 
 export interface ReportFile {
+  /** The `documents` row of the file, which is where what was read from it is kept. */
+  documentId: string;
   url: string;
   format: BillDocumentFormat;
   label: string;
@@ -30,6 +33,8 @@ export interface ReportOrOpinion {
   attached: boolean;
   /** The pdf first, then the editable copies of the same file. */
   files: ReportFile[];
+  /** What was read from the report's PDF (D-035): where its amendment annexes are and who they name; only for committee reports. */
+  reading?: ReportReadingView;
 }
 
 export interface RequestedWithoutAnswer {
@@ -52,7 +57,8 @@ const fold = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").t
 
 /** One file with its editable copies: the Chamber lists `av550.pdf` and `av550.docx` side by side; the Senate lists one file in both formats. */
 function fileBase(url: string): string {
-  return fold(url.split(/[?#]/)[0] ?? url).replace(/\.(pdf|docx?|rtf)$/, "").replace(/^https?:\/\/(www\.)?/, "");
+  // The Chamber keeps the editable copy in a sibling folder (.../pdf/2026/rp336.pdf, .../doc/2026/rp336.doc).
+  return fold(url.split(/[?#]/)[0] ?? url).replace(/\.(pdf|docx?|rtf)$/, "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/(?:pdf|docx?)\//, "/_/");
 }
 
 /** The label as the page printed it, with the first letter capital and the dossier's stray spaces folded. */
@@ -64,7 +70,7 @@ const kindOf = (role: BillDocumentRole): ReportKind | undefined =>
 const REQUESTED: Record<string, RequestedWithoutAnswer["kind"]> = { committee_opinion_requested: "committee_opinion", opinion_requested: "body_opinion", government_view_requested: "government_view" };
 const RECEIVED: Record<string, RequestedWithoutAnswer["kind"]> = { committee_opinion_received: "committee_opinion", committee_report_received: "committee_opinion", opinion_received: "body_opinion", government_view_received: "government_view" };
 
-export function buildReportsAndOpinions(steps: BillProcedureStep[], documents: DocumentSource[]): ReportsAndOpinions {
+export function buildReportsAndOpinions(steps: BillProcedureStep[], documents: DocumentSource[], readings: Record<string, ReportReadingView> = {}): ReportsAndOpinions {
   const documentById = new Map(documents.map((document) => [document.id, document]));
   const usedDocumentIds = new Set<string>();
   const entries: ReportOrOpinion[] = [];
@@ -102,7 +108,7 @@ export function buildReportsAndOpinions(steps: BillProcedureStep[], documents: D
         ...(itself && (step.amendmentsAdmitted !== undefined || step.amendmentsRejected !== undefined) ? { amendments: { admitted: step.amendmentsAdmitted ?? 0, rejected: step.amendmentsRejected ?? 0 } } : {}),
         attached: !itself,
         files: group.documents
-          .map((document) => ({ url: document.url, format: classifyBillDocument({ label: document.label, url: document.url }).format, label: document.label }))
+          .map((document) => ({ documentId: document.id, url: document.url, format: classifyBillDocument({ label: document.label, url: document.url }).format, label: document.label }))
           .sort((a, b) => FORMAT_ORDER[a.format] - FORMAT_ORDER[b.format])
       });
     }
@@ -117,7 +123,7 @@ export function buildReportsAndOpinions(steps: BillProcedureStep[], documents: D
     if (!kind || kind === "report" || kind === "committee_opinion") continue;
     const base = fileBase(document.url);
     if (entries.some((entry) => entry.files.some((file) => fileBase(file.url) === base))) continue;
-    entries.push({ key: `header|${document.id}`, kind, role: classified.role, issuer: classified.body ?? document.label, title: titleOf(document.label), attached: true, files: [{ url: document.url, format: classified.format, label: document.label }] });
+    entries.push({ key: `header|${document.id}`, kind, role: classified.role, issuer: classified.body ?? document.label, title: titleOf(document.label), attached: true, files: [{ documentId: document.id, url: document.url, format: classified.format, label: document.label }] });
   }
 
   // The same opinion printed by both chambers' pages (two addresses, one body, one date) is one line with both files.
@@ -131,6 +137,13 @@ export function buildReportsAndOpinions(steps: BillProcedureStep[], documents: D
       continue;
     }
     merged.push({ ...entry, files: [...entry.files] });
+  }
+
+  // What was read from each committee report's PDF, by the report's own document.
+  for (const entry of merged) {
+    if (entry.kind !== "report") continue;
+    const reading = entry.files.map((file) => readings[file.documentId]).find(Boolean);
+    if (reading) entry.reading = reading;
   }
 
   // What was asked for and has no answer on the official page: matched by the committee or body the request names.
