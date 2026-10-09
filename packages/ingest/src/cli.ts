@@ -17,6 +17,7 @@ import { mergeParties } from "./repair/merge-parties";
 import { fillCurrentSeatLinks } from "./repair/current-seat-links";
 import { formatFeedback, listFeedback, markFeedback } from "./feedback";
 import { linkStepDocuments } from "./dossiers/import";
+import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from "./dossiers/ordinances";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
 import { beat, claimJob, finishJob, requestJob, status as updaterStatus } from "./updater/store";
@@ -547,6 +548,35 @@ async function main() {
     const result = await linkStepDocuments({ repoRoot, persist: hasFlag("persist"), only: listFlag("only"), log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    return;
+  }
+
+  if (command === "bills:ordinances:fetch") {
+    // Sprint 12b (D-033): the Government ordinance each approval bill approves, looked up on the legislative portal (legislatie.just.ro) by the number and year the bill's title
+    // names, newest first. What the portal answers is saved under data/coverage/raw/legislatie-ordinance and never asked again. Plan only without --live; one request every
+    // --delay ms (default 2000), --limit caps the lookups of one run.
+    const session = createDbSession();
+    try {
+      const refs = uniqueRefs(await loadApprovalBills(session.db));
+      const result = await fetchOrdinances({ repoRoot, refs, live: hasFlag("live"), limit: numberFlag("limit"), delayMs: numberFlag("delay") ?? 2000, log: (line) => console.log(line) });
+      console.log(JSON.stringify({ ...result, notFound: result.notFound.slice(0, 40) }, null, 2));
+      if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "bills:ordinances:import") {
+    // Sprint 12b (D-033): government_ordinances and bill_ordinances from the saved answers and the bills' titles. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importOrdinances(session.db, { repoRoot, persist: hasFlag("persist") });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

@@ -59,6 +59,12 @@ for (const size of sizes) {
       expect(await violations(page)).toEqual([]);
     });
 
+    test("an approval bill page with its ordinance card @db", async ({ page }) => {
+      const response = await page.goto("/ro/bills/l217-2026");
+      test.skip(response?.status() === 404, "the sample bill is not on this site");
+      expect(await violations(page)).toEqual([]);
+    });
+
     test("a bill page with reports and opinions @db", async ({ page }) => {
       const response = await page.goto("/ro/bills/l323-2025");
       test.skip(response?.status() === 404, "the sample bill is not on this site");

@@ -93,7 +93,17 @@ export interface BillPageData {
   source?: SourceSnapshot;
   governmentContext?: GovernmentContextData;
   sponsorContexts: BillSponsorContext[];
+  /** The Government ordinance the bill's title says it approves (D-033), with what the legislative portal says about it. */
+  ordinances?: BillOrdinance[];
   sourceKind: "database";
+}
+
+export interface BillOrdinance {
+  kind: "urgency" | "ordinary";
+  number: string;
+  year: number;
+  /** Empty when the legislative portal has no such act: the reference from the title stays, nothing else is shown. */
+  act?: { issuedOn: string; title: string; issuer: string; gazetteNumber?: string; gazetteOn?: string; portalUrl: string };
 }
 
 export interface GovernmentContextData {
@@ -300,7 +310,7 @@ const getCachedVotePageData = unstable_cache(
 
 const getCachedBillPageData = unstable_cache(
   async (id: string) => timed(`data.bill.${id}`, () => coalesce(`bill:${id}`, () => getBillPageDataUncached(id))),
-  ["bill-page-data-step-documents-v1"],
+  ["bill-page-data-ordinances-v1"],
   { revalidate: 900, tags: [CACHE_TAGS.bills] }
 );
 
@@ -682,6 +692,16 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       select sd.step_id, sd.document_id from bill_step_documents sd join bill_procedure_steps s on s.id = sd.step_id where s.bill_id = ${billRow.id} order by sd.step_id, sd.position`).catch(() => []);
     const documentIdsByStep = new Map<string, string[]>();
     for (const row of stepDocumentRows) documentIdsByStep.set(row.step_id, [...(documentIdsByStep.get(row.step_id) ?? []), row.document_id]);
+    // The ordinance the bill approves (D-033). A site deployed before the tables exist, or before they are filled, simply shows none.
+    const ordinanceRows = await session.db.execute<{ kind: string; number: string; year: number; issued_on: string | null; title: string | null; issuer: string | null; gazette_number: string | null; gazette_on: string | null; portal_url: string | null }>(sql`
+      select bo.kind, bo.number, bo.year, o.issued_on::text as issued_on, o.title, o.issuer, o.gazette_number, o.gazette_on::text as gazette_on, o.portal_url
+      from bill_ordinances bo left join government_ordinances o on o.id = bo.ordinance_id where bo.bill_id = ${billRow.id} order by bo.year, bo.number::int`).catch(() => []);
+    const ordinances: BillOrdinance[] = [...ordinanceRows].map((row) => ({
+      kind: row.kind === "urgency" ? "urgency" : "ordinary",
+      number: row.number,
+      year: Number(row.year),
+      ...(row.issued_on && row.title && row.portal_url ? { act: { issuedOn: row.issued_on, title: row.title, issuer: row.issuer ?? "Guvernul României", ...(row.gazette_number ? { gazetteNumber: row.gazette_number } : {}), ...(row.gazette_on ? { gazetteOn: row.gazette_on } : {}), portalUrl: row.portal_url } } : {})
+    }));
     const events = eventRows.map(mapBillEvent).sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
     const sponsorContexts: BillSponsorContext[] = events[0]
       ? await loadBillSponsorContexts(session.db, sponsorRows.map(mapBillSponsor), events[0].occurredOn)
@@ -704,6 +724,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       votes: voteRows.map(mapVote),
       source: sourceRow ? mapSource(sourceRow) : undefined,
       governmentContext,
+      ordinances,
       sponsorContexts: governmentContext ? sponsorContexts.map((item) => ({
         ...item,
         ...resolvePartyAlignment(item.party?.id, governmentContext)

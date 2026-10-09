@@ -900,6 +900,42 @@ export const billProcedureSteps = pgTable("bill_procedure_steps", {
 }));
 
 /**
+ * The Government ordinances approval bills approve (D-033, Sprint 12b), read from the legislative portal: an urgency ordinance (OUG) or an ordinary one (OG),
+ * with its own date, title, Official Gazette number and date, and the portal's page of its text. One row per ordinance, whatever bills refer to it.
+ */
+export const governmentOrdinances = pgTable("government_ordinances", {
+  id: text("id").primaryKey(),
+  /** urgency (OUG) | ordinary (OG). */
+  kind: text("kind").notNull(),
+  number: text("number").notNull(),
+  year: integer("year").notNull(),
+  issuedOn: date("issued_on").notNull(),
+  title: text("title").notNull(),
+  issuer: text("issuer").notNull(),
+  gazetteNumber: text("gazette_number"),
+  gazetteOn: date("gazette_on"),
+  portalUrl: text("portal_url").notNull(),
+  portalId: text("portal_id"),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  referenceIdx: uniqueIndex("government_ordinances_reference_idx").on(table.kind, table.number, table.year)
+}));
+
+/**
+ * The ordinance a bill's title says it approves. `ordinance_id` is empty when the portal has no such act: the reference from the title stays, with no link.
+ */
+export const billOrdinances = pgTable("bill_ordinances", {
+  billId: text("bill_id").notNull().references(() => bills.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  number: text("number").notNull(),
+  year: integer("year").notNull(),
+  ordinanceId: text("ordinance_id").references(() => governmentOrdinances.id)
+}, (table) => ({
+  pk: primaryKey({ columns: [table.billId, table.kind, table.number, table.year] }),
+  ordinanceIdx: index("bill_ordinances_ordinance_idx").on(table.ordinanceId)
+}));
+
+/**
  * Every document a dossier step prints, in the page's order (D-032). `bill_procedure_steps.document_id` keeps the first one; this table keeps all of them, so a
  * registration step shows its Legislative Council opinion and the Government's decision, and a report its annexes and the .doc copy beside the .pdf.
  * Rewritten with the steps (the steps are replaced as a whole on every import).

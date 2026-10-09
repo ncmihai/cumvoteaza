@@ -78,3 +78,14 @@ export async function searchByTitle(token: string, year: number, word: string, p
   const answer = await soap("Search", `<Search xmlns="${NS}"><SearchModel xmlns:a="http://schemas.datacontract.org/2004/07/FreeWebService" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">${model}</SearchModel><tokenKey>${token}</tokenKey></Search>`);
   return parseLegislatieSearch(answer);
 }
+
+/** The portal's raw answer to one search with any of its filters (year, number, a word of the title, a word of the text) and the page wanted (ten acts a page). */
+export async function searchLegislatieRaw(token: string, query: { year?: number; number?: string; title?: string; text?: string; page?: number }): Promise<string> {
+  const field = (name: string, value: string | number | undefined) => (value === undefined || value === "" ? `<a:${name} i:nil="true"/>` : `<a:${name}>${String(value).replace(/[<>&]/g, "")}</a:${name}>`);
+  const model = `<a:NumarPagina>${query.page ?? 0}</a:NumarPagina><a:RezultatePagina>50</a:RezultatePagina>${field("SearchAn", query.year)}${field("SearchNumar", query.number)}${field("SearchText", query.text)}${field("SearchTitlu", query.title)}`;
+  return soap("Search", `<Search xmlns="${NS}"><SearchModel xmlns:a="http://schemas.datacontract.org/2004/07/FreeWebService" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">${model}</SearchModel><tokenKey>${token}</tokenKey></Search>`);
+}
+
+export async function searchLegislatie(token: string, query: { year?: number; number?: string; title?: string; text?: string; page?: number }): Promise<LegislatieAct[]> {
+  return parseLegislatieSearch(await searchLegislatieRaw(token, query));
+}

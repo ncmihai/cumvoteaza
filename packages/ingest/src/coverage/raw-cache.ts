@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page" | "bureau-page" | "senate-card" | "cdep-bill" | "senate-bill" | "cdep-roster";
+export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page" | "bureau-page" | "senate-card" | "legislatie-ordinance" | "cdep-bill" | "senate-bill" | "cdep-roster";
 
 export interface RawCacheEntry {
   kind: RawCacheKind;
@@ -26,7 +26,8 @@ const EXTENSIONS: Record<RawCacheKind, string> = {
   "senate-card": "html",
   "cdep-bill": "html",
   "senate-bill": "html",
-  "cdep-roster": "html"
+  "cdep-roster": "html",
+  "legislatie-ordinance": "xml"
 };
 
 /**

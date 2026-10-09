@@ -117,6 +117,16 @@ test("a bill with committee reports lists them with their files in the reports a
   await expect(panel.getByRole("link", { name: /PDF/ }).first()).toHaveAttribute("href", /^https?:\/\//);
 });
 
+test("an approval bill shows the Government ordinance it approves, with the link to its text @db", async ({ page }) => {
+  const response = await page.goto("/ro/bills/l217-2026");
+  test.skip(response?.status() === 404, "the sample bill is not on this site");
+  const card = page.getByRole("region", { name: /Ordonanța aprobată/ });
+  // The lookup is imported by the owner (Sprint 12b); until it has run on a site there is no card, and this test says nothing there.
+  test.skip((await card.count()) === 0, "the ordinance lookup has not been imported on this site yet");
+  await expect(card).toContainText("nr. 24/2026");
+  await expect(card.getByRole("link", { name: /legislatie\.just\.ro/ })).toHaveAttribute("href", /^https?:\/\/legislatie\.just\.ro\//);
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
