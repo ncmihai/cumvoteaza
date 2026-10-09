@@ -28,7 +28,7 @@ export function BillOrdinanceCard({ ordinances, documents, locale }: { ordinance
                 <p className="mt-2 text-sm text-muted">
                   {item.act.gazetteNumber && item.act.gazetteOn
                     ? (ro ? `Publicată în Monitorul Oficial nr. ${item.act.gazetteNumber} din ${formatDate(item.act.gazetteOn, locale)}.` : `Published in the Official Gazette no. ${item.act.gazetteNumber} of ${formatDate(item.act.gazetteOn, locale)}.`)
-                    : (ro ? "Numărul Monitorului Oficial nu este tipărit încă pe portal." : "The Official Gazette number is not printed on the portal yet.")}
+                    : (ro ? "Numărul Monitorului Oficial nu apare în înregistrarea de pe portal." : "The Official Gazette number is not in the portal's record.")}
                   {" "}{ro ? "Emitent" : "Issued by"}: {item.act.issuer}.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">

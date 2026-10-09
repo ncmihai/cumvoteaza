@@ -68,7 +68,7 @@ export function ordinanceFromActs(acts: LegislatieAct[], ref: OrdinanceRef): Fou
     if (!head || Number(head[1]) !== Number(ref.number) || Number(head[4]) !== ref.year) continue;
     const issuedOn = isoOf(head[2]!, head[3]!, head[4]!);
     if (!issuedOn) continue;
-    const published = /Publicat\s+în\s+MONITORUL\s+OFICIAL\s+nr\.\s*([0-9A-Za-z.]+)\s+din\s+(\d{1,2})\s+(\S+)\s+(\d{4})/i.exec(act.text);
+    const published = /Publicat[ăa]?\s+în\s+MONITORUL\s+OFICIAL\s+nr\.\s*([0-9A-Za-z.]+)\s+din\s+(\d{1,2})\s+(\S+)\s+(\d{4})/i.exec(act.text);
     const gazetteOn = published ? isoOf(published[2]!, published[3]!, published[4]!) : undefined;
     return {
       ...ref,
@@ -95,24 +95,30 @@ export interface FetchOrdinancesResult {
   notFound: Array<{ ref: string; reason: string }>;
   fetchedNow: number;
   skippedNoNetwork: number;
-  /** Set when the portal kept answering with an error: the run stopped there, and running it again continues from what is saved. */
+  /** Ordinances whose every search got an error from the portal: nothing is saved for them, so a later run asks again. */
+  failed: string[];
+  /** Set when three ordinances in a row failed: the run stopped there, and running it again continues from what is saved. */
   stoppedBy?: string;
 }
 
-/** v2: the number and type search, then up to six distinctive words of the title. A note without the version came from the plain number search and is tried again. */
-/** One search, asked again (after 5, 20 and 60 seconds) when the portal answers with a server error or the connection fails. */
-async function searchWithRetry(token: string, query: Parameters<typeof searchLegislatieRaw>[1]): Promise<string> {
-  const pauses = [5_000, 20_000, 60_000];
+/**
+ * One search, asked again (after 5 and 20 seconds) when the portal answers with a server error or the connection fails. A portal token wears out after a while
+ * and then every search with it fails, so each retry asks for a new token first; the holder keeps the one in use.
+ */
+async function searchWithRetry(holder: { token: string }, query: Parameters<typeof searchLegislatieRaw>[1]): Promise<string> {
+  const pauses = [5_000, 20_000];
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await searchLegislatieRaw(token, query);
+      return await searchLegislatieRaw(holder.token, query);
     } catch (error) {
       if (attempt >= pauses.length) throw error;
       await new Promise((resolve) => setTimeout(resolve, pauses[attempt]));
+      try { holder.token = await legislatieToken(); } catch { /* the next attempt fails the same way and the pause grows */ }
     }
   }
 }
 
+/** v2: the number and type search, then up to six distinctive words of the title. A note without the version came from the plain number search and is tried again. */
 const NOT_FOUND = '<notfound strategy="2"/>';
 
 /**
@@ -122,17 +128,19 @@ const NOT_FOUND = '<notfound strategy="2"/>';
 export async function fetchOrdinances(options: { repoRoot: string; refs: OrdinanceRef[]; live: boolean; limit?: number; delayMs: number; log?: (line: string) => void }): Promise<FetchOrdinancesResult> {
   const cache = new RawCache(`${options.repoRoot}/data/coverage/raw`);
   const log = options.log ?? (() => {});
-  const result: FetchOrdinancesResult = { refs: options.refs.length, cached: 0, found: 0, notFound: [], fetchedNow: 0, skippedNoNetwork: 0 };
-  let token = "";
+  const result: FetchOrdinancesResult = { refs: options.refs.length, cached: 0, found: 0, notFound: [], fetchedNow: 0, skippedNoNetwork: 0, failed: [] };
+  const holder = { token: "" };
   let requests = 0;
+  let failedInARow = 0;
   const wait = () => new Promise((resolve) => setTimeout(resolve, options.delayMs));
   for (const ref of options.refs) {
     const key = refKey(ref);
     const savedBody = await cache.read("legislatie-ordinance", key);
     if (savedBody && savedBody.toString("utf8") !== "<notfound/>") { result.cached += 1; continue; }
     if (!options.live || (options.limit !== undefined && result.fetchedNow >= options.limit)) { result.skippedNoNetwork += 1; continue; }
-    token ||= await legislatieToken();
+    holder.token ||= await legislatieToken();
     let saved = false;
+    let errors = 0;
     const tries: Array<{ title: string }> = [{ title: ref.kind === "urgency" ? "ordonanta de urgenta" : "ordonanta" }, ...titleWordsOf(ref.hint).map((word) => ({ title: word }))];
     for (const [index, attempt] of tries.entries()) {
       if (saved) break;
@@ -140,10 +148,10 @@ export async function fetchOrdinances(options: { repoRoot: string; refs: Ordinan
       requests += 1;
       let xml: string;
       try {
-        xml = await searchWithRetry(token, { year: ref.year, number: ref.number, title: attempt.title });
-      } catch (error) {
-        result.stoppedBy = `${refLabel(ref)}: ${error instanceof Error ? error.message : String(error)}`;
-        break;
+        xml = await searchWithRetry(holder, { year: ref.year, number: ref.number, title: attempt.title });
+      } catch {
+        errors += 1;
+        continue;
       }
       const acts = parseLegislatieSearch(xml);
       const found = ordinanceFromActs(acts, ref);
@@ -155,7 +163,15 @@ export async function fetchOrdinances(options: { repoRoot: string; refs: Ordinan
         log(`${refLabel(ref)} ← ${found.link}${index > 0 ? ` (by the word "${attempt.title}")` : ""}`);
       }
     }
-    if (result.stoppedBy) break;
+    if (!saved && errors === tries.length) {
+      // The portal could not answer any search for this one: nothing is saved, a later run asks again.
+      result.failed.push(refLabel(ref));
+      failedInARow += 1;
+      log(`${refLabel(ref)}: the portal answered with errors (not saved, will be asked again)`);
+      if (failedInARow >= 3) { result.stoppedBy = `${failedInARow} ordinances in a row got errors from the portal (last: ${refLabel(ref)})`; break; }
+      continue;
+    }
+    failedInARow = 0;
     if (!saved) {
       await cache.write("legislatie-ordinance", key, Buffer.from(NOT_FOUND, "utf8"), { url: "http://legislatie.just.ro/apiws/FreeWebService.svc/SOAP", status: 404 });
       result.fetchedNow += 1;

@@ -67,6 +67,11 @@ describe("ordinanceFromActs", () => {
     expect(ordinanceFromActs([act("ORDONANȚĂ DE URGENȚĂ", "Parlamentul", oug144.text)], { kind: "urgency", number: "144", year: 2024 })).toBeUndefined();
   });
 
+  it('reads the gazette line when the portal writes it in the feminine ("Publicată în", as it does for many ordinances)', () => {
+    const feminine = act("ORDONANȚĂ DE URGENȚĂ", "Guvernul", "ORDONANȚĂ DE URGENȚĂ nr. 4 din 25 ianuarie 2024 pentru stabilirea unor măsuri de sprijin EMITENT GUVERNUL ROMÂNIEI Publicată în MONITORUL OFICIAL nr. 82 din 29 ianuarie 2024 Având în vedere contextul", "279001");
+    expect(ordinanceFromActs([feminine], { kind: "urgency", number: "4", year: 2024 })).toMatchObject({ issuedOn: "2024-01-25", gazetteNumber: "82", gazetteOn: "2024-01-29" });
+  });
+
   it("keeps an ordinance whose gazette line is not printed yet, without inventing one", () => {
     const fresh = act("ORDONANȚĂ DE URGENȚĂ", "Guvernul", "ORDONANȚĂ DE URGENȚĂ nr. 40 din 2 octombrie 2026 privind unele măsuri EMITENT GUVERNUL ROMÂNIEI Având în vedere", "999");
     const found = ordinanceFromActs([fresh], { kind: "urgency", number: "40", year: 2026 });
