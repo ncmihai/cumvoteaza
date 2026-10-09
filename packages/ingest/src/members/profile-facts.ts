@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { sql } from "drizzle-orm";
 import * as cheerio from "cheerio";
+import { decodeOfficialBytes } from "../coverage/raw-cache";
 import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 
@@ -80,6 +81,62 @@ export function parseDeputyCounts(text: string): OfficialCount[] | undefined {
   return counts;
 }
 
+/**
+ * "Data actualizare: 22.02.2021" on a CV page: when the member last updated the CV they filed. Nothing else of the CV is read (D-036): its layouts vary, and it carries
+ * contact details and family data that are never stored.
+ */
+export function parseCvUpdatedOn(text: string): string | undefined {
+  const match = /Data actualiz[aă]re:?\s*(\d{2})\.(\d{2})\.(\d{4})/i.exec(text);
+  if (!match) return undefined;
+  const year = Number(match[3]);
+  const date = new Date(Date.UTC(year, Number(match[2]) - 1, Number(match[1])));
+  if (year < 2000 || date.getUTCFullYear() !== year || date.getUTCMonth() !== Number(match[2]) - 1 || date.getUTCDate() !== Number(match[1])) return undefined;
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+export interface ProfileBody {
+  kind: "delegation" | "friendship_group";
+  /** The Chamber's number of the body (`idg`). */
+  officialId: string;
+  name: string;
+  /** "Vicepreşedinte", "supleant", ...; absent for a plain member. */
+  role?: string;
+  /** The body's own page. */
+  url: string;
+}
+
+/**
+ * The delegations to international parliamentary organisations and the friendship groups with other parliaments a profile lists
+ * (`structura.dp?idg=19` and `structura.pr?idg=73`), each with the role printed after it.
+ */
+export function parseProfileBodies(html: string, profileUrl: string): ProfileBody[] {
+  const $ = cheerio.load(html);
+  const bodies: ProfileBody[] = [];
+  const seen = new Set<string>();
+  $("a[href]").each((_, element) => {
+    const href = ($(element).attr("href") ?? "").replace(/&amp;/g, "&");
+    const match = /structura\.(dp|pr)\?idg=(\d+)/.exec(href);
+    if (!match) return;
+    const kind = match[1] === "dp" ? "delegation" as const : "friendship_group" as const;
+    const key = `${kind}:${match[2]}`;
+    const name = $(element).text().replace(/\s+/g, " ").trim();
+    if (!name || seen.has(key)) return;
+    seen.add(key);
+    // The row is [flag], link, spacer, [spacer image], role: the role is the last cell when it is not the link's own.
+    const cells = $(element).closest("tr").children("td");
+    const last = cells.last();
+    const role = last.find("a").length === 0 ? last.text().replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim() : "";
+    let url: string;
+    try {
+      url = new URL(href, profileUrl).toString();
+    } catch {
+      return;
+    }
+    bodies.push({ kind, officialId: match[2]!, name, ...(role ? { role } : {}), url });
+  });
+  return bodies;
+}
+
 /** `leg2024:cam2:idm1` from a profile address; undefined for the other pages of a profile (CV, initiatives, ...), which carry `pag=`. */
 export function profileKeyFromUrl(url: string): string | undefined {
   if (!/structura\.mp\?/.test(url) || /[?&]pag=/.test(url)) return undefined;
@@ -95,6 +152,22 @@ export interface ProfilePageFacts {
   fetchedAt: string;
   birth?: HeaderBirth;
   counts?: OfficialCount[];
+  bodies?: ProfileBody[];
+  /** The page's own "Curriculum Vitae" address (`...&pag=0`), when the profile links one. */
+  cvUrl?: string;
+}
+
+/** The address of the CV page a profile links, as the Chamber's site serves it (the bare host answers HTTP 500, so `www.`). */
+export function cvUrlFromProfile(html: string, profileUrl: string): string | undefined {
+  const match = /href="([^"]*structura\.mp\?[^"]*[?&;]pag=0(?:&[^"]*)?)"/i.exec(html) ?? /href="([^"]*structura\.mp\?pag=0[^"]*)"/i.exec(html);
+  if (!match) return undefined;
+  try {
+    const url = new URL(match[1]!.replace(/&amp;/g, "&"), profileUrl);
+    if (url.hostname === "cdep.ro") url.hostname = "www.cdep.ro";
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 /** Every saved profile page, newest copy of each address. */
@@ -121,7 +194,9 @@ export async function readProfilePages(repoRoot: string, onlyLegislature?: strin
     const text = pageText(html);
     const birth = parseHeaderBirth(text);
     const counts = parseDeputyCounts(text);
-    pages.push({ profileKey, url: entry.url, fetchedAt: entry.fetchedAt, ...(birth ? { birth } : {}), ...(counts ? { counts } : {}) });
+    const cvUrl = cvUrlFromProfile(html, entry.url);
+    const bodies = profileKey.startsWith("leg2024:") ? parseProfileBodies(html, entry.url) : [];
+    pages.push({ profileKey, url: entry.url, fetchedAt: entry.fetchedAt, ...(birth ? { birth } : {}), ...(counts ? { counts } : {}), ...(bodies.length ? { bodies } : {}), ...(cvUrl ? { cvUrl } : {}) });
   }
   return pages;
 }
@@ -137,14 +212,19 @@ export interface ImportProfileFactsResult {
   pagesWithBirth: number;
   people: number;
   peopleWithBirth: number;
+  peopleWithCv: number;
+  sittingWithCv: number;
   sittingMembers: number;
   sittingWithBirth: number;
   sittingWithoutBirth: string[];
   disagreements: BirthDisagreement[];
   countRows: number;
   deputiesWithCounts: number;
+  bodyRows: number;
+  membersWithBodies: number;
   birthWritten: number;
   countsWritten: number;
+  bodiesWritten: number;
 }
 
 /**
@@ -188,6 +268,28 @@ export async function importProfileFacts(db: DbClient, options: { repoRoot: stri
     births.push({ personId: person, birthDate: date, birthDateSourceUrl: latest.url, readAt });
   }
   const withBirth = new Set(births.map((row) => row.personId));
+
+  // The CV page each person filed (saved by members:cv:fetch): its address and the date the member last updated it.
+  const cvDir = path.join(options.repoRoot, "data/coverage/raw/member-cv");
+  const cvByPerson = new Map<string, { key: string; url: string; updatedOn?: string }>();
+  for (const member of members) {
+    const page = byKey.get(member.key);
+    if (!page?.cvUrl) continue;
+    let html: string;
+    try {
+      html = decodeOfficialBytes(await readFile(path.join(cvDir, `${member.key.replace(/:/g, "-")}.html`)));
+    } catch {
+      continue;
+    }
+    const updatedOn = parseCvUpdatedOn(pageText(html));
+    const previous = cvByPerson.get(member.person_id);
+    if (!previous || member.key > previous.key) cvByPerson.set(member.person_id, { key: member.key, url: page.cvUrl, ...(updatedOn ? { updatedOn } : {}) });
+  }
+  const biographies = new Map<string, typeof schema.personBiographies.$inferInsert>(births.map((row) => [row.personId, { ...row, cvUrl: null, cvUpdatedOn: null }]));
+  for (const [person, cv] of cvByPerson) {
+    const row = biographies.get(person) ?? { personId: person, birthDate: null, birthDateSourceUrl: null, readAt };
+    biographies.set(person, { ...row, cvUrl: cv.url, cvUpdatedOn: cv.updatedOn ?? null });
+  }
   const sittingList = [...sitting];
   const sittingWithoutBirth = sittingList.filter((person) => !withBirth.has(person)).map((person) => names.get(person) ?? person).sort();
 
@@ -206,31 +308,51 @@ export async function importProfileFacts(db: DbClient, options: { repoRoot: stri
     countedMembers.add(member.id);
   }
 
+  // Delegations and friendship groups of the current legislature's members (deputies and senators): replaced as a whole for every member whose page was read.
+  const bodyRows: Array<typeof schema.memberInternationalBodies.$inferInsert> = [];
+  const bodyMembers = new Set<string>();
+  for (const member of members) {
+    if (!member.key.startsWith("leg2024:")) continue;
+    const page = byKey.get(member.key);
+    if (!page) continue;
+    bodyMembers.add(member.id);
+    const asOf = page.fetchedAt.slice(0, 10);
+    for (const body of page.bodies ?? []) {
+      bodyRows.push({ id: `body-${member.id}-${body.kind}-${body.officialId}`, memberId: member.id, legislatureId: legislature, kind: body.kind, officialId: body.officialId, name: body.name, role: body.role ?? null, bodyUrl: body.url, sourceUrl: page.url, asOf });
+    }
+  }
+
   const result: ImportProfileFactsResult = {
     persisted: options.persist,
     pagesRead: pages.length,
     pagesWithBirth: pages.filter((page) => page.birth).length,
     people: people.size,
     peopleWithBirth: births.length,
+    peopleWithCv: cvByPerson.size,
+    sittingWithCv: sittingList.filter((person) => cvByPerson.has(person)).length,
     sittingMembers: sittingList.length,
     sittingWithBirth: sittingList.filter((person) => withBirth.has(person)).length,
     sittingWithoutBirth,
     disagreements,
     countRows: activity.length,
     deputiesWithCounts: countedMembers.size,
+    bodyRows: bodyRows.length,
+    membersWithBodies: new Set(bodyRows.map((row) => row.memberId)).size,
     birthWritten: 0,
-    countsWritten: 0
+    countsWritten: 0,
+    bodiesWritten: 0
   };
   if (!options.persist) return result;
   await db.transaction(async (tx) => {
-    for (let i = 0; i < births.length; i += 300) {
-      await tx.insert(schema.personBiographies).values(births.slice(i, i + 300)).onConflictDoUpdate({
+    const rows = [...biographies.values()];
+    for (let i = 0; i < rows.length; i += 300) {
+      await tx.insert(schema.personBiographies).values(rows.slice(i, i + 300)).onConflictDoUpdate({
         target: schema.personBiographies.personId,
-        set: { birthDate: sql`excluded.birth_date`, birthDateSourceUrl: sql`excluded.birth_date_source_url`, readAt: sql`excluded.read_at` }
+        set: { birthDate: sql`excluded.birth_date`, birthDateSourceUrl: sql`excluded.birth_date_source_url`, cvUrl: sql`excluded.cv_url`, cvUpdatedOn: sql`excluded.cv_updated_on`, readAt: sql`excluded.read_at` }
       });
     }
     // A person who no longer has a date to show (a disagreement found later) must not keep an old one.
-    const keep = births.map((row) => row.personId);
+    const keep = rows.map((row) => row.personId);
     if (keep.length) await tx.execute(sql`update person_biographies set birth_date = null, birth_date_source_url = null where birth_date is not null and person_id not in (${sql.join(keep.map((id) => sql`${id}`), sql`, `)})`);
     for (let i = 0; i < activity.length; i += 300) {
       await tx.insert(schema.memberOfficialActivity).values(activity.slice(i, i + 300)).onConflictDoUpdate({
@@ -238,8 +360,14 @@ export async function importProfileFacts(db: DbClient, options: { repoRoot: stri
         set: { value: sql`excluded.value`, outOf: sql`excluded.out_of`, detail: sql`excluded.detail`, asOf: sql`excluded.as_of`, sourceUrl: sql`excluded.source_url` }
       });
     }
+    const read = [...bodyMembers];
+    for (let i = 0; i < read.length; i += 300) {
+      await tx.execute(sql`delete from member_international_bodies where legislature_id = ${legislature} and member_id in (${sql.join(read.slice(i, i + 300).map((id) => sql`${id}`), sql`, `)})`);
+    }
+    for (let i = 0; i < bodyRows.length; i += 300) await tx.insert(schema.memberInternationalBodies).values(bodyRows.slice(i, i + 300)).onConflictDoNothing();
   });
   result.birthWritten = births.length;
   result.countsWritten = activity.length;
+  result.bodiesWritten = bodyRows.length;
   return result;
 }

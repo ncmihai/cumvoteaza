@@ -23,6 +23,9 @@ import { countyLabel } from "@/lib/text";
 import { getGovernmentRolesForPerson } from "@/lib/ministry-data";
 import { PublicCareerTimeline, type PublicCareerEvent } from "../../_components/PublicCareerTimeline";
 import { OfficialActivityPanel } from "../../_components/OfficialActivityPanel";
+import { MemberBodiesPanel } from "../../_components/MemberBodiesPanel";
+import { QuestionsSummary } from "../../_components/QuestionsSummary";
+import { getQuestionsView } from "@/lib/question-data";
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string }> }): Promise<Metadata> {
   const { locale: rawLocale, slug } = await params;
@@ -42,8 +45,9 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
     if (currentSlug && currentSlug !== slug) permanentRedirect(`/${rawLocale}/members/${currentSlug}${legislature ? `?legislature=${encodeURIComponent(legislature)}` : ""}`);
     notFound();
   }
-  const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity, birth } = data;
+  const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity, birth, cv, bodies } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
+  const questionsView = await getQuestionsView({ memberSlug: slug });
   const voteStats = mandate ? await getMemberVoteStats(member.id, mandate.chamber, mandate.startsOn, mandate.endsOn ?? undefined) : undefined;
   const asOf = activity?.lastActivityOn ?? new Date().toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
@@ -120,6 +124,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
           {mandate ? <IdentityFact label={ro ? "Cameră" : "Chamber"}><span className="inline-flex items-center gap-2 font-semibold text-ink"><Building2 size={18} aria-hidden="true" className="text-muted"/>{chamberLabels[locale][mandate.chamber]}</span></IdentityFact> : null}
           {mandate?.constituency ? <IdentityFact label={ro ? "Circumscripție" : "Constituency"}><span className="inline-flex items-center gap-2 font-semibold text-ink"><MapPin size={18} aria-hidden="true" className="text-muted"/>{countyLabel(placeForDisplay(mandate.constituency) ?? mandate.constituency, locale)}</span></IdentityFact> : null}
           {birth ? <IdentityFact label={ro ? "Data nașterii" : "Date of birth"}><span className="inline-flex items-center gap-2 font-semibold text-ink"><time dateTime={birth.date}>{formatDate(birth.date, locale)}</time><a href={birth.sourceUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand underline" aria-label={ro ? "Sursa datei nașterii: profilul oficial" : "Source of the date of birth: the official profile"}>{ro ? "sursă" : "source"}</a></span></IdentityFact> : null}
+          {cv ? <IdentityFact label={ro ? "Curriculum vitae" : "Curriculum vitae"}><a href={cv.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-brand hover:text-brand-strong"><ExternalLink size={15} aria-hidden="true"/>{ro ? "CV depus la Cameră" : "CV filed with the Chamber"}{cv.updatedOn ? <span className="font-normal text-muted">· {ro ? "actualizat" : "updated"} {formatDate(cv.updatedOn, locale)}</span> : null}</a></IdentityFact> : null}
           <IdentityFact label={ro ? "Statut" : "Status"}><span className={`inline-flex items-center gap-2 font-semibold ${isActive ? "text-vote-for" : "text-muted"}`}><span aria-hidden="true" className={`size-2.5 rounded-full ${isActive ? "bg-vote-for-fill" : "bg-vote-present-fill"}`}/>{statusLabel}</span></IdentityFact>
           {currentGovernmentRole ? <IdentityFact label={ro ? "Rol guvernamental" : "Government role"}><span className="inline-flex max-w-[260px] items-center gap-2 font-semibold text-ink"><Landmark size={18} aria-hidden="true" className="text-muted"/>{currentGovernmentRole.title}</span></IdentityFact> : null}
         </dl>
@@ -162,6 +167,8 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
 
       <div className="min-w-0 space-y-6">
         <OfficialActivityPanel items={officialActivity} locale={locale} />
+        <QuestionsSummary view={questionsView} locale={locale} filter={`member=${encodeURIComponent(slug)}`} as="asker" />
+        <MemberBodiesPanel bodies={bodies} locale={locale} />
         {governmentRoles.length ? (
           <section className="rounded-card border border-line bg-surface p-6">
             <h2 className="font-display text-2xl font-bold text-ink">{ro ? "Roluri în Guvern" : "Government roles"}</h2>

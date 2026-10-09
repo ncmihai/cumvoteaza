@@ -200,9 +200,23 @@ export interface MemberPageData {
   sponsoredBills: Bill[];
   /** Counts the institution itself publishes about this member (Senate cards), with the date they were read. */
   officialActivity: MemberOfficialActivityItem[];
+  /** The delegations and friendship groups the profile lists (D-036). */
+  bodies: MemberBodyItem[];
   /** The date of birth the Chamber prints on the member's profile, with that page (D-036); absent when no page prints one or the person's profiles disagree. */
   birth?: { date: string; sourceUrl: string };
+  /** The CV page the member filed with the Chamber and when they last updated it; the text of the CV is not copied (D-036). */
+  cv?: { url: string; updatedOn?: string };
   sourceKind: "database";
+}
+
+export interface MemberBodyItem {
+  kind: "delegation" | "friendship_group";
+  name: string;
+  role?: string;
+  /** The body's own page on the Chamber's site. */
+  url: string;
+  sourceUrl: string;
+  asOf: string;
 }
 
 export interface MemberOfficialActivityItem {
@@ -345,7 +359,7 @@ const getCachedMemberDirectoryData = unstable_cache(
 const getCachedMemberPageData = unstable_cache(
   async (slug: string, options: { legislature?: string } = {}) =>
     timed(`data.member.${slug}`, () => coalesce(`member:${slug}:${options.legislature ?? ""}`, () => getMemberPageDataUncached(slug, options))),
-  ["member-page-data-integrity-v3"],
+  ["member-page-data-integrity-v5"],
   { revalidate: 900, tags: [CACHE_TAGS.members] }
 );
 
@@ -1053,6 +1067,12 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       ? await session.db.select().from(schema.personBiographies).where(eq(schema.personBiographies.personId, memberRow.personId)).catch(() => [])
       : [];
     const biography = biographyRows[0];
+    // Delegations and friendship groups; the table exists once migration 0049 is applied.
+    const bodyRows = await session.db
+      .select()
+      .from(schema.memberInternationalBodies)
+      .where(and(inArray(schema.memberInternationalBodies.memberId, memberIds), eq(schema.memberInternationalBodies.legislatureId, selectedLegislature?.id ?? "")))
+      .catch(() => []);
 
     return {
       member,
@@ -1071,7 +1091,11 @@ async function tryDatabaseMember(slug: string, options: { legislature?: string }
       votes: selectedVotes.individualVotes,
       voteRecords: selectedVotes.voteRecords,
       sponsoredBills,
+      bodies: bodyRows
+        .map((row) => ({ kind: row.kind === "delegation" ? "delegation" as const : "friendship_group" as const, name: row.name, ...(row.role ? { role: row.role } : {}), url: row.bodyUrl, sourceUrl: row.sourceUrl, asOf: row.asOf }))
+        .sort((a, b) => a.name.localeCompare(b.name, "ro")),
       ...(biography?.birthDate && biography.birthDateSourceUrl ? { birth: { date: biography.birthDate, sourceUrl: biography.birthDateSourceUrl } } : {}),
+      ...(biography?.cvUrl ? { cv: { url: biography.cvUrl, ...(biography.cvUpdatedOn ? { updatedOn: biography.cvUpdatedOn } : {}) } } : {}),
       officialActivity: officialActivityRows.map((row) => ({ metric: row.metric, value: row.value, outOf: row.outOf ?? undefined, detail: row.detail ?? undefined, asOf: row.asOf, sourceUrl: row.sourceUrl, chamber: row.chamber === "senate" ? "senate" as const : "deputies" as const })),
       sourceKind: "database"
     };

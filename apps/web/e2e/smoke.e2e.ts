@@ -62,7 +62,7 @@ test.describe("page titles", () => {
   test("every list page has its own title with the site name", async ({ page }) => {
     const expected: Record<string, RegExp> = {
       "/ro/votes": /^Voturi · /, "/ro/bills": /^Proiecte legislative · /, "/ro/members": /^Parlamentari · /, "/ro/compozitii": /^Compoziția Parlamentului · /,
-      "/ro/leadership": /^Conducerea Parlamentului · /, "/ro/ministries": /^Ministere și miniștri · /, "/ro/motions": /^Moțiuni · /, "/ro/parties": /^Partide · /,
+      "/ro/leadership": /^Conducerea Parlamentului · /, "/ro/ministries": /^Ministere și miniștri · /, "/ro/motions": /^Moțiuni · /, "/ro/questions": /^Întrebări și interpelări · /, "/ro/parties": /^Partide · /,
       "/ro/governments": /^Guverne · /, "/ro/methodology": /^Metodologie și acoperire · /, "/en/methodology": /^Methodology and coverage · /
     };
     for (const [path, title] of Object.entries(expected)) {
@@ -145,6 +145,19 @@ test("a member's date of birth comes with the official profile it was read from 
   test.skip((await fact.count()) === 0, "the dates of birth have not been imported on this site yet");
   await expect(fact.locator("time")).toHaveAttribute("datetime", "1970-08-15");
   await expect(fact.getByRole("link", { name: /Sursa datei nașterii/ })).toHaveAttribute("href", /^https:\/\/(www\.)?cdep\.ro\/ords\/pls\/parlam\/structura\.mp\?/);
+});
+
+test("the questions page lists what deputies asked the Government, each with its official page @db", async ({ page }) => {
+  await page.goto("/ro/questions");
+  const list = page.getByRole("region", { name: "Lista întrebărilor și interpelărilor" });
+  // The questions are imported by the owner (Sprint 13c); until then this site has none, and this test says nothing there.
+  test.skip((await list.count()) === 0, "the questions have not been imported on this site yet");
+  await expect(list.getByRole("link", { name: "Pagina oficială" }).first()).toHaveAttribute("href", /^https:\/\/www\.cdep\.ro\/ords\/pls\/parlam\/interpelari\.detalii\?idi=\d+/);
+  const asker = list.locator("a[href*='/ro/members/']").first();
+  await expect(asker).toBeVisible();
+  const slug = (await asker.getAttribute("href"))!.split("/").pop()!;
+  await page.goto(`/ro/questions?member=${slug}`);
+  await expect(page.getByRole("button", { name: /Scoate filtrul/ }).or(page.getByRole("link", { name: /Scoate filtrul/ }))).toBeVisible();
 });
 
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
@@ -234,7 +247,7 @@ test.describe("on a phone", () => {
 
   test("the main pages and one page of each kind fit the screen", async ({ page }) => {
     test.setTimeout(120_000);
-    const paths = ["/ro", "/ro/votes", "/ro/bills", "/ro/members", "/ro/compozitii", "/ro/leadership", "/ro/ministries", "/ro/motions", "/ro/parties", "/ro/governments", "/ro/methodology", "/en/methodology"];
+    const paths = ["/ro", "/ro/votes", "/ro/bills", "/ro/members", "/ro/compozitii", "/ro/leadership", "/ro/ministries", "/ro/motions", "/ro/questions", "/ro/parties", "/ro/governments", "/ro/methodology", "/en/methodology"];
     for (const [list, prefix] of [["/ro/votes", "/ro/votes/"], ["/ro/bills", "/ro/bills/"], ["/ro/members", "/ro/members/"], ["/ro/parties", "/ro/parties/"], ["/ro/governments", "/ro/governments/"]] as const) {
       const href = await firstHref(page, list, prefix);
       if (href) paths.push(href);

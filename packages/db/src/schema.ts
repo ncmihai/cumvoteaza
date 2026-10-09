@@ -280,6 +280,9 @@ export const personBiographies = pgTable("person_biographies", {
   personId: text("person_id").primaryKey().references(() => people.id, { onDelete: "cascade" }),
   birthDate: date("birth_date"),
   birthDateSourceUrl: text("birth_date_source_url"),
+  /** The CV page the member filed with the Chamber, and the date the member last updated it (the text of the CV is not stored). */
+  cvUrl: text("cv_url"),
+  cvUpdatedOn: date("cv_updated_on"),
   readAt: timestamp("read_at", { withTimezone: true }).notNull()
 });
 
@@ -756,6 +759,89 @@ export const memberRoles = pgTable("member_roles", {
  * Counts the institutions publish about a member's own activity (initiatives, speeches, questions, motions signed,
  * e-vote attendance), stored as published beside the figures we compute ourselves. One row per member, legislature and metric.
  */
+/**
+ * The delegations to international parliamentary organisations and the friendship groups with other parliaments a member's profile lists (Sprint 13a, D-036),
+ * each with the role printed after it. Read from the profile page; replaced as a whole whenever the page is read again.
+ */
+export const memberInternationalBodies = pgTable("member_international_bodies", {
+  id: text("id").primaryKey(),
+  memberId: text("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  legislatureId: text("legislature_id").notNull().references(() => legislatures.id),
+  /** delegation | friendship_group */
+  kind: text("kind").notNull(),
+  /** The Chamber's number of the body (`idg`). */
+  officialId: text("official_id").notNull(),
+  name: text("name").notNull(),
+  role: text("role"),
+  bodyUrl: text("body_url").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  asOf: date("as_of").notNull()
+}, (table) => ({
+  memberIdx: index("member_international_bodies_member_idx").on(table.memberId, table.legislatureId),
+  bodyIdx: uniqueIndex("member_international_bodies_body_idx").on(table.memberId, table.legislatureId, table.kind, table.officialId)
+}));
+
+/**
+ * A question ("întrebare") or interpellation ("interpelare") a deputy put to the Government, read from the Chamber's page for it (Sprint 13c, D-036): the number and dates,
+ * the text's PDF, the answer with its date and PDF when there is one. The askers and the addressees are in their own tables (several of each are possible).
+ */
+export const parliamentaryQuestions = pgTable("parliamentary_questions", {
+  id: text("id").primaryKey(),
+  chamber: chamberEnum("chamber").notNull(),
+  /** The Chamber's number for the page (`idi`). */
+  officialId: text("official_id").notNull(),
+  /** question | interpellation */
+  kind: text("kind").notNull(),
+  /** "819B" for an interpellation, "3676A" for a question. */
+  number: text("number").notNull(),
+  title: text("title").notNull(),
+  registeredOn: date("registered_on").notNull(),
+  presentedOn: date("presented_on"),
+  communicatedOn: date("communicated_on"),
+  /** "în scris" | "oral" as the page prints it. */
+  askMode: text("ask_mode"),
+  /** The PDF of the text. */
+  textUrl: text("text_url"),
+  answerNumber: text("answer_number"),
+  answeredOn: date("answered_on"),
+  answerMode: text("answer_mode"),
+  /** The institution the answer came from, and who signed it, as printed. */
+  answerFrom: text("answer_from"),
+  answerSignedBy: text("answer_signed_by"),
+  answerUrl: text("answer_url"),
+  sourceUrl: text("source_url").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  officialIdx: uniqueIndex("parliamentary_questions_official_idx").on(table.chamber, table.officialId),
+  registeredIdx: index("parliamentary_questions_registered_idx").on(table.registeredOn)
+}));
+
+export const parliamentaryQuestionAskers = pgTable("parliamentary_question_askers", {
+  questionId: text("question_id").notNull().references(() => parliamentaryQuestions.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  /** The member the page links; empty when the link names a profile we do not hold. */
+  memberId: text("member_id").references(() => members.id),
+  /** As printed: "Mirela Elena Adomnicăi - deputat PSD". */
+  askerText: text("asker_text").notNull()
+}, (table) => ({
+  pk: primaryKey({ columns: [table.questionId, table.position] }),
+  memberIdx: index("parliamentary_question_askers_member_idx").on(table.memberId)
+}));
+
+export const parliamentaryQuestionAddressees = pgTable("parliamentary_question_addressees", {
+  questionId: text("question_id").notNull().references(() => parliamentaryQuestions.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  /** The institution as printed ("Ministerul Mediului, Apelor şi Pădurilor", "Primul-ministru", ...). */
+  name: text("name").notNull(),
+  /** The person it was sent to, as printed ("doamnei Diana-Anda Buzoianu - Ministru"). */
+  attention: text("attention"),
+  /** The ministry of ours that has exactly this name; empty for any other body. */
+  ministryId: text("ministry_id").references(() => ministries.id)
+}, (table) => ({
+  pk: primaryKey({ columns: [table.questionId, table.position] }),
+  ministryIdx: index("parliamentary_question_addressees_ministry_idx").on(table.ministryId)
+}));
+
 export const memberOfficialActivity = pgTable("member_official_activity", {
   id: text("id").primaryKey(),
   memberId: text("member_id").notNull().references(() => members.id),

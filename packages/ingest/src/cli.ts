@@ -20,6 +20,9 @@ import { linkStepDocuments } from "./dossiers/import";
 import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from "./dossiers/ordinances";
 import { fetchBulletins, importPriorities } from "./dossiers/priorities";
 import { importProfileFacts } from "./members/profile-facts";
+import { fetchCvPages } from "./members/cv-fetch";
+import { fetchQuestions } from "./members/questions-fetch";
+import { importQuestions } from "./members/questions";
 import { fetchReports, importReports, listReportSources } from "./dossiers/committee-reports";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
@@ -575,6 +578,36 @@ async function main() {
     const session = createDbSession();
     try {
       const result = await importOrdinances(session.db, { repoRoot, persist: hasFlag("persist") });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "members:cv:fetch") {
+    // Sprint 13b (D-036): the CV page of each 2024 member who links one (about 280), saved byte for byte under data/coverage/raw/member-cv. One request every --delay-ms (default 3000); plan only without --live.
+    const result = await fetchCvPages({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 300, delayMs: numberFlag("delay-ms") ?? 3000, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "members:questions:fetch") {
+    // Sprint 13c (D-036): the Chamber's year lists of questions (A) and interpellations (B) and then each item's page of the legislature (about 9,000), newest first, saved under data/coverage/raw.
+    // One request every --delay-ms (default 2500), at most --limit per run, resumable; plan only without --live.
+    const result = await fetchQuestions({ repoRoot, live: hasFlag("live"), since: flag("since") ?? "2024-12-20", limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 2500, refreshLists: hasFlag("refresh-lists"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "members:questions:import") {
+    // Sprint 13c (D-036): parliamentary_questions and their askers and addressees from the saved pages. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importQuestions(session.db, { repoRoot, persist: hasFlag("persist") });
       console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {

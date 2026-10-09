@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageText, parseDeputyCounts, parseHeaderBirth, profileKeyFromUrl } from "../members/profile-facts";
+import { cvUrlFromProfile, pageText, parseDeputyCounts, parseHeaderBirth, parseProfileBodies, profileKeyFromUrl } from "../members/profile-facts";
 
 describe("parseHeaderBirth", () => {
   it("reads the date printed after the name in the page header", () => {
@@ -80,5 +80,36 @@ describe("profileKeyFromUrl", () => {
 describe("pageText", () => {
   it("returns the text of the page without scripts, markup or repeated white space", () => {
     expect(pageText("<html><head><style>p{}</style></head><body><script>var a=1;</script><p>Cauta   Ion</p><p>n. 3 mar.&nbsp;1960</p></body></html>")).toBe("Cauta Ion n. 3 mar. 1960");
+  });
+});
+
+const PROFILE = "https://cdep.ro/ords/pls/parlam/structura.mp?cam=2&idm=1&leg=2024";
+const BODIES_HTML = `<table><tr bgcolor="#fef9c2"><td colspan=2><b>Delegatii ale Parlamentului României la organizatii parlamentare internationale:</b></td></tr>
+<tr valign="top"><td><img src="/img/spacer.gif"></td><td bgcolor="#fffef2" width="100%"><table border=0><tr valign="top"><td><a href="/ords/pls/parlam/structura.dp?idg=19&leg=2024">Delegaţia Parlamentului României la Adunarea Parlamentară a Consiliului Europei</a></td><td>&nbsp;</td><td><img src="/img/spacer.gif" border=0 width=50 height=1></td><td>&nbsp;supleant</td></tr></table></td></tr></table>
+<table><tr bgcolor="#fef9c2"><td colspan=2><b>Grupuri de prietenie cu Parlamentele altor state:</b></td></tr>
+<tr valign="top"><td><img src="/img/spacer.gif"></td><td><table border=0><tr valign="top"><td>&nbsp;<img src="/flags1/ungaria.gif"></td><td><a href="/ords/pls/parlam/structura.pr?idg=73&leg=2024">Grupul parlamentar de prietenie cu  Ungaria</a></td><td>&nbsp;</td><td><img src="/img/spacer.gif" border=0 width=50 height=1></td><td>&nbsp;Vicepreşedinte</td></tr><tr valign="top"><td>&nbsp;<img src="/flags1/albania.gif"></td><td><a href="/ords/pls/parlam/structura.pr?idg=80&leg=2024">Grupul parlamentar de prietenie cu Albania</a></td><td>&nbsp;</td></tr></table></td></tr></table>
+<a href="/ords/pls/parlam/structura.mp?idm=1&cam=2&leg=2024&pag=0&idl=1"><b>Curriculum Vitae</b></a>`;
+
+describe("parseProfileBodies", () => {
+  it("reads delegations and friendship groups with the role printed after each, and none where there is none", () => {
+    expect(parseProfileBodies(BODIES_HTML, PROFILE)).toEqual([
+      { kind: "delegation", officialId: "19", name: "Delegaţia Parlamentului României la Adunarea Parlamentară a Consiliului Europei", role: "supleant", url: "https://cdep.ro/ords/pls/parlam/structura.dp?idg=19&leg=2024" },
+      { kind: "friendship_group", officialId: "73", name: "Grupul parlamentar de prietenie cu Ungaria", role: "Vicepreşedinte", url: "https://cdep.ro/ords/pls/parlam/structura.pr?idg=73&leg=2024" },
+      { kind: "friendship_group", officialId: "80", name: "Grupul parlamentar de prietenie cu Albania", url: "https://cdep.ro/ords/pls/parlam/structura.pr?idg=80&leg=2024" }
+    ]);
+  });
+
+  it("lists a body once however many times the page links it", () => {
+    expect(parseProfileBodies(`${BODIES_HTML}${BODIES_HTML}`, PROFILE)).toHaveLength(3);
+  });
+});
+
+describe("cvUrlFromProfile", () => {
+  it("finds the CV page a profile links and serves it from the www host", () => {
+    expect(cvUrlFromProfile(BODIES_HTML, PROFILE)).toBe("https://www.cdep.ro/ords/pls/parlam/structura.mp?idm=1&cam=2&leg=2024&pag=0&idl=1");
+  });
+
+  it("returns nothing for a profile without one", () => {
+    expect(cvUrlFromProfile("<a href=\"/ords/pls/parlam/structura.mp?idm=1&cam=2&leg=2024&pag=2&idl=1\">initiative</a>", PROFILE)).toBeUndefined();
   });
 });

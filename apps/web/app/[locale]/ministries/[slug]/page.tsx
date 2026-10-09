@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Building2, ExternalLink, GitMerge, Landmark, Vote } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getMinistry } from "@/lib/ministry-data";
+import { getQuestionsView } from "@/lib/question-data";
+import { QuestionsSummary } from "../../_components/QuestionsSummary";
 import type { AppLocale } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
@@ -17,6 +19,7 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
   const { locale, slug } = await params;
   const ministry = await getMinistry(slug);
   if (!ministry) notFound();
+  const questionsView = await getQuestionsView({ ministrySlug: ministry.slug });
   const current = ministry.current;
   const verifiedLegislation = ministry.legislation.filter((item) => item.confidence === "official" || item.confidence === "high");
   const suggestedLegislation = ministry.legislation.filter((item) => item.confidence === "suggested");
@@ -39,6 +42,7 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
           {verifiedLegislation.length ? <div className="mt-4 divide-y divide-line">{verifiedLegislation.map((item) => <LegislationRow key={`${item.bill.id}-${item.relation}`} locale={locale} item={item}/>)}</div> : <p className="mt-3 text-sm leading-6 text-muted">{locale === "ro" ? "Nu există încă proiecte atribuite oficial acestui minister. Nu transformăm simplele mențiuni în legături confirmate." : "No bills are officially attributed to this ministry yet. Simple mentions are not presented as confirmed relationships."}</p>}
           {suggestedLegislation.length ? <details className="group mt-4 border-t border-line pt-3"><summary className="cursor-pointer list-none text-xs font-bold text-brand">{locale === "ro" ? `Mențiuni în documente oficiale, de verificat (${suggestedLegislation.length})` : `Official-document mentions to review (${suggestedLegislation.length})`}</summary><div className="mt-2 divide-y divide-line">{suggestedLegislation.slice(0, 20).map((item) => <LegislationRow key={`${item.bill.id}-${item.relation}`} locale={locale} item={item}/>)}</div></details> : null}
         </section>
+        <div className="mt-5"><QuestionsSummary view={questionsView} locale={locale} filter={`ministry=${encodeURIComponent(ministry.slug)}`} as="addressee" /></div>
       </div>
       <aside className="self-start border border-wash bg-wash p-5 lg:sticky lg:top-24 rounded-card"><Building2 className="text-brand"/><h2 className="mt-3 font-serif text-2xl font-semibold text-ink">{locale === "ro" ? "Conducerea actuală" : "Current leadership"}</h2>{current ? <><div className="mt-4 flex flex-wrap items-center gap-2"><strong className="font-serif text-xl text-ink">{current.person.displayName}</strong>{current.interim ? <span className="border border-vote-abstain-fill bg-vote-abstain-bg px-1.5 py-0.5 text-xs font-bold uppercase text-vote-abstain">{locale === "ro" ? "Interimar" : "Interim"}</span> : null}</div><p className="mt-2 text-xs leading-5 text-muted">{locale === "ro" ? "În funcție din" : "In office since"} {formatDate(current.startsOn, locale)}<br/>{locale === "ro" ? "Guvernul" : "Government"} {current.government.name}</p>{current.member ? <Link href={`/${locale}/members/${current.member.slug}`} className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Vezi profilul parlamentar" : "View parliamentary profile"}<ArrowRight size={13}/></Link> : null}</> : <p className="mt-3 text-sm text-muted">{locale === "ro" ? "Titularul curent este în curs de verificare." : "The current holder is under verification."}</p>}</aside>
     </div>
