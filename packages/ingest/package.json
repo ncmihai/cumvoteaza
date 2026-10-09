@@ -51,6 +51,8 @@
     "members:cv:fetch": "tsx src/cli.ts members:cv:fetch",
     "members:questions:fetch": "tsx src/cli.ts members:questions:fetch",
     "members:questions:import": "tsx src/cli.ts members:questions:import",
+    "presidency:decrees:fetch": "tsx src/cli.ts presidency:decrees:fetch",
+    "presidency:decrees:import": "tsx src/cli.ts presidency:decrees:import",
     "members:profile-facts:import": "tsx src/cli.ts members:profile-facts:import",
     "bills:reports:fetch": "tsx src/cli.ts bills:reports:fetch",
     "bills:reports:import": "tsx src/cli.ts bills:reports:import",

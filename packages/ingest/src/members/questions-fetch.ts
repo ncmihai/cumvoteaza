@@ -93,18 +93,22 @@ export async function fetchQuestions(options: { repoRoot: string; live: boolean;
     }
     result.remaining = todo.length;
     if (!options.live) return result;
+    let failuresInARow = 0;
     for (const item of todo) {
+      if (failuresInARow >= 8) throw new FetchStoppedError("Eight pages in a row could not be read; stopping to look at why", "failures");
       try {
         const response = await fetcher.get(questionUrl(item.idi));
         if (response.status !== 200) throw new Error(`HTTP ${response.status}`);
         const html = decodeOfficialBytes(response.body, response.contentType);
-        if (!/Informa[tţț]ii privind (interpelarea|[iî]ntrebarea)/i.test(html)) throw new Error("the page is not a question or interpellation page");
+        if (!/Informa[tţț]ii privind\s+(interpelarea|[iî]ntrebarea)/i.test(html)) throw new Error("the page is not a question or interpellation page");
         await cache.write("cdep-question", item.idi, response.body, { url: questionUrl(item.idi), status: 200 });
         result.fetchedNow += 1;
         result.remaining -= 1;
+        failuresInARow = 0;
         if (result.fetchedNow % 100 === 0) options.log?.(`${result.fetchedNow} pages saved, ${result.remaining} to go`);
       } catch (error) {
         if (error instanceof FetchStoppedError) throw error;
+        failuresInARow += 1;
         result.failed.push({ key: item.idi, error: error instanceof Error ? error.message : String(error) });
       }
     }

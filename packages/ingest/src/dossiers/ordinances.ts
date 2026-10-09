@@ -105,7 +105,7 @@ export interface FetchOrdinancesResult {
  * One search, asked again (after 5 and 20 seconds) when the portal answers with a server error or the connection fails. A portal token wears out after a while
  * and then every search with it fails, so each retry asks for a new token first; the holder keeps the one in use.
  */
-async function searchWithRetry(holder: { token: string }, query: Parameters<typeof searchLegislatieRaw>[1]): Promise<string> {
+export async function searchWithRetry(holder: { token: string }, query: Parameters<typeof searchLegislatieRaw>[1]): Promise<string> {
   const pauses = [5_000, 20_000];
   for (let attempt = 0; ; attempt += 1) {
     try {

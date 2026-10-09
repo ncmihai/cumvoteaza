@@ -6,3 +6,4 @@ export * from "./bill-documents";
 export * from "./document-diff";
 export * from "./vote-outcome";
 export * from "./seat-counts";
+export * from "./decree-kinds";

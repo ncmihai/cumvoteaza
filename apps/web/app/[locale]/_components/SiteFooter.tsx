@@ -35,6 +35,8 @@ export async function SiteFooter({ locale }: { locale: AppLocale }) {
             <li><Link href={at("/governments")} className={link}>{ro ? "Guverne" : "Governments"}</Link></li>
             <li><Link href={at("/ministries")} className={link}>{ro ? "Ministere" : "Ministries"}</Link></li>
             <li><Link href={at("/motions")} className={link}>{ro ? "Moțiuni" : "Motions"}</Link></li>
+            <li><Link href={at("/questions")} className={link}>{ro ? "Întrebări și interpelări" : "Questions and interpellations"}</Link></li>
+            <li><Link href={at("/presidency")} className={link}>{ro ? "Președinția" : "The Presidency"}</Link></li>
           </ul>
         </nav>
         <nav aria-label={ro ? "Despre site" : "About the site"}>

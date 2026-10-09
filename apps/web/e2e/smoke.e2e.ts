@@ -62,7 +62,7 @@ test.describe("page titles", () => {
   test("every list page has its own title with the site name", async ({ page }) => {
     const expected: Record<string, RegExp> = {
       "/ro/votes": /^Voturi · /, "/ro/bills": /^Proiecte legislative · /, "/ro/members": /^Parlamentari · /, "/ro/compozitii": /^Compoziția Parlamentului · /,
-      "/ro/leadership": /^Conducerea Parlamentului · /, "/ro/ministries": /^Ministere și miniștri · /, "/ro/motions": /^Moțiuni · /, "/ro/questions": /^Întrebări și interpelări · /, "/ro/parties": /^Partide · /,
+      "/ro/leadership": /^Conducerea Parlamentului · /, "/ro/ministries": /^Ministere și miniștri · /, "/ro/motions": /^Moțiuni · /, "/ro/questions": /^Întrebări și interpelări · /, "/ro/presidency": /^Președinția: decretele · /, "/ro/parties": /^Partide · /,
       "/ro/governments": /^Guverne · /, "/ro/methodology": /^Metodologie și acoperire · /, "/en/methodology": /^Methodology and coverage · /
     };
     for (const [path, title] of Object.entries(expected)) {
@@ -160,6 +160,17 @@ test("the questions page lists what deputies asked the Government, each with its
   await expect(page.getByRole("button", { name: /Scoate filtrul/ }).or(page.getByRole("link", { name: /Scoate filtrul/ }))).toBeVisible();
 });
 
+test("the presidency page lists the President's decrees with the portal page of each @db", async ({ page }) => {
+  await page.goto("/ro/presidency");
+  const list = page.getByRole("list", { name: "Lista decretelor" });
+  // The catalog is imported by the owner (Sprint 14); until then this site has none, and this test says nothing there.
+  test.skip((await list.count()) === 0, "the decree catalog has not been imported on this site yet");
+  await expect(list.getByRole("link", { name: /legislatie\.just\.ro/ }).first()).toHaveAttribute("href", /^https?:\/\/legislatie\.just\.ro\/Public\/DetaliiDocument\/\d+/);
+  await expect(page.getByRole("table", { name: "Numărul decretelor pe tip și an" })).toBeVisible();
+  await page.goto("/ro/presidency?kind=promulgation");
+  await expect(page.getByRole("list", { name: "Lista decretelor" }).getByText("Promulgarea unei legi").first()).toBeVisible();
+});
+
 test("a joint-sitting vote shows the joint chart @db", async ({ page }) => {
   await page.goto("/ro/votes?chamber=joint");
   const hrefs = await page.locator('main a[href^="/ro/votes/"]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
@@ -247,7 +258,7 @@ test.describe("on a phone", () => {
 
   test("the main pages and one page of each kind fit the screen", async ({ page }) => {
     test.setTimeout(120_000);
-    const paths = ["/ro", "/ro/votes", "/ro/bills", "/ro/members", "/ro/compozitii", "/ro/leadership", "/ro/ministries", "/ro/motions", "/ro/questions", "/ro/parties", "/ro/governments", "/ro/methodology", "/en/methodology"];
+    const paths = ["/ro", "/ro/votes", "/ro/bills", "/ro/members", "/ro/compozitii", "/ro/leadership", "/ro/ministries", "/ro/motions", "/ro/questions", "/ro/presidency", "/ro/parties", "/ro/governments", "/ro/methodology", "/en/methodology"];
     for (const [list, prefix] of [["/ro/votes", "/ro/votes/"], ["/ro/bills", "/ro/bills/"], ["/ro/members", "/ro/members/"], ["/ro/parties", "/ro/parties/"], ["/ro/governments", "/ro/governments/"]] as const) {
       const href = await firstHref(page, list, prefix);
       if (href) paths.push(href);

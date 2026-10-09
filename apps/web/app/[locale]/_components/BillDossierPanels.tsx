@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, CheckCircle2, CircleSlash, Clock, X } from "lucide-react";
+import { Check, CheckCircle2, CircleSlash, Clock, ExternalLink, X } from "lucide-react";
 import { documentFormatOf, formatDate, type BillDossier, type BillProcedureStep, type DocumentSource } from "@cumsevoteaza/parliament-model";
 import { deadlineLine, fateView, groupStepsByChamber, registrationLine, resultLine, stepChamberLabel, stepTypeLabel, verdictLine } from "@/lib/bill-dossier-presentation";
 import type { AppLocale } from "@/lib/i18n";
@@ -83,6 +83,7 @@ export function BillFatePanel({ dossier, steps = [], locale }: { dossier: BillDo
           <div className="min-w-0">
             <h2 className="font-display text-2xl font-bold leading-tight">{fate.headline}</h2>
             {fate.details.map((line) => <p key={line} className="mt-1 text-sm text-ink-soft [overflow-wrap:anywhere]">{line}</p>)}
+            {dossier.decreeUrl ? <a href={dossier.decreeUrl} target="_blank" rel="noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-brand hover:text-brand-strong">{ro ? "Decretul de promulgare pe legislatie.just.ro" : "The promulgation decree on legislatie.just.ro"}<ExternalLink size={13} aria-hidden="true" /></a> : null}
             {dossier.outcomeOn && dossier.outcome === "promulgated" ? <p className="mt-1 text-xs text-muted">{ro ? "Promulgată la" : "Promulgated on"} {formatDate(dossier.outcomeOn, locale)}</p> : null}
           </div>
         </div>

@@ -1139,6 +1139,33 @@ export const billDossiers = pgTable("bill_dossiers", {
   lawIdx: index("bill_dossiers_law_idx").on(table.lawYear, table.lawNumber)
 }));
 
+/**
+ * The President's decrees since 2014, from the legislative portal's catalog (Sprint 14, D-037). One row per decree: number, date, the subject as the title prints it, its type
+ * (read from that title by plain rules), the Official Gazette that published it, who signed it (read from the signature at the end of the decree) and the portal's page. The text of a decree
+ * is not stored: it names the people it concerns, private persons decorated among them (D-029, Q19).
+ */
+export const presidentialDecrees = pgTable("presidential_decrees", {
+  id: text("id").primaryKey(),
+  number: integer("number").notNull(),
+  year: integer("year").notNull(),
+  issuedOn: date("issued_on").notNull(),
+  subject: text("subject").notNull(),
+  kind: text("kind").notNull(),
+  /** appointment | release | other, where the title says which. */
+  action: text("action"),
+  gazetteNumber: text("gazette_number"),
+  gazetteOn: date("gazette_on"),
+  signer: text("signer"),
+  signedAsInterim: boolean("signed_as_interim").notNull().default(false),
+  portalUrl: text("portal_url").notNull(),
+  portalId: text("portal_id"),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  referenceIdx: uniqueIndex("presidential_decrees_reference_idx").on(table.year, table.number),
+  kindIdx: index("presidential_decrees_kind_idx").on(table.kind, table.issuedOn),
+  issuedIdx: index("presidential_decrees_issued_idx").on(table.issuedOn)
+}));
+
 export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {
   id: text("id").primaryKey(),
   documentId: text("document_id").notNull().references(() => documents.id),

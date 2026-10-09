@@ -587,6 +587,8 @@ export interface BillDossier {
   decreeNumber?: string;
   decreeYear?: number;
   decreeOn?: string;
+  /** The decree's page on the legislative portal, when the President's decree catalog holds that decree (Sprint 14). */
+  decreeUrl?: string;
   gazetteNumber?: string;
   gazetteOn?: string;
 }

@@ -81,5 +81,15 @@ for (const size of sizes) {
       await page.goto("/ro/compozitii");
       expect(await violations(page)).toEqual([]);
     });
+
+    test("the questions page @db", async ({ page }) => {
+      await page.goto("/ro/questions");
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test("the presidency page, with its table of types and years @db", async ({ page }) => {
+      await page.goto("/ro/presidency");
+      expect(await violations(page)).toEqual([]);
+    });
   });
 }

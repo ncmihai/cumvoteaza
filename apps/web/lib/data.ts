@@ -345,7 +345,7 @@ const getCachedVotePageData = unstable_cache(
 
 const getCachedBillPageData = unstable_cache(
   async (id: string) => timed(`data.bill.${id}`, () => coalesce(`bill:${id}`, () => getBillPageDataUncached(id))),
-  ["bill-page-data-reports-v1"],
+  ["bill-page-data-reports-v1-d"],
   { revalidate: 900, tags: [CACHE_TAGS.bills] }
 );
 
@@ -755,6 +755,13 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
       for (const row of annexRows) reportReadings[row.document_id]?.annexes.push({ kind: row.kind === "rejected" ? "rejected" : "admitted", page: Number(row.page) });
       for (const row of authorRows) reportReadings[row.document_id]?.authors.push({ name: row.name, role: row.role === "senator" ? "senator" : "deputy", ...(row.group_label ? { group: row.group_label } : {}), ...(row.slug ? { memberSlug: row.slug } : {}) });
     }
+    // The promulgation decree's page in the President's decree catalog (D-037); a site deployed before the table exists, or before it is filled, simply shows the number.
+    const dossierRow = dossierRows[0];
+    const decreeNumber = Number((dossierRow?.decreeNumber ?? "").replace(/\./g, ""));
+    const decreeRows = dossierRow?.decreeYear && Number.isInteger(decreeNumber) && decreeNumber > 0
+      ? await session.db.execute<{ portal_url: string }>(sql`select portal_url from presidential_decrees where year = ${dossierRow.decreeYear} and number = ${decreeNumber} limit 1`).catch(() => [])
+      : [];
+    const decreeUrl = [...decreeRows][0]?.portal_url;
     const events = eventRows.map(mapBillEvent).sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
     const sponsorContexts: BillSponsorContext[] = events[0]
       ? await loadBillSponsorContexts(session.db, sponsorRows.map(mapBillSponsor), events[0].occurredOn)
@@ -768,7 +775,7 @@ async function tryDatabaseBill(id: string): Promise<BillPageData | undefined> {
 
     return {
       bill: mapBill(billRow),
-      dossier: dossierRows[0] ? mapBillDossier(dossierRows[0]) : undefined,
+      dossier: dossierRows[0] ? { ...mapBillDossier(dossierRows[0]), ...(decreeUrl ? { decreeUrl } : {}) } : undefined,
       events,
       procedureSteps: procedureRows
         .map((row) => ({ ...mapBillProcedureStep(row), ...(documentIdsByStep.has(row.id) ? { documentIds: documentIdsByStep.get(row.id) } : {}) }))

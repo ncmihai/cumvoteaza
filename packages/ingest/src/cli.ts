@@ -23,6 +23,8 @@ import { importProfileFacts } from "./members/profile-facts";
 import { fetchCvPages } from "./members/cv-fetch";
 import { fetchQuestions } from "./members/questions-fetch";
 import { importQuestions } from "./members/questions";
+import { fetchDecreePages } from "./presidency/decrees-fetch";
+import { importDecrees } from "./presidency/decrees";
 import { fetchReports, importReports, listReportSources } from "./dossiers/committee-reports";
 import { planLargePhotos } from "./assets/large-photos";
 import { catchUp, RunInProgressError } from "./updater/catch-up";
@@ -608,6 +610,28 @@ async function main() {
     const session = createDbSession();
     try {
       const result = await importQuestions(session.db, { repoRoot, persist: hasFlag("persist") });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "presidency:decrees:fetch") {
+    // Sprint 14 (D-037): the President's decrees, a page of ten at a time (newest first) from the legislative portal, saved under data/coverage/raw/legislatie-decrees.
+    // --from and --to are page numbers; one request every --delay-ms (default 3000), at most --limit per run, resumable; plan only without --live.
+    const result = await fetchDecreePages({ repoRoot, live: hasFlag("live"), from: numberFlag("from") ?? 1, to: numberFlag("to") ?? 1250, limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 3000, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "presidency:decrees:import") {
+    // Sprint 14 (D-037): presidential_decrees from the saved catalog pages (decrees from --since, default 2014-01-01). Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importDecrees(session.db, { repoRoot, persist: hasFlag("persist"), since: flag("since") ?? "2014-01-01" });
       console.log(JSON.stringify(result, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {

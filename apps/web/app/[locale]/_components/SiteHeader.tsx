@@ -33,11 +33,13 @@ function navigation(locale: AppLocale): NavItem[] {
     },
     { key: "parties", label: ro ? "Partide" : "Parties", href: at("/parties"), match: ["/parties"] },
     {
-      key: "government", label: ro ? "Guvern" : "Government", href: at("/governments"), match: ["/governments", "/ministries", "/motions"],
+      key: "government", label: ro ? "Guvern" : "Government", href: at("/governments"), match: ["/governments", "/ministries", "/motions", "/presidency", "/questions"],
       children: [
         { label: ro ? "Guverne" : "Governments", href: at("/governments"), hint: ro ? "Prim-miniștri, formare, schimbări" : "Prime ministers, formation, changes" },
         { label: ro ? "Ministere" : "Ministries", href: at("/ministries"), hint: ro ? "Cine a condus fiecare minister" : "Who has led each ministry" },
-        { label: ro ? "Moțiuni" : "Motions", href: at("/motions"), hint: ro ? "Moțiuni de cenzură și simple, cu semnatari" : "Censure and simple motions, with signatories" }
+        { label: ro ? "Moțiuni" : "Motions", href: at("/motions"), hint: ro ? "Moțiuni de cenzură și simple, cu semnatari" : "Censure and simple motions, with signatories" },
+        { label: ro ? "Întrebări și interpelări" : "Questions and interpellations", href: at("/questions"), hint: ro ? "Ce au întrebat deputații Guvernul, cu răspunsuri" : "What deputies asked the Government, with answers" },
+        { label: ro ? "Președinția" : "The Presidency", href: at("/presidency"), hint: ro ? "Decretele Președintelui din 2014" : "The President's decrees since 2014" }
       ]
     }
   ];
