@@ -121,7 +121,7 @@ async function queryPresidencyView(filter: PresidencyFilter): Promise<Presidency
 
 const cachedPresidencyView = unstable_cache(
   async (filter: PresidencyFilter) => queryPresidencyView(filter),
-  ["presidency-view-v2"],
+  ["presidency-view-v3"],
   { revalidate: 1800, tags: [CACHE_TAGS.governments] }
 );
 

@@ -54,7 +54,13 @@ describe("classifyDecree", () => {
     ["privind numirea Guvernului", "government"],
     ["privind acordarea grațierii individuale", "pardon"],
     ["privind instituirea stării de urgenţă pe teritoriul României", "state_of_exception"],
-    ["privind organizarea referendumului naţional", "parliament_and_referendum"]
+    ["privind organizarea referendumului naţional", "parliament_and_referendum"],
+    ["pentru supunerea spre ratificare Parlamentului a Acordului de asociere între Uniunea Europeană și o țară", "parliament_and_referendum"],
+    ["privind acordarea unei grațieri individuale", "pardon"],
+    ["privind retragerea unei decorații", "decoration"],
+    ["privind acordarea gradului de contraamiral de flotilă cu o stea unui comandor", "military"],
+    ["pentru numirea unui membru în Consiliul de administrație al Casei Naționale de Asigurări de Sănătate", "state_bodies"],
+    ["pentru numirea în funcție a procurorului-șef al Direcției Naționale Anticorupție", "judiciary_leadership"]
   ];
   for (const [subject, kind] of cases) it(`"${subject}" is ${kind}`, () => expect(classifyDecree(subject).kind).toBe(kind));
 

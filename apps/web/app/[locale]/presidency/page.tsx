@@ -50,12 +50,12 @@ export default async function PresidencyPage({ params, searchParams }: { params:
         <>
           <section aria-labelledby="signers" className="mt-6 rounded-card border border-line bg-surface p-5">
             <h2 id="signers" className="flex items-center gap-2 font-display text-xl font-bold text-ink"><Landmark size={20} aria-hidden="true" className="text-brand" />{ro ? "Cine a semnat" : "Who signed"}</h2>
-            <p className="mt-1 text-xs leading-5 text-muted">{ro ? "Numele și datele sunt citite din semnătura de la sfârșitul fiecărui decret: primul și ultimul decret semnat de fiecare în catalog." : "Names and dates are read from the signature at the end of each decree: the first and last decree each one signed in the catalog."}</p>
+            <p className="mt-1 text-xs leading-5 text-muted">{ro ? "Numele sunt citite din semnătura de la sfârșitul decretului; un decret al cărui text nu l-am citit are semnatarul decretelor dinainte și de după, dacă e același. Datele sunt ale primului și ultimului decret semnat de fiecare." : "Names are read from the signature at the end of a decree; a decree whose text we did not read gets the signer of the decrees before and after it, when it is the same one. Dates are those of the first and last decree each one signed."}</p>
             <ul className="mt-3 divide-y divide-line text-sm">
               {view.signers.map((signer) => (
                 <li key={`${signer.signer}-${signer.interim}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
                   <span className="font-semibold text-ink">{personName(signer.signer)}{signer.interim ? <span className="ml-2 rounded-full bg-wash px-2.5 py-0.5 text-xs font-semibold text-ink-soft">{ro ? "interimar" : "acting"}</span> : null}</span>
-                  <span className="text-muted">{formatDate(signer.first, locale)} – {formatDate(signer.last, locale)} · {number(signer.decrees)} {ro ? "decrete" : "decrees"}{signer.inferred ? (ro ? ` (la ${number(signer.inferred)} semnătura nu a fost citită: semnatarul este cel al decretelor dinainte și de după)` : ` (for ${number(signer.inferred)} the signature was not read: the signer is the one of the decrees before and after)`) : ""}</span>
+                  <span className="text-muted">{formatDate(signer.first, locale)} – {formatDate(signer.last, locale)} · {number(signer.decrees)} {ro ? "decrete" : "decrees"}{signer.inferred ? (ro ? ` · la ${number(signer.inferred)} semnatarul e dedus din decretele vecine` : ` · for ${number(signer.inferred)} the signer is inferred from the neighbouring decrees`) : ""}</span>
                 </li>
               ))}
             </ul>
