@@ -181,15 +181,18 @@ test("the elections page gives each list's votes and mandates, and a party page 
   await expect(page.getByRole("table", { name: "Voturile și mandatele partidului la fiecare alegere" })).toBeVisible();
 });
 
-test("the 2024 elections give each list's votes and no mandates column @db", async ({ page }) => {
+test("the 2024 elections give each list's votes and the mandates counted from the BEC's lists of the elected @db", async ({ page }) => {
   await page.goto("/ro/elections?election=parl-2024&chamber=deputies");
   const table = page.getByRole("table", { name: /^Voturile și mandatele fiecărei liste$/ });
   // The 2024 files are put in by the owner (D-040); until then this site has none, and this test says nothing there.
   test.skip((await table.count()) === 0, "the 2024 results have not been imported on this site yet");
   const psd = table.getByRole("row", { name: /^Partidul Social Democrat \d/ });
   await expect(psd).toContainText("22,0%");
-  await expect(table.getByRole("columnheader", { name: "Mandate" })).toHaveCount(0);
-  await expect(table.getByRole("row", { name: /^Partidul S\.O\.S\. România/ })).toBeVisible();
+  // The mandates are counted from the Central Electoral Bureau's minutes (D-040): 86 for the Social Democrats, 28 for SOS, one for a national-minority organisation.
+  test.skip((await table.getByRole("columnheader", { name: "Mandate" }).count()) === 0, "the 2024 mandates have not been imported on this site yet");
+  await expect(psd).toContainText(/\b86\b/);
+  await expect(table.getByRole("row", { name: /^Partidul S\.O\.S\. România/ })).toContainText(/\b28\b/);
+  await expect(table.getByRole("row", { name: /^Uniunea Armenilor din România/ })).toContainText(/\b1\b/);
 });
 
 test("the election map draws the counties, opens a county's communes and keeps the figures in a table @db", async ({ page }) => {
