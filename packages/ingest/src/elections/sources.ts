@@ -46,6 +46,8 @@ export const ELECTION_SOURCES: ElectionSource[] = [
     files: [
       { key: "parl2024-cd-pv", kind: "election-csv", role: "sections", chamber: "deputies", format: "pv", manualPath: "parl-2024/deputies.csv" },
       { key: "parl2024-senate-pv", kind: "election-csv", role: "sections", chamber: "senate", format: "pv", manualPath: "parl-2024/senate.csv" },
+      { key: "parl2024-cd-mail", kind: "election-csv", role: "mail", chamber: "deputies", format: "pv", manualPath: "parl-2024/deputies-mail.csv" },
+      { key: "parl2024-senate-mail", kind: "election-csv", role: "mail", chamber: "senate", format: "pv", manualPath: "parl-2024/senate-mail.csv" },
       { key: "parl2024-cd-mandates", kind: "election-csv", role: "mandates", chamber: "deputies", manualPath: "parl-2024/deputies-mandates.csv" },
       { key: "parl2024-senate-mandates", kind: "election-csv", role: "mandates", chamber: "senate", manualPath: "parl-2024/senate-mandates.csv" }
     ]
