@@ -125,7 +125,8 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
   for (const election of ELECTION_SOURCES) {
     const { rows, missing } = await readElection(options.repoRoot, election);
     // An election whose files are put in by hand is skipped until they are there.
-    if (election.manual && rows.length === 0) {
+    // ... and until every polling-station file of both chambers is there: an election read from the mail votes alone would be a wrong one.
+    if (election.manual && (rows.length === 0 || missing.some((key) => election.files.find((file) => file.key === key)?.role === "sections"))) {
       result.waitingForFiles.push(election.id);
       continue;
     }
