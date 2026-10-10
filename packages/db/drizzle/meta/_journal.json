@@ -393,6 +393,13 @@
       "when": 1791579533420,
       "tag": "0055_decree_signer_inferred",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791626538130,
+      "tag": "0056_elections_mandates_known",
+      "breakpoints": true
     }
   ]
 }

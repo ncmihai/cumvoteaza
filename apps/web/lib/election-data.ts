@@ -13,6 +13,8 @@ export interface ElectionInfo {
   legislatureYear: string;
   portalUrl: string;
   license: string;
+  /** False when the files give votes only (no mandates per list): the page shows no mandates for this election. */
+  mandatesKnown: boolean;
 }
 
 export interface ListResultRow {
@@ -56,9 +58,9 @@ async function queryElectionView(filter: { election?: string; chamber?: string; 
   const session = createWebDbSession();
   try {
     const db = session.db;
-    const electionRows = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string }>(sql`select id, label_ro, label_en, held_on::text, legislature_year, portal_url, license from elections order by held_on desc`))];
+    const electionRows = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string; mandates_known: boolean }>(sql`select id, label_ro, label_en, held_on::text, legislature_year, portal_url, license, mandates_known from elections order by held_on desc`))];
     if (electionRows.length === 0) return undefined;
-    const elections = electionRows.map((row) => ({ id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license }));
+    const elections = electionRows.map((row) => ({ id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license, mandatesKnown: row.mandates_known !== false }));
     const election = elections.find((item) => item.id === filter.election) ?? elections[0]!;
     const chamber = filter.chamber === "senate" ? "senate" as const : "deputies" as const;
     const circumscriptions = [...(await db.execute<{ number: number; name: string; mandates: string }>(sql`
@@ -92,7 +94,7 @@ async function queryElectionView(filter: { election?: string; chamber?: string; 
 
 const cachedElectionView = unstable_cache(
   async (filter: { election?: string; chamber?: string; circumscription?: number }) => queryElectionView(filter),
-  ["election-view-v1"],
+  ["election-view-v2"],
   { revalidate: 3600, tags: [CACHE_TAGS.parties] }
 );
 
@@ -105,13 +107,13 @@ async function queryPartyElections(partyId: string): Promise<PartyElectionRow[]>
   const session = createWebDbSession();
   try {
     const db = session.db;
-    const rows = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string; chamber: string; votes: string; mandates: string; total: string }>(sql`
-      select e.id, e.label_ro, e.label_en, e.held_on::text, e.legislature_year, e.portal_url, e.license, r.chamber::text as chamber, sum(r.votes)::text as votes, sum(r.mandates)::text as mandates,
+    const rows = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string; mandates_known: boolean; chamber: string; votes: string; mandates: string; total: string }>(sql`
+      select e.id, e.label_ro, e.label_en, e.held_on::text, e.legislature_year, e.portal_url, e.license, e.mandates_known, r.chamber::text as chamber, sum(r.votes)::text as votes, sum(r.mandates)::text as mandates,
         (select sum(t.votes)::text from election_list_results t where t.election_id = e.id and t.chamber = r.chamber) as total
       from election_list_results r join elections e on e.id = r.election_id
-      where r.party_id = ${partyId} group by e.id, e.label_ro, e.label_en, e.held_on, e.legislature_year, e.portal_url, e.license, r.chamber order by e.held_on desc, r.chamber`))];
+      where r.party_id = ${partyId} group by e.id, e.label_ro, e.label_en, e.held_on, e.legislature_year, e.portal_url, e.license, e.mandates_known, r.chamber order by e.held_on desc, r.chamber`))];
     return rows.map((row) => ({
-      election: { id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license },
+      election: { id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license, mandatesKnown: row.mandates_known !== false },
       chamber: row.chamber === "senate" ? "senate" as const : "deputies" as const,
       votes: Number(row.votes),
       share: Number(row.total) ? Number(row.votes) / Number(row.total) : 0,
@@ -124,7 +126,7 @@ async function queryPartyElections(partyId: string): Promise<PartyElectionRow[]>
   }
 }
 
-const cachedPartyElections = unstable_cache(async (partyId: string) => queryPartyElections(partyId), ["party-elections-v1"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedPartyElections = unstable_cache(async (partyId: string) => queryPartyElections(partyId), ["party-elections-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** What a party won in each election the open data covers, per chamber; empty when it was not a list of its own (an alliance's results are under the alliance's name). */
 export function getPartyElections(partyId: string): Promise<PartyElectionRow[]> {
@@ -186,8 +188,8 @@ async function queryElectionInfo(): Promise<ElectionInfo[]> {
   if (!process.env.DATABASE_URL) return [];
   const session = createWebDbSession();
   try {
-    const rows = await session.db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string }>(sql`select id, label_ro, label_en, held_on::text, legislature_year, portal_url, license from elections`);
-    return [...rows].map((row) => ({ id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license }));
+    const rows = await session.db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; legislature_year: string; portal_url: string; license: string; mandates_known: boolean }>(sql`select id, label_ro, label_en, held_on::text, legislature_year, portal_url, license, mandates_known from elections`);
+    return [...rows].map((row) => ({ id: row.id, label: { ro: row.label_ro, en: row.label_en }, heldOn: row.held_on, legislatureYear: row.legislature_year, portalUrl: row.portal_url, license: row.license, mandatesKnown: row.mandates_known !== false }));
   } catch {
     return [];
   } finally {
@@ -195,4 +197,4 @@ async function queryElectionInfo(): Promise<ElectionInfo[]> {
   }
 }
 
-const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v1"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });

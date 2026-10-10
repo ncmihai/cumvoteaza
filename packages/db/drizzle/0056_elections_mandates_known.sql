@@ -1,0 +1,1 @@
+ALTER TABLE "elections" ADD COLUMN "mandates_known" boolean DEFAULT true NOT NULL;

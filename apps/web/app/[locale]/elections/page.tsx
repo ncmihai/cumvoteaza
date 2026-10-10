@@ -52,7 +52,7 @@ export default async function ElectionsPage({ params, searchParams }: { params: 
           </div>
           <section aria-labelledby="results" className="mt-5 rounded-card border border-line bg-surface p-5">
             <h2 id="results" className="flex items-center gap-2 font-display text-xl font-bold text-ink"><Vote size={20} aria-hidden="true" className="text-brand" />{view.election.label[locale]} · {view.chamber === "senate" ? (ro ? "Senat" : "Senate") : ro ? "Camera Deputaților" : "Chamber of Deputies"}{view.circumscription ? ` · ${titleCase(view.circumscription.name)}` : ro ? " · toată țara" : " · whole country"}</h2>
-            <p className="mt-1 text-xs leading-5 text-muted">{number(view.totalVotes)} {ro ? "voturi valabile pe liste" : "valid votes on lists"} · {number(view.totalMandates)} {ro ? "mandate" : "mandates"} · {formatDate(view.election.heldOn, locale)}{view.election.id === "parl-2016" && view.chamber === "deputies" ? (ro ? ". Fișierul AEP dă cele 312 mandate ale listelor; cele 17 locuri ale minorităților naționale nu sunt în el." : ". The AEP's file gives the 312 list mandates; the 17 seats of the national minorities are not in it.") : ""}</p>
+            <p className="mt-1 text-xs leading-5 text-muted">{number(view.totalVotes)} {ro ? "voturi valabile pe liste" : "valid votes on lists"} · {view.election.mandatesKnown ? `${number(view.totalMandates)} ${ro ? "mandate" : "mandates"} · ` : ""} {formatDate(view.election.heldOn, locale)}{view.election.id === "parl-2016" && view.chamber === "deputies" ? (ro ? ". Fișierul AEP dă cele 312 mandate ale listelor; cele 17 locuri ale minorităților naționale nu sunt în el." : ". The AEP's file gives the 312 list mandates; the 17 seats of the national minorities are not in it.") : ""}</p>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[520px] text-sm">
                 <caption className="sr-only">{ro ? "Voturile și mandatele fiecărei liste" : "The votes and mandates of each list"}</caption>
@@ -61,7 +61,7 @@ export default async function ElectionsPage({ params, searchParams }: { params: 
                     <th scope="col" className="py-2 pr-3 font-semibold">{ro ? "Lista" : "List"}</th>
                     <th scope="col" className="px-2 py-2 text-right font-semibold">{ro ? "Voturi" : "Votes"}</th>
                     <th scope="col" className="px-2 py-2 text-right font-semibold">%</th>
-                    <th scope="col" className="px-2 py-2 text-right font-semibold">{ro ? "Mandate" : "Mandates"}</th>
+                    {view.election.mandatesKnown ? <th scope="col" className="px-2 py-2 text-right font-semibold">{ro ? "Mandate" : "Mandates"}</th> : null}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -72,7 +72,7 @@ export default async function ElectionsPage({ params, searchParams }: { params: 
                       </th>
                       <td className="px-2 py-2 text-right tabular-nums text-ink-soft">{number(row.votes)}</td>
                       <td className="px-2 py-2 text-right tabular-nums text-ink-soft">{percent(row.share)}</td>
-                      <td className="px-2 py-2 text-right font-semibold tabular-nums text-ink">{number(row.mandates)}</td>
+                      {view.election.mandatesKnown ? <td className="px-2 py-2 text-right font-semibold tabular-nums text-ink">{number(row.mandates)}</td> : null}
                     </tr>
                   ))}
                 </tbody>

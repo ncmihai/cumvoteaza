@@ -7,10 +7,15 @@ export interface ElectionFile {
   /** Cache key, unique across elections. */
   key: string;
   kind: "election-csv" | "election-xlsx";
-  url: string;
+  /** Empty for a file put in by hand. */
+  url?: string;
   /** What the file holds. */
   role: "sections" | "mail" | "mandates";
   chamber: "deputies" | "senate";
+  /** The layout of a polling-station file: the open-data CSVs of 2016 and 2020 ("sections"), or the portal's minutes ("pv"). */
+  format?: "sections" | "pv";
+  /** A file the maintainer downloads by hand (the portal answers programs with a browser check): its path under data/manual/elections. */
+  manualPath?: string;
 }
 
 export interface ElectionSource {
@@ -21,6 +26,8 @@ export interface ElectionSource {
   legislatureYear: string;
   portalUrl: string;
   license: string;
+  /** True when the files are put in data/manual/elections by hand; the election is skipped until they are there. */
+  manual?: boolean;
   files: ElectionFile[];
 }
 
@@ -28,6 +35,21 @@ const D2020 = "https://data.gov.ro/dataset/8c0e5b4d-6d8d-4068-9194-8d57e3d63333/
 const D2016 = "https://data.gov.ro/dataset/eb0770eb-d78d-4227-9186-74a08f19d068/resource";
 
 export const ELECTION_SOURCES: ElectionSource[] = [
+  {
+    id: "parl-2024",
+    label: { ro: "Alegerile parlamentare din 1 decembrie 2024", en: "The parliamentary elections of 1 December 2024" },
+    heldOn: "2024-12-01",
+    legislatureYear: "2024",
+    portalUrl: "https://prezenta.roaep.ro/parlamentare01122024/",
+    license: "Date publice ale Autorității Electorale Permanente (prezenta.roaep.ro)",
+    manual: true,
+    files: [
+      { key: "parl2024-cd-pv", kind: "election-csv", role: "sections", chamber: "deputies", format: "pv", manualPath: "parl-2024/deputies.csv" },
+      { key: "parl2024-senate-pv", kind: "election-csv", role: "sections", chamber: "senate", format: "pv", manualPath: "parl-2024/senate.csv" },
+      { key: "parl2024-cd-mandates", kind: "election-csv", role: "mandates", chamber: "deputies", manualPath: "parl-2024/deputies-mandates.csv" },
+      { key: "parl2024-senate-mandates", kind: "election-csv", role: "mandates", chamber: "senate", manualPath: "parl-2024/senate-mandates.csv" }
+    ]
+  },
   {
     id: "parl-2020",
     label: { ro: "Alegerile parlamentare din 6 decembrie 2020", en: "The parliamentary elections of 6 December 2020" },

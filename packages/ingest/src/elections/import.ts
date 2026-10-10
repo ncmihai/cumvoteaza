@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { RawCache } from "../coverage/raw-cache";
-import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, type ListMandates, type ListVotes } from "./parse";
+import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, sumPvListVotes, type ListMandates, type ListVotes } from "./parse";
 import { ELECTION_SOURCES, type ElectionFile, type ElectionSource } from "./sources";
 
 const execFileAsync = promisify(execFile);
@@ -29,8 +29,13 @@ async function readXlsxRows(repoRoot: string, file: string): Promise<Array<Array
   throw new Error("No Python with openpyxl was found (set PYTHON_BIN).");
 }
 
+/** A saved open-data file, or, for the elections whose files are put in by hand, the file under data/manual/elections. */
+function savedPath(repoRoot: string, file: ElectionFile): string {
+  return file.manualPath ? path.join(repoRoot, "data/manual/elections", file.manualPath) : new RawCache(path.join(repoRoot, "data/coverage/raw")).filePath(file.kind, file.key);
+}
+
 async function readFileText(repoRoot: string, file: ElectionFile): Promise<Buffer | undefined> {
-  const saved = new RawCache(path.join(repoRoot, "data/coverage/raw")).filePath(file.kind, file.key);
+  const saved = savedPath(repoRoot, file);
   return existsSync(saved) ? readFile(saved) : undefined;
 }
 
@@ -55,13 +60,13 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
       const bytes = await readFileText(repoRoot, file);
       if (!bytes) { missing.push(file.key); continue; }
       if (file.role === "mandates") {
-        const items = file.kind === "election-xlsx" ? readMandatesWide(await readXlsxRows(repoRoot, new RawCache(path.join(repoRoot, "data/coverage/raw")).filePath(file.kind, file.key))) : readMandatesLong(parseDelimited(decodeElectionBytes(bytes)));
+        const items = file.kind === "election-xlsx" ? readMandatesWide(await readXlsxRows(repoRoot, savedPath(repoRoot, file))) : readMandatesLong(parseDelimited(decodeElectionBytes(bytes)));
         for (const item of items) {
           const key = `${item.circumscriptionNumber}|${foldName(item.list)}`;
           mandates.set(key, { ...item, mandates: (mandates.get(key)?.mandates ?? 0) + item.mandates });
         }
       } else {
-        for (const item of sumListVotes(parseDelimited(decodeElectionBytes(bytes)))) {
+        for (const item of (file.format === "pv" ? sumPvListVotes : sumListVotes)(parseDelimited(decodeElectionBytes(bytes)))) {
           const key = `${item.circumscriptionNumber}|${foldName(item.list)}`;
           const previous = votes.get(key);
           // The first spelling met (the polling stations' file) names the list.
@@ -100,6 +105,8 @@ export interface ImportElectionsResult {
     mandatesWithoutVotes: number;
   }>;
   unmatchedLists: string[];
+  /** Elections whose files are put in by hand and are not there yet. */
+  waitingForFiles: string[];
   written: number;
 }
 
@@ -111,12 +118,18 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
   const bare = (name: string) => foldName(name).replace(/^partidul /, "");
   for (const party of parties) partyByName.set(bare(party.name), party.id);
   const readAt = new Date();
-  const result: ImportElectionsResult = { persisted: options.persist, elections: [], unmatchedLists: [], written: 0 };
+  const result: ImportElectionsResult = { persisted: options.persist, elections: [], unmatchedLists: [], waitingForFiles: [], written: 0 };
   const electionRows: Array<typeof schema.elections.$inferInsert> = [];
   const resultRows: Array<typeof schema.electionListResults.$inferInsert> = [];
   const unmatched = new Set<string>();
   for (const election of ELECTION_SOURCES) {
     const { rows, missing } = await readElection(options.repoRoot, election);
+    // An election whose files are put in by hand is skipped until they are there.
+    if (election.manual && rows.length === 0) {
+      result.waitingForFiles.push(election.id);
+      continue;
+    }
+    const mandatesKnown = !missing.some((key) => election.files.find((file) => file.key === key)?.role === "mandates");
     const chambers = (["deputies", "senate"] as const).map((chamber) => {
       const own = rows.filter((row) => row.chamber === chamber);
       const byList = new Map<string, { votes: number; mandates: number }>();
@@ -132,7 +145,7 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
       };
     });
     result.elections.push({ id: election.id, rows: rows.length, missingFiles: missing, chambers, mandatesWithoutVotes: rows.filter((row) => row.votes === 0 && row.mandates > 0).length });
-    electionRows.push({ id: election.id, labelRo: election.label.ro, labelEn: election.label.en, heldOn: election.heldOn, legislatureYear: election.legislatureYear, portalUrl: election.portalUrl, license: election.license, readAt });
+    electionRows.push({ id: election.id, labelRo: election.label.ro, labelEn: election.label.en, heldOn: election.heldOn, legislatureYear: election.legislatureYear, portalUrl: election.portalUrl, license: election.license, mandatesKnown, readAt });
     for (const row of rows) {
       const partyId = row.independent ? undefined : partyByName.get(bare(row.listName));
       if (!partyId && !row.independent) unmatched.add(row.listName);
@@ -143,7 +156,7 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
   if (!options.persist || resultRows.length === 0) return result;
   await db.transaction(async (tx) => {
     for (const election of electionRows) {
-      await tx.insert(schema.elections).values(election).onConflictDoUpdate({ target: schema.elections.id, set: { labelRo: sql`excluded.label_ro`, labelEn: sql`excluded.label_en`, heldOn: sql`excluded.held_on`, legislatureYear: sql`excluded.legislature_year`, portalUrl: sql`excluded.portal_url`, license: sql`excluded.license`, readAt: sql`excluded.read_at` } });
+      await tx.insert(schema.elections).values(election).onConflictDoUpdate({ target: schema.elections.id, set: { mandatesKnown: sql`excluded.mandates_known`, labelRo: sql`excluded.label_ro`, labelEn: sql`excluded.label_en`, heldOn: sql`excluded.held_on`, legislatureYear: sql`excluded.legislature_year`, portalUrl: sql`excluded.portal_url`, license: sql`excluded.license`, readAt: sql`excluded.read_at` } });
       await tx.execute(sql`delete from election_list_results where election_id = ${election.id}`);
     }
     for (let i = 0; i < resultRows.length; i += 500) await tx.insert(schema.electionListResults).values(resultRows.slice(i, i + 500));

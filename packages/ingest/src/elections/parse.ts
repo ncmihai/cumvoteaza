@@ -112,3 +112,44 @@ export function readMandatesWide(rows: Array<Array<string | number>>): ListManda
   }
   return out;
 }
+
+/**
+ * The AEP's polling-station minutes as the portal publishes them (`pv_final_cntry_*.csv`, the format Code for Romania's backup repository documents): one row per polling station with
+ * `precinct_county_nce` and `precinct_county_name`, the report columns, the statistics a to f, then one column per list named "<LIST>-voturi". County codes 1 to 41 and 43 (abroad) are the
+ * circumscription numbers of the earlier elections; Bucharest is split into sectors 44 to 49, which are one circumscription, 42. A station that appears in several versions counts once,
+ * with its highest version.
+ */
+export function sumPvListVotes(rows: string[][]): ListVotes[] {
+  const header = rows[0] ?? [];
+  const at = (name: string) => header.indexOf(name);
+  const nce = at("precinct_county_nce");
+  const countyName = at("precinct_county_name");
+  const precinct = at("precinct_nr");
+  const siruta = at("uat_siruta");
+  const version = at("report_version");
+  const type = at("report_type_code");
+  if (nce < 0 || countyName < 0) throw new Error("The file is not a polling-station minutes file (no precinct_county_nce column)");
+  const lists = header.flatMap((column, index) => (column.endsWith("-voturi") ? [{ index, list: column.slice(0, -"-voturi".length).trim() }] : []));
+  if (lists.length === 0) throw new Error("The file has no list columns (\"...-voturi\")");
+  const latest = new Map<string, string[]>();
+  for (const row of rows.slice(1)) {
+    const key = [row[nce], row[siruta], row[precinct], row[type]].join("|");
+    const previous = latest.get(key);
+    if (!previous || toInt(row[version]) >= toInt(previous[version])) latest.set(key, row);
+  }
+  const names = new Map<number, string>();
+  const totals = new Map<string, ListVotes>();
+  for (const row of latest.values()) {
+    const code = toInt(row[nce]);
+    if (!code) continue;
+    const circumscriptionNumber = code >= 44 && code <= 49 ? 42 : code;
+    if (!names.has(circumscriptionNumber)) names.set(circumscriptionNumber, circumscriptionNumber === 42 ? "MUNICIPIUL BUCUREȘTI" : (row[countyName] ?? "").trim());
+    for (const { index, list } of lists) {
+      const key = `${circumscriptionNumber}|${list}`;
+      const entry = totals.get(key) ?? { circumscriptionNumber, circumscription: names.get(circumscriptionNumber)!, list, votes: 0 };
+      entry.votes += toInt(row[index]);
+      totals.set(key, entry);
+    }
+  }
+  return [...totals.values()];
+}

@@ -1181,6 +1181,8 @@ export const elections = pgTable("elections", {
   legislatureYear: text("legislature_year").notNull(),
   portalUrl: text("portal_url").notNull(),
   license: text("license").notNull(),
+  /** False when the mandates each list won are not in the files read (only the votes are): the page then shows no mandates for this election. */
+  mandatesKnown: boolean("mandates_known").notNull().default(true),
   readAt: timestamp("read_at", { withTimezone: true }).notNull()
 });
 
