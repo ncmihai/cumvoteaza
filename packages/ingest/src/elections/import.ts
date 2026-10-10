@@ -31,8 +31,9 @@ async function readXlsxRows(repoRoot: string, file: string): Promise<Array<Array
   throw new Error("No Python with openpyxl was found (set PYTHON_BIN).");
 }
 
-/** A saved open-data file, or, for the elections whose files are put in by hand, the file under data/manual/elections. */
+/** A saved open-data file, a file committed in the repository, or, for the elections whose files are put in by hand, the file under data/manual/elections. */
 function savedPath(repoRoot: string, file: ElectionFile): string {
+  if (file.repoPath) return path.join(repoRoot, file.repoPath);
   return file.manualPath ? path.join(repoRoot, "data/manual/elections", file.manualPath) : new RawCache(path.join(repoRoot, "data/coverage/raw")).filePath(file.kind, file.key);
 }
 
@@ -139,8 +140,8 @@ export interface ImportElectionsResult {
 export async function importElections(db: DbClient, options: { repoRoot: string; persist: boolean }): Promise<ImportElectionsResult> {
   const parties = [...(await db.execute<{ id: string; name: string }>(sql`select id, name from parties`))];
   const partyByName = new Map<string, string>();
-  // A list is a party when its printed name is the party's name, with or without a leading "Partidul" ("PARTIDUL PRO ROMÂNIA" and "PRO România").
-  const bare = (name: string) => foldName(name).replace(/^partidul /, "");
+  // A list is a party when its printed name is the party's name, with or without a leading "Partidul" ("PARTIDUL PRO ROMÂNIA" and "PRO România") and whatever the spaces and dots ("PARTIDUL S.O.S. ROMÂNIA" and "SOS România").
+  const bare = (name: string) => foldName(name).replace(/^partidul /, "").replace(/ /g, "");
   for (const party of parties) partyByName.set(bare(party.name), party.id);
   const readAt = new Date();
   const result: ImportElectionsResult = { persisted: options.persist, elections: [], unmatchedLists: [], areas: [], waitingForFiles: [], written: 0 };

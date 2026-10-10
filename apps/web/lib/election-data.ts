@@ -124,7 +124,7 @@ async function queryElectionView(filter: { election?: string; chamber?: string; 
 
 const cachedElectionView = unstable_cache(
   async (filter: { election?: string; chamber?: string; circumscription?: number }) => queryElectionView(filter),
-  ["election-view-v3"],
+  ["election-view-v4"],
   { revalidate: 3600, tags: [CACHE_TAGS.parties] }
 );
 
@@ -156,7 +156,7 @@ async function queryPartyElections(partyId: string): Promise<PartyElectionRow[]>
   }
 }
 
-const cachedPartyElections = unstable_cache(async (partyId: string) => queryPartyElections(partyId), ["party-elections-v3"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedPartyElections = unstable_cache(async (partyId: string) => queryPartyElections(partyId), ["party-elections-v4"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** What a party won in each election the open data covers, per chamber; empty when it was not a list of its own (an alliance's results are under the alliance's name). */
 export function getPartyElections(partyId: string): Promise<PartyElectionRow[]> {
@@ -193,7 +193,7 @@ async function queryElectionRows(electionId: string, chamber: "deputies" | "sena
   }
 }
 
-const cachedElectionRows = unstable_cache(async (electionId: string, chamber: "deputies" | "senate") => queryElectionRows(electionId, chamber), ["election-rows-v1"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedElectionRows = unstable_cache(async (electionId: string, chamber: "deputies" | "senate") => queryElectionRows(electionId, chamber), ["election-rows-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /**
  * The list a mandate was won on, where the open data covers that election: the election that began the mandate's legislature (2016, 2020), the mandate's chamber and constituency, and the list whose
@@ -227,7 +227,7 @@ async function queryElectionInfo(): Promise<ElectionInfo[]> {
   }
 }
 
-const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v3"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v4"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** Every election we hold, newest first. */
 export async function getElections(): Promise<ElectionInfo[]> {

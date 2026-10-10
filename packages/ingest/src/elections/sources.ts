@@ -16,6 +16,8 @@ export interface ElectionFile {
   format?: "sections" | "pv";
   /** A file the maintainer downloads by hand (the portal answers programs with a browser check): its path under data/manual/elections. */
   manualPath?: string;
+  /** A file committed in the repository (a transcription of a facsimile that has no open-data file): its path from the repository root. */
+  repoPath?: string;
 }
 
 export interface ElectionSource {
@@ -97,13 +99,17 @@ export const ELECTION_SOURCES: ElectionSource[] = [
     portalUrl: "https://prezenta.roaep.ro/parlamentare01122024/",
     license: "Date publice ale Autorității Electorale Permanente (prezenta.roaep.ro)",
     manual: true,
+    note: {
+      ro: "Voturile sunt cele din procesele-verbale ale secțiilor de votare (AEP). Mandatele pe liste și circumscripții sunt numărate din „Lista deputaților aleși” și „Lista senatorilor aleși” din procesele-verbale finale ale Biroului Electoral Central (Monitorul Oficial nr. 1237 din 10 decembrie 2024); cele 19 mandate ale minorităților naționale sunt la nivel național, câte unul pentru fiecare organizație.",
+      en: "The votes are those of the polling-station minutes (AEP). The mandates by list and circumscription are counted from the \"list of elected deputies\" and \"list of elected senators\" in the Central Electoral Bureau's final minutes (Official Gazette no. 1237 of 10 December 2024); the 19 national-minority mandates are national, one for each organisation."
+    },
     files: [
       { key: "parl2024-cd-pv", kind: "election-csv", role: "sections", chamber: "deputies", format: "pv", manualPath: "parl-2024/deputies.csv" },
       { key: "parl2024-senate-pv", kind: "election-csv", role: "sections", chamber: "senate", format: "pv", manualPath: "parl-2024/senate.csv" },
       { key: "parl2024-cd-mail", kind: "election-csv", role: "mail", chamber: "deputies", format: "pv", manualPath: "parl-2024/deputies-mail.csv" },
       { key: "parl2024-senate-mail", kind: "election-csv", role: "mail", chamber: "senate", format: "pv", manualPath: "parl-2024/senate-mail.csv" },
-      { key: "parl2024-cd-mandates", kind: "election-csv", role: "mandates", chamber: "deputies", manualPath: "parl-2024/deputies-mandates.csv" },
-      { key: "parl2024-senate-mandates", kind: "election-csv", role: "mandates", chamber: "senate", manualPath: "parl-2024/senate-mandates.csv" }
+      { key: "parl2024-cd-mandates", kind: "election-csv", role: "mandates", chamber: "deputies", repoPath: "packages/ingest/src/elections/curated/parl-2024-deputies-mandates.csv" },
+      { key: "parl2024-senate-mandates", kind: "election-csv", role: "mandates", chamber: "senate", repoPath: "packages/ingest/src/elections/curated/parl-2024-senate-mandates.csv" }
     ]
   },
   {
