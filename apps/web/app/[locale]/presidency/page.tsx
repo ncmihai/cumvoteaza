@@ -6,17 +6,21 @@ import { DECREES_PAGE_SIZE, getPresidencyView, type PresidencyFilter } from "@/l
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { normalizeRomanian } from "@/lib/text";
 import { titled } from "@/lib/page-metadata";
+import { getPresidents } from "@/lib/president-data";
+import { PresidencyTabs } from "../_components/PresidencyTabs";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   return titled(params, { ro: "Președinția: decretele", en: "The Presidency: decrees" });
 }
 
-type Query = { kind?: string; year?: string; page?: string };
+type Query = { kind?: string; year?: string; page?: string; signer?: string };
 
 /** "KLAUS-WERNER IOHANNIS" → "Klaus-Werner Iohannis". */
 function personName(value: string): string {
   return value.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, before: string, letter: string) => `${before}${letter.toUpperCase()}`);
 }
+
+const signerSlug = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 const kindOf = (value: string | undefined): DecreeKind | undefined => (DECREE_KINDS as readonly string[]).includes(value ?? "") ? (value as DecreeKind) : undefined;
 
@@ -27,12 +31,14 @@ export default async function PresidencyPage({ params, searchParams }: { params:
   const ro = locale === "ro";
   const kind = kindOf(query.kind);
   const year = Number(query.year) || undefined;
-  const filter: PresidencyFilter = { ...(kind ? { kind } : {}), ...(year ? { year } : {}), page: Math.max(1, Number(query.page) || 1) };
+  const presidents = await getPresidents();
+  const chosenSigner = presidents.find((item) => item.slug === query.signer);
+  const filter: PresidencyFilter = { ...(kind ? { kind } : {}), ...(year ? { year } : {}), ...(chosenSigner ? { signer: chosenSigner.name } : {}), page: Math.max(1, Number(query.page) || 1) };
   const view = await getPresidencyView(filter);
   const number = (value: number) => value.toLocaleString(ro ? "ro-RO" : "en-GB");
   const href = (changes: Partial<Query>) => {
     const next: Record<string, string> = {};
-    for (const [key, value] of Object.entries({ kind: query.kind, year: query.year, ...changes })) if (value) next[key] = value;
+    for (const [key, value] of Object.entries({ kind: query.kind, year: query.year, signer: query.signer, ...changes })) if (value) next[key] = value;
     const search = new URLSearchParams(next).toString();
     return `/${locale}/presidency${search ? `?${search}` : ""}`;
   };
@@ -40,6 +46,7 @@ export default async function PresidencyPage({ params, searchParams }: { params:
   return (
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
       <p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Președinția României" : "The Presidency of Romania"}</p>
+      <div className="mt-2"><PresidencyTabs locale={locale} current="decrees" /></div>
       <h1 className="mt-1 font-display text-4xl font-bold text-ink">{ro ? "Decretele Președintelui" : "The President's decrees"}</h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{ro
         ? "Decretele semnate de Președintele României din 2014, din catalogul portalului legislativ (legislatie.just.ro): numărul, data, obiectul așa cum îl tipărește titlul, Monitorul Oficial în care au apărut și cine le-a semnat. Tipul fiecărui decret este citit din titlu cu reguli simple; ce nu recunoaștem rămâne «Altele». Textul decretelor nu este copiat: numește persoane, printre ele și persoane private decorate."
@@ -54,7 +61,7 @@ export default async function PresidencyPage({ params, searchParams }: { params:
             <ul className="mt-3 divide-y divide-line text-sm">
               {view.signers.map((signer) => (
                 <li key={`${signer.signer}-${signer.interim}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
-                  <span className="font-semibold text-ink">{personName(signer.signer)}{signer.interim ? <span className="ml-2 rounded-full bg-wash px-2.5 py-0.5 text-xs font-semibold text-ink-soft">{ro ? "interimar" : "acting"}</span> : null}</span>
+                  <span className="font-semibold text-ink"><Link href={`/${locale}/presidency/presidents/${signerSlug(signer.signer)}`} className="hover:text-brand">{personName(signer.signer)}</Link>{signer.interim ? <span className="ml-2 rounded-full bg-wash px-2.5 py-0.5 text-xs font-semibold text-ink-soft">{ro ? "interimar" : "acting"}</span> : null}</span>
                   <span className="text-muted">{formatDate(signer.first, locale)} – {formatDate(signer.last, locale)} · {number(signer.decrees)} {ro ? "decrete" : "decrees"}{signer.inferred ? (ro ? ` · la ${number(signer.inferred)} semnatarul e dedus din decretele vecine` : ` · for ${number(signer.inferred)} the signer is inferred from the neighbouring decrees`) : ""}</span>
                 </li>
               ))}
@@ -87,6 +94,7 @@ export default async function PresidencyPage({ params, searchParams }: { params:
 
           <section aria-labelledby="decree-list" className="mt-6">
             <h2 id="decree-list" className="font-display text-xl font-bold text-ink">{ro ? "Decretele" : "The decrees"}</h2>
+            {chosenSigner ? <p className="mt-2 text-sm text-ink-soft">{ro ? "Semnate de" : "Signed by"} <Link href={`/${locale}/presidency/presidents/${chosenSigner.slug}`} className="font-semibold text-brand">{personName(chosenSigner.name)}</Link> · <Link href={href({ signer: undefined, page: undefined })} className="font-bold text-brand">{ro ? "Toți semnatarii" : "All signers"}</Link></p> : null}
             <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label={ro ? "Filtre" : "Filters"}>
               <Link href={href({ kind: undefined, page: undefined })} className={chip(!kind)}>{ro ? "Toate tipurile" : "All types"}</Link>
               {DECREE_KINDS.filter((value) => view.grid.some((row) => row.kind === value)).map((value) => <Link key={value} href={href({ kind: value, page: undefined })} className={chip(kind === value)}>{DECREE_KIND_LABELS[value][locale]}</Link>)}

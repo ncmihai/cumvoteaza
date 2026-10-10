@@ -1260,10 +1260,17 @@ export const presidentialDecreePersons = pgTable("presidential_decree_persons", 
   position: integer("position").notNull(),
   name: text("name").notNull(),
   role: text("role").notNull(),
-  personId: text("person_id").references(() => people.id)
+  personId: text("person_id").references(() => people.id),
+  /** What the decree does to this person (Sprint 18): appointment, reappointment, interim, designation, release, resignation, dismissal, recall, rank or other. */
+  action: text("action"),
+  /** The office the decree concerns, a key of `OFFICES` in the model package ("ccr-judge", "prosecutor-general", "minister", ...). */
+  office: text("office"),
+  /** The office as the decree words it, cut at 200 characters. */
+  title: text("title")
 }, (table) => ({
   pk: primaryKey({ columns: [table.decreeId, table.position] }),
-  personIdx: index("presidential_decree_persons_person_idx").on(table.personId)
+  personIdx: index("presidential_decree_persons_person_idx").on(table.personId),
+  officeIdx: index("presidential_decree_persons_office_idx").on(table.office)
 }));
 
 export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {

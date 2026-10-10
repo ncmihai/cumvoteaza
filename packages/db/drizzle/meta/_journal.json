@@ -414,6 +414,13 @@
       "when": 1791633477551,
       "tag": "0058_presidential_elections",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791638234179,
+      "tag": "0059_decree_person_offices",
+      "breakpoints": true
     }
   ]
 }

@@ -223,6 +223,28 @@ test("the election map has the presidential rounds, and says the first round of 
   await expect(page).toHaveURL(/election=pres-2024-r1/);
 });
 
+test("the Presidents' pages: who signed, how they were elected, whom they appointed, and the route of each office @db", async ({ page }) => {
+  await page.goto("/ro/presidency/presidents");
+  const link = page.getByRole("link", { name: /Klaus-Werner Iohannis/ });
+  // The decree catalog is imported by the owner (Sprint 14); until then this site has none, and this test says nothing there.
+  test.skip((await link.count()) === 0, "the decree catalog has not been imported on this site yet");
+  await link.first().click();
+  await expect(page.getByRole("heading", { level: 1, name: "Klaus-Werner Iohannis" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Decretele semnate, pe tipuri" })).toContainText("Promulgarea unei legi");
+  await expect(page.getByRole("link", { name: /Rezultatul pe hartă/ })).toHaveAttribute("href", /elections\/map\?election=pres-2014-r2/);
+  await page.goto("/ro/presidency/appointments");
+  await expect(page.getByRole("heading", { name: "Directorul Serviciului Român de Informații" })).toBeVisible();
+  await page.goto("/ro/presidency/appointments/sri-director");
+  await expect(page.getByText("Nu se numește prin decret").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Legea nr. 14\/1992, art. 23/ })).toHaveAttribute("href", /legislatie\.just\.ro/);
+  await page.goto("/ro/presidency/appointments/ccr-judge");
+  await expect(page.getByRole("link", { name: /Constituția României, art. 142/ })).toBeVisible();
+  const decrees = page.getByRole("table", { name: /Persoane numite sau eliberate/ });
+  test.skip((await decrees.count()) === 0, "the appointments have not been read on this site yet");
+  await expect(decrees).toContainText("Numit(ă)");
+  expect((await page.goto("/ro/presidency/appointments/other"))?.status()).toBe(404);
+});
+
 test("a member of the 2020 legislature says which list the seat was won on, with the circumscription's results @db", async ({ page }) => {
   const response = await page.goto("/ro/members/mirela-elena-adomnicai?legislature=leg-2020-2024");
   test.skip(response?.status() === 404, "the sample member is not on this site");

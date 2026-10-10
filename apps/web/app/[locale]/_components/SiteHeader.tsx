@@ -41,7 +41,7 @@ function navigation(locale: AppLocale): NavItem[] {
         { label: ro ? "Ministere" : "Ministries", href: at("/ministries"), hint: ro ? "Cine a condus fiecare minister" : "Who has led each ministry" },
         { label: ro ? "Moțiuni" : "Motions", href: at("/motions"), hint: ro ? "Moțiuni de cenzură și simple, cu semnatari" : "Censure and simple motions, with signatories" },
         { label: ro ? "Întrebări și interpelări" : "Questions and interpellations", href: at("/questions"), hint: ro ? "Ce au întrebat deputații Guvernul, cu răspunsuri" : "What deputies asked the Government, with answers" },
-        { label: ro ? "Președinția" : "The Presidency", href: at("/presidency"), hint: ro ? "Decretele Președintelui din 2014" : "The President's decrees since 2014" }
+        { label: ro ? "Președinția" : "The Presidency", href: at("/presidency/presidents"), hint: ro ? "Președinții, decretele din 2014 și numirile" : "The Presidents, the decrees since 2014 and the appointments" }
       ]
     }
   ];

@@ -104,6 +104,14 @@ for (const size of sizes) {
       expect(await violations(page)).toEqual([]);
     });
 
+    test("the Presidents' pages and the appointments by office @db", async ({ page }) => {
+      for (const path of ["/ro/presidency/presidents", "/ro/presidency/presidents/klaus-werner-iohannis", "/ro/presidency/appointments", "/ro/presidency/appointments/ccr-judge", "/ro/presidency/appointments/sri-director"]) {
+        const response = await page.goto(path);
+        if (response?.status() === 404) continue;
+        expect(await violations(page), path).toEqual([]);
+      }
+    });
+
     test("the presidency page, with its table of types and years @db", async ({ page }) => {
       await page.goto("/ro/presidency");
       expect(await violations(page)).toEqual([]);

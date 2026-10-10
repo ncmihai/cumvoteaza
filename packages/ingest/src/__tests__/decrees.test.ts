@@ -60,7 +60,9 @@ describe("classifyDecree", () => {
     ["privind retragerea unei decorații", "decoration"],
     ["privind acordarea gradului de contraamiral de flotilă cu o stea unui comandor", "military"],
     ["pentru numirea unui membru în Consiliul de administrație al Casei Naționale de Asigurări de Sănătate", "state_bodies"],
-    ["pentru numirea în funcție a procurorului-șef al Direcției Naționale Anticorupție", "judiciary_leadership"]
+    ["pentru numirea în funcție a procurorului-șef al Direcției Naționale Anticorupție", "judiciary_leadership"],
+    ["privind numirea unui judecător la Curtea Constituţională", "constitutional_court"],
+    ["privind eliberarea din funcție a unui judecător al Curții Constituționale", "constitutional_court"]
   ];
   for (const [subject, kind] of cases) it(`"${subject}" is ${kind}`, () => expect(classifyDecree(subject).kind).toBe(kind));
 
@@ -78,7 +80,8 @@ describe("classifyDecree", () => {
 describe("namedPersons", () => {
   it("reads the person a ministerial decree names, with the sentence that names them", () => {
     const text = "... Președintele României decretează: + ARTICOL UNIC Se desemnează domnul Marian-Cătălin Predoiu, viceprim-ministru, ministrul afacerilor interne, în funcția de ministru al justiției, ad-interim. PREȘEDINTELE ROMÂNIEI NICUȘOR-DANIEL DAN București, 24 aprilie 2026.";
-    expect(namedPersons("government", text)).toEqual([{ name: "Marian-Cătălin Predoiu", role: "Se desemnează domnul Marian-Cătălin Predoiu, viceprim-ministru, ministrul afacerilor interne, în funcția de ministru al justiției, ad-interim." }]);
+    const sentence = "Se desemnează domnul Marian-Cătălin Predoiu, viceprim-ministru, ministrul afacerilor interne, în funcția de ministru al justiției, ad-interim.";
+    expect(namedPersons("government", text)).toEqual([{ name: "Marian-Cătălin Predoiu", role: sentence, sentence }]);
   });
 
   it("reads a recall in two articles and an honorific that starts the sentence, once per person", () => {

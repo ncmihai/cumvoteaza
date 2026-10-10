@@ -7,3 +7,4 @@ export * from "./document-diff";
 export * from "./vote-outcome";
 export * from "./seat-counts";
 export * from "./decree-kinds";
+export * from "./offices";

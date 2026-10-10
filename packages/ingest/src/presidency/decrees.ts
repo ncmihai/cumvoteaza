@@ -76,6 +76,8 @@ export interface NamedPerson {
   name: string;
   /** The sentence of the decree that names them, as printed (cut at 300 characters). */
   role: string;
+  /** The whole sentence, which the reader of the action and the office needs (an ambassador's sentence names every country before the verb); it is not stored. */
+  sentence: string;
 }
 
 const HONORIFIC_NAME = /\b(?:[Dd]omnul|[Dd]omnului|[Dd]oamna|[Dd]oamnei)\s+([A-ZĂÂÎȘŞȚŢ][\p{L}'’-]*(?:\s+[A-ZĂÂÎȘŞȚŢ][\p{L}'’.-]*){1,4})/gu;
@@ -96,7 +98,7 @@ export function namedPersons(kind: DecreeKind, text: string): NamedPerson[] {
     for (const match of sentence.matchAll(HONORIFIC_NAME)) {
       const name = match[1]!.replace(/\.$/, "").replace(/\s+/g, " ").trim();
       if (name.split(" ").length < 2 || people.has(fold(name))) continue;
-      people.set(fold(name), { name, role: sentence.length > 300 ? `${sentence.slice(0, 297)}…` : sentence });
+      people.set(fold(name), { name, role: sentence.length > 300 ? `${sentence.slice(0, 297)}…` : sentence, sentence });
     }
   }
   return [...people.values()];

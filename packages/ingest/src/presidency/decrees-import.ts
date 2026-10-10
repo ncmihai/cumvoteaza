@@ -5,6 +5,7 @@ import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { classifyDecree } from "./decree-types";
 import { decreePageText, textKey } from "./decree-texts";
+import { classifyAppointment } from "./appointments";
 import { fold, namedPersons, parseDecreePage, signatureOf, type DecreeRecord } from "./decrees";
 import { parseDecreeList } from "./portal-search";
 
@@ -149,7 +150,8 @@ export async function importDecrees(db: DbClient, options: { repoRoot: string; p
   for (const { decree, type, row } of rows) {
     namedPersons(type.kind, decree.text).forEach((person, position) => {
       const personId = `person-${slugOf(person.name)}`;
-      personRows.push({ decreeId: row.id, position, name: person.name, role: person.role, personId: knownPeople.has(personId) ? personId : null });
+      const facts = classifyAppointment(type.kind, person.sentence);
+      personRows.push({ decreeId: row.id, position, name: person.name, role: person.role, personId: knownPeople.has(personId) ? personId : null, action: facts.action, office: facts.office, title: facts.title ?? null });
     });
   }
   const kinds = new Map<string, number>();

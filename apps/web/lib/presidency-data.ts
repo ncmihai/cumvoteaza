@@ -37,6 +37,8 @@ export interface SignerPeriod {
 export interface PresidencyFilter {
   kind?: string;
   year?: number;
+  /** The signer's name as the signature prints it ("KLAUS-WERNER IOHANNIS"). */
+  signer?: string;
   page?: number;
 }
 
@@ -65,6 +67,7 @@ async function queryPresidencyView(filter: PresidencyFilter): Promise<Presidency
     const where: SQL[] = [];
     if (filter.kind) where.push(sql`kind = ${filter.kind}`);
     if (filter.year) where.push(sql`year = ${filter.year}`);
+    if (filter.signer) where.push(sql`signer = ${filter.signer}`);
     const clause = where.length ? sql`where ${sql.join(where, sql` and `)}` : sql``;
     const page = Math.max(1, Math.floor(filter.page ?? 1));
     const [gridRows, signerRows, matchingRows, itemRows] = await Promise.all([
@@ -121,7 +124,7 @@ async function queryPresidencyView(filter: PresidencyFilter): Promise<Presidency
 
 const cachedPresidencyView = unstable_cache(
   async (filter: PresidencyFilter) => queryPresidencyView(filter),
-  ["presidency-view-v3"],
+  ["presidency-view-v4"],
   { revalidate: 1800, tags: [CACHE_TAGS.governments] }
 );
 
