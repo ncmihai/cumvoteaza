@@ -181,6 +181,17 @@ test("the elections page gives each list's votes and mandates, and a party page 
   await expect(page.getByRole("table", { name: "Voturile și mandatele partidului la fiecare alegere" })).toBeVisible();
 });
 
+test("the 2024 elections give each list's votes and no mandates column @db", async ({ page }) => {
+  await page.goto("/ro/elections?election=parl-2024&chamber=deputies");
+  const table = page.getByRole("table", { name: /^Voturile și mandatele fiecărei liste$/ });
+  // The 2024 files are put in by the owner (D-040); until then this site has none, and this test says nothing there.
+  test.skip((await table.count()) === 0, "the 2024 results have not been imported on this site yet");
+  const psd = table.getByRole("row", { name: /^Partidul Social Democrat \d/ });
+  await expect(psd).toContainText("22,0%");
+  await expect(table.getByRole("columnheader", { name: "Mandate" })).toHaveCount(0);
+  await expect(table.getByRole("row", { name: /^Partidul S\.O\.S\. România/ })).toBeVisible();
+});
+
 test("a member of the 2020 legislature says which list the seat was won on, with the circumscription's results @db", async ({ page }) => {
   const response = await page.goto("/ro/members/mirela-elena-adomnicai?legislature=leg-2020-2024");
   test.skip(response?.status() === 404, "the sample member is not on this site");

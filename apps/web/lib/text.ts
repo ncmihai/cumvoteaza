@@ -32,7 +32,7 @@ const ACRONYMS = new Set(["usr", "plus", "aur", "udmr", "psd", "pnl", "pmp", "al
 export function officialCase(value: string): string {
   return normalizeRomanian(value).toLowerCase().split(/(\s+)/).map((word, index) => {
     if (/^\s+$/.test(word)) return word;
-    if (ACRONYMS.has(word)) return word.toUpperCase();
+    if (ACRONYMS.has(word) || /^(\p{L}\.){2,}$/u.test(word)) return word.toUpperCase();
     if (index > 0 && SMALL_WORDS.has(word)) return word;
     return word.replace(/(^|[-“"(])(\p{L})/gu, (_, before: string, letter: string) => `${before}${letter.toUpperCase()}`);
   }).join("");
