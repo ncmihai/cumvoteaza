@@ -1207,6 +1207,44 @@ export const electionListResults = pgTable("election_list_results", {
 }));
 
 /**
+ * The lists of one election and chamber, each with a small code so that the votes of a commune can be kept as two short arrays (Sprint 17, D-041). Code 0 is "the independent candidates", added
+ * together; the others are numbered by their votes, the largest first.
+ */
+export const electionLists = pgTable("election_lists", {
+  electionId: text("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
+  chamber: chamberEnum("chamber").notNull(),
+  code: integer("code").notNull(),
+  name: text("name").notNull(),
+  independents: boolean("independents").notNull().default(false),
+  partyId: text("party_id").references(() => parties.id)
+}, (table) => ({
+  pk: primaryKey({ columns: [table.electionId, table.chamber, table.code] })
+}));
+
+/**
+ * The polling-station results added up per commune or city (Bucharest per sector; abroad per country) for one election and chamber, from the same files as `election_list_results` but without
+ * the votes by mail, which belong to no place. `area_key` is the SIRUTA code of the commune, or "abroad:<country>". The statistics are the AEP's columns: `registered` is a1 (voters on the permanent
+ * lists), `present` is b (voters who came), `valid` is e (equal to the sum of the lists' votes) and `invalid` is f (null votes).
+ */
+export const electionAreaResults = pgTable("election_area_results", {
+  electionId: text("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
+  chamber: chamberEnum("chamber").notNull(),
+  areaKey: text("area_key").notNull(),
+  circumscriptionNumber: integer("circumscription_number").notNull(),
+  name: text("name").notNull(),
+  sections: integer("sections").notNull(),
+  registered: integer("registered").notNull(),
+  present: integer("present").notNull(),
+  valid: integer("valid").notNull(),
+  invalid: integer("invalid").notNull(),
+  listCodes: integer("list_codes").array().notNull(),
+  listVotes: integer("list_votes").array().notNull()
+}, (table) => ({
+  pk: primaryKey({ columns: [table.electionId, table.chamber, table.areaKey] }),
+  circumscriptionIdx: index("election_area_results_circumscription_idx").on(table.electionId, table.chamber, table.circumscriptionNumber)
+}));
+
+/**
  * The people a presidential decree names when it concerns a public office (a minister, an ambassador, a judge of the Constitutional Court, the head of the judiciary, a presidential adviser),
  * with the sentence of the decree that names them. Decorations, pardons, judges and prosecutors are never read for names (D-029, Q19). `person_id` is set only when the name is exactly one of our people.
  */

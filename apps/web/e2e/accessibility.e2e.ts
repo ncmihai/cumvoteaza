@@ -92,6 +92,18 @@ for (const size of sizes) {
       expect(await violations(page)).toEqual([]);
     });
 
+    test("the election map, by county and by commune @db", async ({ page }) => {
+      await page.goto("/ro/elections/map");
+      const map = page.getByRole("group", { name: /^Câștigătorul, harta României$/ });
+      // The results by commune are imported by the owner (Sprint 17); until then this site has no map, and this test says nothing there.
+      test.skip((await page.getByText("Rezultatele pe comune nu sunt încă încărcate").count()) > 0, "the commune results have not been imported on this site yet");
+      await expect(map).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("button", { name: "Pe comune" }).click();
+      await expect(page.locator("svg path[data-k]").nth(500)).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
     test("the presidency page, with its table of types and years @db", async ({ page }) => {
       await page.goto("/ro/presidency");
       expect(await violations(page)).toEqual([]);

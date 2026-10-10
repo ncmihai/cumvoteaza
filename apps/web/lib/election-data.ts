@@ -198,3 +198,8 @@ async function queryElectionInfo(): Promise<ElectionInfo[]> {
 }
 
 const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+
+/** Every election we hold, newest first. */
+export async function getElections(): Promise<ElectionInfo[]> {
+  return [...(await getElectionInfo())].sort((a, b) => b.heldOn.localeCompare(a.heldOn));
+}

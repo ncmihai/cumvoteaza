@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { RawCache } from "../coverage/raw-cache";
+import { INDEPENDENTS_KEY, readAreas, type AreaReading } from "./areas";
 import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, sumPvListVotes, type ListMandates, type ListVotes } from "./parse";
 import { ELECTION_SOURCES, type ElectionFile, type ElectionSource } from "./sources";
 
@@ -95,6 +96,17 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
   return { rows, missing };
 }
 
+/** The commune-level results of one election, for each chamber whose polling-station file is there. */
+export async function readElectionAreas(repoRoot: string, election: ElectionSource): Promise<Partial<Record<"deputies" | "senate", AreaReading>>> {
+  const out: Partial<Record<"deputies" | "senate", AreaReading>> = {};
+  for (const chamber of ["deputies", "senate"] as const) {
+    const file = election.files.find((item) => item.chamber === chamber && item.role === "sections");
+    const bytes = file ? await readFileText(repoRoot, file) : undefined;
+    if (file && bytes) out[chamber] = readAreas(decodeElectionBytes(bytes), file.format === "pv" ? "pv" : "sections");
+  }
+  return out;
+}
+
 export interface ImportElectionsResult {
   persisted: boolean;
   elections: Array<{
@@ -105,6 +117,8 @@ export interface ImportElectionsResult {
     mandatesWithoutVotes: number;
   }>;
   unmatchedLists: string[];
+  /** The commune-level results (Sprint 17): what was read for each election and chamber. */
+  areas: Array<{ election: string; chamber: string; areas: number; abroad: number; sections: number; votes: number; registered: number; present: number; turnout: number; withoutCommune: number; aliases: string[] }>;
   /** Elections whose files are put in by hand and are not there yet. */
   waitingForFiles: string[];
   written: number;
@@ -118,9 +132,11 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
   const bare = (name: string) => foldName(name).replace(/^partidul /, "");
   for (const party of parties) partyByName.set(bare(party.name), party.id);
   const readAt = new Date();
-  const result: ImportElectionsResult = { persisted: options.persist, elections: [], unmatchedLists: [], waitingForFiles: [], written: 0 };
+  const result: ImportElectionsResult = { persisted: options.persist, elections: [], unmatchedLists: [], areas: [], waitingForFiles: [], written: 0 };
   const electionRows: Array<typeof schema.elections.$inferInsert> = [];
   const resultRows: Array<typeof schema.electionListResults.$inferInsert> = [];
+  const listRows: Array<typeof schema.electionLists.$inferInsert> = [];
+  const areaRows: Array<typeof schema.electionAreaResults.$inferInsert> = [];
   const unmatched = new Set<string>();
   for (const election of ELECTION_SOURCES) {
     const { rows, missing } = await readElection(options.repoRoot, election);
@@ -152,6 +168,33 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
       if (!partyId && !row.independent) unmatched.add(row.listName);
       resultRows.push({ electionId: election.id, chamber: row.chamber, circumscriptionNumber: row.circumscriptionNumber, circumscription: row.circumscription, listName: row.listName, votes: row.votes, mandates: row.mandates, partyId: partyId ?? null, independent: row.independent });
     }
+    const readings = await readElectionAreas(options.repoRoot, election);
+    for (const chamber of ["deputies", "senate"] as const) {
+      const reading = readings[chamber];
+      if (!reading) continue;
+      // The lists get a code: 0 for the independents, then 1, 2, ... by their votes, the largest first.
+      const totals = new Map<string, number>();
+      for (const area of reading.areas) for (const [key, votes] of area.votes) totals.set(key, (totals.get(key) ?? 0) + votes);
+      const ordered = [...totals.keys()].filter((key) => key !== INDEPENDENTS_KEY).sort((a, b) => totals.get(b)! - totals.get(a)!);
+      const codeOf = new Map<string, number>(ordered.map((key, index) => [key, index + 1]));
+      if (totals.has(INDEPENDENTS_KEY)) {
+        codeOf.set(INDEPENDENTS_KEY, 0);
+        listRows.push({ electionId: election.id, chamber, code: 0, name: "", independents: true, partyId: null });
+      }
+      for (const key of ordered) {
+        const name = reading.lists.get(key)!.name;
+        listRows.push({ electionId: election.id, chamber, code: codeOf.get(key)!, name, independents: false, partyId: partyByName.get(bare(name)) ?? null });
+      }
+      let abroad = 0;
+      for (const area of reading.areas) {
+        if (area.key.startsWith("abroad:")) abroad += 1;
+        const entries = [...area.votes].map(([key, votes]) => [codeOf.get(key)!, votes] as const).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+        areaRows.push({ electionId: election.id, chamber, areaKey: area.key, circumscriptionNumber: area.circumscriptionNumber, name: area.name, sections: area.sections, registered: area.registered, present: area.present, valid: area.valid, invalid: area.invalid, listCodes: entries.map((entry) => entry[0]), listVotes: entries.map((entry) => entry[1]) });
+      }
+      const areaList = reading.areas;
+      const sum = (pick: (area: (typeof areaList)[number]) => number) => areaList.reduce((total, area) => total + pick(area), 0);
+      result.areas.push({ election: election.id, chamber, areas: reading.areas.length, abroad, sections: sum((area) => area.sections), votes: sum((area) => area.valid), registered: sum((area) => area.registered), present: sum((area) => area.present), turnout: sum((area) => area.registered) ? sum((area) => area.present) / sum((area) => area.registered) : 0, withoutCommune: reading.withoutCommune, aliases: reading.aliases });
+    }
   }
   result.unmatchedLists = [...unmatched].sort();
   if (!options.persist || resultRows.length === 0) return result;
@@ -159,9 +202,13 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
     for (const election of electionRows) {
       await tx.insert(schema.elections).values(election).onConflictDoUpdate({ target: schema.elections.id, set: { mandatesKnown: sql`excluded.mandates_known`, labelRo: sql`excluded.label_ro`, labelEn: sql`excluded.label_en`, heldOn: sql`excluded.held_on`, legislatureYear: sql`excluded.legislature_year`, portalUrl: sql`excluded.portal_url`, license: sql`excluded.license`, readAt: sql`excluded.read_at` } });
       await tx.execute(sql`delete from election_list_results where election_id = ${election.id}`);
+      await tx.execute(sql`delete from election_area_results where election_id = ${election.id}`);
+      await tx.execute(sql`delete from election_lists where election_id = ${election.id}`);
     }
     for (let i = 0; i < resultRows.length; i += 500) await tx.insert(schema.electionListResults).values(resultRows.slice(i, i + 500));
+    for (let i = 0; i < listRows.length; i += 500) await tx.insert(schema.electionLists).values(listRows.slice(i, i + 500));
+    for (let i = 0; i < areaRows.length; i += 200) await tx.insert(schema.electionAreaResults).values(areaRows.slice(i, i + 200));
   });
-  result.written = resultRows.length;
+  result.written = resultRows.length + listRows.length + areaRows.length;
   return result;
 }

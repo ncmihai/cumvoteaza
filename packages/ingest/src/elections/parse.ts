@@ -48,7 +48,7 @@ export interface ListVotes {
 }
 
 const isStatisticsColumn = (name: string) => /^[a-g]\d?$/i.test(name.trim());
-const toInt = (value: string | undefined) => {
+export const toInt = (value: string | undefined) => {
   const parsed = Number((value ?? "").trim());
   return Number.isFinite(parsed) ? Math.round(parsed) : 0;
 };

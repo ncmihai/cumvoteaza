@@ -192,6 +192,25 @@ test("the 2024 elections give each list's votes and no mandates column @db", asy
   await expect(table.getByRole("row", { name: /^Partidul S\.O\.S\. România/ })).toBeVisible();
 });
 
+test("the election map draws the counties, opens a county's communes and keeps the figures in a table @db", async ({ page }) => {
+  await page.goto("/ro/elections/map?election=parl-2024&chamber=deputies");
+  // The commune results are imported by the owner (Sprint 17); until then this site has none, and this test says nothing there.
+  test.skip((await page.getByText("Rezultatele pe comune nu sunt încă încărcate").count()) > 0, "the commune results have not been imported on this site yet");
+  const alba = page.getByRole("button", { name: /^Alba: / });
+  await expect(alba).toBeVisible();
+  await expect(page.getByRole("table", { name: /primele două liste/ })).toContainText("Alba");
+  // Winner by county: the Social Democrats lead in most counties, and the legend counts them.
+  await expect(page.getByRole("region", { name: "Legenda" })).toContainText("Partidul Social Democrat");
+  await alba.click();
+  await expect(page.getByRole("table", { name: /Comunele județului Alba/ })).toBeVisible();
+  await expect(page.getByRole("table", { name: /Comunele județului Alba/ }).getByRole("row", { name: /Alba Iulia/ })).toBeVisible();
+  await page.getByRole("button", { name: "Prezența" }).click();
+  await expect(page.getByRole("region", { name: "Legenda" })).toContainText("coloanele b și a1");
+  // The address says what is on the screen.
+  await expect(page).toHaveURL(/metric=turnout/);
+  await expect(page).toHaveURL(/circ=1/);
+});
+
 test("a member of the 2020 legislature says which list the seat was won on, with the circumscription's results @db", async ({ page }) => {
   const response = await page.goto("/ro/members/mirela-elena-adomnicai?legislature=leg-2020-2024");
   test.skip(response?.status() === 404, "the sample member is not on this site");
