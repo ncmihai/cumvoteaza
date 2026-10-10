@@ -32,6 +32,8 @@ export interface ElectionSource {
   kind?: "parliamentary" | "presidential";
   /** Said beside the results where the election needs it. */
   note?: { ro: string; en: string };
+  /** The 2012 elections: two spreadsheets converted to CSV (votes by circumscription, mandates by candidate) read by `readLegacy2012`. */
+  legacy2012?: { circumscriptions: string; candidates: string };
   files: ElectionFile[];
 }
 
@@ -62,6 +64,21 @@ const OLDER_2014 = { portalUrl: "https://data.gov.ro/dataset/alegeri-prezidentia
 const OLDER_2009 = { portalUrl: "https://data.gov.ro/dataset/alegeri-prezidentiale-2009", license: "Date publice ale Autorității Electorale Permanente (data.gov.ro)" };
 
 export const ELECTION_SOURCES: ElectionSource[] = [
+  {
+    id: "parl-2012",
+    label: { ro: "Alegerile parlamentare din 9 decembrie 2012", en: "The parliamentary elections of 9 December 2012" },
+    heldOn: "2012-12-09",
+    legislatureYear: "2012",
+    portalUrl: "https://data.gov.ro/dataset/alegeri-pentru-camera-deputatilor-si-senat-2012",
+    license: "Date publice ale Autorității Electorale Permanente (data.gov.ro)",
+    manual: true,
+    legacy2012: { circumscriptions: "parl-2012/circumscriptions.csv", candidates: "parl-2012/candidates.csv" },
+    note: {
+      ro: "Alegerile din 2012 au fost pe colegii uninominale: cifrele sunt voturile fiecărui competitor (partid, alianță, organizație a minorităților sau candidat independent) adunate pe circumscripție, iar mandatele sunt cele câștigate de candidații lui. Fișierul secțiilor din 2012 nu are codul SIRUTA al comunei, deci nu există hartă pe comune.",
+      en: "The 2012 elections were by single-member colleges: the figures are each competitor's votes (party, alliance, minority organisation or independent candidate) summed by circumscription, and the mandates are those its candidates won. The 2012 polling-station file has no SIRUTA code for the commune, so there is no map by commune."
+    },
+    files: []
+  },
   presidentialRound("pres-2025-r2", "pres-2025-r2", "2025-05-18", { ro: "Alegerile prezidențiale din 18 mai 2025, turul 2", en: "The presidential election of 18 May 2025, second round" }, "prezidentiale18052025"),
   presidentialRound("pres-2025-r1", "pres-2025-r1", "2025-05-04", { ro: "Alegerile prezidențiale din 4 mai 2025, turul 1", en: "The presidential election of 4 May 2025, first round" }, "prezidentiale04052025"),
   presidentialRound("pres-2024-r1", "pres-2024-r1", "2024-11-24", { ro: "Alegerile prezidențiale din 24 noiembrie 2024, turul 1 (anulat)", en: "The presidential election of 24 November 2024, first round (annulled)" }, "prezidentiale24112024", {

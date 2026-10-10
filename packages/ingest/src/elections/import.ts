@@ -8,6 +8,7 @@ import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { RawCache } from "../coverage/raw-cache";
 import { INDEPENDENTS_KEY, readAreas, type AreaReading } from "./areas";
+import { readLegacy2012 } from "./legacy-2012";
 import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, sumPvListVotes, type ListMandates, type ListVotes } from "./parse";
 import { ELECTION_SOURCES, type ElectionFile, type ElectionSource } from "./sources";
 
@@ -57,6 +58,13 @@ export interface ElectionRow {
 export async function readElection(repoRoot: string, election: ElectionSource): Promise<{ rows: ElectionRow[]; missing: string[] }> {
   const rows: ElectionRow[] = [];
   const missing: string[] = [];
+  if (election.legacy2012) {
+    const circumscriptions = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.circumscriptions), "utf8").catch(() => undefined);
+    const candidates = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.candidates), "utf8").catch(() => undefined);
+    if (!circumscriptions || !candidates) return { rows, missing: ["parl2012-circumscriptions", "parl2012-candidates"] };
+    for (const row of readLegacy2012(circumscriptions, candidates)) rows.push({ ...row, independent: /independent/i.test(row.listName) });
+    return { rows, missing };
+  }
   for (const chamber of ballotsOf(election)) {
     const votes = new Map<string, ListVotes>();
     const mandates = new Map<string, ListMandates>();
