@@ -27,6 +27,7 @@ import { fetchDecreePages, fetchDecreesByNumber } from "./presidency/decrees-fet
 import { fetchDecreeMonths } from "./presidency/portal-search";
 import { importDecrees } from "./presidency/decrees-import";
 import { fetchDecreeTexts, textTargets } from "./presidency/decree-texts";
+import { fetchDecisions, importDecisions } from "./presidency/parliament-decisions";
 import { readSavedDecrees } from "./presidency/decrees-import";
 import { fetchElectionFiles } from "./elections/fetch";
 import { importElections } from "./elections/import";
@@ -658,6 +659,27 @@ async function main() {
     const result = await fetchDecreeTexts({ repoRoot, live: hasFlag("live"), ids: textTargets(saved.decrees.filter((decree) => decree.issuedOn >= (flag("since") ?? "2014-01-01"))), limit: numberFlag("limit") ?? 400, delayMs: numberFlag("delay-ms") ?? 2500, log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "presidency:decisions:fetch") {
+    // Sprint 18 (D-042): Parliament's decisions that appoint the directors of the intelligence services and the Constitutional Court judges the chambers name, from the legislative portal's public search
+    // (a handful of result lists, then one page per decision), saved under data/coverage/raw. One request every --delay-ms (default 6000), at most --limit per run, resumable; plan only without --live.
+    const result = await fetchDecisions({ repoRoot, live: hasFlag("live"), delayMs: numberFlag("delay-ms") ?? 6000, limit: numberFlag("limit") ?? 200, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "presidency:decisions:import") {
+    // Sprint 18 (D-042): parliament_appointments from the saved decisions. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      console.log(JSON.stringify(await importDecisions(session.db, { repoRoot, persist: hasFlag("persist") }), null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

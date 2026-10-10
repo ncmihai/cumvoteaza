@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import { OFFICES, OFFICE_GROUPS, OFFICE_GROUP_LABELS, OFFICE_KEYS, ROUTE_LABELS, formatDate } from "@cumsevoteaza/parliament-model";
-import { getOfficeSummaries } from "@/lib/president-data";
+import { getOfficeSummaries, getParliamentAppointments } from "@/lib/president-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { titled } from "@/lib/page-metadata";
 import { PageIntro } from "../../_components/ui/PageIntro";
@@ -18,6 +18,7 @@ export default async function AppointmentsPage({ params }: { params: Promise<{ l
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const ro = locale === "ro";
   const summaries = new Map((await getOfficeSummaries()).map((item) => [item.office, item]));
+  const parliament = await getParliamentAppointments();
   const number = (value: number) => value.toLocaleString(ro ? "ro-RO" : "en-GB");
   return (
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
@@ -46,7 +47,10 @@ export default async function AppointmentsPage({ params }: { params: Promise<{ l
                     <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                       {office.byDecree
                         ? (summary ? <span>{number(summary.appointments)} {ro ? "numiri" : "appointments"} · {number(summary.releases)} {ro ? "eliberări" : "removals"} · {number(summary.people)} {ro ? "persoane" : "people"}{summary.first && summary.last ? ` · ${formatDate(summary.first, locale)} – ${formatDate(summary.last, locale)}` : ""}</span> : <span>{ro ? "Nicio persoană citită încă din decrete." : "No one read from the decrees yet."}</span>)
-                        : <span>{ro ? "Titularii nu sunt în decrete; hotărârile Parlamentului nu sunt încă citite." : "The office-holders are not in decrees; Parliament's decisions are not read yet."}</span>}
+                        : (() => {
+                          const own = parliament.filter((row) => row.office === key && row.action === "appointment");
+                          return own.length ? <span>{number(own.length)} {ro ? "numiri prin hotărâre a Parlamentului" : "appointments by decision of Parliament"} · {own[own.length - 1]!.year} – {own[0]!.year}</span> : <span>{ro ? "Titularii nu sunt în decrete; hotărârile Parlamentului nu sunt încă citite." : "The office-holders are not in decrees; Parliament's decisions are not read yet."}</span>;
+                        })()}
                       {office.basis.map((basis) => <a key={basis.url} href={basis.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-brand">{basis.label}<ExternalLink size={11} aria-hidden="true" /></a>)}
                     </p>
                   </li>

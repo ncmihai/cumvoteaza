@@ -421,6 +421,13 @@
       "when": 1791638234179,
       "tag": "0059_decree_person_offices",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791641979642,
+      "tag": "0060_parliament_appointments",
+      "breakpoints": true
     }
   ]
 }

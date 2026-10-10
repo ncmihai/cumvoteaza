@@ -46,6 +46,8 @@ export interface AppointmentCount {
 export interface Holding {
   name: string;
   memberSlug?: string;
+  /** The Chamber's or the Senate's own photograph of the member this name is, where we hold one. */
+  photoAssetId?: string;
   action: string;
   office: OfficeKey;
   title?: string;
@@ -127,7 +129,8 @@ async function queryPresidentPage(slug: string): Promise<PresidentPage | undefin
         select p.office, p.action, count(*)::text as count from presidential_decree_persons p join presidential_decrees d on d.id = p.decree_id where d.signer = ${president.name} and p.office is not null group by 1, 2`).catch(() => []),
       db.execute<HoldingRow>(sql`
         select p.name, p.action, p.office, p.title, d.id as decree_id, d.number, d.year, d.issued_on::text as issued_on, d.portal_url, d.signer, d.signed_as_interim,
-          (select m.slug from members m where m.person_id = p.person_id order by m.num desc limit 1) as member_slug
+          (select m.slug from members m where m.person_id = p.person_id order by m.num desc limit 1) as member_slug,
+          (select s.id from stored_assets s join members m2 on m2.id = s.entity_id where m2.person_id = p.person_id and s.asset_type = 'photo' and s.fetch_status = 'stored' order by coalesce(s.width, 0) asc, s.created_at desc limit 1) as photo_asset_id
         from presidential_decree_persons p join presidential_decrees d on d.id = p.decree_id
         where d.signer = ${president.name} and p.office in (${sql.join(KEY_OFFICES.map((office) => sql`${office}`), sql`, `)}) order by d.issued_on desc, p.position`).catch(() => []),
       db.execute<{ service: string; count: string }>(sql`
@@ -154,7 +157,7 @@ async function queryPresidentPage(slug: string): Promise<PresidentPage | undefin
   }
 }
 
-type HoldingRow = { name: string; action: string; office: string; title: string | null; decree_id: string; number: number; year: number; issued_on: string; portal_url: string; signer: string | null; signed_as_interim: boolean; member_slug: string | null };
+type HoldingRow = { name: string; action: string; office: string; title: string | null; decree_id: string; number: number; year: number; issued_on: string; portal_url: string; signer: string | null; signed_as_interim: boolean; member_slug: string | null; photo_asset_id: string | null };
 
 const toHolding = (row: HoldingRow): Holding => ({
   name: row.name,
@@ -168,10 +171,11 @@ const toHolding = (row: HoldingRow): Holding => ({
   signedAsInterim: row.signed_as_interim,
   ...(row.title ? { title: row.title } : {}),
   ...(row.member_slug ? { memberSlug: row.member_slug } : {}),
+  ...(row.photo_asset_id ? { photoAssetId: row.photo_asset_id } : {}),
   ...(row.signer ? { signer: row.signer } : {})
 });
 
-const cachedPresidentPage = unstable_cache(async (slug: string) => (await queryPresidentPage(slug)) ?? null, ["president-page-v1"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedPresidentPage = unstable_cache(async (slug: string) => (await queryPresidentPage(slug)) ?? null, ["president-page-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 export async function getPresidentPage(slug: string): Promise<PresidentPage | undefined> {
   try {
@@ -222,7 +226,8 @@ async function queryOfficeHoldings(office: string): Promise<Holding[]> {
   try {
     return [...(await session.db.execute<HoldingRow>(sql`
       select p.name, p.action, p.office, p.title, d.id as decree_id, d.number, d.year, d.issued_on::text as issued_on, d.portal_url, d.signer, d.signed_as_interim,
-        (select m.slug from members m where m.person_id = p.person_id order by m.num desc limit 1) as member_slug
+        (select m.slug from members m where m.person_id = p.person_id order by m.num desc limit 1) as member_slug,
+          (select s.id from stored_assets s join members m2 on m2.id = s.entity_id where m2.person_id = p.person_id and s.asset_type = 'photo' and s.fetch_status = 'stored' order by coalesce(s.width, 0) asc, s.created_at desc limit 1) as photo_asset_id
       from presidential_decree_persons p join presidential_decrees d on d.id = p.decree_id
       where p.office = ${office} order by d.issued_on desc, d.number desc, p.position limit 600`))].map(toHolding);
   } finally {
@@ -230,12 +235,58 @@ async function queryOfficeHoldings(office: string): Promise<Holding[]> {
   }
 }
 
-const cachedOfficeHoldings = unstable_cache(async (office: string) => queryOfficeHoldings(office), ["office-holdings-v1"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedOfficeHoldings = unstable_cache(async (office: string) => queryOfficeHoldings(office), ["office-holdings-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 /** Every decree that names someone to, or removes someone from, this office, newest first (the most recent 600). */
 export async function getOfficeHoldings(office: string): Promise<Holding[]> {
   try {
     return await cachedOfficeHoldings(office);
+  } catch {
+    return [];
+  }
+}
+
+export interface ParliamentHolding {
+  office: OfficeKey;
+  /** parliament (the chambers in joint sitting), chamber or senate. */
+  body: "parliament" | "chamber" | "senate";
+  /** As the decision prints it, often the surname first; empty for a decision that only declares a vacancy. */
+  name: string;
+  memberSlug?: string;
+  action: string;
+  number: number;
+  year: number;
+  adoptedOn: string;
+  gazetteNumber?: string;
+  gazetteOn?: string;
+  portalUrl: string;
+}
+
+async function queryParliamentAppointments(): Promise<ParliamentHolding[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const session = createWebDbSession();
+  try {
+    return [...(await session.db.execute<{ office: string; body: string; person_name: string | null; action: string; number: number; year: number; adopted_on: string; gazette_number: string | null; gazette_on: string | null; portal_url: string; member_slug: string | null }>(sql`
+      select a.office, a.body, a.person_name, a.action, a.number, a.year, a.adopted_on::text as adopted_on, a.gazette_number, a.gazette_on::text as gazette_on, a.portal_url,
+        (select m.slug from members m where m.person_id = a.person_id order by m.num desc limit 1) as member_slug
+      from parliament_appointments a order by a.adopted_on desc, a.number desc, a.position`))]
+      .filter((row) => row.office in OFFICES)
+      .map((row) => ({
+        office: row.office as OfficeKey, body: (row.body === "chamber" || row.body === "senate" ? row.body : "parliament") as ParliamentHolding["body"], name: row.person_name ?? "", action: row.action, number: row.number, year: row.year, adoptedOn: row.adopted_on, portalUrl: row.portal_url,
+        ...(row.gazette_number ? { gazetteNumber: row.gazette_number } : {}), ...(row.gazette_on ? { gazetteOn: row.gazette_on } : {}), ...(row.member_slug ? { memberSlug: row.member_slug } : {})
+      }));
+  } finally {
+    await session.close();
+  }
+}
+
+const cachedParliamentAppointments = unstable_cache(async () => queryParliamentAppointments(), ["parliament-appointments-v1"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+
+/** The decisions of Parliament that name or release someone in the offices the President proposes or shares, newest first (all offices; the caller filters). */
+export async function getParliamentAppointments(office?: string): Promise<ParliamentHolding[]> {
+  try {
+    const all = await cachedParliamentAppointments();
+    return office ? all.filter((row) => row.office === office) : all;
   } catch {
     return [];
   }

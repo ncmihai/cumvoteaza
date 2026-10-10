@@ -117,7 +117,9 @@
     "repair:duplicate-bill-plan": "npm --workspace @cumsevoteaza/ingest run repair:duplicate-bill-plan --",
     "ingest:refresh-read-models": "npm --workspace @cumsevoteaza/ingest run refresh-read-models --",
     "probe:cdep-history": "python3 tools/cdep-history-probe/cdep_history_probe.py",
-    "test:python-pipeline": "python3 -m unittest discover -s tools/cdep-history-probe/tests"
+    "test:python-pipeline": "python3 -m unittest discover -s tools/cdep-history-probe/tests",
+    "ingest:presidency:decisions:fetch": "npm --workspace @cumsevoteaza/ingest run presidency:decisions:fetch --",
+    "ingest:presidency:decisions:import": "npm --workspace @cumsevoteaza/ingest run presidency:decisions:import --"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -101,7 +101,9 @@
     "repair:link-vote-bill": "tsx src/cli.ts repair:link-vote-bill",
     "repair:refresh-missing-procedure": "tsx src/cli.ts repair:refresh-missing-procedure",
     "repair:duplicate-bill-plan": "tsx src/cli.ts repair:duplicate-bill-plan",
-    "refresh-read-models": "tsx src/cli.ts refresh-read-models"
+    "refresh-read-models": "tsx src/cli.ts refresh-read-models",
+    "presidency:decisions:fetch": "tsx src/cli.ts presidency:decisions:fetch",
+    "presidency:decisions:import": "tsx src/cli.ts presidency:decisions:import"
   },
   "dependencies": {
     "@cumsevoteaza/db": "0.1.0",

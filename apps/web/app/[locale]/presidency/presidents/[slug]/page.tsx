@@ -10,6 +10,8 @@ import { titled } from "@/lib/page-metadata";
 import { PageIntro } from "../../../_components/ui/PageIntro";
 import { Panel } from "../../../_components/ui/Panel";
 import { PresidencyTabs } from "../../../_components/PresidencyTabs";
+import { PersonAvatar } from "../../../_components/ui/PersonAvatar";
+import { figureFor } from "@/lib/figures";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -40,13 +42,17 @@ export default async function PresidentPage({ params }: { params: Promise<{ loca
   const officeRows = [...byOffice].filter(([, value]) => value.named + value.removed > 0).sort((a, b) => b[1].named + b[1].removed - (a[1].named + a[1].removed));
   const holdingRow = (holding: Holding) => (
     <li key={`${holding.decreeId}-${holding.name}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5 text-sm">
-      <span>
+      <span className="flex items-center gap-3">
+        <PersonAvatar name={holding.name} photoUrl={figureFor(holding.name)?.file ?? (holding.photoAssetId ? `/api/assets/${holding.photoAssetId}` : undefined)} size={32} />
+        <span>
         <span className="font-semibold text-ink">{holding.memberSlug ? <Link href={`/${locale}/members/${holding.memberSlug}`} className="hover:text-brand">{holding.name}</Link> : holding.name}</span>
         <span className="text-muted"> · {ro ? ACTION_LABELS[holding.action]?.ro : ACTION_LABELS[holding.action]?.en}{holding.title ? ` · ${holding.title}` : ""}</span>
+        </span>
       </span>
       <a href={holding.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-brand">{ro ? "Decretul" : "Decree"} {holding.decreeNumber}/{holding.decreeYear} · {formatDate(holding.issuedOn, locale)}<ExternalLink size={12} aria-hidden="true" /></a>
     </li>
   );
+  const figure = figureFor(personName(page.name));
   const grouped = new Map<string, Holding[]>();
   for (const holding of page.keyHoldings) grouped.set(holding.office, [...(grouped.get(holding.office) ?? []), holding]);
   return (
@@ -57,6 +63,15 @@ export default async function PresidentPage({ params }: { params: Promise<{ loca
           : `From the first decree in our catalog (${formatDate(page.first, locale)}) to the last (${formatDate(page.last, locale)}): ${number(page.decrees)} decrees signed${page.inferred ? `, ${number(page.inferred)} of them with the signer inferred from the neighbouring decrees` : ""}.`}
       </PageIntro>
       <div className="mt-5"><PresidencyTabs locale={locale} current="presidents" /></div>
+
+      {figure ? (
+        <figure className="mb-5 flex items-end gap-4">
+          <PersonAvatar name={personName(page.name)} photoUrl={figure.file} size={120} shape="portrait" />
+          <figcaption className="max-w-md text-xs leading-5 text-muted">
+            {ro ? "Fotografie: " : "Photograph: "}{figure.author}{figure.cropped ? (ro ? " (decupată)" : " (cropped)") : ""} · {figure.licenceUrl ? <a href={figure.licenceUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand">{figure.licence}</a> : figure.licence} · <a href={figure.source} target="_blank" rel="noreferrer" className="font-semibold text-brand">Wikimedia Commons</a>
+          </figcaption>
+        </figure>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel id="elected" title={ro ? "Cum a ajuns la Cotroceni" : "How they got the office"}>

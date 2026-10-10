@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page" | "bureau-page" | "senate-card" | "legislatie-ordinance" | "senate-bulletin" | "committee-report" | "cdep-bill" | "senate-bill" | "cdep-roster" | "legislatie-decree-list" | "legislatie-decree-text" | "election-csv" | "election-xlsx" | "legislatie-decrees" | "member-cv" | "cdep-question-list" | "cdep-question";
+export type RawCacheKind = "cdep-sitting-days" | "cdep-day" | "senate-month" | "senate-day" | "cdep-bills-year" | "senate-bills-year" | "vote-page" | "bureau-page" | "senate-card" | "legislatie-ordinance" | "senate-bulletin" | "committee-report" | "cdep-bill" | "senate-bill" | "cdep-roster" | "legislatie-decree-list" | "legislatie-decree-text" | "election-csv" | "election-xlsx" | "legislatie-decrees" | "member-cv" | "cdep-question-list" | "cdep-question" | "legislatie-decision-list" | "legislatie-decision-text";
 
 export interface RawCacheEntry {
   kind: RawCacheKind;
@@ -35,6 +35,8 @@ const EXTENSIONS: Record<RawCacheKind, string> = {
   "election-xlsx": "xlsx",
   "cdep-question-list": "html",
   "cdep-question": "html",
+  "legislatie-decision-list": "html",
+  "legislatie-decision-text": "html",
   "legislatie-ordinance": "xml",
   "senate-bulletin": "pdf",
   "committee-report": "pdf"

@@ -237,6 +237,10 @@ test("the Presidents' pages: who signed, how they were elected, whom they appoin
   await page.goto("/ro/presidency/appointments/sri-director");
   await expect(page.getByText("Nu se numește prin decret").first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Legea nr. 14\/1992, art. 23/ })).toHaveAttribute("href", /legislatie\.just\.ro/);
+  // Parliament's decisions are read by the owner's import (Sprint 18); until then this site has none.
+  if ((await page.getByRole("table", { name: /Hotărârile Parlamentului/ }).count()) > 0) await expect(page.getByRole("table", { name: /Hotărârile Parlamentului/ })).toContainText("Hellvig Eduard Raul");
+  await page.goto("/ro/presidency/presidents/klaus-werner-iohannis");
+  await expect(page.getByRole("figure")).toContainText("Wikimedia Commons");
   await page.goto("/ro/presidency/appointments/ccr-judge");
   await expect(page.getByRole("link", { name: /Constituția României, art. 142/ })).toBeVisible();
   const decrees = page.getByRole("table", { name: /Persoane numite sau eliberate/ });

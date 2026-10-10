@@ -1,0 +1,82 @@
+{
+  "crin-antonescu": {
+    "name": "Crin Antonescu",
+    "wikidata": "Q440970",
+    "file": "/figures/crin-antonescu.jpg",
+    "author": "Michał Józefaciuk",
+    "licence": "CC BY-SA 3.0 pl",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0/pl/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACrin_Antonescu_Senate_of_Poland_01_%28cropped%29.JPG",
+    "cropped": false
+  },
+  "emil-constantinescu": {
+    "name": "Emil Constantinescu",
+    "wikidata": "Q299152",
+    "file": "/figures/emil-constantinescu.jpg",
+    "author": "DoD photo by R. D. Ward",
+    "licence": "Public domain",
+    "licenceUrl": null,
+    "source": "https://commons.wikimedia.org/wiki/File%3AEmil_Constantinescu.jpg",
+    "cropped": false
+  },
+  "ilie-gavril-bolojan": {
+    "name": "Ilie-Gavril Bolojan",
+    "wikidata": "Q18538164",
+    "file": "/figures/ilie-gavril-bolojan.jpg",
+    "author": "Jennifer Jacquemart",
+    "licence": "CC BY 4.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Visit_of_Ilie_Bolojan%2C_Romanian_Prime_Minister%2C_to_the_European_Commission_%28P-069119_00-13%29.jpg",
+    "cropped": true
+  },
+  "ion-iliescu": {
+    "name": "Ion Iliescu",
+    "wikidata": "Q189575",
+    "file": "/figures/ion-iliescu.jpg",
+    "author": "Aluísio/Vice-presidência da República",
+    "licence": "CC BY 3.0 br",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0/br/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File%3AIon_Iliescu_%282004%29.jpg",
+    "cropped": false
+  },
+  "klaus-werner-iohannis": {
+    "name": "Klaus-Werner Iohannis",
+    "wikidata": "Q701484",
+    "file": "/figures/klaus-werner-iohannis.jpg",
+    "author": "EU2016 SK",
+    "licence": "CC0",
+    "licenceUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Klaus_Johannis%2C_16_SEPTEMBER_2016_%28cropped%29.jpg",
+    "cropped": true
+  },
+  "nicolae-vacaroiu": {
+    "name": "Nicolae Văcăroiu",
+    "wikidata": "Q126671",
+    "file": "/figures/nicolae-vacaroiu.jpg",
+    "author": "Aluísio/Vice-presidência da República",
+    "licence": "CC BY 3.0 br",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0/br/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File%3ANicolae_V%C4%83c%C4%83roiu.jpg",
+    "cropped": false
+  },
+  "nicusor-daniel-dan": {
+    "name": "Nicușor-Daniel Dan",
+    "wikidata": "Q11163124",
+    "file": "/figures/nicusor-daniel-dan.jpg",
+    "author": "U.S. Embassy Romania",
+    "licence": "Public domain",
+    "licenceUrl": null,
+    "source": "https://commons.wikimedia.org/wiki/File%3ANicusor_Dan_in_2026.jpg",
+    "cropped": false
+  },
+  "traian-basescu": {
+    "name": "Traian Băsescu",
+    "wikidata": "Q57279",
+    "file": "/figures/traian-basescu.jpg",
+    "author": "Flickr_-_europeanpeoplesparty_-_EPP_Summit_11_December_2008_(22).jpg: European People's Party derivative work: César",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATraian_B%C4%83sescu_%28EPP_Summit_2008%29.jpg",
+    "cropped": false
+  }
+}

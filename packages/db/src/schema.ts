@@ -1273,6 +1273,35 @@ export const presidentialDecreePersons = pgTable("presidential_decree_persons", 
   officeIdx: index("presidential_decree_persons_office_idx").on(table.office)
 }));
 
+/**
+ * What Parliament decides where the President only proposes or has a share (Sprint 18, D-042): the directors of the intelligence services (the chambers in joint sitting, on the President's proposal)
+ * and the Constitutional Court judges the chambers name, read from the decisions published on the legislative portal. `person_name` is as the decision prints it, often the surname first.
+ */
+export const parliamentAppointments = pgTable("parliament_appointments", {
+  id: text("id").notNull(),
+  position: integer("position").notNull(),
+  /** parliament (joint sitting) | chamber | senate */
+  body: text("body").notNull(),
+  number: integer("number").notNull(),
+  year: integer("year").notNull(),
+  adoptedOn: date("adopted_on").notNull(),
+  title: text("title").notNull(),
+  gazetteNumber: text("gazette_number"),
+  gazetteOn: date("gazette_on"),
+  /** A key of `OFFICES` in the model package. */
+  office: text("office").notNull(),
+  /** appointment | resignation | vacancy | dismissal | other */
+  action: text("action").notNull(),
+  personName: text("person_name"),
+  personId: text("person_id").references(() => people.id),
+  sentence: text("sentence").notNull(),
+  portalUrl: text("portal_url").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  pk: primaryKey({ columns: [table.id, table.position] }),
+  officeIdx: index("parliament_appointments_office_idx").on(table.office, table.adoptedOn)
+}));
+
 export const billDocumentTextChunks = pgTable("bill_document_text_chunks", {
   id: text("id").primaryKey(),
   documentId: text("document_id").notNull().references(() => documents.id),
