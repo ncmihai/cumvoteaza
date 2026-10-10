@@ -125,6 +125,8 @@ export function sumPvListVotes(rows: string[][]): ListVotes[] {
   const nce = at("precinct_county_nce");
   const countyName = at("precinct_county_name");
   const precinct = at("precinct_nr");
+  const precinctName = at("precinct_name");
+  const uatName = at("uat_name");
   const siruta = at("uat_siruta");
   const version = at("report_version");
   const type = at("report_type_code");
@@ -133,7 +135,8 @@ export function sumPvListVotes(rows: string[][]): ListVotes[] {
   if (lists.length === 0) throw new Error("The file has no list columns (\"...-voturi\")");
   const latest = new Map<string, string[]>();
   for (const row of rows.slice(1)) {
-    const key = [row[nce], row[siruta], row[precinct], row[type]].join("|");
+    // The name is part of the key: in the file of the votes by mail "bureau no. 1" and the first station abroad are both number 1 under the same code (and the later row would hide the first).
+    const key = [row[nce], row[siruta], row[precinct], row[type], row[precinctName], row[uatName]].join("|");
     const previous = latest.get(key);
     if (!previous || toInt(row[version]) >= toInt(previous[version])) latest.set(key, row);
   }

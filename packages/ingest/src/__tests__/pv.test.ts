@@ -17,6 +17,12 @@ describe("sumPvListVotes", () => {
     ]);
   });
 
+  it("counts two rows that share a station number but not a name (the votes by mail: the bureau and the first station abroad are both number 1)", () => {
+    const mail = (name: string, version: number, a: number, b: number) => `43,STRĂINĂTATE,"${name}",1,ROMANIA,9999,${version},PART,PRCNCT,CD_C,CD_SV_BVC,"2024-12-02 10:00:00",0,0,${a},${b}`;
+    const text = [HEADER, mail("BIROUL ELECTORAL PENTRU VOTUL PRIN CORESPONDENȚĂ NR. 1", 1, 2185, 100), mail("PRETORIA", 1, 0, 0)].join("\n");
+    expect(sumPvListVotes(parseDelimited(text)).map((item) => [item.list, item.votes])).toEqual([["PARTIDUL A", 2185], ["ALIANȚA B", 100]]);
+  });
+
   it("refuses a file that is not a polling-station minutes file", () => {
     expect(() => sumPvListVotes([["a", "b"], ["1", "2"]])).toThrow();
     expect(() => sumPvListVotes([["precinct_county_nce", "precinct_county_name"], ["1", "ALBA"]])).toThrow();
