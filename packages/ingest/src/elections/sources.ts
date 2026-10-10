@@ -40,21 +40,26 @@ const D2016 = "https://data.gov.ro/dataset/eb0770eb-d78d-4227-9186-74a08f19d068/
 
 const PRESIDENTIAL_LICENSE = "Date publice ale Autorității Electorale Permanente (prezenta.roaep.ro)";
 /** One round of a presidential election: the polling-station minutes and the votes by mail, put in by hand like the 2024 parliamentary ones (D-040). */
-const presidentialRound = (id: string, folder: string, heldOn: string, label: { ro: string; en: string }, portal: string, note?: { ro: string; en: string }): ElectionSource => ({
+const presidentialRound = (id: string, folder: string, heldOn: string, label: { ro: string; en: string }, portal: string, note?: { ro: string; en: string }, older?: { portalUrl: string; license: string }): ElectionSource => ({
   id,
   label,
   heldOn,
   legislatureYear: heldOn.slice(0, 4),
-  portalUrl: `https://prezenta.roaep.ro/${portal}/`,
-  license: PRESIDENTIAL_LICENSE,
+  portalUrl: older?.portalUrl ?? `https://prezenta.roaep.ro/${portal}/`,
+  license: older?.license ?? PRESIDENTIAL_LICENSE,
   manual: true,
   kind: "presidential",
   ...(note ? { note } : {}),
   files: [
     { key: `${id}-pv`, kind: "election-csv", role: "sections", chamber: "president", format: "pv", manualPath: `${folder}/pv.csv` },
-    { key: `${id}-mail`, kind: "election-csv", role: "mail", chamber: "president", format: "pv", manualPath: `${folder}/pv-mail.csv` }
+    // The elections before 2019 had no votes by mail: the old spreadsheets have none.
+    ...(older ? [] : [{ key: `${id}-mail`, kind: "election-csv" as const, role: "mail" as const, chamber: "president" as const, format: "pv" as const, manualPath: `${folder}/pv-mail.csv` }])
   ]
 });
+
+/** The 2009 and 2014 presidential elections: the AEP's spreadsheets on data.gov.ro, turned into the portal's layout by tools/xlsx/legacy-presidential.py. */
+const OLDER_2014 = { portalUrl: "https://data.gov.ro/dataset/alegeri-prezidentiale-2014", license: "OGL-ROU-1.0" };
+const OLDER_2009 = { portalUrl: "https://data.gov.ro/dataset/alegeri-prezidentiale-2009", license: "Date publice ale Autorității Electorale Permanente (data.gov.ro)" };
 
 export const ELECTION_SOURCES: ElectionSource[] = [
   presidentialRound("pres-2025-r2", "pres-2025-r2", "2025-05-18", { ro: "Alegerile prezidențiale din 18 mai 2025, turul 2", en: "The presidential election of 18 May 2025, second round" }, "prezidentiale18052025"),
@@ -63,6 +68,10 @@ export const ELECTION_SOURCES: ElectionSource[] = [
     ro: "Curtea Constituțională a anulat întregul proces electoral pentru alegerea Președintelui prin Decizia nr. 32 din 6 decembrie 2024; turul 2 din 8 decembrie nu a mai avut loc, iar alegerile s-au reluat în mai 2025. Cifrele de aici sunt cele din procesele-verbale ale turului 1 din 24 noiembrie 2024.",
     en: "The Constitutional Court annulled the whole electoral process for the President by Decision no. 32 of 6 December 2024; the second round of 8 December was not held and the election was run again in May 2025. The figures here are those of the minutes of the first round of 24 November 2024."
   }),
+  presidentialRound("pres-2014-r2", "pres-2014-r2", "2014-11-16", { ro: "Alegerile prezidențiale din 16 noiembrie 2014, turul 2", en: "The presidential election of 16 November 2014, second round" }, "", undefined, OLDER_2014),
+  presidentialRound("pres-2014-r1", "pres-2014-r1", "2014-11-02", { ro: "Alegerile prezidențiale din 2 noiembrie 2014, turul 1", en: "The presidential election of 2 November 2014, first round" }, "", undefined, OLDER_2014),
+  presidentialRound("pres-2009-r2", "pres-2009-r2", "2009-12-06", { ro: "Alegerile prezidențiale din 6 decembrie 2009, turul 2", en: "The presidential election of 6 December 2009, second round" }, "", undefined, OLDER_2009),
+  presidentialRound("pres-2009-r1", "pres-2009-r1", "2009-11-22", { ro: "Alegerile prezidențiale din 22 noiembrie 2009, turul 1", en: "The presidential election of 22 November 2009, first round" }, "", undefined, OLDER_2009),
   {
     id: "parl-2024",
     label: { ro: "Alegerile parlamentare din 1 decembrie 2024", en: "The parliamentary elections of 1 December 2024" },

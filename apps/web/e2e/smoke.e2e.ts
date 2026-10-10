@@ -214,10 +214,10 @@ test("the election map draws the counties, opens a county's communes and keeps t
 test("the election map has the presidential rounds, and says the first round of November 2024 was annulled @db", async ({ page }) => {
   await page.goto("/ro/elections/map?election=pres-2025-r2");
   // The presidential files are put in by the owner (D-040); until then this site has none, and this test says nothing there.
-  test.skip((await page.getByRole("button", { name: "Prezidențiale 2025, tur 2" }).count()) === 0, "the presidential results have not been imported on this site yet");
+  test.skip((await page.getByRole("list", { name: "Prezidențiale" }).getByRole("button", { name: "2025, tur 2" }).count()) === 0, "the presidential results have not been imported on this site yet");
   await expect(page.getByRole("region", { name: "Legenda" })).toContainText("Nicușor-Daniel Dan");
   await expect(page.getByRole("button", { name: /^Cluj: / })).toBeVisible();
-  await page.getByRole("button", { name: "Prezidențiale 2024, tur 1" }).click();
+  await page.getByRole("list", { name: "Prezidențiale" }).getByRole("button", { name: /^2024, tur 1/ }).click();
   await expect(page.getByRole("note")).toContainText("Decizia nr. 32 din 6 decembrie 2024");
   await expect(page.getByRole("region", { name: "Legenda" })).toContainText("Călin Georgescu");
   await expect(page).toHaveURL(/election=pres-2024-r1/);

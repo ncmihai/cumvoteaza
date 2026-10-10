@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ELECTION_SOURCES } from "../elections/sources";
 import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes } from "../elections/parse";
 
 describe("decodeElectionBytes", () => {
@@ -54,5 +55,21 @@ describe("mandates", () => {
       { circumscriptionNumber: 2, circumscription: "ARAD", list: "PARTIDUL A", mandates: 2 },
       { circumscriptionNumber: 2, circumscription: "ARAD", list: "PARTIDUL B", mandates: 3 }
     ]);
+  });
+});
+
+describe("the election sources", () => {
+  it("name every election once, give a presidential round its candidates as the ballot \"president\", and keep the hand-fed ones apart from the open-data ones", () => {
+    const ids = ELECTION_SOURCES.map((source) => source.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const source of ELECTION_SOURCES.filter((item) => item.kind === "presidential")) {
+      expect(source.manual).toBe(true);
+      expect(source.files.every((file) => file.chamber === "president" && file.manualPath)).toBe(true);
+      expect(source.files.some((file) => file.role === "sections")).toBe(true);
+    }
+    for (const source of ELECTION_SOURCES.filter((item) => item.kind !== "presidential")) expect(source.files.every((file) => file.chamber !== "president")).toBe(true);
+    // Elections before 2019 had no votes by mail.
+    expect(ELECTION_SOURCES.find((item) => item.id === "pres-2014-r1")!.files.some((file) => file.role === "mail")).toBe(false);
+    expect(ELECTION_SOURCES.find((item) => item.id === "pres-2025-r1")!.files.some((file) => file.role === "mail")).toBe(true);
   });
 });
