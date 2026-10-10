@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
-import { getElectionView } from "@/lib/election-data";
 import { getElectionMapData } from "@/lib/election-map-data";
 import { MAP_METRICS, leaderOf, shareOf, sumByCircumscription, turnoutOf, invalidShareOf, type MapMetric } from "@/lib/election-map";
 import { isLocale, type AppLocale } from "@/lib/i18n";
@@ -18,13 +17,20 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 type Query = { election?: string; chamber?: string; metric?: string; list?: string; party?: string; level?: string; circ?: string };
 
+/** A short name for the election's button: "Parlamentare 2024", "Prezidențiale 2025, tur 2". */
+function electionTab(id: string, kind: "parliamentary" | "presidential", heldOn: string, ro: boolean): string {
+  const year = heldOn.slice(0, 4);
+  if (kind === "parliamentary") return `${ro ? "Parlamentare" : "Parliamentary"} ${year}`;
+  const round = /-r(\d)$/.exec(id)?.[1] ?? "";
+  return `${ro ? "Prezidențiale" : "Presidential"} ${year}${round ? (ro ? `, tur ${round}` : `, round ${round}`) : ""}`;
+}
+
 export default async function ElectionMapPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<Query> }) {
   const { locale: rawLocale } = await params;
   const query = await searchParams;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const ro = locale === "ro";
   const data = await getElectionMapData(query.election, query.chamber);
-  const view = data ? await getElectionView({ election: data.election.id, chamber: data.chamber }) : undefined;
   const number = (value: number) => value.toLocaleString(ro ? "ro-RO" : "en-GB");
   const percent = (value: number | undefined) => (value === undefined ? "–" : `${(value * 100).toLocaleString(ro ? "ro-RO" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
   const metric: MapMetric = MAP_METRICS.includes(query.metric as MapMetric) ? (query.metric as MapMetric) : "winner";
@@ -39,15 +45,15 @@ export default async function ElectionMapPage({ params, searchParams }: { params
     return found ? (found.independents ? (ro ? "Candidați independenți" : "Independent candidates") : officialCase(found.name)) : String(code);
   };
   const rows = data ? sumByCircumscription(data.areas) : [];
-  const circumscriptionName = (n: number) => officialCase(view?.circumscriptions.find((item) => item.number === n)?.name ?? String(n));
+  const circumscriptionName = (n: number) => officialCase(data?.circumscriptions.find((item) => item.number === n)?.name ?? String(n));
 
   return (
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
       <PageIntro eyebrow={ro ? "Cum au ajuns în Parlament" : "How they got into Parliament"} title={ro ? "Harta alegerilor" : "Election map"}
         trailing={<Link href={`/${locale}/elections`} className="text-sm font-bold text-brand">{ro ? "Rezultatele pe liste, în tabele" : "The results by list, in tables"}</Link>}>
         {ro
-          ? "Rezultatul alegerilor parlamentare pe județe și pe comune: cine a câștigat, ponderea unei liste, prezența la vot și voturile nule. Cifrele sunt suma secțiilor de votare din procesele-verbale ale AEP; harta alege cum le colorează, tabelele de sub ea au aceleași numere."
-          : "The result of the parliamentary elections by county and by commune: who won, one list's share, turnout and null votes. The figures are the sum of the polling stations in the AEP's minutes; the map chooses how to colour them, and the tables below it have the same numbers."}
+          ? "Rezultatul alegerilor parlamentare și prezidențiale pe județe și pe comune: cine a câștigat, ponderea unei liste sau a unui candidat, prezența la vot și voturile nule. Cifrele sunt suma secțiilor de votare din procesele-verbale ale AEP; harta alege cum le colorează, tabelele de sub ea au aceleași numere."
+          : "The result of the parliamentary and presidential elections by county and by commune: who won, one list's or candidate's share, turnout and null votes. The figures are the sum of the polling stations in the AEP's minutes; the map chooses how to colour them, and the tables below it have the same numbers."}
       </PageIntro>
 
       {!data ? (
@@ -59,13 +65,13 @@ export default async function ElectionMapPage({ params, searchParams }: { params
           <div className="mt-5">
             <ElectionMap
               locale={locale}
-              elections={data.elections.map((item) => ({ id: item.id, label: `${ro ? "Parlamentare" : "Parliamentary"} ${item.heldOn.slice(0, 4)}` }))}
+              elections={data.elections.map((item) => ({ id: item.id, kind: item.kind, label: electionTab(item.id, item.kind, item.heldOn, ro), ...(item.note ? { note: item.note[locale] } : {}) }))}
               initial={{ election: data.election.id, chamber: data.chamber, metric, ...(list !== undefined ? { list } : {}), ...(circ !== undefined ? { circ } : {}), level }}
             />
           </div>
 
           <Panel id="county-table" title={ro ? "Rezultatele pe județe, în tabel" : "The results by county, in a table"} className="mt-5"
-            aside={<>{data.election.label[locale]} · {data.chamber === "deputies" ? (ro ? "Camera Deputaților" : "Chamber of Deputies") : "Senat"} · {formatDate(data.election.heldOn, locale)}</>}>
+            aside={<>{data.election.label[locale]}{data.chamber === "president" ? "" : ` · ${data.chamber === "deputies" ? (ro ? "Camera Deputaților" : "Chamber of Deputies") : "Senat"}`} · {formatDate(data.election.heldOn, locale)}</>}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[40rem] text-sm">
                 <caption className="sr-only">{ro ? "Voturile valabile, primele două liste, prezența și voturile nule pe circumscripții" : "Valid votes, the first two lists, turnout and null votes by circumscription"}</caption>
@@ -106,7 +112,8 @@ export default async function ElectionMapPage({ params, searchParams }: { params
               <li>{ro ? "Voturile sunt cele din secțiile de votare, adunate pe județ și pe comună (sau oraș; București pe sectoare). Voturile prin corespondență nu aparțin unui loc și nu sunt pe hartă; ele sunt în totalurile din tabelele pe liste, așa că acolo cifrele sunt puțin mai mari." : "The votes are those of the polling stations, added up by county and by commune (or city; Bucharest by sector). Votes by mail belong to no place and are not on the map; they are in the totals of the tables by list, which are therefore slightly higher."}</li>
               <li>{ro ? "Prezența este numărul celor care au votat (coloana b a AEP) împărțit la cei înscriși pe listele electorale permanente (a1), la fel în toate alegerile, ca să poată fi comparate. Ea poate depăși 100% într-o comună unde votează mulți oameni de pe listele suplimentare. Împărțit la toate listele (permanente și suplimentare), procentul iese mai mic: pentru 2016, 39,8% în loc de 40,9%." : "Turnout is the voters who came (the AEP's column b) divided by those on the permanent electoral lists (a1), the same in every election so that they can be compared. It can pass 100% in a commune where many people vote from the supplementary lists. Divided by all the lists (permanent and supplementary), the percentage comes out lower: for 2016, 39.8% instead of 40.9%."}</li>
               <li>{ro ? "Străinătatea nu are hartă: este un rând în tabel. O listă este legată de un partid doar când numele ei este exact numele partidului; o alianță rămâne sub numele ei." : "Abroad has no map: it is a row in the table. A list is linked to a party only when its name is exactly the party's; an alliance stays under its own name."}</li>
-              <li>{ro ? "Pentru alegerile din 2024 nu avem mandatele repartizate (fișierele dau doar voturile), deci harta arată voturi, nu mandate." : "For the 2024 elections we do not have the mandates distributed (the files give only the votes), so the map shows votes, not mandates."}</li>
+              {data.election.kind === "presidential" ? <li>{ro ? "La alegerile prezidențiale listele sunt candidații, fiecare tur este o alegere aparte, iar prezența este numărul celor care au votat (coloana b) din cei înscriși pe listele permanente (coloana a)." : "In the presidential elections the lists are the candidates, each round is an election of its own, and turnout is the voters who came (column b) of those on the permanent lists (column a)."}</li> : null}
+              <li>{ro ? "Pentru alegerile parlamentare din 2024 nu avem mandatele repartizate (fișierele dau doar voturile), deci harta arată voturi, nu mandate." : "For the 2024 parliamentary elections we do not have the mandates distributed (the files give only the votes), so the map shows votes, not mandates."}</li>
               <li>{ro ? "Granițele sunt cele din 2025, la același loc pentru toate alegerile; codul SIRUTA al unei comune se potrivește cu forma ei, iar două coduri din fișierul din 2020 au fost aduse la codul actual (București pe sectoare, Băneasa din Constanța)." : "The borders are those of 2025, the same for every election; a commune's SIRUTA code is matched to its shape, and two codes in the 2020 file were brought to the current code (Bucharest by sector, Băneasa in Constanța)."}</li>
             </ul>
             <p className="mt-3 text-xs leading-5 text-muted">

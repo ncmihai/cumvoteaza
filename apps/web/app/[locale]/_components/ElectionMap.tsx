@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { officialCase } from "@/lib/text";
+import { foldKey, officialCase } from "@/lib/text";
 import { BRAND_COLOUR, GAIN_COLOUR, LOSS_COLOUR, MAP_METRICS, leaderOf, listColours, metricValue, paintFor, pickableLists, rampRange, shareOf, sumByCircumscription, turnoutOf, invalidShareOf, type MapArea, type MapList, type MapMetric, type Previous } from "@/lib/election-map";
 
 /**
@@ -11,12 +11,13 @@ import { BRAND_COLOUR, GAIN_COLOUR, LOSS_COLOUR, MAP_METRICS, leaderOf, listColo
 interface CountyShape { n: number; name: string; d: string; x: number; y: number; b: [number, number, number, number] }
 interface CountiesFile { viewBox: [number, number, number, number]; attribution: string; counties: CountyShape[]; inset: { viewBox: [number, number, number, number]; sectors: Array<{ s: string; d: string }> } }
 interface CommunesFile { viewBox: [number, number, number, number]; communes: Array<{ s: string; c: number; d: string }> }
-interface MapPayload { election: string; chamber: "deputies" | "senate"; lists: MapList[]; areas: MapArea[] }
+type Ballot = "deputies" | "senate" | "president";
+interface MapPayload { election: string; chamber: Ballot; lists: MapList[]; areas: MapArea[] }
 
 export interface ElectionMapProps {
   locale: "ro" | "en";
-  elections: Array<{ id: string; label: string }>;
-  initial: { election: string; chamber: "deputies" | "senate"; metric: MapMetric; list?: number; circ?: number; level: "counties" | "communes" };
+  elections: Array<{ id: string; label: string; kind: "parliamentary" | "presidential"; note?: string }>;
+  initial: { election: string; chamber: Ballot; metric: MapMetric; list?: number; circ?: number; level: "counties" | "communes" };
 }
 
 const tab = (active: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-semibold ${active ? "border-brand bg-brand-soft text-brand-strong" : "border-line text-ink-soft hover:border-line-strong"}`;
@@ -66,7 +67,9 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
   }, [election, chamber]);
 
   // The election before this one (the list is newest first), read only when the map of change is asked for.
-  const previousId = elections[elections.findIndex((item) => item.id === election) + 1]?.id;
+  const current = elections.find((item) => item.id === election);
+  const kind = current?.kind ?? "parliamentary";
+  const previousId = elections.slice(elections.findIndex((item) => item.id === election) + 1).find((item) => item.kind === kind)?.id;
   useEffect(() => {
     setPreviousPayload(undefined);
     if (metric !== "change" || !previousId) return;
@@ -93,8 +96,10 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
     const list = listByCode.get(code);
     return list ? (list.independents ? (ro ? "Candidați independenți" : "Independent candidates") : officialCase(list.name)) : String(code);
   };
-  const previousSlugs = useMemo(() => new Map((previousPayload?.lists ?? []).flatMap((list) => (list.partySlug ? [[list.partySlug, list.code] as const] : []))), [previousPayload]);
-  const choices = useMemo(() => pickableLists(lists, metric === "change" ? 40 : 14).filter((list) => metric !== "change" || (list.partySlug && previousSlugs.has(list.partySlug))), [lists, metric, previousSlugs]);
+  // A list is found again in the election before by its party, or else by its printed name (a candidate, an alliance that ran under the same name).
+  const identity = (list: MapList) => (list.independents ? undefined : (list.partySlug ?? `name:${foldKey(list.name)}`));
+  const previousIdentities = useMemo(() => new Map((previousPayload?.lists ?? []).flatMap((list) => { const key = identity(list); return key ? [[key, list.code] as const] : []; })), [previousPayload]);
+  const choices = useMemo(() => pickableLists(lists, metric === "change" ? 40 : 14).filter((list) => { if (metric !== "change") return true; const key = identity(list); return key !== undefined && previousIdentities.has(key); }), [lists, metric, previousIdentities]);
   const listCode = listChoice !== undefined && choices.some((list) => list.code === listChoice) ? listChoice : (choices.find((list) => !list.independents)?.code ?? 0);
 
   const domestic = useMemo(() => (payload?.areas ?? []).filter((area) => area.c !== 43), [payload]);
@@ -106,11 +111,12 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
   const drawn = level === "counties" ? countyAreas : domestic;
   const previous: Previous | undefined = useMemo(() => {
     if (metric !== "change" || !previousPayload) return undefined;
-    const slug = listByCode.get(listCode)?.partySlug;
+    const own = listByCode.get(listCode);
+    const key = own ? identity(own) : undefined;
     const domesticBefore = previousPayload.areas.filter((area) => area.c !== 43);
     const before = level === "counties" ? sumByCircumscription(domesticBefore) : domesticBefore;
-    return { areas: new Map(before.map((area) => [area.k, area])), listCode: slug ? previousSlugs.get(slug) : undefined };
-  }, [metric, previousPayload, level, listByCode, listCode, previousSlugs]);
+    return { areas: new Map(before.map((area) => [area.k, area])), listCode: key ? previousIdentities.get(key) : undefined };
+  }, [metric, previousPayload, level, listByCode, listCode, previousIdentities]);
   const range = useMemo(() => {
     const values = drawn.map((area) => metricValue(area, metric, listCode, previous)).filter((value): value is number => value !== undefined);
     return metric === "change" ? { min: 0, max: Math.max(0.01, rampRange(values.map(Math.abs)).max) } : rampRange(values);
@@ -181,11 +187,11 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
     <div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3" role="group" aria-label={ro ? "Alegerea hărții" : "Map choices"}>
         <ul className="flex flex-wrap gap-2" aria-label={ro ? "Alegeri" : "Elections"}>
-          {elections.map((item) => <li key={item.id}><button type="button" className={tab(item.id === election)} aria-pressed={item.id === election} onClick={() => { setElection(item.id); setSelected(undefined); }}>{item.label}</button></li>)}
+          {elections.map((item) => <li key={item.id}><button type="button" className={tab(item.id === election)} aria-pressed={item.id === election} onClick={() => { setElection(item.id); setChamber(item.kind === "presidential" ? "president" : chamber === "president" ? "deputies" : chamber); setSelected(undefined); }}>{item.label}</button></li>)}
         </ul>
-        <ul className="flex flex-wrap gap-2" aria-label={ro ? "Camera" : "Chamber"}>
+        {kind === "parliamentary" ? <ul className="flex flex-wrap gap-2" aria-label={ro ? "Camera" : "Chamber"}>
           {(["deputies", "senate"] as const).map((item) => <li key={item}><button type="button" className={tab(item === chamber)} aria-pressed={item === chamber} onClick={() => { setChamber(item); setSelected(undefined); }}>{item === "deputies" ? (ro ? "Camera Deputaților" : "Chamber of Deputies") : "Senat"}</button></li>)}
-        </ul>
+        </ul> : null}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
         <ul className="flex flex-wrap gap-2" aria-label={ro ? "Ce arată harta" : "What the map shows"}>
@@ -213,6 +219,8 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
           </label>
         ) : null}
       </div>
+
+      {current?.note ? <p className="mt-3 rounded-card border border-line bg-surface px-4 py-3 text-sm leading-6 text-ink-soft" role="note">{current.note}</p> : null}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <div ref={frame} className="relative min-w-0 rounded-card border border-line bg-surface p-2" onPointerMove={pointer} onPointerLeave={() => setHover(undefined)}>
@@ -265,7 +273,7 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
                   <>
                     <div aria-hidden="true" className="mt-2 h-3 rounded-sm" style={{ background: `linear-gradient(to right, ${LOSS_COLOUR}, ${LOSS_COLOUR}1f 45%, ${GAIN_COLOUR}1f 55%, ${GAIN_COLOUR})` }} />
                     <p className="mt-1 flex justify-between text-xs tabular-nums text-muted"><span>−{(range.max * 100).toLocaleString(ro ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 })} {ro ? "pp" : "pp"}</span><span>0</span><span>+{(range.max * 100).toLocaleString(ro ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 })} {ro ? "pp" : "pp"}</span></p>
-                    <p className="mt-2 text-xs leading-5 text-muted">{ro ? `${listName(listCode)}: ponderea din voturile valabile față de alegerile precedente, în puncte procentuale. Albastru = a crescut, portocaliu = a scăzut. Doar partidele care au candidat sub același nume în ambele alegeri.` : `${listName(listCode)}: the share of the valid votes compared with the previous election, in percentage points. Blue means it gained, orange that it lost. Only parties that ran under the same name in both elections.`}</p>
+                    <p className="mt-2 text-xs leading-5 text-muted">{ro ? `${listName(listCode)}: ponderea din voturile valabile față de alegerile precedente, în puncte procentuale. Albastru = a crescut, portocaliu = a scăzut. Doar listele și candidații care apar sub același nume în ambele alegeri.` : `${listName(listCode)}: the share of the valid votes compared with the previous election, in percentage points. Blue means it gained, orange that it lost. Only lists and candidates that appear under the same name in both elections.`}</p>
                   </>
                 ) : (
                   <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Nu avem alegeri mai vechi decât acestea, deci nu există o schimbare de arătat." : "We hold no older election than this one, so there is no change to show."}</p>

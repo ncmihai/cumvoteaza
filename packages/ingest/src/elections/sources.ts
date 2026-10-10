@@ -11,7 +11,7 @@ export interface ElectionFile {
   url?: string;
   /** What the file holds. */
   role: "sections" | "mail" | "mandates";
-  chamber: "deputies" | "senate";
+  chamber: "deputies" | "senate" | "president";
   /** The layout of a polling-station file: the open-data CSVs of 2016 and 2020 ("sections"), or the portal's minutes ("pv"). */
   format?: "sections" | "pv";
   /** A file the maintainer downloads by hand (the portal answers programs with a browser check): its path under data/manual/elections. */
@@ -28,13 +28,41 @@ export interface ElectionSource {
   license: string;
   /** True when the files are put in data/manual/elections by hand; the election is skipped until they are there. */
   manual?: boolean;
+  /** Default "parliamentary". A presidential round is an election of its own: the ballot is "president" and the candidates are the lists. */
+  kind?: "parliamentary" | "presidential";
+  /** Said beside the results where the election needs it. */
+  note?: { ro: string; en: string };
   files: ElectionFile[];
 }
 
 const D2020 = "https://data.gov.ro/dataset/8c0e5b4d-6d8d-4068-9194-8d57e3d63333/resource";
 const D2016 = "https://data.gov.ro/dataset/eb0770eb-d78d-4227-9186-74a08f19d068/resource";
 
+const PRESIDENTIAL_LICENSE = "Date publice ale Autorității Electorale Permanente (prezenta.roaep.ro)";
+/** One round of a presidential election: the polling-station minutes and the votes by mail, put in by hand like the 2024 parliamentary ones (D-040). */
+const presidentialRound = (id: string, folder: string, heldOn: string, label: { ro: string; en: string }, portal: string, note?: { ro: string; en: string }): ElectionSource => ({
+  id,
+  label,
+  heldOn,
+  legislatureYear: heldOn.slice(0, 4),
+  portalUrl: `https://prezenta.roaep.ro/${portal}/`,
+  license: PRESIDENTIAL_LICENSE,
+  manual: true,
+  kind: "presidential",
+  ...(note ? { note } : {}),
+  files: [
+    { key: `${id}-pv`, kind: "election-csv", role: "sections", chamber: "president", format: "pv", manualPath: `${folder}/pv.csv` },
+    { key: `${id}-mail`, kind: "election-csv", role: "mail", chamber: "president", format: "pv", manualPath: `${folder}/pv-mail.csv` }
+  ]
+});
+
 export const ELECTION_SOURCES: ElectionSource[] = [
+  presidentialRound("pres-2025-r2", "pres-2025-r2", "2025-05-18", { ro: "Alegerile prezidențiale din 18 mai 2025, turul 2", en: "The presidential election of 18 May 2025, second round" }, "prezidentiale18052025"),
+  presidentialRound("pres-2025-r1", "pres-2025-r1", "2025-05-04", { ro: "Alegerile prezidențiale din 4 mai 2025, turul 1", en: "The presidential election of 4 May 2025, first round" }, "prezidentiale04052025"),
+  presidentialRound("pres-2024-r1", "pres-2024-r1", "2024-11-24", { ro: "Alegerile prezidențiale din 24 noiembrie 2024, turul 1 (anulat)", en: "The presidential election of 24 November 2024, first round (annulled)" }, "prezidentiale24112024", {
+    ro: "Curtea Constituțională a anulat întregul proces electoral pentru alegerea Președintelui prin Decizia nr. 32 din 6 decembrie 2024; turul 2 din 8 decembrie nu a mai avut loc, iar alegerile s-au reluat în mai 2025. Cifrele de aici sunt cele din procesele-verbale ale turului 1 din 24 noiembrie 2024.",
+    en: "The Constitutional Court annulled the whole electoral process for the President by Decision no. 32 of 6 December 2024; the second round of 8 December was not held and the election was run again in May 2025. The figures here are those of the minutes of the first round of 24 November 2024."
+  }),
   {
     id: "parl-2024",
     label: { ro: "Alegerile parlamentare din 1 decembrie 2024", en: "The parliamentary elections of 1 December 2024" },

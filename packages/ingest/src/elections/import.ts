@@ -40,8 +40,11 @@ async function readFileText(repoRoot: string, file: ElectionFile): Promise<Buffe
   return existsSync(saved) ? readFile(saved) : undefined;
 }
 
+export type Ballot = "deputies" | "senate" | "president";
+const ballotsOf = (election: ElectionSource): Ballot[] => (election.kind === "presidential" ? ["president"] : ["deputies", "senate"]);
+
 export interface ElectionRow {
-  chamber: "deputies" | "senate";
+  chamber: Ballot;
   circumscriptionNumber: number;
   circumscription: string;
   listName: string;
@@ -54,7 +57,7 @@ export interface ElectionRow {
 export async function readElection(repoRoot: string, election: ElectionSource): Promise<{ rows: ElectionRow[]; missing: string[] }> {
   const rows: ElectionRow[] = [];
   const missing: string[] = [];
-  for (const chamber of ["deputies", "senate"] as const) {
+  for (const chamber of ballotsOf(election)) {
     const votes = new Map<string, ListVotes>();
     const mandates = new Map<string, ListMandates>();
     for (const file of election.files.filter((item) => item.chamber === chamber)) {
@@ -89,7 +92,7 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
         listName: vote?.list ?? mandate?.list ?? listName,
         votes: vote?.votes ?? 0,
         mandates: mandate?.mandates ?? 0,
-        independent: /candidat\s+independent|independent/i.test(source.list)
+        independent: election.kind !== "presidential" && /candidat\s+independent|independent/i.test(source.list)
       });
     }
   }
@@ -97,12 +100,12 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
 }
 
 /** The commune-level results of one election, for each chamber whose polling-station file is there. */
-export async function readElectionAreas(repoRoot: string, election: ElectionSource): Promise<Partial<Record<"deputies" | "senate", AreaReading>>> {
-  const out: Partial<Record<"deputies" | "senate", AreaReading>> = {};
-  for (const chamber of ["deputies", "senate"] as const) {
+export async function readElectionAreas(repoRoot: string, election: ElectionSource): Promise<Partial<Record<Ballot, AreaReading>>> {
+  const out: Partial<Record<Ballot, AreaReading>> = {};
+  for (const chamber of ballotsOf(election)) {
     const file = election.files.find((item) => item.chamber === chamber && item.role === "sections");
     const bytes = file ? await readFileText(repoRoot, file) : undefined;
-    if (file && bytes) out[chamber] = readAreas(decodeElectionBytes(bytes), file.format === "pv" ? "pv" : "sections");
+    if (file && bytes) out[chamber] = readAreas(decodeElectionBytes(bytes), file.format === "pv" ? "pv" : "sections", election.kind === "presidential" ? "presidential" : "parliamentary");
   }
   return out;
 }
@@ -146,8 +149,9 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
       result.waitingForFiles.push(election.id);
       continue;
     }
-    const mandatesKnown = !missing.some((key) => election.files.find((file) => file.key === key)?.role === "mandates");
-    const chambers = (["deputies", "senate"] as const).map((chamber) => {
+    // A presidential round has no mandates to give.
+    const mandatesKnown = election.kind !== "presidential" && !missing.some((key) => election.files.find((file) => file.key === key)?.role === "mandates");
+    const chambers = ballotsOf(election).map((chamber) => {
       const own = rows.filter((row) => row.chamber === chamber);
       const byList = new Map<string, { votes: number; mandates: number }>();
       for (const row of own) byList.set(row.listName, { votes: (byList.get(row.listName)?.votes ?? 0) + row.votes, mandates: (byList.get(row.listName)?.mandates ?? 0) + row.mandates });
@@ -162,14 +166,15 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
       };
     });
     result.elections.push({ id: election.id, rows: rows.length, missingFiles: missing, chambers, mandatesWithoutVotes: rows.filter((row) => row.votes === 0 && row.mandates > 0).length });
-    electionRows.push({ id: election.id, labelRo: election.label.ro, labelEn: election.label.en, heldOn: election.heldOn, legislatureYear: election.legislatureYear, portalUrl: election.portalUrl, license: election.license, mandatesKnown, readAt });
+    electionRows.push({ id: election.id, labelRo: election.label.ro, labelEn: election.label.en, heldOn: election.heldOn, legislatureYear: election.legislatureYear, portalUrl: election.portalUrl, license: election.license, mandatesKnown, kind: election.kind ?? "parliamentary", noteRo: election.note?.ro ?? null, noteEn: election.note?.en ?? null, readAt });
     for (const row of rows) {
-      const partyId = row.independent ? undefined : partyByName.get(bare(row.listName));
-      if (!partyId && !row.independent) unmatched.add(row.listName);
+      // A candidate is not a party list: no link, and no entry among the lists that match no party.
+      const partyId = row.independent || election.kind === "presidential" ? undefined : partyByName.get(bare(row.listName));
+      if (!partyId && !row.independent && election.kind !== "presidential") unmatched.add(row.listName);
       resultRows.push({ electionId: election.id, chamber: row.chamber, circumscriptionNumber: row.circumscriptionNumber, circumscription: row.circumscription, listName: row.listName, votes: row.votes, mandates: row.mandates, partyId: partyId ?? null, independent: row.independent });
     }
     const readings = await readElectionAreas(options.repoRoot, election);
-    for (const chamber of ["deputies", "senate"] as const) {
+    for (const chamber of ballotsOf(election)) {
       const reading = readings[chamber];
       if (!reading) continue;
       // The lists get a code: 0 for the independents, then 1, 2, ... by their votes, the largest first.
@@ -183,7 +188,7 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
       }
       for (const key of ordered) {
         const name = reading.lists.get(key)!.name;
-        listRows.push({ electionId: election.id, chamber, code: codeOf.get(key)!, name, independents: false, partyId: partyByName.get(bare(name)) ?? null });
+        listRows.push({ electionId: election.id, chamber, code: codeOf.get(key)!, name, independents: false, partyId: election.kind === "presidential" ? null : partyByName.get(bare(name)) ?? null });
       }
       let abroad = 0;
       for (const area of reading.areas) {
@@ -200,7 +205,7 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
   if (!options.persist || resultRows.length === 0) return result;
   await db.transaction(async (tx) => {
     for (const election of electionRows) {
-      await tx.insert(schema.elections).values(election).onConflictDoUpdate({ target: schema.elections.id, set: { mandatesKnown: sql`excluded.mandates_known`, labelRo: sql`excluded.label_ro`, labelEn: sql`excluded.label_en`, heldOn: sql`excluded.held_on`, legislatureYear: sql`excluded.legislature_year`, portalUrl: sql`excluded.portal_url`, license: sql`excluded.license`, readAt: sql`excluded.read_at` } });
+      await tx.insert(schema.elections).values(election).onConflictDoUpdate({ target: schema.elections.id, set: { mandatesKnown: sql`excluded.mandates_known`, kind: sql`excluded.kind`, noteRo: sql`excluded.note_ro`, noteEn: sql`excluded.note_en`, labelRo: sql`excluded.label_ro`, labelEn: sql`excluded.label_en`, heldOn: sql`excluded.held_on`, legislatureYear: sql`excluded.legislature_year`, portalUrl: sql`excluded.portal_url`, license: sql`excluded.license`, readAt: sql`excluded.read_at` } });
       await tx.execute(sql`delete from election_list_results where election_id = ${election.id}`);
       await tx.execute(sql`delete from election_area_results where election_id = ${election.id}`);
       await tx.execute(sql`delete from election_lists where election_id = ${election.id}`);

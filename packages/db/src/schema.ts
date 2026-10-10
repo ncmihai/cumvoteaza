@@ -16,6 +16,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const chamberEnum = pgEnum("chamber", ["senate", "deputies"]);
+/** What an election result belongs to: a chamber of Parliament, or the President (Sprint 17 follow-up: the presidential elections use the same tables as the parliamentary ones). */
+export const ballotEnum = pgEnum("ballot", ["senate", "deputies", "president"]);
 /** Votes can also be held in a joint sitting of both chambers (Constitution art. 65). */
 export const voteChamberEnum = pgEnum("vote_chamber", ["senate", "deputies", "joint"]);
 export const voteChoiceEnum = pgEnum("vote_choice", [
@@ -1183,6 +1185,11 @@ export const elections = pgTable("elections", {
   license: text("license").notNull(),
   /** False when the mandates each list won are not in the files read (only the votes are): the page then shows no mandates for this election. */
   mandatesKnown: boolean("mandates_known").notNull().default(true),
+  /** parliamentary | presidential. A presidential round is one election of its own (the ballot is "president"; the candidates are the lists). */
+  kind: text("kind").notNull().default("parliamentary"),
+  /** Said beside the results where the election needs it (the first round of 24 November 2024 was annulled by the Constitutional Court). */
+  noteRo: text("note_ro"),
+  noteEn: text("note_en"),
   readAt: timestamp("read_at", { withTimezone: true }).notNull()
 });
 
@@ -1192,7 +1199,7 @@ export const elections = pgTable("elections", {
  */
 export const electionListResults = pgTable("election_list_results", {
   electionId: text("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
-  chamber: chamberEnum("chamber").notNull(),
+  chamber: ballotEnum("chamber").notNull(),
   circumscriptionNumber: integer("circumscription_number").notNull(),
   circumscription: text("circumscription").notNull(),
   listName: text("list_name").notNull(),
@@ -1212,7 +1219,7 @@ export const electionListResults = pgTable("election_list_results", {
  */
 export const electionLists = pgTable("election_lists", {
   electionId: text("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
-  chamber: chamberEnum("chamber").notNull(),
+  chamber: ballotEnum("chamber").notNull(),
   code: integer("code").notNull(),
   name: text("name").notNull(),
   independents: boolean("independents").notNull().default(false),
@@ -1228,7 +1235,7 @@ export const electionLists = pgTable("election_lists", {
  */
 export const electionAreaResults = pgTable("election_area_results", {
   electionId: text("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
-  chamber: chamberEnum("chamber").notNull(),
+  chamber: ballotEnum("chamber").notNull(),
   areaKey: text("area_key").notNull(),
   circumscriptionNumber: integer("circumscription_number").notNull(),
   name: text("name").notNull(),

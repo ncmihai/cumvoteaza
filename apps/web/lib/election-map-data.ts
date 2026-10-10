@@ -11,10 +11,15 @@ export type { MapArea, MapList } from "./election-map";
  * Bucharest 42, abroad 43). `r` are the voters on the permanent lists, `p` the voters who came, `v` the valid votes and `i` the null votes; `l` and `x` are the lists (by code) and their votes,
  * the largest first. The votes by mail belong to no place and are in the circumscription totals of the elections page, not here. Answers "nothing" when the tables are not there yet.
  */
+export type MapBallot = "deputies" | "senate" | "president";
+
 export interface ElectionMapData {
   election: ElectionInfo;
   elections: ElectionInfo[];
-  chamber: "deputies" | "senate";
+  /** The chamber, or "president" for a presidential round (the candidates are the lists). */
+  chamber: MapBallot;
+  /** The circumscriptions' names as the AEP prints them (county names; "MUNICIPIUL BUCUREȘTI"; abroad). */
+  circumscriptions: Array<{ number: number; name: string }>;
   lists: MapList[];
   areas: MapArea[];
 }
@@ -29,7 +34,7 @@ async function queryElectionMap(electionId: string | undefined, chamberInput: st
     const withAreas = (await getElections()).filter((item) => held.has(item.id));
     if (withAreas.length === 0) return undefined;
     const election = withAreas.find((item) => item.id === electionId) ?? withAreas[0]!;
-    const chamber = chamberInput === "senate" ? "senate" as const : "deputies" as const;
+    const chamber: MapBallot = election.kind === "presidential" ? "president" : chamberInput === "senate" ? "senate" : "deputies";
     const listRows = [...(await db.execute<{ code: number; name: string; independents: boolean; slug: string | null; color: string | null }>(sql`
       select l.code, l.name, l.independents, p.slug, p.color from election_lists l left join parties p on p.id = l.party_id where l.election_id = ${election.id} and l.chamber = ${chamber} order by l.code`))];
     if (listRows.length === 0) return undefined;
@@ -39,14 +44,16 @@ async function queryElectionMap(electionId: string | undefined, chamberInput: st
     const totals = new Map<number, number>();
     for (const area of areas) area.l.forEach((code, index) => totals.set(code, (totals.get(code) ?? 0) + area.x[index]!));
     const lists: MapList[] = listRows.map((row) => ({ code: row.code, name: row.name, independents: row.independents, ...(row.slug ? { partySlug: row.slug } : {}), ...(row.color ? { color: row.color } : {}), votes: totals.get(row.code) ?? 0 }));
-    return { election, elections: withAreas, chamber, lists, areas };
+    const circumscriptions = [...(await db.execute<{ number: number; name: string }>(sql`
+      select circumscription_number as number, max(circumscription) as name from election_list_results where election_id = ${election.id} and chamber = ${chamber} group by 1 order by 1`))].map((row) => ({ number: Number(row.number), name: row.name }));
+    return { election, elections: withAreas, chamber, circumscriptions, lists, areas };
   } finally {
     await session.close();
   }
 }
 
 // A failed read throws inside the cache, so that a database that is busy or a table that is not there yet is not remembered for an hour; the caller turns it into "nothing".
-const cachedElectionMap = unstable_cache(async (electionId: string | undefined, chamber: string | undefined) => (await queryElectionMap(electionId, chamber)) ?? null, ["election-map-v1"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedElectionMap = unstable_cache(async (electionId: string | undefined, chamber: string | undefined) => (await queryElectionMap(electionId, chamber)) ?? null, ["election-map-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 export async function getElectionMapData(electionId?: string, chamber?: string): Promise<ElectionMapData | undefined> {
   try {

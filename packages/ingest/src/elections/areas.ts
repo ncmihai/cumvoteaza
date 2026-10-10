@@ -45,7 +45,7 @@ const RENUMBERED: Record<string, { to: string; circumscription: number }> = { "6
 /**
  * One chamber's file as areas. `format` "pv" is the portal's minutes file (one row per station and report, the highest version kept); "sections" is the older open-data file.
  */
-export function readAreas(text: string, format: "pv" | "sections"): AreaReading {
+export function readAreas(text: string, format: "pv" | "sections", stats: "parliamentary" | "presidential" = "parliamentary"): AreaReading {
   const rows = parseDelimited(text);
   const header = (rows[0] ?? []).map((name) => name.trim());
   const find = (...names: string[]) => header.findIndex((column) => names.some((name) => plain(column) === plain(name)));
@@ -53,11 +53,13 @@ export function readAreas(text: string, format: "pv" | "sections"): AreaReading 
   const circNumber = format === "pv" ? find("precinct_county_nce") : find("Numar circumscriptie");
   const sirutaAt = format === "pv" ? find("uat_siruta") : find("UAT_SIRUTA", "SIRUTA");
   const nameAt = format === "pv" ? find("uat_name") : find("UAT", "Localitate");
-  const a1 = exact("a1");
+  // The statistics columns differ: a parliamentary file has a1 (voters on the permanent lists), b (voters who came), e (valid votes) and f (null votes); a presidential one has a, b, c (valid votes) and d (null votes).
+  const presidential = stats === "presidential";
+  const a1 = exact(presidential ? "a" : "a1");
   const b = exact("b");
-  const e = exact("e");
-  const f = exact("f");
-  if (circNumber < 0 || sirutaAt < 0 || nameAt < 0 || a1 < 0 || b < 0 || e < 0 || f < 0) throw new Error("The file lacks a column the commune results need (circumscription, SIRUTA, name, a1, b, e, f)");
+  const e = exact(presidential ? "c" : "e");
+  const f = exact(presidential ? "d" : "f");
+  if (circNumber < 0 || sirutaAt < 0 || nameAt < 0 || a1 < 0 || b < 0 || e < 0 || f < 0) throw new Error("The file lacks a column the commune results need (circumscription, SIRUTA, name, registered, present, valid, null)");
   let lists: Array<{ index: number; name: string }>;
   if (format === "pv") lists = header.flatMap((column, index) => (column.endsWith("-voturi") ? [{ index, name: column.slice(0, -"-voturi".length).trim() }] : []));
   else {
@@ -117,7 +119,7 @@ export function readAreas(text: string, format: "pv" | "sections"): AreaReading 
     for (const { index, name } of lists) {
       const votes = toInt(row[index]);
       if (!votes) continue;
-      const independent = /candidat\s+independent|independent/i.test(name);
+      const independent = !presidential && /candidat\s+independent|independent/i.test(name);
       const listKey = independent ? INDEPENDENTS_KEY : plain(name);
       if (!listNames.has(listKey)) listNames.set(listKey, { name: independent ? "" : name, independents: independent });
       area.votes.set(listKey, (area.votes.get(listKey) ?? 0) + votes);

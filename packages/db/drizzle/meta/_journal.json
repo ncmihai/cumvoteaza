@@ -407,6 +407,13 @@
       "when": 1791630203744,
       "tag": "0057_election_areas",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1791633477551,
+      "tag": "0058_presidential_elections",
+      "breakpoints": true
     }
   ]
 }

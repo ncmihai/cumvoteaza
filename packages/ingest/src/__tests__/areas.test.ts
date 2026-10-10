@@ -56,3 +56,23 @@ describe("readAreas", () => {
     expect(() => readAreas("a;b\n1;2", "sections")).toThrow();
   });
 });
+
+describe("readAreas of a presidential round", () => {
+  const header = "precinct_county_nce,precinct_county_name,precinct_name,precinct_nr,uat_name,uat_siruta,report_version,report_stage_code,report_type_scope_code,report_type_category_code,report_type_code,created_at,a,b,b1,b2,b3,c,d,e,f,\"GEORGE SIMION-voturi\",\"NICUȘOR DAN-voturi\"";
+  const line = (nce: number, county: string, uat: string, siruta: string, station: number, a: number, b: number, simion: number, dan: number, nulls: number) =>
+    `${nce},${county},"SECȚIA ${station}",${station},${uat},${siruta},1,PART,PRCNCT,PRSD,PRSD_SV,"2025-05-18 20:00:00",${a},${b},${b},0,0,${simion + dan},${nulls},9999,9999,${simion},${dan}`;
+
+  it("takes the registered voters from a, the valid votes from c and the null votes from d, and keeps the candidates as lists", () => {
+    const text = [header, line(1, "ALBA", "MUNICIPIUL ALBA IULIA", "1026", 1, 800, 500, 200, 290, 10), line(1, "ALBA", "MUNICIPIUL ALBA IULIA", "1026", 2, 700, 400, 150, 245, 5), line(43, "STRĂINĂTATE", "ITALIA", "9999", 3, 0, 60, 10, 49, 1)].join("\n");
+    const { areas, lists } = readAreas(text, "pv", "presidential");
+    const alba = areas.find((area) => area.key === "1026")!;
+    expect(alba).toMatchObject({ sections: 2, registered: 1500, present: 900, valid: 885, invalid: 15 });
+    expect(alba.votes.get("george simion")).toBe(350);
+    expect(lists.get("nicusor dan")).toEqual({ name: "NICUȘOR DAN", independents: false });
+    expect(areas.find((area) => area.key === "abroad:italia")).toMatchObject({ circumscriptionNumber: 43, valid: 59 });
+  });
+
+  it("refuses a parliamentary reading of a presidential file", () => {
+    expect(() => readAreas([header, line(1, "ALBA", "X", "1", 1, 1, 1, 1, 1, 1)].join("\n"), "pv", "parliamentary")).toThrow();
+  });
+});
