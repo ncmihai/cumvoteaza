@@ -27,8 +27,8 @@ export interface MapArea {
   x: number[];
 }
 
-export type MapMetric = "winner" | "share" | "turnout" | "invalid";
-export const MAP_METRICS: MapMetric[] = ["winner", "share", "turnout", "invalid"];
+export type MapMetric = "winner" | "share" | "change" | "turnout" | "invalid";
+export const MAP_METRICS: MapMetric[] = ["winner", "share", "change", "turnout", "invalid"];
 
 /** The same circumscription, summed over its communes. */
 export function sumByCircumscription(areas: MapArea[]): MapArea[] {
@@ -79,10 +79,22 @@ export function invalidShareOf(area: MapArea): number | undefined {
   return area.p > 0 ? area.i / area.p : undefined;
 }
 
-/** The value a metric draws for one commune; nothing where the files cannot give it. */
-export function metricValue(area: MapArea, metric: MapMetric, listCode: number): number | undefined {
+/** The same place in the election before, and the code the list had there (a party's list is found again by the party, not by its code). */
+export interface Previous {
+  areas: Map<string, MapArea>;
+  listCode: number | undefined;
+}
+
+/** The value a metric draws for one commune; nothing where the files cannot give it. For "change" it is the list's share minus its share in the election before, in the same place. */
+export function metricValue(area: MapArea, metric: MapMetric, listCode: number, previous?: Previous): number | undefined {
   if (metric === "winner") return leaderOf(area)?.lead;
   if (metric === "share") return shareOf(area, listCode);
+  if (metric === "change") {
+    const before = previous?.listCode === undefined ? undefined : previous.areas.get(area.k);
+    const now = shareOf(area, listCode);
+    const then = before && previous?.listCode !== undefined ? shareOf(before, previous.listCode) : undefined;
+    return now === undefined || then === undefined ? undefined : now - then;
+  }
   if (metric === "turnout") return turnoutOf(area);
   return invalidShareOf(area);
 }
@@ -90,6 +102,9 @@ export function metricValue(area: MapArea, metric: MapMetric, listCode: number):
 const PALETTE = ["#0f766e", "#a21caf", "#b45309", "#0369a1", "#be123c", "#4d7c0f", "#7c3aed", "#0e7490"];
 const INDEPENDENTS_COLOUR = "#64748b";
 export const BRAND_COLOUR = "#4338ca";
+/** The map of change uses one pair for every list, blue for what it gained and orange for what it lost: a party's own colour can be a dark grey or close to the other side's. */
+export const GAIN_COLOUR = "#0369a1";
+export const LOSS_COLOUR = "#c2410c";
 
 /** One colour per list: the party's own where the list is a party we hold, else a colour of the palette in order of votes. A colour already taken moves the list to the next palette colour. */
 export function listColours(lists: MapList[]): Map<number, string> {
@@ -138,13 +153,19 @@ export interface PaintContext {
   metric: MapMetric;
   listCode: number;
   colours: Map<number, string>;
+  /** For a ramp: the values it spans. For "change": from zero to the largest change (the same on both sides). */
   range: { min: number; max: number };
+  previous?: Previous;
 }
 
 /** The colour of one commune: the winner's colour (stronger the larger the lead), a list's own colour for its share, or the brand colour for turnout and null votes. Nothing when there is no value. */
 export function paintFor(area: MapArea, context: PaintContext): AreaPaint | undefined {
-  const value = metricValue(area, context.metric, context.listCode);
+  const value = metricValue(area, context.metric, context.listCode, context.previous);
   if (value === undefined) return undefined;
+  if (context.metric === "change") {
+    const strength = Math.abs(value);
+    return { fill: value >= 0 ? GAIN_COLOUR : LOSS_COLOUR, opacity: rampOpacity(strength, { min: 0, max: context.range.max }) };
+  }
   if (context.metric === "winner") {
     const leader = leaderOf(area);
     return leader ? { fill: context.colours.get(leader.code) ?? INDEPENDENTS_COLOUR, opacity: 0.4 + 0.6 * Math.min(1, leader.lead / 0.3) } : undefined;

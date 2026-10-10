@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
 
 /**
- * Parliamentary election results (Sprint 15, D-038): the AEP's open data for 2016 and 2020, summed by list, with the party each list is when its name is exactly a party we hold.
+ * Parliamentary election results (Sprint 15, D-038): the AEP's data for 2016, 2020 and 2024, summed by list, with the party each list is when its name is exactly a party we hold.
  * Every function answers "nothing" when the tables are not there yet (the deploy can come before the migration).
  */
 export interface ElectionInfo {

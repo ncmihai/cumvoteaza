@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { leaderOf, listColours, metricValue, paintFor, rampOpacity, rampRange, shareOf, sumByCircumscription, turnoutOf, type MapArea, type MapList } from "./election-map";
+import { GAIN_COLOUR, LOSS_COLOUR, leaderOf, listColours, metricValue, paintFor, rampOpacity, rampRange, shareOf, sumByCircumscription, turnoutOf, type MapArea, type MapList } from "./election-map";
 
 const area = (k: string, c: number, v: number, lists: Array<[number, number]>, extra: Partial<MapArea> = {}): MapArea => ({ k, c, n: k, s: 1, r: 1000, p: 600, v, i: 10, l: lists.map((entry) => entry[0]), x: lists.map((entry) => entry[1]), ...extra });
 
@@ -64,5 +64,32 @@ describe("election map colours", () => {
     expect(rampOpacity(range.min - 1, range)).toBeCloseTo(0.12);
     expect(rampOpacity(range.max + 1, range)).toBeCloseTo(1);
     expect(rampRange([])).toEqual({ min: 0, max: 1 });
+  });
+});
+
+describe("the change since the election before", () => {
+  const now = area("1", 1, 100, [[1, 40], [2, 30]]);
+  const before = area("1", 1, 200, [[7, 50], [8, 20]]);
+  const previous = { areas: new Map([["1", before]]), listCode: 7 };
+
+  it("is the list's share now minus its share then, found by the list's code in the election before", () => {
+    expect(metricValue(now, "change", 1, previous)).toBeCloseTo(0.4 - 0.25);
+    // A list with no votes in that place then counts as zero there.
+    expect(metricValue(now, "change", 1, { ...previous, listCode: 9 })).toBeCloseTo(0.4);
+  });
+
+  it("has no value where the place or the list is missing in the election before", () => {
+    expect(metricValue(now, "change", 1, { areas: new Map(), listCode: 7 })).toBeUndefined();
+    expect(metricValue(now, "change", 1, { areas: previous.areas, listCode: undefined })).toBeUndefined();
+    expect(metricValue(now, "change", 1)).toBeUndefined();
+  });
+
+  it("paints a gain blue and a loss orange, stronger the larger the change", () => {
+    const colours = new Map([[1, "#ff0000"]]);
+    const gain = paintFor(now, { metric: "change", listCode: 1, colours, range: { min: 0, max: 0.3 }, previous })!;
+    expect(gain.fill).toBe(GAIN_COLOUR);
+    const lost = paintFor(area("1", 1, 100, [[1, 5]]), { metric: "change", listCode: 1, colours, range: { min: 0, max: 0.3 }, previous })!;
+    expect(lost.fill).toBe(LOSS_COLOUR);
+    expect(lost.opacity).toBeGreaterThan(gain.opacity);
   });
 });

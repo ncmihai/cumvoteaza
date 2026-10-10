@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return titled(params, { ro: "Harta alegerilor", en: "Election map" });
 }
 
-type Query = { election?: string; chamber?: string; metric?: string; list?: string; level?: string; circ?: string };
+type Query = { election?: string; chamber?: string; metric?: string; list?: string; party?: string; level?: string; circ?: string };
 
 export default async function ElectionMapPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<Query> }) {
   const { locale: rawLocale } = await params;
@@ -30,7 +30,9 @@ export default async function ElectionMapPage({ params, searchParams }: { params
   const metric: MapMetric = MAP_METRICS.includes(query.metric as MapMetric) ? (query.metric as MapMetric) : "winner";
   const circ = Number(query.circ) >= 1 && Number(query.circ) <= 42 ? Number(query.circ) : undefined;
   const level = query.level === "communes" || circ !== undefined ? "communes" as const : "counties" as const;
-  const list = Number.isFinite(Number(query.list)) && query.list !== undefined ? Number(query.list) : undefined;
+  // A party's page links here by the party's slug; the list it ran on has a code in this election.
+  const partyList = query.party ? data?.lists.find((item) => item.partySlug === query.party)?.code : undefined;
+  const list = partyList ?? (Number.isFinite(Number(query.list)) && query.list !== undefined ? Number(query.list) : undefined);
 
   const listName = (code: number) => {
     const found = data?.lists.find((item) => item.code === code);
