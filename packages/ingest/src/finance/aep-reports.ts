@@ -191,7 +191,7 @@ function parseYearParagraphs(text: string): ControlReport | undefined {
 
 function sanctionsOf(text: string): Pick<ControlReport, "violations" | "noViolations" | "fineLei" | "confiscatedLei"> {
   const broken = /(?:au\s+fost\s+încălcate\s+prevederile|pentru\s+nerespectarea\s+prevederilor)\s+(.+?)\s+din\s+Legea\s+nr\.\s*334\/2006/i.exec(text);
-  const fine = /sancționat[ăa]?\s+cu\s+amendă\s+în\s+cuantum\s+de\s+([\d.]+,\d{2})\s+lei/i.exec(text);
+  const fine = /sancționat[ăa]?\s+cu\s+amendă\s+în\s+(?:cuantum|sumă)\s+de\s+([\d.]+(?:,\d{2})?)\s+(?:de\s+)?lei/i.exec(text);
   const confiscated = /confiscarea\s+sumei\s+de\s+([\d.]+,\d{2})\s+lei/i.exec(text);
   return {
     violations: broken ? broken[1]!.split(/,\s*(?=(?:ale\s+)?art\.)|\s+și\s+(?:ale\s+)?(?=art\.)/).map((part) => part.replace(/\s+/g, " ").replace(/^ale\s+/, "").trim()).filter(Boolean) : [],
@@ -207,7 +207,7 @@ const nominative = (name: string) => GENITIVE.reduce((acc, [pattern, to]) => acc
 
 /** The years a title or sentence names: "în anul 2018", "în anii 2017-2018", "în anii 2019 și 2020", "în perioada 1.01.2023-31.12.2024". */
 export function yearsOf(text: string): number[] {
-  const range = /perioada\s+(?:verificată\s+fiind\s+)?\d{1,2}\.\d{1,2}\.(\d{4})\s*-\s*\d{1,2}\.\d{1,2}\.(\d{4})/.exec(text) ?? /anii\s+(\d{4})\s*-\s*(\d{4})/.exec(text);
+  const range = /perioada(?:\s+controlată,?\s+respectiv|\s+verificată\s+fiind)?\s+\d{1,2}\.\d{1,2}\.(\d{4})\s*-\s*\d{1,2}\.\d{1,2}\.(\d{4})/.exec(text) ?? /anii\s+(\d{4})\s*-\s*(\d{4})/.exec(text);
   if (range) return Array.from({ length: Number(range[2]) - Number(range[1]) + 1 }, (_, index) => Number(range[1]) + index);
   return [...new Set([...text.matchAll(/(?:anul|anii|anului)\s+(\d{4})(?:\s*(?:și|şi)\s*(?:în\s+anul\s+)?(\d{4}))?/g)].flatMap((match) => [Number(match[1]), ...(match[2] ? [Number(match[2])] : [])]))];
 }
@@ -267,8 +267,9 @@ function parseSentenceReport(text: string): ControlReport | undefined {
       if (year !== undefined) ensure(year).expensesTotal = leiOf(expenses[2]!);
       continue;
     }
-    const zero = /nu\s+a\s+(?:avut|înregistrat)\s+venituri|s-a\s+înființat[^]*?nu\s+a\s+avut\s+venituri/i.test(sentence);
-    const note = /nu\s+a\s+transmis/i.test(sentence) ? "The party did not send the documents the AEP asked for, so the control could not check its income and expenses."
+    const zero = /nu\s+a\s+(?:avut|înregistrat|obținut)\s+venituri|s-a\s+înființat[^]*?nu\s+a\s+avut\s+venituri/i.test(sentence);
+    const spent = /efectuat\s+cheltuieli\s+în\s+sumă\s+de\s+([\d.]+(?:,\d{1,2})?)\s+lei/i.exec(sentence);
+    const note = /nu\s+a\s+(?:transmis|depus)\b/i.test(sentence) ? "The party did not send the documents the AEP asked for, so the control could not check its income and expenses."
       : /nu\s+a\s+declarat\s+venituri/i.test(sentence) ? "The party declared no income or expenses."
       : zero ? "The party had no income and no expenses in the period."
       : undefined;
@@ -276,7 +277,7 @@ function parseSentenceReport(text: string): ControlReport | undefined {
       for (const year of (named.length ? named : titleYears)) {
         const row = ensure(year);
         row.note = note;
-        if (zero) { row.incomeTotal = 0; row.expensesTotal = 0; row.linesAddUp = true; }
+        if (zero) { row.incomeTotal = 0; row.expensesTotal = spent ? leiOf(spent[1]!) : 0; row.linesAddUp = true; }
       }
     }
   }
