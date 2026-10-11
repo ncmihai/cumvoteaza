@@ -81,7 +81,9 @@ export default async function PresidentPage({ params }: { params: Promise<{ loca
                 <li key={election.id}>
                   <p className="font-semibold text-ink">{election.label[locale]}</p>
                   <p className="text-ink-soft">{number(election.votes)} {ro ? "voturi" : "votes"} ({percent(election.share)} {ro ? "din voturile valabile" : "of the valid votes"})</p>
-                  <Link href={`/${locale}/elections/map?election=${election.id}&metric=winner`} className="font-bold text-brand hover:text-brand-strong">{ro ? "Rezultatul pe hartă →" : "The result on the map →"}</Link>
+                  {election.hasMap
+                    ? <Link href={`/${locale}/elections/map?election=${election.id}&metric=winner`} className="font-bold text-brand hover:text-brand-strong">{ro ? "Rezultatul pe hartă →" : "The result on the map →"}</Link>
+                    : <p className="text-xs text-muted">{ro ? "Doar totalurile pe țară, din hotărârea Curții Constituționale; fără hartă." : "National totals only, from the Constitutional Court's decision; no map."}</p>}
                 </li>
               ))}
             </ul>

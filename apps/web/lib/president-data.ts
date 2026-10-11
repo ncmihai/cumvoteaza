@@ -17,6 +17,8 @@ export interface PresidentElection {
   heldOn: string;
   votes: number;
   share: number;
+  /** False for a round we know only by its national totals (2019): there is no map to link to. */
+  hasMap: boolean;
 }
 
 export interface PresidentSummary {
@@ -89,11 +91,11 @@ async function querySigners(): Promise<PresidentSummary[]> {
            flagged as (select signer, issued_on, number, case when signer is distinct from lag(signer) over (order by issued_on, number) then 1 else 0 end as change from signed),
            grouped as (select signer, issued_on, sum(change) over (order by issued_on, number rows unbounded preceding) as run from flagged)
       select signer, min(issued_on)::text as first, max(issued_on)::text as last from grouped group by signer, run order by min(issued_on)`))];
-    const winners = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; list_name: string; votes: string; total: string }>(sql`
+    const winners = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; list_name: string; votes: string; total: string; has_map: boolean }>(sql`
       with t as (select election_id, list_name, sum(votes) as v from election_list_results where election_id like 'pres-%-r2' group by 1, 2),
            tot as (select election_id, sum(v) as total from t group by 1),
            ranked as (select t.*, tot.total, rank() over (partition by t.election_id order by t.v desc) as rk from t join tot using (election_id))
-      select e.id, e.label_ro, e.label_en, e.held_on::text as held_on, r.list_name, r.v::text as votes, r.total::text as total from ranked r join elections e on e.id = r.election_id where r.rk = 1 order by e.held_on`).catch(() => []))];
+      select e.id, e.label_ro, e.label_en, e.held_on::text as held_on, r.list_name, r.v::text as votes, r.total::text as total, exists (select 1 from election_area_results a where a.election_id = e.id) as has_map from ranked r join elections e on e.id = r.election_id where r.rk = 1 order by e.held_on`).catch(() => []))];
     return signers.map((row) => ({
       slug: slugOf(row.signer),
       name: row.signer,
@@ -103,14 +105,14 @@ async function querySigners(): Promise<PresidentSummary[]> {
       first: row.first,
       last: row.last,
       periods: runs.filter((run) => run.signer === row.signer).map((run) => ({ first: run.first, last: run.last })),
-      elections: winners.filter((winner) => foldName(winner.list_name) === foldName(row.signer)).map((winner) => ({ id: winner.id, label: { ro: winner.label_ro, en: winner.label_en }, heldOn: winner.held_on, votes: Number(winner.votes), share: Number(winner.total) ? Number(winner.votes) / Number(winner.total) : 0 }))
+      elections: winners.filter((winner) => foldName(winner.list_name) === foldName(row.signer)).map((winner) => ({ id: winner.id, label: { ro: winner.label_ro, en: winner.label_en }, heldOn: winner.held_on, votes: Number(winner.votes), share: Number(winner.total) ? Number(winner.votes) / Number(winner.total) : 0, hasMap: Boolean(winner.has_map) }))
     }));
   } finally {
     await session.close();
   }
 }
 
-const cachedSigners = unstable_cache(async () => querySigners(), ["presidents-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedSigners = unstable_cache(async () => querySigners(), ["presidents-v4"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 // A failed read throws inside the cache (so that it is not remembered) and the callers turn it into "nothing".
 /** The signers of the decree catalog, oldest first. */
@@ -183,7 +185,7 @@ const toHolding = (row: HoldingRow): Holding => ({
   ...(row.signer ? { signer: row.signer } : {})
 });
 
-const cachedPresidentPage = unstable_cache(async (slug: string) => (await queryPresidentPage(slug)) ?? null, ["president-page-v3"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedPresidentPage = unstable_cache(async (slug: string) => (await queryPresidentPage(slug)) ?? null, ["president-page-v4"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 export async function getPresidentPage(slug: string): Promise<PresidentPage | undefined> {
   try {

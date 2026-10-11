@@ -59,6 +59,11 @@ export interface ElectionRow {
 export async function readElection(repoRoot: string, election: ElectionSource): Promise<{ rows: ElectionRow[]; missing: string[] }> {
   const rows: ElectionRow[] = [];
   const missing: string[] = [];
+  if (election.nationalOnly) {
+    // One row per candidate, under the national circumscription 99 (as the minorities' mandates of 2020 are).
+    for (const result of election.nationalOnly.results) rows.push({ chamber: "president", circumscriptionNumber: 99, circumscription: "NAȚIONAL", listName: result.name, votes: result.votes, mandates: 0, independent: false });
+    return { rows, missing };
+  }
   if (election.legacy2012) {
     const circumscriptions = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.circumscriptions), "utf8").catch(() => undefined);
     const candidates = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.candidates), "utf8").catch(() => undefined);

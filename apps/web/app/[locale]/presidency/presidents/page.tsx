@@ -54,7 +54,7 @@ export default async function PresidentsPage({ params }: { params: Promise<{ loc
           ))}
         </ul>
       )}
-      <p className="mt-4 max-w-3xl text-xs leading-5 text-muted">{ro ? "Fotografiile sunt de pe Wikimedia Commons, cu autorul și licența pe pagina fiecărui președinte. Numele sunt citite din semnătura decretului. „Ales la” apare doar pentru alegerile prezidențiale din datele noastre (2009, 2014, 2025, turul 2); celelalte alegeri nu sunt încă încărcate." : "The photographs are from Wikimedia Commons, with the author and the licence on each President's page. The names are read from the decree's signature. \"Elected in\" appears only for the presidential elections in our data (2009, 2014, 2025, second round); the other elections are not loaded yet."}</p>
+      <p className="mt-4 max-w-3xl text-xs leading-5 text-muted">{ro ? "Fotografiile sunt de pe Wikimedia Commons, cu autorul și licența pe pagina fiecărui președinte. Numele sunt citite din semnătura decretului. „Ales la” apare doar pentru alegerile prezidențiale din datele noastre (2009, 2014, 2019, 2025, turul 2); alegerile din 1990 până în 2004 nu sunt încă încărcate." : "The photographs are from Wikimedia Commons, with the author and the licence on each President's page. The names are read from the decree's signature. \"Elected in\" appears only for the presidential elections in our data (2009, 2014, 2019, 2025, second round); the elections from 1990 to 2004 are not loaded yet."}</p>
     </main>
   );
 }

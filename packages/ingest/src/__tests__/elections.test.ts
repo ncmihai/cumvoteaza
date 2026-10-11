@@ -62,7 +62,8 @@ describe("the election sources", () => {
   it("name every election once, give a presidential round its candidates as the ballot \"president\", and keep the hand-fed ones apart from the open-data ones", () => {
     const ids = ELECTION_SOURCES.map((source) => source.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const source of ELECTION_SOURCES.filter((item) => item.kind === "presidential")) {
+    // The rounds known only by national totals (2019) have no files at all.
+    for (const source of ELECTION_SOURCES.filter((item) => item.kind === "presidential" && !item.nationalOnly)) {
       expect(source.manual).toBe(true);
       expect(source.files.every((file) => file.chamber === "president" && file.manualPath)).toBe(true);
       expect(source.files.some((file) => file.role === "sections")).toBe(true);
@@ -71,5 +72,22 @@ describe("the election sources", () => {
     // Elections before 2019 had no votes by mail.
     expect(ELECTION_SOURCES.find((item) => item.id === "pres-2014-r1")!.files.some((file) => file.role === "mail")).toBe(false);
     expect(ELECTION_SOURCES.find((item) => item.id === "pres-2025-r1")!.files.some((file) => file.role === "mail")).toBe(true);
+  });
+});
+
+describe("the 2019 presidential rounds, known by their national totals", () => {
+  it("add up to the valid votes the Constitutional Court prints, and the second round's two candidates are the first round's first two", async () => {
+    const { ELECTION_SOURCES } = await import("../elections/sources");
+    const rounds = ELECTION_SOURCES.filter((election) => election.id.startsWith("pres-2019-"));
+    expect(rounds.map((election) => election.id).sort()).toEqual(["pres-2019-r1", "pres-2019-r2"]);
+    for (const round of rounds) {
+      const totals = round.nationalOnly!;
+      expect(totals.results.reduce((sum, result) => sum + result.votes, 0)).toBe(totals.valid);
+      expect(round.kind).toBe("presidential");
+    }
+    const first = rounds.find((election) => election.id === "pres-2019-r1")!.nationalOnly!;
+    const second = rounds.find((election) => election.id === "pres-2019-r2")!.nationalOnly!;
+    expect(first.results).toHaveLength(14);
+    expect(first.results.slice(0, 2).map((result) => result.name).sort()).toEqual(second.results.map((result) => result.name).sort());
   });
 });
