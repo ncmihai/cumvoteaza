@@ -8,6 +8,7 @@ import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { RawCache } from "../coverage/raw-cache";
 import { INDEPENDENTS_KEY, readAreas, type AreaReading } from "./areas";
+import { buildNameIndex, readAreas2012, readIndependents2012, type NameIndex } from "./areas-2012";
 import { readLegacy2012 } from "./legacy-2012";
 import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, sumPvListVotes, type ListMandates, type ListVotes } from "./parse";
 import { ELECTION_SOURCES, type ElectionFile, type ElectionSource } from "./sources";
@@ -68,7 +69,10 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
     const circumscriptions = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.circumscriptions), "utf8").catch(() => undefined);
     const candidates = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.candidates), "utf8").catch(() => undefined);
     if (!circumscriptions || !candidates) return { rows, missing: ["parl2012-circumscriptions", "parl2012-candidates"] };
-    for (const row of readLegacy2012(circumscriptions, candidates)) rows.push({ ...row, independent: /independent/i.test(row.listName) });
+    // The independent candidates of 2012 are named by themselves in the spreadsheets; the section file says which they are.
+    const sectionsText = election.legacy2012.sections ? await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.sections)).then((bytes) => decodeElectionBytes(bytes)).catch(() => undefined) : undefined;
+    const independents = sectionsText ? readIndependents2012(sectionsText) : new Set<string>();
+    for (const row of readLegacy2012(circumscriptions, candidates)) rows.push({ ...row, independent: /independent/i.test(row.listName) || independents.has(foldName(row.listName)) });
     return { rows, missing };
   }
   for (const chamber of ballotsOf(election)) {
@@ -114,8 +118,19 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
 }
 
 /** The commune-level results of one election, for each chamber whose polling-station file is there. */
-export async function readElectionAreas(repoRoot: string, election: ElectionSource): Promise<Partial<Record<Ballot, AreaReading>>> {
+export async function readElectionAreas(repoRoot: string, election: ElectionSource, nameIndex?: NameIndex): Promise<Partial<Record<Ballot, AreaReading>>> {
   const out: Partial<Record<Ballot, AreaReading>> = {};
+  if (election.legacy2012?.sections) {
+    // 2012: the stations name their locality but carry no SIRUTA code (see areas-2012.ts); without the later elections' files to read the names from, there is no map.
+    const bytes = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.sections)).catch(() => undefined);
+    if (!bytes || !nameIndex) return out;
+    const reading = readAreas2012(decodeElectionBytes(bytes), nameIndex);
+    const how = reading.matchedBy;
+    const note = `2012: every station's commune was found by its name in the later elections' files (same kind and name for ${how.exact} rows, same name whatever the kind ${how.name}, a letter lost in the file ${how.pattern}, â and î typed as a and i ${how.loose}); unmatched: ${reading.unmatched.length === 0 ? "none" : reading.unmatched.map((item) => `${item.name} (${item.circumscription})`).join(", ")}`;
+    out.deputies = { ...reading.deputies, aliases: [note] };
+    out.senate = { ...reading.senate, aliases: [note] };
+    return out;
+  }
   for (const chamber of ballotsOf(election)) {
     const file = election.files.find((item) => item.chamber === chamber && item.role === "sections");
     const bytes = file ? await readFileText(repoRoot, file) : undefined;
@@ -155,6 +170,14 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
   const listRows: Array<typeof schema.electionLists.$inferInsert> = [];
   const areaRows: Array<typeof schema.electionAreaResults.$inferInsert> = [];
   const unmatched = new Set<string>();
+  // The names of the communes, with their SIRUTA codes, as the later elections print them: the 2012 stations are found by name (areas-2012.ts).
+  const nameReadings: AreaReading[] = [];
+  for (const id of ["parl-2024", "parl-2020", "parl-2016"]) {
+    const source = ELECTION_SOURCES.find((item) => item.id === id);
+    const deputies = source ? (await readElectionAreas(options.repoRoot, source)).deputies : undefined;
+    if (deputies) nameReadings.push(deputies);
+  }
+  const nameIndex = nameReadings.length ? buildNameIndex(nameReadings).index : undefined;
   for (const election of ELECTION_SOURCES) {
     const { rows, missing } = await readElection(options.repoRoot, election);
     // An election whose files are put in by hand is skipped until they are there.
@@ -187,7 +210,7 @@ export async function importElections(db: DbClient, options: { repoRoot: string;
       if (!partyId && !row.independent && election.kind !== "presidential") unmatched.add(row.listName);
       resultRows.push({ electionId: election.id, chamber: row.chamber, circumscriptionNumber: row.circumscriptionNumber, circumscription: row.circumscription, listName: row.listName, votes: row.votes, mandates: row.mandates, partyId: partyId ?? null, independent: row.independent });
     }
-    const readings = await readElectionAreas(options.repoRoot, election);
+    const readings = await readElectionAreas(options.repoRoot, election, nameIndex);
     for (const chamber of ballotsOf(election)) {
       const reading = readings[chamber];
       if (!reading) continue;

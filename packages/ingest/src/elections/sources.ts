@@ -35,7 +35,7 @@ export interface ElectionSource {
   /** Said beside the results where the election needs it. */
   note?: { ro: string; en: string };
   /** The 2012 elections: two spreadsheets converted to CSV (votes by circumscription, mandates by candidate) read by `readLegacy2012`. */
-  legacy2012?: { circumscriptions: string; candidates: string };
+  legacy2012?: { circumscriptions: string; candidates: string; /** The polling-station file (no SIRUTA code; the commune is found by its name). */ sections?: string };
   /** An election with no polling-station files, known only by the national totals an official act prints (the Constitutional Court's decisions on the 2019 presidential rounds): one row per candidate, no circumscription. */
   nationalOnly?: { registered: number; present: number; valid: number; invalid: number; results: Array<{ name: string; votes: number }> };
   files: ElectionFile[];
@@ -100,10 +100,10 @@ export const ELECTION_SOURCES: ElectionSource[] = [
     portalUrl: "https://data.gov.ro/dataset/alegeri-pentru-camera-deputatilor-si-senat-2012",
     license: "Date publice ale Autorității Electorale Permanente (data.gov.ro)",
     manual: true,
-    legacy2012: { circumscriptions: "parl-2012/circumscriptions.csv", candidates: "parl-2012/candidates.csv" },
+    legacy2012: { circumscriptions: "parl-2012/circumscriptions.csv", candidates: "parl-2012/candidates.csv", sections: "parl-2012/rezultatenivelsectieparlamentare2012.csv" },
     note: {
-      ro: "Alegerile din 2012 au fost pe colegii uninominale: cifrele sunt voturile fiecărui competitor (partid, alianță, organizație a minorităților sau candidat independent) adunate pe circumscripție, iar mandatele sunt cele câștigate de candidații lui. Fișierul secțiilor din 2012 nu are codul SIRUTA al comunei, deci nu există hartă pe comune.",
-      en: "The 2012 elections were by single-member colleges: the figures are each competitor's votes (party, alliance, minority organisation or independent candidate) summed by circumscription, and the mandates are those its candidates won. The 2012 polling-station file has no SIRUTA code for the commune, so there is no map by commune."
+      ro: "Alegerile din 2012 au fost pe colegii uninominale: cifrele sunt voturile fiecărui competitor (partid, alianță, organizație a minorităților sau candidat independent) adunate pe circumscripție, iar mandatele sunt cele câștigate de candidații lui. Fișierul secțiilor din 2012 numește localitatea, nu dă codul SIRUTA: comuna este găsită după nume, în același județ, printre comunele alegerilor din 2016, 2020 și 2024 (toate cele 18.762 de secții au fost potrivite; trei nume scrise altfel în 2012 au fost legate de mână), iar hărțile arată teritoriul de azi.",
+      en: "The 2012 elections were by single-member colleges: the figures are each competitor's votes (party, alliance, minority organisation or independent candidate) summed by circumscription, and the mandates are those its candidates won. The 2012 polling-station file names the locality but gives no SIRUTA code: the commune is found by its name, in the same county, among the communes of the 2016, 2020 and 2024 elections (all 18,762 stations were matched; three names spelled differently in 2012 were linked by hand), and the maps draw today's territory."
     },
     files: []
   },
