@@ -172,7 +172,7 @@ async function queryCampaigns(partyId?: string): Promise<CampaignRow[]> {
   }
 }
 
-const cachedCampaigns = unstable_cache(async (partyId: string) => queryCampaigns(partyId || undefined), ["party-campaigns-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedCampaigns = unstable_cache(async (partyId: string) => queryCampaigns(partyId || undefined), ["party-campaigns-v3"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** Every campaign the reports cover, newest election first and the largest spending first; `partyId` narrows it to one party we hold. */
 export async function getCampaigns(partyId?: string): Promise<CampaignRow[]> {
@@ -189,10 +189,15 @@ const NOTES_RO: Record<string, string> = {
   "The party had no income and no expenses in the period.": "Partidul nu a avut venituri și nici cheltuieli în perioadă.",
   "The party did not submit the detailed report of its campaign income and expenses.": "Partidul nu a depus raportul detaliat al veniturilor și cheltuielilor de campanie.",
   "The party registered no campaign income or expenses.": "Partidul nu a înregistrat venituri sau cheltuieli de campanie.",
+  "The report says the party registered no campaign income and/or expenses.": "Raportul spune că partidul nu a înregistrat venituri și/sau cheltuieli de campanie.",
   "The control could not establish the amount of the campaign contributions and expenses.": "Controlul nu a putut stabili cuantumul contribuțiilor și cheltuielilor de campanie.",
   "The party did not submit supporting documents for the campaign.": "Partidul nu a depus documente justificative pentru campanie.",
   "Reimbursement of the campaign expenses was not asked for.": "Nu a fost cerută rambursarea cheltuielilor de campanie."
 };
 
 /** The note of a report in the reader's language: the importers write the English sentence, the Romanian page gets its translation (an unknown sentence is shown as it is). */
-export const financeNote = (note: string, ro: boolean) => (ro ? NOTES_RO[note] ?? note : note);
+export const financeNote = (note: string, ro: boolean) =>
+  note
+    .split(" || ")
+    .map((part) => (ro ? NOTES_RO[part] ?? (part.startsWith("Member of the electoral competitor: ") ? part.replace("Member of the electoral competitor: ", "Membru al competitorului electoral: ") : part) : part))
+    .join(" ");

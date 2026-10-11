@@ -154,6 +154,46 @@ describe("parseCampaignReport", () => {
     expect(nothing).toMatchObject({ contributions: 0, expenses: 0 });
   });
 
+  it("reads the other titles and wordings of the older reports: 'aferente campaniei electorale desfășurate pentru', 'rezultatul controlului efectuat … la Partidul', 'a fost de', zero in words, an amount that could not be established", () => {
+    const old = parseCampaignReport("RAPORT nr. 1 din 20 decembrie 2019 privind verificarea veniturilor și cheltuielilor electorale ale Partidului Mișcarea Populară aferente campaniei electorale desfășurate pentru alegerea Președintelui României din data de 10 noiembrie 2019 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ Constatări: Ca urmare a verificărilor s-a constatat că pentru campania electorală aferentă alegerii Președintelui României din data de 10 noiembrie 2019 contribuțiile electorale au fost în cuantum de 7.068.975,00 lei, provenind din împrumuturi. Cheltuielile electorale au fost în cuantum de 7.061.642,98 lei. Conform cererii, cuantumul cheltuielilor electorale solicitate în vederea rambursării a fost de 7.061.632,98 lei. București, 20 decembrie 2019.")!;
+    expect(old).toMatchObject({ party: "Partidul Mișcarea Populară", kind: "presidential", year: 2019, contributions: 7068975, expenses: 7061642.98, reimbursementRequested: 7061632.98 });
+    const checked = parseCampaignReport("RAPORT nr. 2 din 6 februarie 2020 privind rezultatul controlului efectuat de Autoritatea Electorală Permanentă la Partidul Uniunea Salvați România în perioada 6.01.2020-6.02.2020 privind verificarea veniturilor EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ Constatări: s-a constatat că pentru campania electorală aferentă alegerii Președintelui României din data de 10 noiembrie 2019 contribuțiile electorale au fost în cuantum de 4.879.523,00 lei, respectiv: 4.530.265,00 lei din transferuri. Cheltuielile electorale au fost în cuantum de 4.585.921,90 lei.")!;
+    expect(checked).toMatchObject({ party: "Partidul Uniunea Salvați România", kind: "presidential", year: 2019, contributions: 4879523, expenses: 4585921.9 });
+    const zero = parseCampaignReport(campaign("Partidului Ajutăm România Împreună - Filiala Cluj", "alegerii autorităților administrației publice locale din anul 2024", "Ca urmare a verificărilor s-a constatat că: – contribuțiile electorale au fost în cuantum de 0,00 (zero) lei; ... – cheltuielile electorale au fost în cuantum de 0,00 (zero) lei. ... Nu a fost solicitată rambursarea cheltuielilor electorale."))!;
+    expect(zero).toMatchObject({ contributions: 0, expenses: 0 });
+    const unclear = parseCampaignReport(campaign("Partidului Uniunea Națională Creștină a Romilor din România", "alegerii autorităților administrației publice locale din anul 2024", "Ca urmare a faptului că nu au fost puse la dispoziția echipei de control documente, nu s-a putut constata dacă, pentru campania electorală, competitorul electoral a încasat vreo contribuție electorală și a efectuat vreo cheltuială electorală."))!;
+    expect(unclear.contributions).toBeUndefined();
+    expect(unclear.note).toContain("could not establish");
+    const andOr = parseCampaignReport(campaign("Partidului România Unită", "alegerii membrilor din România în Parlamentul European din data de 26.05.2019", "pentru campania electorală, Partidul România Unită nu a înregistrat venituri și/sau cheltuieli."))!;
+    expect(andOr).toMatchObject({ kind: "european", year: 2019 });
+    expect(andOr.contributions).toBeUndefined();
+  });
+
+  it("takes the election of the title up to its year, whatever follows (no space, no 'extras'), and the party up to 'pentru alegerea'", () => {
+    const head = (party: string, rest: string) => parseCampaignReport(`RAPORT nr. 1 din 1 martie 2025 privind verificarea veniturilor și cheltuielilor electorale ale ${party} ${rest} Constatări: contribuțiile electorale au fost în cuantum de 445.000,00 lei. Cheltuielile electorale au fost în cuantum de 443.534,50 lei.`)!;
+    const udmr = head("Uniunii Democrate Maghiare din România", "pentru alegerea Președintelui României din data de 10 noiembrie 2019. + Constatări: Ca urmare a verificărilor ...");
+    expect(udmr).toMatchObject({ party: "Uniunea Democrată Maghiară din România", election: "alegerea Președintelui României din data de 10 noiembrie 2019", kind: "presidential", year: 2019 });
+    const glued = head("Partidului Național Liberal", "cu ocazia alegerilor pentru membrii din România în Parlamentul European din data de 9 iunie 2024I. Constatări ...");
+    expect(glued).toMatchObject({ election: "alegerilor pentru membrii din România în Parlamentul European din data de 9 iunie 2024", kind: "european", year: 2024 });
+    const named = head("Partidului Pact pentru Galați", "cu ocazia alegerii autorităților administrației publice locale din anul 2024 EMITENT");
+    expect(named.party).toBe("Partidul Pact pentru Galați");
+    const campaignWords = head("Partidului Blocul Unității Naționale", "cu ocazia campaniei electorale aferente alegerii membrilor din România în Parlamentul European din data de 26 mai 2019 EMITENT");
+    expect(campaignWords.election).toBe("alegerii membrilor din România în Parlamentul European din data de 26 mai 2019");
+  });
+
+  it("names the party and the alliance apart when the title says 'membru al competitorului electoral'", () => {
+    const text = (party: string) => `RAPORT nr. 1 din 1 martie 2025 privind verificarea legalității veniturilor și cheltuielilor electorale ale ${party}, cu ocazia alegerilor pentru membrii din România în Parlamentul European din data de 9 iunie 2024 EMITENT Constatări: contribuțiile electorale au fost în cuantum de 11.488.330,00 lei. Cheltuielile electorale au fost în cuantum de 24.738.291,02 lei.`;
+    const aur = parseCampaignReport(text("Partidului Alianța pentru Unirea Românilor, entitate membră a competitorului electoral - Alianța AUR"))!;
+    expect(aur).toMatchObject({ party: "Partidul Alianța pentru Unirea Românilor", alliance: "Alianța AUR", contributions: 11488330 });
+    const alde = parseCampaignReport(text('Partidului Alianța Liberalilor și Democraților - ALDE, parte a Alianței Electorale "UN OM"'))!;
+    expect(alde).toMatchObject({ party: "Partidul Alianța Liberalilor și Democraților - ALDE", alliance: 'Alianța Electorală "UN OM"' });
+  });
+
+  it("reads income written with a parenthesis after it ('venituri electorale (respectând …) doar din surse private, în cuantum de')", () => {
+    const report = parseCampaignReport(campaign("Partidului Reînnoim Proiectul European al României - REPER", "alegerilor pentru Senat și Camera Deputaților din anul 2024", "entitatea verificată a înregistrat: – venituri electorale (respectând prevederile art. 28 și 30 din Legea nr. 334/2006, republicată) doar din surse de finanțare private, în cuantum de 4.006.467,00 lei, din care: ... – cheltuieli electorale (respectând prevederile art. 37 din Legea nr. 334/2006) în cuantum de 3.975.088,64 lei. ... Cuantumul cheltuielilor electorale solicitate în vederea rambursării, conform cererii nr. 41.580 din 23.12.2024, este de 951.232,77 lei. În urma verificărilor s-a invalidat suma de 951.232,77 lei"))!;
+    expect(report).toMatchObject({ contributions: 4006467, expenses: 3975088.64, reimbursementRequested: 951232.77 });
+  });
+
   it("leaves out a text that is no campaign report, and names the kind of each election", () => {
     expect(parseCampaignReport(PSD_2020)).toBeUndefined();
     expect(electionKindOf("alegerilor pentru Parlamentul European din anul 2024")).toEqual({ kind: "european", year: 2024 });

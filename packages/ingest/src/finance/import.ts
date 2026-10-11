@@ -3,6 +3,9 @@ import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { readAnnualReports, reportPageUrl, type IncomeKind } from "./aep-reports";
 
+/** The start of the note that names the alliance a party stood in; notes are joined with " || " and the Romanian page translates each (`financeNote` in the web app). */
+const ALLIANCE_NOTE = "Member of the electoral competitor: ";
+
 /** A party's name compared with ours: no diacritics, no leading "Partidul", no spaces or punctuation. */
 const bare = (name: string) => name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/^partidul /, "").replace(/ /g, "");
 
@@ -137,7 +140,7 @@ export async function importCampaigns(db: DbClient, options: { repoRoot: string;
       expenses: report.expenses === undefined ? null : money(report.expenses),
       reimbursementRequested: report.reimbursementRequested === undefined ? null : money(report.reimbursementRequested),
       invalidated: report.invalidated === undefined ? null : money(report.invalidated),
-      note: report.note ?? null,
+      note: [report.note, report.alliance ? `${ALLIANCE_NOTE}${report.alliance}` : undefined].filter(Boolean).join(" || ") || null,
       fineLei: report.fineLei === undefined ? null : money(report.fineLei),
       warned: report.warned,
       violations: report.violations,

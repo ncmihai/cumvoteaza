@@ -337,6 +337,8 @@ export interface CampaignReport {
   fineLei?: number;
   /** The party had a warning ("sancționat cu avertisment") rather than a fine. */
   warned: boolean;
+  /** The alliance the party stood in, where the report is on "Partidul X, membru al competitorului electoral - Alianța Y". */
+  alliance?: string;
 }
 
 export function electionKindOf(label: string): { kind: CampaignReport["kind"]; year: number } | undefined {
@@ -356,35 +358,46 @@ export function electionKindOf(label: string): { kind: CampaignReport["kind"]; y
  * fost în cuantum de 14.020,00 lei ... – cheltuielile electorale au fost în cuantum de 14.010,07 lei", the reimbursement asked and invalidated, and the sanctions. Undefined where the heading is not one.
  */
 export function parseCampaignReport(text: string): CampaignReport | undefined {
-  const head = /veniturilor\s+și\s+cheltuielilor\s+electorale\s+(?:ale|efectuate\s+de)\s+(.+?),?\s+cu\s+ocazia\s+(.+?)\s*(?:[-–]\s*extras|\bI\.\s*Constat|EMITENT|Publicat)/i.exec(text);
-  if (!head) return undefined;
-  const election = head[2]!.replace(/\s+/g, " ").trim();
-  const when = electionKindOf(election);
-  if (!when) return undefined;
+  const titled = /veniturilor\s+și\s+cheltuielilor\s+electorale\s+(?:ale|efectuate\s+de)\s+(.+?),?\s+(?:efectuate\s+)?(?:cu\s+ocazia|aferente\s+campaniei\s+electorale(?:\s+desfășurate)?\s+pentru|pentru(?=\s+alegere))\s+(.+?\d{4})(?!\d)/i.exec(text);
+  // A few reports are titled "privind rezultatul controlului efectuat de Autoritatea Electorală Permanentă la Partidul X în perioada ...": the election is then the one the findings name.
+  const checked = titled ? undefined : /controlului\s+efectuat\s+de\s+Autoritatea\s+Electorală\s+Permanentă\s+la\s+(.+?)\s+în\s+perioada/i.exec(text);
   const marks = [...text.matchAll(/Constat[aă]ri\s*:?/g)];
   const start = marks.length ? marks[marks.length - 1]!.index! : 0;
   const body = text.slice(start);
-  const amount = "([\\d.]+(?:,\\d{1,2})?)";
-  const contributions = new RegExp(`(?:contribuțiile|veniturile)\\s+electorale\\s+au\\s+fost\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei|venituri\\s+electorale[^:.]{0,80}?în\\s+cuantum\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
-  const expenses = new RegExp(`cheltuielile\\s+electorale\\s+au\\s+fost\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei|cheltuieli\\s+electorale\\s+în\\s+cuantum\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
-  const noDocuments = /nu\s+a\s+depus\s+documente\s+justificative/i.test(body);
-  const asked = new RegExp(`solicitate\\s+în\\s+vederea\\s+rambursării[\\s\\S]{0,200}?este\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const partyText = titled?.[1] ?? checked?.[1];
+  const electionText = titled?.[2] ?? (checked ? /campania\s+electorală\s+aferentă\s+(alegeri\w*\s+.+?\d{4})/i.exec(body)?.[1] : undefined);
+  if (!partyText || !electionText) return undefined;
+  const election = electionText.replace(/\s+/g, " ").replace(/^campaniei\s+electorale\s+aferente?\s+/i, "").trim();
+  const when = electionKindOf(election);
+  if (!when) return undefined;
+  const amount = "([\\d.]+(?:,\\d{1,2})?)(?:\\s*\\([^)]*\\))?";
+  const contributions = new RegExp(`(?:contribuțiile|veniturile)\\s+electorale\\s+au\\s+fost\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei|venituri\\s+electorale(?:\\s*\\([^)]*\\))?[^:.]{0,80}?în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const expenses = new RegExp(`cheltuielile\\s+electorale\\s+au\\s+fost\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei|cheltuieli\\s+electorale(?:\\s*\\([^)]*\\))?\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const noDocuments = /nu\s+a\s+depus\s+documente\s+justificative|nu\s+a\s+depus[^.]{0,200}?documentele\s+necesare/i.test(body);
+  const andOr = /nu\s+a\s+înregistrat\s+venituri\s+și\/sau\s+cheltuieli/i.test(body);
+  const asked = new RegExp(`solicitate\\s+în\\s+vederea\\s+rambursării[\\s\\S]{0,200}?(?:este|a\\s+fost)\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
   const invalid = new RegExp(`a\\s+invalidat\\s+suma\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
-  const none = /nu\s+au\s+fost\s+înregistrate\s+venituri\s+și\s+cheltuieli\s+electorale|nu\s+(?:a\s+)?înregistrat\s+venituri\s+și\s+cheltuieli\s+electorale|nu\s+a\s+înregistrat\s+venituri\s+și\s+nu\s+a\s+(?:angajat|efectuat)\s+cheltuieli/i.test(body);
+  const none = /nu\s+au\s+fost\s+înregistrate\s+venituri\s+și\s+cheltuieli\s+electorale|nu\s+(?:a\s+)?înregistrat\s+venituri\s+și\s+cheltuieli\s+electorale|nu\s+a\s+înregistrat\s+venituri\s+și\s+nu\s+a\s+(?:angajat|efectuat)\s+cheltuieli|nu\s+a\s+depus\s+contribuții\s+și\s+nu\s+a\s+efectuat\s+cheltuieli/i.test(body);
   const noReport = /nu\s+a\s+depus[\s\S]{0,400}?raportul\s+detaliat\s+al\s+veniturilor\s+și\s+cheltuielilor\s+electorale/i.test(body);
   const notAsked = /nu\s+a\s+fost\s+solicitată\s+rambursarea|nu\s+a\s+depus\s+cererea\s+de\s+rambursare/i.test(body);
-  const unknown = /nu\s+s-a\s+putut\s+constata\s+cuantumul\s+contribuțiilor\s+electorale/i.test(body);
-  if (!contributions && !expenses && !none && !noDocuments && !noReport && !unknown) return undefined;
+  const unknown = /nu\s+s-a\s+putut\s+constata\s+(?:cuantumul\s+contribuțiilor\s+electorale|dacă[^.]{0,200}?contribuție\s+electorală)/i.test(body);
+  if (!contributions && !expenses && !none && !noDocuments && !noReport && !unknown && !andOr) return undefined;
   const sanctions = sanctionsOf(body);
+  // "Partidul X, membru al competitorului electoral - Alianța Y": the party is X, the alliance is what it stood in.
+  const fullName = cleanParty(nominative(partyText));
+  const member = /^(.+?),\s*(?:membru\s+al|entitate\s+membră\s+a|parte\s+a)\s+(.+)$/i.exec(fullName);
+  const party = member ? member[1]!.trim() : fullName;
+  const alliance = member ? member[2]!.replace(/^competitorului\s+electoral\s*[-–]\s*/i, "").replace(/^Alianței\s+Electorale\b/, "Alianța Electorală").trim() : undefined;
   return {
-    party: cleanParty(nominative(head[1]!)),
+    party,
+    ...(alliance ? { alliance } : {}),
     election,
     ...when,
     ...(contributions ? { contributions: leiOf((contributions[1] ?? contributions[2])!) } : none ? { contributions: 0 } : {}),
     ...(expenses ? { expenses: leiOf((expenses[1] ?? expenses[2])!) } : none ? { expenses: 0 } : {}),
     ...(asked ? { reimbursementRequested: leiOf(asked[1]!) } : {}),
     ...(invalid ? { invalidated: leiOf(invalid[1]!) } : {}),
-    ...(contributions || expenses ? {} : unknown ? { note: "The control could not establish the amount of the campaign contributions and expenses." } : noReport ? { note: "The party did not submit the detailed report of its campaign income and expenses." } : noDocuments ? { note: "The party did not submit supporting documents for the campaign." } : notAsked ? { note: "Reimbursement of the campaign expenses was not asked for." } : none ? { note: "The party registered no campaign income or expenses." } : {}),
+    ...(contributions || expenses ? {} : andOr ? { note: "The report says the party registered no campaign income and/or expenses." } : unknown ? { note: "The control could not establish the amount of the campaign contributions and expenses." } : noReport ? { note: "The party did not submit the detailed report of its campaign income and expenses." } : noDocuments ? { note: "The party did not submit supporting documents for the campaign." } : notAsked ? { note: "Reimbursement of the campaign expenses was not asked for." } : none ? { note: "The party registered no campaign income or expenses." } : {}),
     violations: sanctions.violations,
     noViolations: sanctions.noViolations || /Nu\s+au\s+fost\s+constatate\s+abateri/i.test(body),
     ...(sanctions.fineLei === undefined ? {} : { fineLei: sanctions.fineLei }),
