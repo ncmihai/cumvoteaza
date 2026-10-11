@@ -17,6 +17,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 type Query = { election?: string; chamber?: string; metric?: string; list?: string; party?: string; level?: string; circ?: string };
 
+/** The elections the Constitutional Court annulled (the first round of 2024, 6 December 2024); a round with a note is not for that reason annulled. */
+const ANNULLED = new Set(["pres-2024-r1"]);
+
 /** A short name for the election's button, under the heading of its kind: "2024", "2025, tur 2". */
 function electionTab(id: string, kind: "parliamentary" | "presidential", heldOn: string, ro: boolean, annulled: boolean): string {
   const year = heldOn.slice(0, 4);
@@ -65,7 +68,7 @@ export default async function ElectionMapPage({ params, searchParams }: { params
           <div className="mt-5">
             <ElectionMap
               locale={locale}
-              elections={data.elections.map((item) => ({ id: item.id, kind: item.kind, label: electionTab(item.id, item.kind, item.heldOn, ro, Boolean(item.note)), ...(item.note ? { note: item.note[locale] } : {}) }))}
+              elections={data.elections.map((item) => ({ id: item.id, kind: item.kind, label: electionTab(item.id, item.kind, item.heldOn, ro, ANNULLED.has(item.id)), ...(item.note ? { note: item.note[locale] } : {}) }))}
               initial={{ election: data.election.id, chamber: data.chamber, metric, ...(list !== undefined ? { list } : {}), ...(circ !== undefined ? { circ } : {}), level }}
             />
           </div>

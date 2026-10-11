@@ -53,7 +53,7 @@ async function queryElectionMap(electionId: string | undefined, chamberInput: st
 }
 
 // A failed read throws inside the cache, so that a database that is busy or a table that is not there yet is not remembered for an hour; the caller turns it into "nothing".
-const cachedElectionMap = unstable_cache(async (electionId: string | undefined, chamber: string | undefined) => (await queryElectionMap(electionId, chamber)) ?? null, ["election-map-v3"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedElectionMap = unstable_cache(async (electionId: string | undefined, chamber: string | undefined) => (await queryElectionMap(electionId, chamber)) ?? null, ["election-map-v4"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 export async function getElectionMapData(electionId?: string, chamber?: string): Promise<ElectionMapData | undefined> {
   try {

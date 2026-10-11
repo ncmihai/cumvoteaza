@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AreaReading } from "../elections/areas";
 import { buildNameIndex } from "../elections/areas-2012";
 import { circumscriptionOfCounty, readRezultatevotAreas } from "../elections/rezultatevot";
-import { buildSettlementIndex, unitOfPlace } from "../elections/siruta";
+import { buildSettlementIndex, placeVillagesByOrder, unitOfPlace } from "../elections/siruta";
 
 const area = (key: string, circumscriptionNumber: number, name: string) => ({ key, circumscriptionNumber, name, sections: 1, registered: 0, present: 0, valid: 0, invalid: 0, votes: new Map<string, number>() });
 const later: AreaReading = { areas: [area("1151", 1, "ORAŞ ABRUD"), area("1017", 1, "MUNICIPIUL ALBA IULIA"), area("8001", 31, "ORAŞ PĂTÂRLAGELE")], lists: new Map(), aliases: [], withoutCommune: 0 };
@@ -76,7 +76,9 @@ const REGISTER = [
   "2131,2130,3,17,1,ALBAC",
   "2132,2130,3,18,1,POIANA",
   "2200,10,2,3,1,POIANA",
-  "2201,2200,3,17,1,POIANA"
+  "2201,2200,3,17,1,POIANA",
+  "3000,10,2,3,1,SÂNPETRU",
+  "3001,3000,3,17,1,SÂNPETRU"
 ].join("\n");
 
 describe("the SIRUTA register: villages added up under their commune", () => {
@@ -87,7 +89,12 @@ describe("the SIRUTA register: villages added up under their commune", () => {
     expect(unitOfPlace(settlements, 1, "Aiudul De Sus")).toBe("1213");
     expect(unitOfPlace(settlements, 1, "Albac")).toBe("2130");
     expect(unitOfPlace(settlements, 1, "Poiana")).toBeUndefined();
+    // Rezultate Vot numbers a unit's own entry below 100,000 and the villages from there: the commune Poiana and the village Poiana of Albac are told apart by it.
+    expect(unitOfPlace(settlements, 1, "Poiana", 52)).toBe("2200");
+    expect(unitOfPlace(settlements, 1, "Poiana", 108850)).toBe("2130");
     expect(unitOfPlace(settlements, 2, "Barabant")).toBeUndefined();
+    // Rezultate Vot prints â and î as a and i ("Sanpetru"); the register's spelling is found with them written alike.
+    expect(unitOfPlace(settlements, 1, "Sanpetru")).toBe("3000");
     expect(settlements.unitNames.get("1213")).toBe("MUNICIPIUL AIUD");
   });
 
@@ -101,5 +108,26 @@ describe("the SIRUTA register: villages added up under their commune", () => {
     expect(aiud).toMatchObject({ name: "MUNICIPIUL AIUD", valid: 1000, circumscriptionNumber: 1 });
     expect(aiud.votes.get("klaus werner iohannis")).toBe(620);
     expect(reading.unmatched).toContainEqual({ circumscription: 1, name: "Poiana", votes: 50 });
+  });
+});
+
+describe("villages that two units of a county share the name of", () => {
+  const register = [
+    "siruta,parent,level,type,county,name",
+    "10,1,1,40,1,JUDEŢUL ALBA",
+    "100,10,2,3,1,ALFA", "101,100,3,22,1,ALFA", "102,100,3,23,1,AAA", "103,100,3,23,1,SLOBOZIA", "104,100,3,23,1,ZZZ",
+    "200,10,2,3,1,BETA", "201,200,3,22,1,BETA", "202,200,3,23,1,BBB", "203,200,3,23,1,SLOBOZIA"
+  ].join("\n");
+  const index = buildSettlementIndex(register);
+
+  it("places each by the units' villages following one another in the list, in alphabetical order, and leaves unplaced what the order does not decide", () => {
+    const list = [{ id: 100001, name: "AAA" }, { id: 100002, name: "SLOBOZIA" }, { id: 100003, name: "ZZZ" }, { id: 100004, name: "BBB" }, { id: 100005, name: "SLOBOZIA" }, { id: 5, name: "Alfa" }];
+    const placed = placeVillagesByOrder(index, 1, list);
+    expect(placed.get(100002)).toBe("100");
+    expect(placed.get(100005)).toBe("200");
+    // A name only one unit has is not the order's to place.
+    expect(placed.has(100001)).toBe(false);
+    // Two Slobozias in a row with nothing around them: either unit would do.
+    expect(placeVillagesByOrder(index, 1, [{ id: 100001, name: "SLOBOZIA" }]).size).toBe(0);
   });
 });

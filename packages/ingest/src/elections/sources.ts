@@ -71,7 +71,7 @@ const OLDER_2009 = { portalUrl: "https://data.gov.ro/dataset/alegeri-prezidentia
 
 /**
  * A round known only by its national totals: the Constitutional Court's decision on the result of the round (it quotes the Central Electoral Bureau's minutes) in the Official Gazette. The BEC's own
- * minutes of 2019 are not on the legislative portal, and the AEP's 2019 polling-station files are not held (D-043), so there is no county or commune breakdown and no map.
+ * minutes of 2019 are not on the legislative portal, and the AEP's 2019 polling-station files are not held (D-043), so without `communes` there is no county or commune breakdown and no map. The second round has `communes`: its results by locality from Rezultate Vot, summed under the communes of the SIRUTA register and equal to the Court's totals.
  */
 function nationalRound(id: string, heldOn: string, label: { ro: string; en: string }, act: { decision: number; gazette: number; portal: number }, totals: NonNullable<ElectionSource["nationalOnly"]>, communes?: NonNullable<ElectionSource["rezultatevot"]>): ElectionSource {
   const n = (value: number) => value.toLocaleString("ro-RO");
@@ -82,11 +82,14 @@ function nationalRound(id: string, heldOn: string, label: { ro: string; en: stri
     heldOn,
     legislatureYear: heldOn.slice(0, 4),
     portalUrl: `https://legislatie.just.ro/Public/DetaliiDocument/${act.portal}`,
-    license: `Hotărârea Curții Constituționale nr. ${act.decision}/2019, Monitorul Oficial nr. ${act.gazette} (act oficial)`,
+    license: `Hotărârea Curții Constituționale nr. ${act.decision}/2019, Monitorul Oficial nr. ${act.gazette} (act oficial)${communes ? "; rezultatele pe localități: Rezultate Vot (Code for Romania), după datele publice ale AEP" : ""}`,
     kind: "presidential",
-    note: {
-      ro: `Doar totalurile pe țară, din Hotărârea Curții Constituționale nr. ${act.decision} din 2019 (Monitorul Oficial nr. ${act.gazette}), care reproduce procesul-verbal al Biroului Electoral Central: ${n(totals.registered)} alegători pe listele permanente, ${n(totals.present)} prezenți, ${n(totals.valid)} voturi valabile, ${n(totals.invalid)} nule. Rezultatele pe județe și comune din 2019 nu sunt încărcate, deci nu există hartă pentru acest tur.`,
-      en: `National totals only, from the Constitutional Court's Decision no. ${act.decision} of 2019 (Official Gazette no. ${act.gazette}), which reproduces the Central Electoral Bureau's minutes: ${en(totals.registered)} voters on the permanent lists, ${en(totals.present)} came, ${en(totals.valid)} valid votes, ${en(totals.invalid)} null. The 2019 results by county and commune are not loaded, so there is no map for this round.`
+    note: communes ? {
+      ro: `Totalurile pe țară sunt din Hotărârea Curții Constituționale nr. ${act.decision} din 2019 (Monitorul Oficial nr. ${act.gazette}): ${n(totals.registered)} alegători pe listele permanente, ${n(totals.present)} prezenți, ${n(totals.valid)} voturi valabile, ${n(totals.invalid)} nule. Rezultatele pe comune vin de la Rezultate Vot (Code for Romania), care arată rezultatele publice ale AEP pe localități: localitățile unei comune sunt adunate sub comuna din registrul SIRUTA (iulie 2024), găsită după nume în același județ (un sat al cărui nume îl au mai multe comune din județ este plasat după ordinea listei). Voturile fiecărui candidat adunate pe comune sunt egale cu cele din hotărârea Curții; câteva zeci de localități (circa 0,3% din voturi) nu au putut fi legate de o comună și nu apar pe hartă. Hărțile arată teritoriul de azi.`,
+      en: `The national totals are from the Constitutional Court's Decision no. ${act.decision} of 2019 (Official Gazette no. ${act.gazette}): ${en(totals.registered)} voters on the permanent lists, ${en(totals.present)} came, ${en(totals.valid)} valid votes, ${en(totals.invalid)} null. The commune results come from Rezultate Vot (Code for Romania), which shows the AEP's public results by locality: a commune's localities are added up under the commune of the SIRUTA register (July 2024), found by name in the same county (a village whose name several communes of the county share is placed by the order of the list). Each candidate's votes added up over the communes equal the Court's decision; a few dozen localities (about 0.3% of the votes) could not be tied to a commune and are not on the map. The maps draw today's territory.`
+    } : {
+      ro: `Doar totalurile pe țară, din Hotărârea Curții Constituționale nr. ${act.decision} din 2019 (Monitorul Oficial nr. ${act.gazette}), care reproduce procesul-verbal al Biroului Electoral Central: ${n(totals.registered)} alegători pe listele permanente, ${n(totals.present)} prezenți, ${n(totals.valid)} voturi valabile, ${n(totals.invalid)} nule. Rezultatele pe județe și comune pentru acest tur nu sunt încărcate (lista localităților de la Rezultate Vot este incompletă pentru turul 1), deci nu există hartă pentru el; harta turului 2 există.`,
+      en: `National totals only, from the Constitutional Court's Decision no. ${act.decision} of 2019 (Official Gazette no. ${act.gazette}), which reproduces the Central Electoral Bureau's minutes: ${en(totals.registered)} voters on the permanent lists, ${en(totals.present)} came, ${en(totals.valid)} valid votes, ${en(totals.invalid)} null. The results by county and commune for this round are not loaded (Rezultate Vot's list of localities is incomplete for round 1), so there is no map for it; the second round has one.`
     },
     nationalOnly: totals,
     ...(communes ? { rezultatevot: communes } : {}),

@@ -224,6 +224,12 @@ test("the election map has the presidential rounds, and says the first round of 
   await expect(page.getByRole("note")).toContainText("Decizia nr. 32 din 6 decembrie 2024");
   await expect(page.getByRole("region", { name: "Legenda" })).toContainText("Călin Georgescu");
   await expect(page).toHaveURL(/election=pres-2024-r1/);
+  // The second round of 2019 is on the map by commune (Rezultate Vot, summed under the communes of the SIRUTA register), and only the first round of 2024 is called annulled.
+  const round2019 = page.getByRole("list", { name: "Prezidențiale" }).getByRole("button", { name: "2019, tur 2", exact: true });
+  test.skip((await round2019.count()) === 0, "the 2019 second round has not been imported on this site yet");
+  await round2019.click();
+  await expect(page.getByRole("region", { name: "Legenda" })).toContainText("Klaus-Werner Iohannis");
+  await expect(page.getByRole("note")).toContainText("Rezultate Vot");
 });
 
 test("the Presidents' pages: who signed, how they were elected, whom they appointed, and the route of each office @db", async ({ page }) => {

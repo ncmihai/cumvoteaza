@@ -124,7 +124,7 @@ async function queryElectionView(filter: { election?: string; chamber?: string; 
 
 const cachedElectionView = unstable_cache(
   async (filter: { election?: string; chamber?: string; circumscription?: number }) => queryElectionView(filter),
-  ["election-view-v5"],
+  ["election-view-v6"],
   { revalidate: 3600, tags: [CACHE_TAGS.parties] }
 );
 
@@ -227,7 +227,7 @@ async function queryElectionInfo(): Promise<ElectionInfo[]> {
   }
 }
 
-const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v5"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const getElectionInfo = unstable_cache(async () => queryElectionInfo(), ["election-info-v6"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** Every election we hold, newest first. */
 export async function getElections(): Promise<ElectionInfo[]> {

@@ -120,7 +120,7 @@ const plain = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").t
 
 export { COUNTY_NAMES, circumscriptionOfCounty } from "./circumscriptions";
 import { circumscriptionOfCounty } from "./circumscriptions";
-import { unitOfPlace, type SettlementIndex } from "./siruta";
+import { placeVillagesByOrder, unitOfPlace, type SettlementIndex } from "./siruta";
 
 export interface RezultatevotReading extends AreaReading {
   /** Localities that no commune of the later elections answers to (kept out of the map under "unknown:<county>"). */
@@ -148,6 +148,22 @@ export async function readRezultatevotAreas(repoRoot: string, ballotId: number, 
       for (const place of JSON.parse((await cache.read("rezultatevot", key))!.toString("utf8")) as Array<{ id: number; countyId?: number }>) allowed.add(`c${place.countyId ?? key.split("-c")[1]}-l${place.id}`);
     } catch (error) {
       problems.push(`${key}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  // Villages whose name several units of the county share are placed by the order of the list (see `placeVillagesByOrder`).
+  const placedByOrder = new Map<string, string>();
+  if (settlements) {
+    const counties = JSON.parse((await cache.read("rezultatevot", "counties"))?.toString("utf8") ?? "[]") as Array<{ id: number; name: string }>;
+    for (const key of keys.filter((name) => name.startsWith(`localities-b${listBallotId}-`))) {
+      const countyId = Number(key.split("-c")[1]);
+      const circumscription = circumscriptionOfCounty(counties.find((county) => county.id === countyId)?.name ?? "");
+      if (!circumscription || circumscription === 42) continue;
+      try {
+        const list = JSON.parse((await cache.read("rezultatevot", key))!.toString("utf8")) as Array<{ id: number; name: string }>;
+        for (const [id, unit] of placeVillagesByOrder(settlements, circumscription, list)) placedByOrder.set(`c${countyId}-l${id}`, unit);
+      } catch {
+        // The same unreadable list is reported above.
+      }
     }
   }
   const add = (key: string, circumscriptionNumber: number, name: string, answer: BallotAnswer) => {
@@ -204,7 +220,7 @@ export async function readRezultatevotAreas(repoRoot: string, ballotId: number, 
         continue;
       }
       // The second round is by locality: a commune's villages are added up under the commune the SIRUTA register says they belong to. Without the register the names are those of units (the first round's).
-      const unit = settlements ? unitOfPlace(settlements, circumscription, place) : undefined;
+      const unit = settlements ? unitOfPlace(settlements, circumscription, place, answer.scope?.localityId) ?? placedByOrder.get(rest) : undefined;
       const found = settlements ? (unit ? { siruta: unit } : undefined) : resolveLocality(index, circumscription, place);
       if (found) add(found.siruta, circumscription, settlements?.unitNames.get(found.siruta) ?? place, answer);
       else {
