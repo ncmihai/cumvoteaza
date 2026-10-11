@@ -14,7 +14,9 @@ export const LOCAL_BACKUP_SETS: Array<{ name: string; path: string; optional?: b
   { name: "cdep-history", path: "data/cdep-history" },
   { name: "curated", path: "data/curated" },
   // Raw official vote and bill lists saved by the coverage commands (Sprint 2); absent until the first fetch.
-  { name: "coverage-raw", path: "data/coverage/raw", optional: true }
+  { name: "coverage-raw", path: "data/coverage/raw", optional: true },
+  // The election files the maintainer downloads by hand in a browser (the AEP's portal answers programs with a browser check, and data.gov.ro's certificate had expired): they cannot be fetched again by a program.
+  { name: "manual", path: "data/manual", optional: true }
 ];
 
 export type LocalBackupResult = {
