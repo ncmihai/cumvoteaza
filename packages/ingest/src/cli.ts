@@ -696,6 +696,37 @@ async function main() {
     return;
   }
 
+  if (command === "finance:aep:fetch") {
+    // Sprint 15 follow-up: the AEP's annual control reports on parties' income and expenses (acts of the Official Gazette on the legislative portal), the lists and each report's page saved under data/coverage/raw.
+    // One request every --delay-ms (default 3000), at most --limit per run, resumable; plan only (what is saved) without --live.
+    const { fetchAnnualReports } = await import("./finance/aep-reports");
+    const result = await fetchAnnualReports({ repoRoot, live: hasFlag("live"), delayMs: numberFlag("delay-ms") ?? 3000, limit: numberFlag("limit") ?? 400, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request what is not saved yet.");
+    return;
+  }
+
+  if (command === "finance:aep:report") {
+    // The annual reports read from the saved pages (offline): one line per party and year, and the reports whose text was not the expected shape.
+    const { readAnnualReports } = await import("./finance/aep-reports");
+    const read = await readAnnualReports(repoRoot);
+    const reports = read.flatMap((item) => (item.report ? [item.report] : []));
+    const rows = reports.flatMap((report) => report.years.map((year) => ({ year, report })));
+    console.log(JSON.stringify({ saved: read.length, read: reports.length, yearsRead: rows.length, linesAddUp: rows.filter((row) => row.year.linesAddUp).length, skipped: read.filter((item) => item.skipped).map((item) => ({ id: item.portalId, why: item.skipped, title: item.title.slice(0, 140) })) }, null, 2));
+    for (const { year: row, report } of rows.sort((a, b) => a.year.year - b.year.year || a.year.party.localeCompare(b.year.party))) console.log(`${row.year}  ${row.party.slice(0, 46).padEnd(46)} income ${row.incomeTotal.toLocaleString("en-GB")}  subsidy ${(row.income.filter((line) => line.kind === "subsidy").reduce((sum, line) => sum + line.lei, 0)).toLocaleString("en-GB")}  expenses ${row.expensesTotal?.toLocaleString("en-GB") ?? "?"}  fine ${report.fineLei?.toLocaleString("en-GB") ?? "-"}${row.linesAddUp ? "" : "  (lines do not add up)"}`);
+    return;
+  }
+
+  if (command === "elections:rezultatevot:fetch") {
+    // D-043 follow-up: the 2019 presidential rounds by commune from Code for Romania's Rezultate Vot API (the AEP's results by locality), saved byte for byte under data/coverage/raw/rezultatevot.
+    // One request at a time, --delay-ms apart (default 1000), resumable; plan only (what is saved) without --live. Ballots 3 and 2 are the first and second round.
+    const { fetchRezultatevot } = await import("./elections/rezultatevot");
+    const result = await fetchRezultatevot({ repoRoot, live: hasFlag("live"), ballots: (flag("ballots") ?? "3,2").split(",").map(Number), delayMs: numberFlag("delay-ms") ?? 1000, maxRequests: numberFlag("max-requests") ?? 8000, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request what is not saved yet.");
+    return;
+  }
+
   if (command === "elections:fetch") {
     // Sprint 15 (D-038): the open-data files of the parliamentary elections of 2016 and 2020 (data.gov.ro, 12 files), saved under data/coverage/raw. Plan only without --live.
     const result = await fetchElectionFiles({ repoRoot, live: hasFlag("live"), log: (line) => console.log(line) });

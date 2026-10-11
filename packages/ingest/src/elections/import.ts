@@ -10,6 +10,7 @@ import { RawCache } from "../coverage/raw-cache";
 import { INDEPENDENTS_KEY, readAreas, type AreaReading } from "./areas";
 import { buildNameIndex, readAreas2012, readIndependents2012, type NameIndex } from "./areas-2012";
 import { readLegacy2012 } from "./legacy-2012";
+import { readRezultatevotAreas } from "./rezultatevot";
 import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, sumPvListVotes, type ListMandates, type ListVotes } from "./parse";
 import { ELECTION_SOURCES, type ElectionFile, type ElectionSource } from "./sources";
 
@@ -120,6 +121,21 @@ export async function readElection(repoRoot: string, election: ElectionSource): 
 /** The commune-level results of one election, for each chamber whose polling-station file is there. */
 export async function readElectionAreas(repoRoot: string, election: ElectionSource, nameIndex?: NameIndex): Promise<Partial<Record<Ballot, AreaReading>>> {
   const out: Partial<Record<Ballot, AreaReading>> = {};
+  if (election.rezultatevot) {
+    // A round known by its national totals, with the commune results read from the saved Rezultate Vot answers (rezultatevot.ts), checked against the totals the official act prints.
+    if (!nameIndex) return out;
+    const reading = await readRezultatevotAreas(repoRoot, election.rezultatevot.ballotId, nameIndex);
+    if (reading.areas.length === 0) return out;
+    const wanted = election.nationalOnly?.results ?? [];
+    const plainName = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const differences = wanted.flatMap((candidate) => {
+      const got = reading.totalsByCandidate.get(plainName(candidate.name)) ?? 0;
+      return got === candidate.votes ? [] : [`${candidate.name}: official ${candidate.votes}, communes ${got}`];
+    });
+    const unmatched = reading.unmatched.length === 0 ? "none" : reading.unmatched.map((item) => `${item.name} (${item.circumscription}, ${item.votes} votes)`).join(", ");
+    out.president = { ...reading, aliases: [`${election.id}: communes read from Rezultate Vot; differences from the official national totals: ${differences.length === 0 ? "none" : differences.join("; ")}; places not found by name: ${unmatched}; unreadable answers: ${reading.problems.length}`] };
+    return out;
+  }
   if (election.legacy2012?.sections) {
     // 2012: the stations name their locality but carry no SIRUTA code (see areas-2012.ts); without the later elections' files to read the names from, there is no map.
     const bytes = await readFile(path.join(repoRoot, "data/manual/elections", election.legacy2012.sections)).catch(() => undefined);

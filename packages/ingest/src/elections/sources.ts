@@ -38,6 +38,8 @@ export interface ElectionSource {
   legacy2012?: { circumscriptions: string; candidates: string; /** The polling-station file (no SIRUTA code; the commune is found by its name). */ sections?: string };
   /** An election with no polling-station files, known only by the national totals an official act prints (the Constitutional Court's decisions on the 2019 presidential rounds): one row per candidate, no circumscription. */
   nationalOnly?: { registered: number; present: number; valid: number; invalid: number; results: Array<{ name: string; votes: number }> };
+  /** The commune results of a `nationalOnly` round, from the answers saved by `elections:rezultatevot:fetch` (Code for Romania's Rezultate Vot API, the AEP's results by locality); read against the national totals. */
+  rezultatevot?: { ballotId: number };
   files: ElectionFile[];
 }
 
@@ -71,7 +73,7 @@ const OLDER_2009 = { portalUrl: "https://data.gov.ro/dataset/alegeri-prezidentia
  * A round known only by its national totals: the Constitutional Court's decision on the result of the round (it quotes the Central Electoral Bureau's minutes) in the Official Gazette. The BEC's own
  * minutes of 2019 are not on the legislative portal, and the AEP's 2019 polling-station files are not held (D-043), so there is no county or commune breakdown and no map.
  */
-function nationalRound(id: string, heldOn: string, label: { ro: string; en: string }, act: { decision: number; gazette: number; portal: number }, totals: NonNullable<ElectionSource["nationalOnly"]>): ElectionSource {
+function nationalRound(id: string, heldOn: string, label: { ro: string; en: string }, act: { decision: number; gazette: number; portal: number }, totals: NonNullable<ElectionSource["nationalOnly"]>, ballotId: number): ElectionSource {
   const n = (value: number) => value.toLocaleString("ro-RO");
   const en = (value: number) => value.toLocaleString("en-GB");
   return {
@@ -87,6 +89,7 @@ function nationalRound(id: string, heldOn: string, label: { ro: string; en: stri
       en: `National totals only, from the Constitutional Court's Decision no. ${act.decision} of 2019 (Official Gazette no. ${act.gazette}), which reproduces the Central Electoral Bureau's minutes: ${en(totals.registered)} voters on the permanent lists, ${en(totals.present)} came, ${en(totals.valid)} valid votes, ${en(totals.invalid)} null. The 2019 results by county and commune are not loaded, so there is no map for this round.`
     },
     nationalOnly: totals,
+    rezultatevot: { ballotId },
     files: []
   };
 }
@@ -110,7 +113,7 @@ export const ELECTION_SOURCES: ElectionSource[] = [
   nationalRound("pres-2019-r2", "2019-11-24", { ro: "Alegerile prezidențiale din 24 noiembrie 2019, turul 2", en: "The presidential election of 24 November 2019, second round" }, { decision: 85, gazette: 959, portal: 220424 }, {
     registered: 18287119, present: 10031762, valid: 9849057, invalid: 182648,
     results: [{ name: "KLAUS-WERNER IOHANNIS", votes: 6509135 }, { name: "VASILICA-VIORICA DĂNCILĂ", votes: 3339922 }]
-  }),
+  }, 2),
   nationalRound("pres-2019-r1", "2019-11-10", { ro: "Alegerile prezidențiale din 10 noiembrie 2019, turul 1", en: "The presidential election of 10 November 2019, first round" }, { decision: 77, gazette: 925, portal: 219851 }, {
     registered: 18286865, present: 9359673, valid: 9216515, invalid: 142961,
     results: [
@@ -119,7 +122,7 @@ export const ELECTION_SOURCES: ElectionSource[] = [
       { name: "VIOREL CATARAMĂ", votes: 48662 }, { name: "BOGDAN-DRAGOȘ-AURELIU MARIAN-STANOEVICI", votes: 39192 }, { name: "CĂTĂLIN-SORIN IVAN", votes: 32787 }, { name: "NINEL PEIA", votes: 30884 },
       { name: "SEBASTIAN-CONSTANTIN POPESCU", votes: 30850 }, { name: "JOHN-ION BANU", votes: 27769 }
     ]
-  }),
+  }, 3),
   presidentialRound("pres-2025-r2", "pres-2025-r2", "2025-05-18", { ro: "Alegerile prezidențiale din 18 mai 2025, turul 2", en: "The presidential election of 18 May 2025, second round" }, "prezidentiale18052025"),
   presidentialRound("pres-2025-r1", "pres-2025-r1", "2025-05-04", { ro: "Alegerile prezidențiale din 4 mai 2025, turul 1", en: "The presidential election of 4 May 2025, first round" }, "prezidentiale04052025"),
   presidentialRound("pres-2024-r1", "pres-2024-r1", "2024-11-24", { ro: "Alegerile prezidențiale din 24 noiembrie 2024, turul 1 (anulat)", en: "The presidential election of 24 November 2024, first round (annulled)" }, "prezidentiale24112024", {
