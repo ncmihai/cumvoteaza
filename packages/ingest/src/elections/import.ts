@@ -11,6 +11,7 @@ import { INDEPENDENTS_KEY, readAreas, type AreaReading } from "./areas";
 import { buildNameIndex, readAreas2012, readIndependents2012, type NameIndex } from "./areas-2012";
 import { readLegacy2012 } from "./legacy-2012";
 import { readRezultatevotAreas } from "./rezultatevot";
+import { buildSettlementIndex } from "./siruta";
 import { decodeElectionBytes, parseDelimited, readMandatesLong, readMandatesWide, sumListVotes, sumPvListVotes, type ListMandates, type ListVotes } from "./parse";
 import { ELECTION_SOURCES, type ElectionFile, type ElectionSource } from "./sources";
 
@@ -124,7 +125,8 @@ export async function readElectionAreas(repoRoot: string, election: ElectionSour
   if (election.rezultatevot) {
     // A round known by its national totals, with the commune results read from the saved Rezultate Vot answers (rezultatevot.ts), checked against the totals the official act prints.
     if (!nameIndex) return out;
-    const reading = await readRezultatevotAreas(repoRoot, election.rezultatevot.ballotId, nameIndex, election.rezultatevot.listBallotId);
+    const settlements = election.rezultatevot.bySettlement ? buildSettlementIndex(await readFile(path.join(repoRoot, "packages/ingest/src/elections/curated/siruta-2024-07.csv"), "utf8")) : undefined;
+    const reading = await readRezultatevotAreas(repoRoot, election.rezultatevot.ballotId, nameIndex, election.rezultatevot.listBallotId, settlements);
     if (reading.areas.length === 0) return out;
     const wanted = election.nationalOnly?.results ?? [];
     const plainName = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

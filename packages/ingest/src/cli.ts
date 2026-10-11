@@ -734,7 +734,7 @@ async function main() {
     // D-043 follow-up: the 2019 presidential rounds by commune from Code for Romania's Rezultate Vot API (the AEP's results by locality), saved byte for byte under data/coverage/raw/rezultatevot.
     // One request at a time, --delay-ms apart (default 1000), resumable; plan only (what is saved) without --live. Ballots 3 and 2 are the first and second round.
     const { fetchRezultatevot } = await import("./elections/rezultatevot");
-    const result = await fetchRezultatevot({ repoRoot, live: hasFlag("live"), ballots: (flag("ballots") ?? "3,2").split(",").map(Number), ...(numberFlag("list-ballot") ? { listBallot: numberFlag("list-ballot")! } : {}), delayMs: numberFlag("delay-ms") ?? 1000, maxRequests: numberFlag("max-requests") ?? 8000, log: (line) => console.log(line) });
+    const result = await fetchRezultatevot({ repoRoot, live: hasFlag("live"), ballots: (flag("ballots") ?? "3,2").split(",").map(Number), ...(numberFlag("list-ballot") ? { listBallot: numberFlag("list-ballot")! } : {}), ...(flag("shard") ? { shard: flag("shard")! } : {}), delayMs: numberFlag("delay-ms") ?? 1000, maxRequests: numberFlag("max-requests") ?? 8000, log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request what is not saved yet.");
     return;

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AreaReading } from "../elections/areas";
 import { buildNameIndex } from "../elections/areas-2012";
 import { circumscriptionOfCounty, readRezultatevotAreas } from "../elections/rezultatevot";
+import { buildSettlementIndex, unitOfPlace } from "../elections/siruta";
 
 const area = (key: string, circumscriptionNumber: number, name: string) => ({ key, circumscriptionNumber, name, sections: 1, registered: 0, present: 0, valid: 0, invalid: 0, votes: new Map<string, number>() });
 const later: AreaReading = { areas: [area("1151", 1, "ORAŞ ABRUD"), area("1017", 1, "MUNICIPIUL ALBA IULIA"), area("8001", 31, "ORAŞ PĂTÂRLAGELE")], lists: new Map(), aliases: [], withoutCommune: 0 };
@@ -58,5 +59,47 @@ describe("readRezultatevotAreas", () => {
     expect(reading.totalsByCandidate.get("klaus werner iohannis")).toBe(60 + 700 + 10 + 300 + 48);
     expect(reading.lists.get("vasilica viorica dancila")).toEqual({ name: "VASILICA-VIORICA DĂNCILĂ", independents: false });
     expect(reading.problems).toEqual([]);
+  });
+});
+
+
+const REGISTER = [
+  "siruta,parent,level,type,county,name",
+  "10,1,1,40,1,JUDEŢUL ALBA",
+  "1017,10,2,1,1,MUNICIPIUL ALBA IULIA",
+  "1026,1017,3,9,1,ALBA IULIA",
+  "1035,1017,3,10,1,BĂRĂBANŢ",
+  "1213,10,2,4,1,MUNICIPIUL AIUD",
+  "1222,1213,3,9,1,AIUD",
+  "1231,1213,3,10,1,AIUDUL DE SUS",
+  "2130,10,2,3,1,ALBAC",
+  "2131,2130,3,17,1,ALBAC",
+  "2132,2130,3,18,1,POIANA",
+  "2200,10,2,3,1,POIANA",
+  "2201,2200,3,17,1,POIANA"
+].join("\n");
+
+describe("the SIRUTA register: villages added up under their commune", () => {
+  const settlements = buildSettlementIndex(REGISTER);
+
+  it("finds the unit a place belongs to, whether it is a village, the seat or the unit itself, and gives up where two units have a place of that name", () => {
+    expect(unitOfPlace(settlements, 1, "Barabant")).toBe("1017");
+    expect(unitOfPlace(settlements, 1, "Aiudul De Sus")).toBe("1213");
+    expect(unitOfPlace(settlements, 1, "Albac")).toBe("2130");
+    expect(unitOfPlace(settlements, 1, "Poiana")).toBeUndefined();
+    expect(unitOfPlace(settlements, 2, "Barabant")).toBeUndefined();
+    expect(settlements.unitNames.get("1213")).toBe("MUNICIPIUL AIUD");
+  });
+
+  it("sums a commune's localities in one area, named as the register names the unit, and keeps an ambiguous place out", async () => {
+    const dir = path.join(root, "data/coverage/raw/rezultatevot");
+    await writeFile(path.join(dir, "b2-c1-l5001.json"), answer("Alba", "Aiud", 800, [["KLAUS-WERNER IOHANNIS", 500], ["VASILICA-VIORICA DĂNCILĂ", 300]]));
+    await writeFile(path.join(dir, "b2-c1-l5002.json"), answer("Alba", "Aiudul De Sus", 200, [["KLAUS-WERNER IOHANNIS", 120], ["VASILICA-VIORICA DĂNCILĂ", 80]]));
+    await writeFile(path.join(dir, "b2-c1-l5003.json"), answer("Alba", "Poiana", 50, [["KLAUS-WERNER IOHANNIS", 50]]));
+    const reading = await readRezultatevotAreas(root, 2, index, 2, settlements);
+    const aiud = reading.areas.find((item) => item.key === "1213")!;
+    expect(aiud).toMatchObject({ name: "MUNICIPIUL AIUD", valid: 1000, circumscriptionNumber: 1 });
+    expect(aiud.votes.get("klaus werner iohannis")).toBe(620);
+    expect(reading.unmatched).toContainEqual({ circumscription: 1, name: "Poiana", votes: 50 });
   });
 });

@@ -54,7 +54,7 @@ async function getJson<T>(cache: RawCache, fetcher: PoliteFetcher, key: string, 
 }
 
 /** Saves the county, locality and country answers of the given ballots (3 is the first round of 2019, 2 the second). Without `live` it only counts what is saved. */
-export async function fetchRezultatevot(options: { repoRoot: string; live: boolean; ballots: number[]; /** The ballot whose list of localities is used for every ballot (the first by default; the second round's own list adds every village). */ listBallot?: number; delayMs?: number; maxRequests?: number; log?: (line: string) => void }): Promise<FetchRezultatevotResult> {
+export async function fetchRezultatevot(options: { repoRoot: string; live: boolean; ballots: number[]; /** The ballot whose list of localities is used for every ballot (the first by default; the second round's own list adds every village). */ listBallot?: number; /** "i/n": only the counties whose position in the list is i modulo n, so that several runs can share the work. */ shard?: string; delayMs?: number; maxRequests?: number; log?: (line: string) => void }): Promise<FetchRezultatevotResult> {
   const cache = new RawCache(path.join(options.repoRoot, "data/coverage/raw"));
   const fetcher = new PoliteFetcher({ maxRequests: options.maxRequests ?? 8000, delayMs: options.delayMs ?? 1000, timeoutMs: 60_000, retries: 2, maxConsecutiveFailures: 5, userAgent: "cumvoteaza-research/0.1 (+https://cumvoteaza.vercel.app; one request at a time)" });
   const counters = { cached: 0, requested: 0 };
@@ -65,9 +65,11 @@ export async function fetchRezultatevot(options: { repoRoot: string; live: boole
   try {
     const counties = (await getJson<County[]>(cache, fetcher, "counties", `${REZULTATEVOT_API}/counties`, options.live, counters)) ?? [];
     const localities: Locality[] = [];
+    const [shardIndex, shardCount] = (options.shard ?? "0/1").split("/").map(Number) as [number, number];
+    const mine = (county: County) => counties.indexOf(county) % shardCount === shardIndex;
     for (const county of counties) {
       const list = await getJson<Array<{ id: number; name: string; countyId?: number }>>(cache, fetcher, rawKey(["localities", `b${first}`, `c${county.id}`]), `${REZULTATEVOT_API}/localities?countyId=${county.id}&ballotId=${first}`, options.live, counters);
-      for (const item of list ?? []) localities.push({ id: item.id, name: item.name, countyId: county.id });
+      for (const item of list ?? []) if (mine(county)) localities.push({ id: item.id, name: item.name, countyId: county.id });
     }
     const countries: Country[] = [];
     for (const ballot of options.ballots) {
@@ -77,11 +79,13 @@ export async function fetchRezultatevot(options: { repoRoot: string; live: boole
     // The totals the pages of the county and the country give: what the sums of the localities are checked against.
     const queue: Array<{ key: string; url: string }> = [];
     for (const ballot of options.ballots) {
-      queue.push({ key: rawKey([`b${ballot}`, "national"]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=national` });
-      queue.push({ key: rawKey([`b${ballot}`, "diaspora"]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=diaspora` });
-      for (const county of counties) queue.push({ key: rawKey([`b${ballot}`, `c${county.id}`]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=county&CountyId=${county.id}` });
+      if (shardIndex === 0) {
+        queue.push({ key: rawKey([`b${ballot}`, "national"]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=national` });
+        queue.push({ key: rawKey([`b${ballot}`, "diaspora"]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=diaspora` });
+      }
+      for (const county of counties.filter(mine)) queue.push({ key: rawKey([`b${ballot}`, `c${county.id}`]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=county&CountyId=${county.id}` });
       for (const place of localities) queue.push({ key: rawKey([`b${ballot}`, `c${place.countyId}`, `l${place.id}`]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=locality&CountyId=${place.countyId}&LocalityId=${place.id}` });
-      for (const country of countries) queue.push({ key: rawKey([`b${ballot}`, `country${country.id}`]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=diaspora_country&CountryId=${country.id}` });
+      for (const country of shardIndex === 0 ? countries : []) queue.push({ key: rawKey([`b${ballot}`, `country${country.id}`]), url: `${REZULTATEVOT_API}/ballot?BallotId=${ballot}&Division=diaspora_country&CountryId=${country.id}` });
     }
     for (const item of queue) {
       if (await cache.has("rezultatevot", item.key)) {
@@ -114,15 +118,9 @@ interface BallotAnswer {
 
 const plain = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-/** The 43 circumscriptions of the parliamentary elections, which the presidential results also use for the counties (Bucharest 42, abroad 43). */
-export const COUNTY_NAMES = ["ALBA", "ARAD", "ARGEŞ", "BACĂU", "BIHOR", "BISTRIŢA-NĂSĂUD", "BOTOŞANI", "BRAŞOV", "BRĂILA", "BUZĂU", "CARAŞ-SEVERIN", "CĂLĂRAŞI", "CLUJ", "CONSTANŢA", "COVASNA", "DÂMBOVIŢA", "DOLJ", "GALAŢI", "GIURGIU", "GORJ", "HARGHITA", "HUNEDOARA", "IALOMIŢA", "IAŞI", "ILFOV", "MARAMUREŞ", "MEHEDINŢI", "MUREŞ", "NEAMŢ", "OLT", "PRAHOVA", "SATU MARE", "SĂLAJ", "SIBIU", "SUCEAVA", "TELEORMAN", "TIMIŞ", "TULCEA", "VASLUI", "VÂLCEA", "VRANCEA", "MUNICIPIUL BUCUREŞTI"];
-
-export function circumscriptionOfCounty(name: string): number | undefined {
-  const folded = plain(name);
-  if (/^(municipiul )?bucuresti$/.test(folded)) return 42;
-  const at = COUNTY_NAMES.findIndex((county) => plain(county) === folded);
-  return at < 0 ? undefined : at + 1;
-}
+export { COUNTY_NAMES, circumscriptionOfCounty } from "./circumscriptions";
+import { circumscriptionOfCounty } from "./circumscriptions";
+import { unitOfPlace, type SettlementIndex } from "./siruta";
 
 export interface RezultatevotReading extends AreaReading {
   /** Localities that no commune of the later elections answers to (kept out of the map under "unknown:<county>"). */
@@ -134,7 +132,7 @@ export interface RezultatevotReading extends AreaReading {
 }
 
 /** One ballot's saved answers as commune results, the communes found by name (as the 2012 stations are). */
-export async function readRezultatevotAreas(repoRoot: string, ballotId: number, index: NameIndex, listBallotId = ballotId): Promise<RezultatevotReading> {
+export async function readRezultatevotAreas(repoRoot: string, ballotId: number, index: NameIndex, listBallotId = ballotId, settlements?: SettlementIndex): Promise<RezultatevotReading> {
   const cache = new RawCache(path.join(repoRoot, "data/coverage/raw"));
   const keys = await cache.keys("rezultatevot");
   const prefix = `b${ballotId}-`;
@@ -205,8 +203,10 @@ export async function readRezultatevotAreas(repoRoot: string, ballotId: number, 
         add(siruta, 42, `BUCUREŞTI SECTORUL ${sector}`, answer);
         continue;
       }
-      const found = resolveLocality(index, circumscription, place);
-      if (found) add(found.siruta, circumscription, place, answer);
+      // The second round is by locality: a commune's villages are added up under the commune the SIRUTA register says they belong to. Without the register the names are those of units (the first round's).
+      const unit = settlements ? unitOfPlace(settlements, circumscription, place) : undefined;
+      const found = settlements ? (unit ? { siruta: unit } : undefined) : resolveLocality(index, circumscription, place);
+      if (found) add(found.siruta, circumscription, settlements?.unitNames.get(found.siruta) ?? place, answer);
       else {
         add(`unknown:${circumscription}`, circumscription, "?", answer);
         const entry = unmatched.get(`${circumscription}|${place}`) ?? { circumscription, name: place, votes: 0 };
