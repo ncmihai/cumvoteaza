@@ -1,5 +1,5 @@
 import { getPartyElections } from "@/lib/election-data";
-import { getFinance } from "@/lib/finance-data";
+import { financeNote, getCampaigns, getFinance } from "@/lib/finance-data";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -45,6 +45,7 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
   const members = await getPartyCurrentMembers(party.id);
   const electionResults = await getPartyElections(party.id);
   const finance = await getFinance(party.id);
+  const campaigns = await getCampaigns(party.id);
   const kind = (party.kind ?? "party") as keyof (typeof KIND_LABEL)["ro"];
   const chamberSeats = (chamber: "deputies" | "senate") => {
     const entry = composition.chambers.find((candidate) => candidate.chamber === chamber);
@@ -179,7 +180,7 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
                       const lei = (value: number) => `${Math.round(value).toLocaleString(ro ? "ro-RO" : "en-GB")} lei`;
                       return (
                         <tr key={row.id}>
-                          <td className="px-4 py-2 font-medium text-ink">{row.year}{row.note ? <span className="block text-xs font-normal text-muted">{row.note}</span> : null}</td>
+                          <td className="px-4 py-2 font-medium text-ink">{row.year}{row.note ? <span className="block text-xs font-normal text-muted">{financeNote(row.note, ro)}</span> : null}</td>
                           <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.incomeTotal === undefined ? "–" : lei(row.incomeTotal)}</td>
                           <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.breakdown ? lei(row.breakdown.subsidy) : "–"}</td>
                           <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.expensesTotal === undefined ? "–" : lei(row.expensesTotal)}</td>
@@ -192,6 +193,33 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
                 </table>
               </div>
               <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Rapoartele de control ale Autorității Electorale Permanente din Monitorul Oficial; sumele sunt ale AEP. Un an lipsește unde raportul nu a apărut încă sau nu dă cifre." : "The Permanent Electoral Authority's control reports in the Official Gazette; the amounts are the AEP's. A year is missing where its report has not appeared yet or gives no figures."}</p>
+            </section>
+          ) : null}
+
+          {campaigns.length > 0 ? (
+            <section aria-labelledby="party-campaigns">
+              <SectionHeader eyebrow={ro ? "Bani" : "Money"} title={ro ? "Campaniile electorale, după rapoartele AEP" : "Election campaigns, from the AEP's reports"} href={`/${locale}/finance#campaigns`} linkLabel={ro ? "Toate partidele" : "All parties"} />
+              <div className="mt-5 overflow-x-auto rounded-card border border-line bg-surface" tabIndex={0} role="region" aria-label={ro ? "Campanii electorale" : "Election campaigns"}>
+                <table className="w-full min-w-[28rem] border-collapse text-sm">
+                  <caption className="sr-only">{ro ? "Contribuțiile și cheltuielile partidului în campanii" : "The party's campaign contributions and spending"}</caption>
+                  <thead className="bg-wash text-left text-xs text-ink-soft"><tr><th scope="col" className="px-4 py-2 font-semibold">{ro ? "Alegerea" : "Election"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Contribuții" : "Contributions"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Cheltuieli" : "Spending"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Amendă" : "Fine"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Raport" : "Report"}</th></tr></thead>
+                  <tbody className="divide-y divide-line">
+                    {campaigns.map((row) => {
+                      const lei = (value: number) => `${Math.round(value).toLocaleString(ro ? "ro-RO" : "en-GB")} lei`;
+                      const kinds = { parliamentary: ro ? "Parlamentare" : "Parliamentary", presidential: ro ? "Prezidențiale" : "Presidential", local: ro ? "Locale" : "Local", local_partial: ro ? "Locale parțiale" : "Partial local", european: ro ? "Europarlamentare" : "European", other: ro ? "Alegeri" : "Election" };
+                      return (
+                        <tr key={row.id}>
+                          <td className="px-4 py-2 font-medium text-ink">{kinds[row.kind]} {row.year}{row.note ? <span className="block text-xs font-normal text-muted">{financeNote(row.note, ro)}</span> : null}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.contributions === undefined ? "–" : lei(row.contributions)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.expenses === undefined ? "–" : lei(row.expenses)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.fine === undefined ? (row.warned ? (ro ? "avertisment" : "warning") : "–") : lei(row.fine)}</td>
+                          <td className="px-4 py-2 text-right"><a href={row.portalUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand hover:text-brand-strong">{row.reportNumber ? `nr. ${row.reportNumber}` : ro ? "Raport" : "Report"}</a></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </section>
           ) : null}
         </div>

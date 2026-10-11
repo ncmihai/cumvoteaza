@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { incomeKindOf, leiOf, parseAnnualReport, parseControlReport, parseReportList } from "../finance/aep-reports";
+import { electionKindOf, incomeKindOf, leiOf, parseAnnualReport, parseCampaignReport, parseControlReport, parseReportList } from "../finance/aep-reports";
 
 // Extracts of two real reports (Official Gazette 57 of 19 Jan 2022 and 968 of 21 Oct 2020), the sentences the AEP writes.
 const PSD_2020 = "RAPORT nr. 22.427 din 10 decembrie 2021în urma verificării respectării prevederilor legale privind veniturile și cheltuielile Partidului Social Democrat în anul 2020 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ Publicat în MONITORUL OFICIAL nr. 57 din 19 ianuarie 2022 - extras - În conformitate cu prevederile art. 42 alin. (1) din Legea nr. 334/2006 privind finanțarea activității partidelor politice, în perioada 25.08.2021-10.12.2021 s-a desfășurat misiunea de control referitoare la respectarea prevederilor legale privind sursele de finanțare și cheltuielile înregistrate de Partidul Social Democrat în anul 2020, perioada verificată fiind 1.01.2020-31.12.2020. Constatări: Ca urmare a verificărilor efectuate asupra documentelor puse la dispoziția echipei de control s-a constatat că Partidul Social Democrat a obținut în anul 2020 venituri aferente activității curente în sumă totală de 147.419.259,28 lei, astfel: 10.488.373,77 lei reprezentând venituri din cotizații, 2.623.730,47 lei reprezentând venituri din donații, 3.347,61 lei reprezentând venituri din reduceri comerciale mai mari de 20% din valoarea bunurilor/serviciilor, 12.711.025,00 lei reprezentând venituri din împrumuturi, 121.116.029,83 lei reprezentând subvenții acordate de la bugetul de stat și 476.752,60 lei reprezentând venituri din alte surse. Cheltuielile aferente activității curente au fost în sumă totală de 136.220.834,19 lei. În urma controlului efectuat s-a constatat că au fost încălcate prevederile art. 3 alin. (2), (4) și (8), art. 5 alin. (4), art. 13 alin. (1), art. 25 alin. (2), art. 38 alin. (4), art. 43 alin. (4) și ale art. 60 alin. (3) din Legea nr. 334/2006, republicată. București, 10 decembrie 2021.";
@@ -96,5 +96,69 @@ describe("parseControlReport on the sentence forms", () => {
     expect(sent.years[0]!.incomeTotal).toBeUndefined();
     expect(sent.years[0]!.note).toMatch(/did not send/);
     expect(sent.violations).toEqual(["art. 43 alin. (4)", "art. 49 alin. (1) și (3)"]);
+  });
+});
+
+// Extracts of real campaign reports (Official Gazette 689 of 23 Jul 2025, 323 of 23 Apr 2026, 287 of 2 Apr 2025, 343 of 28 Apr 2026, 1112 of 3 Dec 2025), the AEP's words.
+const campaign = (party: string, election: string, findings: string, sanctions = "II. Sancțiuni aplicate ... București, 1 martie 2025.") =>
+  `RAPORT nr. 1 din 1 martie 2025 privind verificarea legalității veniturilor și cheltuielilor electorale ale ${party}, cu ocazia ${election}- extras -I. Constatări ... ${sanctions} Reveniti in topul paginii RAPORT nr. 1 din 1 martie 2025 privind verificarea legalității veniturilor și cheltuielilor electorale ale ${party}, cu ocazia ${election} EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ Publicat în MONITORUL OFICIAL nr. 1 din 1 aprilie 2025 - extras - ... I. Constatări ${findings} ${sanctions}`;
+
+describe("parseCampaignReport", () => {
+  it("reads the totals of the 'veniturile electorale au fost în cuantum total' form", () => {
+    const report = parseCampaignReport(campaign("Partidului Național Liberal", "alegerilor pentru Președintele României din anul 2024",
+      "Ca urmare a verificărilor efectuate s-a constatat că pentru campania electorală aferentă alegerilor pentru Președintele României din anul 2024: – veniturile electorale au fost în cuantum total de 17.652.000,00 lei, din care 3.542.000,00 lei provenite din transfer activitate curentă a formațiunii politice și 14.110.000,00 lei provenite din subvenții de la bugetul de stat; ... – cheltuielile electorale au fost în cuantum total de 17.650.605,51 lei, din care 3.541.017,92 lei cheltuieli efectuate din finanțare privată. ..."))!;
+    expect(report).toMatchObject({ party: "Partidul Național Liberal", kind: "presidential", year: 2024, contributions: 17652000, expenses: 17650605.51 });
+    // The portal prints the title twice (once above the "- extras -" summary); the election is the words of the title only.
+    expect(report.election).toBe("alegerilor pentru Președintele României din anul 2024");
+  });
+
+  it("reads the 'a înregistrat venituri electorale … în cuantum de' bullets and does not take a part of the sum for the whole", () => {
+    const report = parseCampaignReport(campaign("Partidului Social Democrat", "alegerilor locale parțiale din data de 7 decembrie 2025",
+      "Ca urmare a verificărilor s-au constatat următoarele: – a înregistrat venituri electorale doar din surse de finanțare private, în cuantum de 1.850.850,00 lei, din care: • 1.030.850,00 lei - venituri proprii ale candidaților; • 800.000,00 lei - împrumuturi; – a înregistrat cheltuieli electorale în cuantum de 1.735.796,91 lei, din care: • 112.616,55 lei - cheltuieli pentru producția. Cuantumul cheltuielilor electorale solicitate în vederea rambursării, conform cererii de rambursare înregistrate la Autoritatea Electorală Permanentă cu nr. 21.389 din 18.12.2025 este de 1.735.704,91 lei. În urma verificărilor efectuate pe baza documentelor, a invalidat suma de 1.000,00 lei."))!;
+    expect(report).toMatchObject({ kind: "local_partial", year: 2025, contributions: 1850850, expenses: 1735796.91, reimbursementRequested: 1735704.91, invalidated: 1000 });
+  });
+
+  it("gives the party that submitted nothing a note and no figure, a warning and not a fine", () => {
+    const report = parseCampaignReport(campaign("Partidului Oamenilor Credincioși", "alegerilor pentru Senat și Camera Deputaților din anul 2024",
+      "Formațiunea politică nu a depus documente justificative. Nu a fost solicitată rambursarea cheltuielilor electorale. ...",
+      "II. Sancțiuni aplicate ca urmare a verificării Partidul Oamenilor Credincioși a fost sancționat cu avertisment ca urmare a nerespectării prevederilor art. 28 alin. (3) din Legea nr. 334/2006. București, 7 martie 2025."))!;
+    expect(report).toMatchObject({ kind: "parliamentary", year: 2024, warned: true, note: expect.stringContaining("supporting documents") });
+    expect(report.contributions).toBeUndefined();
+    expect(report.expenses).toBeUndefined();
+  });
+
+  it("reads 'no income and no expenses' as zero, and a missing detailed report as no figure", () => {
+    const none = parseCampaignReport(campaign("Partidului Național Țărănesc Creștin Democrat", "alegerilor locale parțiale din data de 7.12.2025",
+      "Ca urmare a verificărilor efectuate s-a constatat că entitatea verificată nu a înregistrat venituri și nu a angajat cheltuieli în campania electorală aferentă alegerilor locale parțiale din data de 7.12.2025. ..."))!;
+    expect(none).toMatchObject({ contributions: 0, expenses: 0 });
+    const missing = parseCampaignReport(campaign("Partidului Oamenilor Tineri", "alegerilor locale parțiale din data de 4 mai 2025",
+      "Ca urmare a verificărilor efectuate s-a constatat că pentru campania electorală Partidul Oamenilor Tineri nu și-a desemnat mandatar financiar coordonator pentru campania electorală și nu a depus la Autoritatea Electorală Permanentă, în termen de 15 zile de la data desfășurării alegerilor, raportul detaliat al veniturilor și cheltuielilor electorale și cuantumul datoriilor."))!;
+    expect(missing.contributions).toBeUndefined();
+    expect(missing.expenses).toBeUndefined();
+    expect(missing.note).toContain("detailed report");
+  });
+
+  it("reads the 2024 local-election wordings: 'a înregistrat: – venituri electorale, doar din surse …', a party with no mandatary, an amount that could not be established", () => {
+    const sums = parseCampaignReport(campaign("Partidului Forța Dreptei", "alegerii autorităților administrației publice locale din data de 9 iunie 2024",
+      "Ca urmare a verificărilor s-a constatat că pentru campania electorală aferentă alegerii autorităților administrației publice locale din data de 9 iunie 2024, entitatea verificată a înregistrat: – venituri electorale, doar din surse de finanțare privată, în cuantum de 8.419.809,60 lei din care: • 6.886.859,74 lei - venituri proprii ale candidaților; • 60,00 lei - contribuție partid; ... – cheltuieli electorale în cuantum de 8.231.662,87 lei. ..."))!;
+    expect(sums).toMatchObject({ kind: "local", year: 2024, contributions: 8419809.6, expenses: 8231662.87 });
+    const absent = parseCampaignReport(campaign("Partidului Oamenilor Credincioși", "alegerii autorităților administrației publice locale din anul 2024",
+      "Ca urmare a verificărilor s-a constatat că pentru campania electorală: Partidul Oamenilor Credincioși nu și-a înregistrat mandatar financiar la Autoritatea Electorală Permanentă. Partidul Oamenilor Credincioși nu a depus la Autoritatea Electorală Permanentă documentele prevăzute de Legea nr. 334/2006 , republicată, și anume: – raportul detaliat al veniturilor și cheltuielilor electorale; ... – declarația privind cuantumul total al datoriilor. ..."))!;
+    expect(absent.note).toContain("detailed report");
+    const unknown = parseCampaignReport(campaign("Partidului Național de Centru", "alegerii autorităților administrației publice locale din anul 2024",
+      "Ca urmare a verificărilor s-a constatat că pentru campania electorală: – nu s-a putut constata cuantumul contribuțiilor electorale și cuantumul cheltuielilor electorale. ... Nu a fost solicitată rambursarea cheltuielilor electorale."))!;
+    expect(unknown.contributions).toBeUndefined();
+    expect(unknown.note).toContain("could not establish");
+    const nothing = parseCampaignReport(campaign("Partidului Socialist Român", "alegerilor autorităților administrației publice locale din anul 2024",
+      "Ca urmare a verificărilor s-a constatat că pentru campania electorală aferentă alegerilor autorităților administrației publice locale din anul 2024 formațiunea politică nu înregistrat venituri și cheltuieli electorale. ..."))!;
+    expect(nothing).toMatchObject({ contributions: 0, expenses: 0 });
+  });
+
+  it("leaves out a text that is no campaign report, and names the kind of each election", () => {
+    expect(parseCampaignReport(PSD_2020)).toBeUndefined();
+    expect(electionKindOf("alegerilor pentru Parlamentul European din anul 2024")).toEqual({ kind: "european", year: 2024 });
+    expect(electionKindOf("alegerilor autorităților administrației publice locale din anul 2024")).toEqual({ kind: "local", year: 2024 });
+    expect(electionKindOf("alegerilor prezidențiale din anul 2025")).toEqual({ kind: "presidential", year: 2025 });
+    expect(electionKindOf("alegerilor locale parțiale din data de 4 mai 2025")).toEqual({ kind: "local_partial", year: 2025 });
   });
 });

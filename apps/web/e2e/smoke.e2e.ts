@@ -398,3 +398,12 @@ test("party finance: the AEP's control reports give each party's income, the sta
   await page.goto("/ro/parties/psd");
   await expect(page.getByRole("table", { name: "Veniturile și cheltuielile partidului pe ani" })).toBeVisible();
 });
+
+test("party finance: the campaign reports give each party's contributions and spending for an election @db", async ({ page }) => {
+  await page.goto("/ro/finance?campaign=presidential-2025");
+  const table = page.getByRole("table", { name: "Contribuțiile și cheltuielile partidelor în campanie" });
+  // The campaign reports are imported by the owner; until then this site has none, and this test says nothing there.
+  test.skip((await table.count()) === 0, "the AEP campaign reports have not been imported on this site yet");
+  await expect(table.getByRole("row", { name: /^Alianța pentru Unirea Românilor/ })).toContainText("69.139.607 lei");
+  await expect(table.getByRole("row", { name: /^Partidul Social Democrat/ }).getByRole("link", { name: /Raportul AEP/ })).toHaveAttribute("href", /legislatie\.just\.ro/);
+});

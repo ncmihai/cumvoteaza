@@ -106,9 +106,9 @@ export function incomeKindOf(label: string): IncomeKind {
  * report does not have this shape (a control with other findings is not guessed at).
  */
 export function parseAnnualReport(text: string): AnnualReport | undefined {
-  const head = /(?:veniturile\s+și\s+cheltuielile|veniturile\s+si\s+cheltuielile)\s+(.+?)\s+în\s+anul\s+(\d{4})/i.exec(text) ?? /înregistrate\s+de\s+(.+?)\s+în\s+anul\s+(\d{4})/i.exec(text);
+  const head = /(?:veniturile\s+și\s+cheltuielile|veniturile\s+si\s+cheltuielile)\s+(.+?)\s+în\s+anul\s+(\d{4})/i.exec(text) ?? /înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+(.+?)\s+în\s+anul\s+(\d{4})/i.exec(text);
   // The title writes the party in the genitive ("Partidului Social Democrat"); the body names it as it is called ("Partidul Social Democrat a obținut").
-  const named = /(?:înregistrate\s+de|constatat\s+că)\s+((?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+.{3,120}?)(?:\s+în\s+(?:anul|anii|perioada)|\s+a\s+obținut)/.exec(text)?.[1];
+  const named = /(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de|constatat\s+că)\s+((?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+.{3,120}?)(?:\s+în\s+(?:anul|anii|perioada)|\s+a\s+obținut)/.exec(text)?.[1];
   const total = /venituri(?:\s+aferente\s+activității\s+curente)?\s+în\s+sumă\s+totală\s+de\s+([\d.]+,\d{2})\s+lei(?:\s*,?\s*astfel\s*:)?([^]*?)(?:Cheltuielile\b|$)/i.exec(text);
   if (!head || !total) return undefined;
   const lines: IncomeLine[] = [];
@@ -201,8 +201,8 @@ function sanctionsOf(text: string): Pick<ControlReport, "violations" | "noViolat
   };
 }
 
-const GENITIVE: Array<[RegExp, string]> = [[/^Partidului\b/, "Partidul"], [/^Uniunii\b/, "Uniunea"], [/^Alianței\b/, "Alianța"], [/^Alianţei\b/, "Alianța"], [/^Organizației\b/, "Organizația"], [/^Forumului\b/, "Forumul"], [/^Asociației\b/, "Asociația"], [/^Federației\b/, "Federația"], [/^Comunității\b/, "Comunitatea"]];
-const cleanParty = (name: string) => name.replace(/\s*-?\s*extras\b.*$/i, "").replace(/\s+în\s+(?:anul|anii|perioada)\b.*$/i, "").replace(/[\s,.;:-]+$/, "").replace(/\s+/g, " ").trim();
+const GENITIVE: Array<[RegExp, string]> = [[/^Partidului(?:\s+politic)?\b/i, "Partidul"], [/^Uniunii\b/i, "Uniunea"], [/^Alianței\b/i, "Alianța"], [/^Alianţei\b/i, "Alianța"], [/^Organizației\b/i, "Organizația"], [/^Forumului\b/i, "Forumul"], [/^Asociației\b/i, "Asociația"], [/^Federației\b/i, "Federația"], [/^Comunității\b/i, "Comunitatea"]];
+const cleanParty = (name: string) => name.replace(/\s*-?\s*extras\b.*$/i, "").replace(/\s+efectuate\b.*$/i, "").replace(/\s+în\s+(?:anul|anii|perioada)\b.*$/i, "").replace(/[\s,.;:-]+$/, "").replace(/\s+/g, " ").trim();
 const nominative = (name: string) => GENITIVE.reduce((acc, [pattern, to]) => acc.replace(pattern, to), cleanParty(name)).replace(/^Uniunea Democrate Maghiare\b/, "Uniunea Democrată Maghiară");
 
 /** The years a title or sentence names: "în anul 2018", "în anii 2017-2018", "în anii 2019 și 2020", "în perioada 1.01.2023-31.12.2024". */
@@ -220,7 +220,7 @@ const amountPattern = "([\\d.]+(?:,\\d{1,2})?)";
  * Only the figures a sentence gives are taken; a year with none gets the report's note.
  */
 function parseSentenceReport(text: string): ControlReport | undefined {
-  const title = /privind\s+veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)\b/i.exec(text) ?? /veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)/i.exec(text);
+  const title = /privind\s+veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)\b/i.exec(text) ?? /veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)/i.exec(text);
   if (!title) return undefined;
   const party = nominative(title[1]!);
   const heading = /RAPORT[^]*?(?:în\s+(?:anul|anii|perioada)[^]*?)(?=EMITENT)/.exec(text)?.[0] ?? "";
@@ -243,6 +243,17 @@ function parseSentenceReport(text: string): ControlReport | undefined {
   let current: number | undefined = titleYears.length === 1 ? titleYears[0] : undefined;
   for (const sentence of segment.split(/\.\s+(?=[A-ZĂÂÎȘȚ])/)) {
     const named = yearsOf(sentence.replace(/^.*?(?=\b(?:pentru|în)\s+anul)/, ""));
+    const had = new RegExp(`a\\s+avut\\s+venituri\\s+în\\s+cuantum\\s+de\\s+${amountPattern}\\s+lei(\\s+și\\s+nu\\s+a\\s+avut\\s+cheltuieli)?`, "i").exec(sentence);
+    if (had) {
+      const year = named[0] ?? current ?? titleYears[0];
+      if (year !== undefined) {
+        current = year;
+        const row = ensure(year);
+        row.incomeTotal = leiOf(had[1]!);
+        if (had[2]) row.expensesTotal = 0;
+      }
+      continue;
+    }
     const income = new RegExp(`veniturile[^]*?(?:au\\s+totalizat|în\\s+cuantum\\s+total\\s+de|în\\s+valoare\\s+totală\\s+de)\\s+${amountPattern}\\s+lei([^]*)$`, "i").exec(sentence);
     if (income) {
       const year = named[0] ?? current ?? titleYears[0];
@@ -293,17 +304,92 @@ export function parseControlReport(text: string): ControlReport | undefined {
   if (paragraphs) return paragraphs;
   const sentences = parseSentenceReport(text);
   if (sentences) return sentences;
-  const empty = /(?:înregistrate\s+de|echipa\s+de\s+control\s+a\s+constatat\s+că)\s+(.+?)\s+(?:în\s+(?:anul|perioada)|nu\s+a\s+înregistrat)/i.exec(text);
+  const empty = /(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de|echipa\s+de\s+control\s+a\s+constatat\s+că)\s+(.+?)\s+(?:în\s+(?:anul|perioada)|nu\s+a\s+înregistrat)/i.exec(text);
   const none = /nu\s+a\s+înregistrat\s+venituri\s+și\s+nu\s+a\s+efectuat\s+cheltuieli/i.test(text);
   const year = /perioada\s+verificată\s+fiind\s+1\.01\.(\d{4})-31\.12\.(\d{4})/i.exec(text) ?? /în\s+anul\s+(\d{4})/i.exec(text);
   if (none && empty && year) {
-    const party = (/(?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+[^,.]+?(?=\s+nu\s+a\s+înregistrat)/.exec(text)?.[0] ?? empty[1]!).replace(/\s+/g, " ").trim();
+    const party = (/(?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+[^,.]+?(?=\s+nu\s+a\s+înregistrat)/.exec(text)?.[0] ?? /(?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+[^,.]+$/.exec(empty[1]!)?.[0] ?? empty[1]!).replace(/\s+/g, " ").trim();
     const first = Number(year[1]);
     const last = Number(year[2] ?? year[1]);
     const years = Array.from({ length: last - first + 1 }, (_, index) => ({ party, year: first + index, incomeTotal: 0, income: [], expensesTotal: 0, violations: [], noViolations: true, linesAddUp: true }));
     return { party, years, ...sanctionsOf(text), nothingRegistered: true };
   }
   return undefined;
+}
+
+/** What a campaign control report says about one party's campaign for one election. */
+export interface CampaignReport {
+  party: string;
+  /** The election as the title words it ("alegerii autorităților administrației publice locale din anul 2024"). */
+  election: string;
+  kind: "parliamentary" | "presidential" | "local" | "local_partial" | "european" | "other";
+  year: number;
+  /** The contributions to the campaign (candidates' own money, donations, transfers from the party's account). */
+  contributions?: number;
+  expenses?: number;
+  /** The expenses the party asked to be reimbursed, and the sum the control invalidated. */
+  reimbursementRequested?: number;
+  invalidated?: number;
+  /** "Nu a fost solicitată rambursarea" or "nu a fost înregistrat nimic": what the report says where there is no figure. */
+  note?: string;
+  violations: string[];
+  noViolations: boolean;
+  fineLei?: number;
+  /** The party had a warning ("sancționat cu avertisment") rather than a fine. */
+  warned: boolean;
+}
+
+export function electionKindOf(label: string): { kind: CampaignReport["kind"]; year: number } | undefined {
+  const folded = fold(label);
+  const year = Number(/(\d{4})/.exec(label)?.[1]);
+  if (!year) return undefined;
+  if (/parlamentul european|membrilor din romania/.test(folded)) return { kind: "european", year };
+  if (/presedintele|presedintelui|prezidentiale/.test(folded)) return { kind: "presidential", year };
+  if (/senat/.test(folded)) return { kind: "parliamentary", year };
+  if (/partiale/.test(folded)) return { kind: "local_partial", year };
+  if (/locale|administratiei publice/.test(folded)) return { kind: "local", year };
+  return { kind: "other", year };
+}
+
+/**
+ * A campaign control report: "privind verificarea legalității veniturilor și cheltuielilor electorale ale Partidului X, cu ocazia alegerilor ...", then the findings: "– contribuțiile electorale au
+ * fost în cuantum de 14.020,00 lei ... – cheltuielile electorale au fost în cuantum de 14.010,07 lei", the reimbursement asked and invalidated, and the sanctions. Undefined where the heading is not one.
+ */
+export function parseCampaignReport(text: string): CampaignReport | undefined {
+  const head = /veniturilor\s+și\s+cheltuielilor\s+electorale\s+(?:ale|efectuate\s+de)\s+(.+?),?\s+cu\s+ocazia\s+(.+?)\s*(?:[-–]\s*extras|\bI\.\s*Constat|EMITENT|Publicat)/i.exec(text);
+  if (!head) return undefined;
+  const election = head[2]!.replace(/\s+/g, " ").trim();
+  const when = electionKindOf(election);
+  if (!when) return undefined;
+  const marks = [...text.matchAll(/Constat[aă]ri\s*:?/g)];
+  const start = marks.length ? marks[marks.length - 1]!.index! : 0;
+  const body = text.slice(start);
+  const amount = "([\\d.]+(?:,\\d{1,2})?)";
+  const contributions = new RegExp(`(?:contribuțiile|veniturile)\\s+electorale\\s+au\\s+fost\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei|venituri\\s+electorale[^:.]{0,80}?în\\s+cuantum\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const expenses = new RegExp(`cheltuielile\\s+electorale\\s+au\\s+fost\\s+în\\s+cuantum(?:\\s+total)?\\s+de\\s+${amount}\\s+lei|cheltuieli\\s+electorale\\s+în\\s+cuantum\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const noDocuments = /nu\s+a\s+depus\s+documente\s+justificative/i.test(body);
+  const asked = new RegExp(`solicitate\\s+în\\s+vederea\\s+rambursării[\\s\\S]{0,200}?este\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const invalid = new RegExp(`a\\s+invalidat\\s+suma\\s+de\\s+${amount}\\s+lei`, "i").exec(body);
+  const none = /nu\s+au\s+fost\s+înregistrate\s+venituri\s+și\s+cheltuieli\s+electorale|nu\s+(?:a\s+)?înregistrat\s+venituri\s+și\s+cheltuieli\s+electorale|nu\s+a\s+înregistrat\s+venituri\s+și\s+nu\s+a\s+(?:angajat|efectuat)\s+cheltuieli/i.test(body);
+  const noReport = /nu\s+a\s+depus[\s\S]{0,400}?raportul\s+detaliat\s+al\s+veniturilor\s+și\s+cheltuielilor\s+electorale/i.test(body);
+  const notAsked = /nu\s+a\s+fost\s+solicitată\s+rambursarea|nu\s+a\s+depus\s+cererea\s+de\s+rambursare/i.test(body);
+  const unknown = /nu\s+s-a\s+putut\s+constata\s+cuantumul\s+contribuțiilor\s+electorale/i.test(body);
+  if (!contributions && !expenses && !none && !noDocuments && !noReport && !unknown) return undefined;
+  const sanctions = sanctionsOf(body);
+  return {
+    party: cleanParty(nominative(head[1]!)),
+    election,
+    ...when,
+    ...(contributions ? { contributions: leiOf((contributions[1] ?? contributions[2])!) } : none ? { contributions: 0 } : {}),
+    ...(expenses ? { expenses: leiOf((expenses[1] ?? expenses[2])!) } : none ? { expenses: 0 } : {}),
+    ...(asked ? { reimbursementRequested: leiOf(asked[1]!) } : {}),
+    ...(invalid ? { invalidated: leiOf(invalid[1]!) } : {}),
+    ...(contributions || expenses ? {} : unknown ? { note: "The control could not establish the amount of the campaign contributions and expenses." } : noReport ? { note: "The party did not submit the detailed report of its campaign income and expenses." } : noDocuments ? { note: "The party did not submit supporting documents for the campaign." } : notAsked ? { note: "Reimbursement of the campaign expenses was not asked for." } : none ? { note: "The party registered no campaign income or expenses." } : {}),
+    violations: sanctions.violations,
+    noViolations: sanctions.noViolations || /Nu\s+au\s+fost\s+constatate\s+abateri/i.test(body),
+    ...(sanctions.fineLei === undefined ? {} : { fineLei: sanctions.fineLei }),
+    warned: /sancționat[ăa]?\s+cu\s+avertisment/i.test(body)
+  };
 }
 
 export interface FetchReportsResult {
@@ -315,30 +401,35 @@ export interface FetchReportsResult {
   stoppedBy?: string;
 }
 
-/** Saves the result lists of the annual reports and the page of each report, one request at a time, `delayMs` apart. Without `live` it only counts what is saved. */
-export async function fetchAnnualReports(options: { repoRoot: string; live: boolean; delayMs?: number; limit?: number; log?: (line: string) => void }): Promise<FetchReportsResult> {
+/** The campaign control reports on parties and organisations: "privind verificarea legalității veniturilor și cheltuielilor electorale ale Partidului X, cu ocazia alegerilor ...". The reports on independent candidates are not asked for (D-021). */
+export const ELECTORAL_TITLES = ["electorale ale Partidului", "electorale ale Alianţei", "electorale ale Uniunii", "electorale ale Forumului", "electorale ale Federaţiei", "electorale ale Asociaţiei"];
+
+/** Saves the result lists of the reports whose titles contain the given words and the page of each report, one request at a time, `delayMs` apart. Without `live` it only counts what is saved. */
+export async function fetchReports(options: { repoRoot: string; live: boolean; titles: string[]; delayMs?: number; limit?: number; log?: (line: string) => void }): Promise<FetchReportsResult> {
   const cache = new RawCache(path.join(options.repoRoot, "data/coverage/raw"));
   const fetcher = new PoliteFetcher({ maxRequests: options.limit ?? 400, delayMs: options.delayMs ?? 3000, timeoutMs: 90_000, retries: 1 });
   const result: FetchReportsResult = { listed: 0, pagesCached: 0, pagesMissing: 0, requested: 0, failed: [] };
   try {
     const ids = new Set<string>();
-    for (let page = 1; page <= 20; page += 1) {
-      const key = reportListKey(ANNUAL_TITLE, page);
-      let html: string | undefined;
-      const saved = await cache.read("legislatie-aep-list", key);
-      if (saved) html = decodeOfficialBytes(saved);
-      else if (options.live) {
-        const url = reportListUrl(ANNUAL_TITLE, page);
-        const response = await fetcher.get(url);
-        result.requested += 1;
-        if (response.status !== 200) throw new Error(`The portal answered ${response.status} for ${key}`);
-        await cache.write("legislatie-aep-list", key, response.body, { url, status: 200 });
-        html = decodeOfficialBytes(response.body, response.contentType);
+    for (const title of options.titles) {
+      for (let page = 1; page <= 30; page += 1) {
+        const key = reportListKey(title, page);
+        let html: string | undefined;
+        const saved = await cache.read("legislatie-aep-list", key);
+        if (saved) html = decodeOfficialBytes(saved);
+        else if (options.live) {
+          const url = reportListUrl(title, page);
+          const response = await fetcher.get(url);
+          result.requested += 1;
+          if (response.status !== 200) throw new Error(`The portal answered ${response.status} for ${key}`);
+          await cache.write("legislatie-aep-list", key, response.body, { url, status: 200 });
+          html = decodeOfficialBytes(response.body, response.contentType);
+        }
+        if (!html) break;
+        const parsed = parseReportList(html);
+        for (const item of parsed.items) ids.add(item.portalId);
+        if (parsed.items.length === 0 || page * 50 >= parsed.total) break;
       }
-      if (!html) break;
-      const parsed = parseReportList(html);
-      for (const item of parsed.items) ids.add(item.portalId);
-      if (parsed.items.length === 0 || page * 50 >= parsed.total) break;
     }
     result.listed = ids.size;
     for (const id of ids) {
@@ -369,6 +460,9 @@ export async function fetchAnnualReports(options: { repoRoot: string; live: bool
   return result;
 }
 
+/** The annual control reports (see `ANNUAL_TITLE`). */
+export const fetchAnnualReports = (options: { repoRoot: string; live: boolean; delayMs?: number; limit?: number; log?: (line: string) => void }) => fetchReports({ ...options, titles: [ANNUAL_TITLE] });
+
 export interface ReadReport {
   portalId: string;
   report?: ControlReport;
@@ -398,6 +492,35 @@ export async function readAnnualReports(repoRoot: string): Promise<ReadReport[]>
     }
     const report = parseControlReport(decreePageText(decodeOfficialBytes(bytes)));
     out.push({ portalId, title: item.title, issuedOn: item.issuedOn, gazetteNumber: item.gazetteNumber, gazetteOn: item.gazetteOn, number: item.number, ...(report ? { report } : { skipped: "the text does not have the shape of an annual report (income by source and expenses)" }) });
+  }
+  return out.sort((a, b) => (a.issuedOn ?? "").localeCompare(b.issuedOn ?? ""));
+}
+
+export interface ReadCampaign {
+  portalId: string;
+  report?: CampaignReport;
+  title: string;
+  issuedOn?: string;
+  number?: string;
+  gazetteNumber?: string;
+  gazetteOn?: string;
+}
+
+/** The campaign reports among the saved pages, each with its list entry; a saved page that is not one (an annual report) is not returned. */
+export async function readCampaignReports(repoRoot: string): Promise<ReadCampaign[]> {
+  const cache = new RawCache(path.join(repoRoot, "data/coverage/raw"));
+  const entries = new Map<string, ReportListItem>();
+  for (const key of await cache.keys("legislatie-aep-list")) {
+    const bytes = await cache.read("legislatie-aep-list", key);
+    if (bytes) for (const item of parseReportList(decodeOfficialBytes(bytes)).items) entries.set(item.portalId, item);
+  }
+  const out: ReadCampaign[] = [];
+  for (const [portalId, item] of entries) {
+    if (!/electorale/i.test(item.title)) continue;
+    const bytes = await cache.read("legislatie-aep-report", reportPageKey(portalId));
+    if (!bytes) continue;
+    const report = parseCampaignReport(decreePageText(decodeOfficialBytes(bytes)));
+    out.push({ portalId, title: item.title, issuedOn: item.issuedOn, number: item.number, gazetteNumber: item.gazetteNumber, gazetteOn: item.gazetteOn, ...(report ? { report } : {}) });
   }
   return out.sort((a, b) => (a.issuedOn ?? "").localeCompare(b.issuedOn ?? ""));
 }

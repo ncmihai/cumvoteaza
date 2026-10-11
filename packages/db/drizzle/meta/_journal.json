@@ -435,6 +435,13 @@
       "when": 1791715462468,
       "tag": "0061_party_finance_years",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791716777867,
+      "tag": "0062_party_campaign_finance",
+      "breakpoints": true
     }
   ]
 }

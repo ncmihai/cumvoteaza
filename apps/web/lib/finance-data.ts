@@ -89,7 +89,7 @@ async function queryFinance(partyId?: string): Promise<FinanceRow[]> {
 }
 
 // A failed read must not be remembered for an hour: it throws inside the cache and the callers turn it into "nothing".
-const cachedFinance = unstable_cache(async (partyId: string) => queryFinance(partyId || undefined), ["party-finance-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedFinance = unstable_cache(async (partyId: string) => queryFinance(partyId || undefined), ["party-finance-v3"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** Every party and year the reports cover, newest year first and the largest income first; `partyId` narrows it to one party we hold. */
 export async function getFinance(partyId?: string): Promise<FinanceRow[]> {
@@ -99,3 +99,100 @@ export async function getFinance(partyId?: string): Promise<FinanceRow[]> {
     return [];
   }
 }
+
+/** One party's campaign for one election, from the AEP's campaign control reports. */
+export interface CampaignRow {
+  id: string;
+  partyName: string;
+  partySlug?: string;
+  partyDisplayName?: string;
+  kind: "parliamentary" | "presidential" | "local" | "local_partial" | "european" | "other";
+  year: number;
+  label: string;
+  contributions?: number;
+  expenses?: number;
+  reimbursementRequested?: number;
+  invalidated?: number;
+  note?: string;
+  fine?: number;
+  warned: boolean;
+  reportNumber?: string;
+  portalUrl: string;
+}
+
+type RawCampaign = {
+  id: string;
+  party_name: string;
+  slug: string | null;
+  display_name: string | null;
+  election_kind: string;
+  election_year: number;
+  election_label: string;
+  contributions: string | null;
+  expenses: string | null;
+  reimbursement_requested: string | null;
+  invalidated: string | null;
+  note: string | null;
+  fine_lei: string | null;
+  warned: boolean;
+  report_number: string | null;
+  portal_url: string;
+};
+
+
+async function queryCampaigns(partyId?: string): Promise<CampaignRow[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const session = createWebDbSession();
+  try {
+    const rows = await session.db.execute<RawCampaign>(sql`
+      select c.id, c.party_name, p.slug, p.name as display_name, c.election_kind, c.election_year, c.election_label, c.contributions::text, c.expenses::text, c.reimbursement_requested::text,
+             c.invalidated::text, c.note, c.fine_lei::text, c.warned, c.report_number, c.portal_url
+      from party_campaign_finance c left join parties p on p.id = c.party_id
+      ${partyId ? sql`where c.party_id = ${partyId}` : sql``}
+      order by c.election_year desc, c.expenses desc nulls last, c.party_name`);
+    return [...rows].map((row) => ({
+      id: row.id,
+      partyName: row.party_name,
+      ...(row.slug ? { partySlug: row.slug, partyDisplayName: row.display_name ?? row.party_name } : {}),
+      kind: row.election_kind as CampaignRow["kind"],
+      year: Number(row.election_year),
+      label: row.election_label,
+      ...(row.contributions === null ? {} : { contributions: Number(row.contributions) }),
+      ...(row.expenses === null ? {} : { expenses: Number(row.expenses) }),
+      ...(row.reimbursement_requested === null ? {} : { reimbursementRequested: Number(row.reimbursement_requested) }),
+      ...(row.invalidated === null ? {} : { invalidated: Number(row.invalidated) }),
+      ...(row.note ? { note: row.note } : {}),
+      ...(row.fine_lei === null ? {} : { fine: Number(row.fine_lei) }),
+      warned: row.warned,
+      ...(row.report_number ? { reportNumber: row.report_number } : {}),
+      portalUrl: row.portal_url
+    }));
+  } finally {
+    await session.close();
+  }
+}
+
+const cachedCampaigns = unstable_cache(async (partyId: string) => queryCampaigns(partyId || undefined), ["party-campaigns-v2"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+
+/** Every campaign the reports cover, newest election first and the largest spending first; `partyId` narrows it to one party we hold. */
+export async function getCampaigns(partyId?: string): Promise<CampaignRow[]> {
+  try {
+    return await cachedCampaigns(partyId ?? "");
+  } catch {
+    return [];
+  }
+}
+
+const NOTES_RO: Record<string, string> = {
+  "The party did not send the documents the AEP asked for, so the control could not check its income and expenses.": "Partidul nu a trimis documentele cerute de AEP, deci controlul nu i-a putut verifica veniturile și cheltuielile.",
+  "The party declared no income or expenses.": "Partidul nu a declarat venituri sau cheltuieli.",
+  "The party had no income and no expenses in the period.": "Partidul nu a avut venituri și nici cheltuieli în perioadă.",
+  "The party did not submit the detailed report of its campaign income and expenses.": "Partidul nu a depus raportul detaliat al veniturilor și cheltuielilor de campanie.",
+  "The party registered no campaign income or expenses.": "Partidul nu a înregistrat venituri sau cheltuieli de campanie.",
+  "The control could not establish the amount of the campaign contributions and expenses.": "Controlul nu a putut stabili cuantumul contribuțiilor și cheltuielilor de campanie.",
+  "The party did not submit supporting documents for the campaign.": "Partidul nu a depus documente justificative pentru campanie.",
+  "Reimbursement of the campaign expenses was not asked for.": "Nu a fost cerută rambursarea cheltuielilor de campanie."
+};
+
+/** The note of a report in the reader's language: the importers write the English sentence, the Romanian page gets its translation (an unknown sentence is shown as it is). */
+export const financeNote = (note: string, ro: boolean) => (ro ? NOTES_RO[note] ?? note : note);

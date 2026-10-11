@@ -706,6 +706,38 @@ async function main() {
     return;
   }
 
+  if (command === "finance:aep:electoral:fetch") {
+    // The AEP's campaign control reports on parties and organisations (not on independent candidates), the lists and each report's page saved under data/coverage/raw. Plan only without --live.
+    const { ELECTORAL_TITLES, fetchReports } = await import("./finance/aep-reports");
+    const result = await fetchReports({ repoRoot, live: hasFlag("live"), titles: ELECTORAL_TITLES, delayMs: numberFlag("delay-ms") ?? 4000, limit: numberFlag("limit") ?? 80, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request what is not saved yet.");
+    return;
+  }
+
+  if (command === "finance:aep:electoral:import") {
+    // Party money: party_campaign_finance from the saved AEP campaign reports (offline apart from the database). Dry run unless --persist.
+    const { importCampaigns } = await import("./finance/import");
+    const session = createDbSession();
+    try {
+      console.log(JSON.stringify(await importCampaigns(session.db, { repoRoot, persist: hasFlag("persist") }), null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "finance:aep:electoral:report") {
+    // The campaign reports read from the saved pages (offline): one line per party and election, and the reports whose text was not the expected shape.
+    const { readCampaignReports } = await import("./finance/aep-reports");
+    const read = await readCampaignReports(repoRoot);
+    const ok = read.filter((item) => item.report);
+    console.log(JSON.stringify({ saved: read.length, read: ok.length, skipped: read.filter((item) => !item.report).map((item) => ({ id: item.portalId, title: item.title.slice(0, 160) })).slice(0, 30) }, null, 2));
+    for (const item of ok) { const r = item.report!; console.log(`${r.year} ${r.kind.padEnd(13)} ${r.party.slice(0, 40).padEnd(40)} contributions ${r.contributions?.toLocaleString("en-GB") ?? "-"}  expenses ${r.expenses?.toLocaleString("en-GB") ?? "-"}  asked ${r.reimbursementRequested?.toLocaleString("en-GB") ?? "-"}  invalid ${r.invalidated?.toLocaleString("en-GB") ?? "-"}  fine ${r.fineLei ?? "-"}`); }
+    return;
+  }
+
   if (command === "finance:aep:report") {
     // The annual reports read from the saved pages (offline): one line per party and year, and the reports whose text was not the expected shape.
     const { readAnnualReports } = await import("./finance/aep-reports");

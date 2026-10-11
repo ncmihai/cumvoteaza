@@ -93,3 +93,74 @@ export async function importFinance(db: DbClient, options: { repoRoot: string; p
   result.written = rows.length;
   return result;
 }
+
+export interface ImportCampaignsResult {
+  persisted: boolean;
+  reportsSaved: number;
+  reportsRead: number;
+  reportsSkipped: Array<{ id: string; title: string }>;
+  partiesLinked: number;
+  unmatchedParties: number;
+  byKind: Record<string, number>;
+  written: number;
+}
+
+/** Writes `party_campaign_finance` from the saved AEP campaign reports (offline apart from the database). Dry run unless `persist`. */
+export async function importCampaigns(db: DbClient, options: { repoRoot: string; persist: boolean }): Promise<ImportCampaignsResult> {
+  const { readCampaignReports } = await import("./aep-reports");
+  const parties = [...(await db.execute<{ id: string; name: string }>(sql`select id, name from parties`))];
+  const byName = new Map(parties.map((party) => [bare(party.name), party.id]));
+  const read = await readCampaignReports(options.repoRoot);
+  const readAt = new Date();
+  const rows: Array<typeof schema.partyCampaignFinance.$inferInsert> = [];
+  const skipped: ImportCampaignsResult["reportsSkipped"] = [];
+  for (const item of read) {
+    const report = item.report;
+    if (!report) {
+      skipped.push({ id: item.portalId, title: item.title.slice(0, 160) });
+      continue;
+    }
+    rows.push({
+      id: item.portalId,
+      reportId: item.portalId,
+      reportNumber: item.number || null,
+      reportDate: item.issuedOn ?? null,
+      gazetteNumber: item.gazetteNumber ?? null,
+      gazetteOn: item.gazetteOn ?? null,
+      portalUrl: reportPageUrl(item.portalId),
+      partyName: report.party,
+      partyId: byName.get(bare(report.party)) ?? null,
+      electionKind: report.kind,
+      electionYear: report.year,
+      electionLabel: report.election,
+      contributions: report.contributions === undefined ? null : money(report.contributions),
+      expenses: report.expenses === undefined ? null : money(report.expenses),
+      reimbursementRequested: report.reimbursementRequested === undefined ? null : money(report.reimbursementRequested),
+      invalidated: report.invalidated === undefined ? null : money(report.invalidated),
+      note: report.note ?? null,
+      fineLei: report.fineLei === undefined ? null : money(report.fineLei),
+      warned: report.warned,
+      violations: report.violations,
+      readAt
+    });
+  }
+  const byKind: Record<string, number> = {};
+  for (const row of rows) byKind[row.electionKind] = (byKind[row.electionKind] ?? 0) + 1;
+  const result: ImportCampaignsResult = {
+    persisted: options.persist,
+    reportsSaved: read.length,
+    reportsRead: rows.length,
+    reportsSkipped: skipped,
+    partiesLinked: new Set(rows.flatMap((row) => (row.partyId ? [row.partyId] : []))).size,
+    unmatchedParties: new Set(rows.filter((row) => !row.partyId).map((row) => row.partyName)).size,
+    byKind,
+    written: 0
+  };
+  if (!options.persist || rows.length === 0) return result;
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`delete from party_campaign_finance`);
+    for (let i = 0; i < rows.length; i += 200) await tx.insert(schema.partyCampaignFinance).values(rows.slice(i, i + 200));
+  });
+  result.written = rows.length;
+  return result;
+}

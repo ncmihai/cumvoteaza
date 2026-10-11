@@ -1632,3 +1632,37 @@ export const partyFinanceYears = pgTable("party_finance_years", {
   partyYearIdx: index("party_finance_years_party_idx").on(table.partyId, table.year),
   yearIdx: index("party_finance_years_year_idx").on(table.year)
 }));
+
+
+/**
+ * What a party took in and spent on one election campaign, from the AEP's campaign control reports in the Official Gazette (Sprint 15 follow-up, D-044): the contributions, the expenses, the part
+ * of them the party asked to be reimbursed and the part the control invalidated, the fine. One row per report (a party's campaign for an election). Amounts are the AEP's, in lei.
+ */
+export const partyCampaignFinance = pgTable("party_campaign_finance", {
+  id: text("id").primaryKey(),
+  reportId: text("report_id").notNull(),
+  reportNumber: text("report_number"),
+  reportDate: date("report_date"),
+  gazetteNumber: text("gazette_number"),
+  gazetteOn: date("gazette_on"),
+  portalUrl: text("portal_url").notNull(),
+  partyName: text("party_name").notNull(),
+  partyId: text("party_id").references(() => parties.id),
+  /** parliamentary | presidential | local | local_partial | european | other */
+  electionKind: text("election_kind").notNull(),
+  electionYear: integer("election_year").notNull(),
+  /** The election as the report's title words it. */
+  electionLabel: text("election_label").notNull(),
+  contributions: numeric("contributions", { precision: 16, scale: 2 }),
+  expenses: numeric("expenses", { precision: 16, scale: 2 }),
+  reimbursementRequested: numeric("reimbursement_requested", { precision: 16, scale: 2 }),
+  invalidated: numeric("invalidated", { precision: 16, scale: 2 }),
+  note: text("note"),
+  fineLei: numeric("fine_lei", { precision: 16, scale: 2 }),
+  warned: boolean("warned").notNull().default(false),
+  violations: jsonb("violations").$type<string[]>().notNull().default([]),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  partyIdx: index("party_campaign_finance_party_idx").on(table.partyId, table.electionYear),
+  electionIdx: index("party_campaign_finance_election_idx").on(table.electionKind, table.electionYear)
+}));
