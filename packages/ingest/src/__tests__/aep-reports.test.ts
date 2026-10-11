@@ -194,6 +194,11 @@ describe("parseCampaignReport", () => {
     expect(report).toMatchObject({ contributions: 4006467, expenses: 3975088.64, reimbursementRequested: 951232.77 });
   });
 
+  it("is not taken for an annual report by the annual reader", () => {
+    const campaign = "RAPORT nr. 4.716 din 7 martie 2025 privind verificarea legalității veniturilor și cheltuielilor electorale ale Partidului Național Liberal, cu ocazia alegerilor pentru Președintele României din anul 2024 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ Constatări: veniturile electorale au fost în cuantum total de 17.652.000,00 lei. București, 7 martie 2025.";
+    expect(parseControlReport(campaign)).toBeUndefined();
+  });
+
   it("leaves out a text that is no campaign report, and names the kind of each election", () => {
     expect(parseCampaignReport(PSD_2020)).toBeUndefined();
     expect(electionKindOf("alegerilor pentru Parlamentul European din anul 2024")).toEqual({ kind: "european", year: 2024 });

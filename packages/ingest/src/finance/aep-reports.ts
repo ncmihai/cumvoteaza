@@ -220,7 +220,7 @@ const amountPattern = "([\\d.]+(?:,\\d{1,2})?)";
  * Only the figures a sentence gives are taken; a year with none gets the report's note.
  */
 function parseSentenceReport(text: string): ControlReport | undefined {
-  const title = /privind\s+veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)\b/i.exec(text) ?? /veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)/i.exec(text);
+  const title = /privind\s+veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)\b/i.exec(text) ?? /veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)/i.exec(text) ?? /veniturilor\s+și\s+cheltuielilor\s+(?!electorale\b)(?:înregistrate\s+(?:în\s+activitatea\s+curentă\s+)?de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)/i.exec(text);
   if (!title) return undefined;
   const party = nominative(title[1]!);
   const heading = /RAPORT[^]*?(?:în\s+(?:anul|anii|perioada)[^]*?)(?=EMITENT)/.exec(text)?.[0] ?? "";
@@ -278,9 +278,9 @@ function parseSentenceReport(text: string): ControlReport | undefined {
       if (year !== undefined) ensure(year).expensesTotal = leiOf(expenses[2]!);
       continue;
     }
-    const zero = /nu\s+a\s+(?:avut|înregistrat|obținut)\s+venituri|s-a\s+înființat[^]*?nu\s+a\s+avut\s+venituri/i.test(sentence);
+    const zero = /nu\s+a\s+(?:avut|înregistrat|obținut)\s+venituri|nu\s+a\s+avut\s+activitate\s+financiar|s-a\s+înființat[^]*?nu\s+a\s+avut\s+venituri/i.test(sentence);
     const spent = /efectuat\s+cheltuieli\s+în\s+sumă\s+de\s+([\d.]+(?:,\d{1,2})?)\s+lei/i.exec(sentence);
-    const note = /nu\s+a\s+(?:transmis|depus)\b/i.test(sentence) ? "The party did not send the documents the AEP asked for, so the control could not check its income and expenses."
+    const note = /nu\s+a\s+(?:transmis|depus)\b(?:(?!raportul\s+detaliat)[^]){0,200}?documente|nu\s+a\s+pus\s+la\s+dispoziția\s+echipei\s+de\s+control(?!\s+toate\b)|nu\s+au\s+fost\s+puse\s+la\s+dispoziția\s+echipei\s+de\s+control/i.test(sentence) ? "The party did not send the documents the AEP asked for, so the control could not check its income and expenses."
       : /nu\s+a\s+declarat\s+venituri/i.test(sentence) ? "The party declared no income or expenses."
       : zero ? "The party had no income and no expenses in the period."
       : undefined;
@@ -498,6 +498,8 @@ export async function readAnnualReports(repoRoot: string): Promise<ReadReport[]>
   }
   const out: ReadReport[] = [];
   for (const [portalId, item] of entries) {
+    // The campaign reports ("... veniturilor și cheltuielilor electorale ...") are read by `readCampaignReports`, never as a year of income.
+    if (/electorale/i.test(item.title)) continue;
     const bytes = await cache.read("legislatie-aep-report", reportPageKey(portalId));
     if (!bytes) {
       out.push({ portalId, skipped: "page not saved", title: item.title, issuedOn: item.issuedOn, gazetteNumber: item.gazetteNumber, gazetteOn: item.gazetteOn, number: item.number });

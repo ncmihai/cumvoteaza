@@ -89,7 +89,7 @@ async function queryFinance(partyId?: string): Promise<FinanceRow[]> {
 }
 
 // A failed read must not be remembered for an hour: it throws inside the cache and the callers turn it into "nothing".
-const cachedFinance = unstable_cache(async (partyId: string) => queryFinance(partyId || undefined), ["party-finance-v3"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
+const cachedFinance = unstable_cache(async (partyId: string) => queryFinance(partyId || undefined), ["party-finance-v4"], { revalidate: 3600, tags: [CACHE_TAGS.parties] });
 
 /** Every party and year the reports cover, newest year first and the largest income first; `partyId` narrows it to one party we hold. */
 export async function getFinance(partyId?: string): Promise<FinanceRow[]> {
