@@ -310,7 +310,7 @@ test.describe("the trust surface", () => {
     await expect(page.locator("main")).toContainText("CC BY 4.0");
     // What was added later is on it: the 2019 source, the party financing and the elections read.
     await expect(page.locator('main a[href="https://rezultatevot.ro"]')).toBeVisible();
-    await expect(page.getByText("Finanțarea partidelor", { exact: true }).first()).toBeVisible();
+    await expect(page.locator("main").getByText("Finanțarea partidelor", { exact: true })).toBeVisible();
     await expect(page.locator("main")).toContainText("2012, 2016, 2020, 2024");
   });
 
