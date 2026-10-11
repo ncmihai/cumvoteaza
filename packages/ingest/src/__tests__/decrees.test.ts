@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { namedPersons, parseDecreePage, signatureOf } from "../presidency/decrees";
 import { classifyDecree } from "../presidency/decree-types";
+import { unifySignerSpellings } from "../presidency/decrees-import";
 
 /** A record shaped like the portal's: the title carries the number, the date, the subject, the issuer and the Official Gazette; the text ends with the signature. */
 function record(options: { type?: string; issuer?: string; title: string; text: string; id?: string }) {
@@ -101,5 +102,46 @@ describe("namedPersons", () => {
 
   it("reads a decree whose text spaces out the verb ('d e c r e t e a z ă')", () => {
     expect(namedPersons("presidential_staff", "Președintele României d e c r e t e a z ă: + ARTICOL UNIC Începând cu data de 25 mai 2026, domnul Radu-Ioan Mogoș se numește în funcția de consilier de stat. PREȘEDINTELE ROMÂNIEI NICUȘOR-DANIEL DAN București").map((p) => p.name)).toEqual(["Radu-Ioan Mogoș"]);
+  });
+});
+
+describe("unifySignerSpellings", () => {
+  it("gives one signer one spelling: the comma below rather than the cedilla, diacritics rather than none, even where the wrong one is more common", () => {
+    const decrees: Array<{ signer?: string }> = [
+      { signer: "TRAIAN BĂSESCU" }, { signer: "TRAIAN BASESCU" }, { signer: "TRAIAN BASESCU" }, { signer: "TRAIAN BASESCU" },
+      { signer: "GEORGE-CRIN LAURENŢIU ANTONESCU" }, { signer: "GEORGE-CRIN LAURENŢIU ANTONESCU" }, { signer: "GEORGE-CRIN LAURENȚIU ANTONESCU" },
+      { signer: "ION ILIESCU" }, {}
+    ];
+    unifySignerSpellings(decrees);
+    expect(decrees.map((decree) => decree.signer)).toEqual(["TRAIAN BĂSESCU", "TRAIAN BĂSESCU", "TRAIAN BĂSESCU", "TRAIAN BĂSESCU", "GEORGE-CRIN LAURENȚIU ANTONESCU", "GEORGE-CRIN LAURENȚIU ANTONESCU", "GEORGE-CRIN LAURENȚIU ANTONESCU", "ION ILIESCU", undefined]);
+  });
+});
+
+describe("signatureOf on the older decrees", () => {
+  it("reads the signer of a 1990s decree, which ends in a line of dashes and no place and date", () => {
+    expect(signatureOf("Preşedintele României decretează: + Articolul UNIC Se acorda drapelul. PREŞEDINTELE ROMÂNIEI EMIL CONSTANTINESCU ----------------- if (navigator.appVersion)")).toEqual({ name: "EMIL CONSTANTINESCU", interim: false });
+    expect(signatureOf("... PREŞEDINTELE ROMÂNIEI ION ILIESCU ---------------- if (x)")).toEqual({ name: "ION ILIESCU", interim: false });
+  });
+});
+
+describe("namedPersons on the older decrees", () => {
+  it("names who is appointed, not whom they replace, and reads a title written between the honorific and the name", () => {
+    const text = "Preşedintele României decretează: + Articolul 1 Domnul profesor universitar dr. Ioan Deleanu se eliberează, la cerere, din funcţia de judecător la Curtea Constituţională. + Articolul 2 Domnul profesor universitar Nicolae Popa se numeşte în funcţia de judecător la Curtea Constituţională, în locul şi pe durata mandatului domnului Ioan Deleanu. PREŞEDINTELE ROMÂNIEI ION ILIESCU ----------------";
+    const people = namedPersons("constitutional_court", text);
+    expect(people.map((person) => person.name)).toEqual(["Ioan Deleanu", "Nicolae Popa"]);
+    expect(people[0]!.sentence).toContain("se eliberează");
+    expect(people[1]!.sentence).toContain("se numeşte");
+  });
+
+  it("does not take the predecessor of a replacement as a second appointee", () => {
+    const text = "având în vedere demisia domnului judecător Lucian Mihai, Preşedintele României decretează: + Articolul UNIC Pe data de 7 iunie 2001 domnul Şerban Viorel Stanoiu se numeşte în funcţia de judecător la Curtea Constituţională în locul şi pentru restul perioadei mandatului domnului Lucian Mihai. PREŞEDINTELE ROMÂNIEI ION ILIESCU ----------";
+    expect(namedPersons("constitutional_court", text).map((person) => person.name)).toEqual(["Şerban Viorel Stanoiu"]);
+  });
+});
+
+describe("namedPersons with a heading that repeats the signature's words", () => {
+  it("stops at the signature after the operative part, not at a heading before it", () => {
+    const text = "PREŞEDINTELE ROMÂNIEI DECRET privind acordarea unui rang diplomatic Preşedintele României decretează: + Articolul UNIC Domnului Tudor Valeriu i se acordă rangul de ministru plenipotenţiar. PREŞEDINTELE ROMÂNIEI ION ILIESCU ----------";
+    expect(namedPersons("diplomacy", text).map((person) => person.name)).toEqual(["Tudor Valeriu"]);
   });
 });

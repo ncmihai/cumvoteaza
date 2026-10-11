@@ -33,6 +33,30 @@ async function names(dir: string, extension: string): Promise<string[]> {
   }
 }
 
+const signerFold = (name: string) => name.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase().replace(/[^A-Z]+/g, " ").trim();
+const marks = (name: string) => (name.normalize("NFD").match(/\p{M}/gu) ?? []).length;
+
+/**
+ * The portal prints a signer's name in several spellings across the years (with and without diacritics, with the cedilla or the comma below): "TRAIAN BASESCU" and "TRAIAN BĂSESCU", "LAURENŢIU" and
+ * "LAURENȚIU". They are one person, so every spelling becomes the best one: no cedilla (ş ţ are the old, wrong forms), then the most diacritics, then the most decrees.
+ */
+export function unifySignerSpellings(decrees: Array<{ signer?: string }>): void {
+  const spellings = new Map<string, Map<string, number>>();
+  for (const decree of decrees) {
+    if (!decree.signer) continue;
+    const key = signerFold(decree.signer);
+    const counts = spellings.get(key) ?? new Map<string, number>();
+    counts.set(decree.signer, (counts.get(decree.signer) ?? 0) + 1);
+    spellings.set(key, counts);
+  }
+  const best = new Map<string, string>();
+  for (const [key, counts] of spellings) {
+    const ranked = [...counts].sort((a, b) => Number(/[şţŞŢ]/.test(a[0])) - Number(/[şţŞŢ]/.test(b[0])) || marks(b[0]) - marks(a[0]) || b[1] - a[1]);
+    best.set(key, ranked[0]![0]);
+  }
+  for (const decree of decrees) if (decree.signer) decree.signer = best.get(signerFold(decree.signer))!;
+}
+
 /**
  * Every decree the saved pages hold, one per (year, number): the portal's month lists are the catalog (and count their month, so a month can be checked), the web service's pages and the
  * saved decree pages add the text and the signature where we have them. A decree whose signature we did not read gets its signer from the decrees signed before and after it, when both
@@ -79,6 +103,7 @@ export async function readSavedDecrees(repoRoot: string): Promise<SavedDecrees> 
     const signature = signatureOf(text);
     if (signature) { decree.signer = signature.name; decree.signedAsInterim = signature.interim; }
   }
+  unifySignerSpellings([...map.values()]);
   // Signer by the neighbours.
   const ordered = [...map.values()].sort((a, b) => a.issuedOn.localeCompare(b.issuedOn) || a.number - b.number);
   const signedIndexes = ordered.flatMap((decree, index) => (decree.signer ? [index] : []));

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { DECREE_KIND_LABELS, OFFICES, formatDate, type DecreeKind } from "@cumsevoteaza/parliament-model";
 import { getPresidentPage, type Holding } from "@/lib/president-data";
-import { ACTION_LABELS, SERVICE_LABELS, personName } from "@/lib/president-format";
+import { ACTION_LABELS, SERVICE_LABELS, personName, periodsText } from "@/lib/president-format";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { titled } from "@/lib/page-metadata";
 import { PageIntro } from "../../../_components/ui/PageIntro";
@@ -59,8 +59,8 @@ export default async function PresidentPage({ params }: { params: Promise<{ loca
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
       <PageIntro eyebrow={page.interim ? (ro ? "Președinte interimar" : "Acting President") : (ro ? "Președintele României" : "President of Romania")} title={personName(page.name)}>
         {ro
-          ? `De la primul decret din catalogul nostru (${formatDate(page.first, locale)}) până la ultimul (${formatDate(page.last, locale)}): ${number(page.decrees)} decrete semnate${page.inferred ? `, la ${number(page.inferred)} dintre ele semnatarul este dedus din decretele vecine` : ""}.`
-          : `From the first decree in our catalog (${formatDate(page.first, locale)}) to the last (${formatDate(page.last, locale)}): ${number(page.decrees)} decrees signed${page.inferred ? `, ${number(page.inferred)} of them with the signer inferred from the neighbouring decrees` : ""}.`}
+          ? `${page.periods.length > 1 ? `În perioadele ${periodsText(page.periods, page, (iso) => formatDate(iso, locale))}` : `De la primul decret din catalogul nostru (${formatDate(page.first, locale)}) până la ultimul (${formatDate(page.last, locale)})`}: ${number(page.decrees)} decrete semnate${page.inferred ? `, la ${number(page.inferred)} dintre ele semnatarul este dedus din decretele vecine` : ""}.`
+          : `${page.periods.length > 1 ? `In the periods ${periodsText(page.periods, page, (iso) => formatDate(iso, locale))}` : `From the first decree in our catalog (${formatDate(page.first, locale)}) to the last (${formatDate(page.last, locale)})`}: ${number(page.decrees)} decrees signed${page.inferred ? `, ${number(page.inferred)} of them with the signer inferred from the neighbouring decrees` : ""}.`}
       </PageIntro>
       <div className="mt-5"><PresidencyTabs locale={locale} current="presidents" /></div>
 

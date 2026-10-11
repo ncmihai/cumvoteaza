@@ -35,8 +35,8 @@ const isoOf = (day: string, month: string, year: string) => {
 
 /** The signature that closes the text: "PREȘEDINTELE ROMÂNIEI KLAUS-WERNER IOHANNIS București, 22 noiembrie 2021. Nr. 1.123." */
 export function signatureOf(text: string): { name: string; interim: boolean } | undefined {
-  // Closed by the place and date, or, on a decree the Prime Minister countersigns, by "În temeiul art. 100 alin. (2) ... contrasemnăm acest decret".
-  const match = /PRE[SȘŞ]EDINTELE ROM[AÂ]NIEI\s*(-\s*interimar\s*-)?\s*([A-ZĂÂÎȘŞȚŢ][A-ZĂÂÎȘŞȚŢ.\- ]{3,50}?)\s+(?:Bucure[sșş]ti,|[ÎI]n temeiul art\. 100)/.exec(text);
+  // Closed by the place and date, or, on a decree the Prime Minister countersigns, by "În temeiul art. 100 alin. (2) ... contrasemnăm acest decret", or, on the decrees of the 1990s, by a line of dashes.
+  const match = /PRE[SȘŞ]EDINTELE ROM[AÂ]NIEI\s*(-\s*interimar\s*-)?\s*([A-ZĂÂÎȘŞȚŢ][A-ZĂÂÎȘŞȚŢ.\- ]{3,50}?)\s+(?:Bucure[sșş]ti,|[ÎI]n temeiul art\. 100|-{4,})/.exec(text);
   return match ? { name: match[2]!.replace(/\s+/g, " ").trim(), interim: Boolean(match[1]) } : undefined;
 }
 
@@ -80,7 +80,10 @@ export interface NamedPerson {
   sentence: string;
 }
 
-const HONORIFIC_NAME = /\b(?:[Dd]omnul|[Dd]omnului|[Dd]oamna|[Dd]oamnei)\s+([A-ZĂÂÎȘŞȚŢ][\p{L}'’-]*(?:\s+[A-ZĂÂÎȘŞȚŢ][\p{L}'’.-]*){1,4})/gu;
+// "domnul Ion Popescu", "domnul profesor universitar dr. Ioan Deleanu": the lowercase titles between the honorific and the name (up to four words) are not part of the name.
+const HONORIFIC_NAME = /\b(?:[Dd]omnul|[Dd]omnului|[Dd]oamna|[Dd]oamnei)\s+(?:[a-zăâîșşțţ][\p{L}.]*\s+){0,4}?([A-ZĂÂÎȘŞȚŢ][\p{L}'’-]*(?:\s+[A-ZĂÂÎȘŞȚŢ][\p{L}'’.-]*){1,4})/gu;
+/** "... în locul și pe durata mandatului domnului X": X is who held the office before, not who is named. */
+const PREDECESSOR = /(?:mandatului|mandatul|în locul|in locul|locul)\s*$/i;
 
 /**
  * The people a decree of an office-holding kind names ("Se numește domnul X în funcția de ..."), read from its operative part (after "decretează:" and before the signature),
@@ -90,12 +93,15 @@ export function namedPersons(kind: DecreeKind, text: string): NamedPerson[] {
   if (!REGISTER_KINDS.has(kind)) return [];
   const start = /d\s*e\s*c\s*r\s*e\s*t\s*e\s*a\s*z\s*[ăa]\s*:/i.exec(text);
   if (!start) return [];
-  const end = text.search(/PRE[SȘŞ]EDINTELE ROM[AÂ]NIEI/);
-  const body = text.slice(start.index + start[0].length, end > start.index ? end : undefined).replace(/^\s*\+?\s*(ARTICOL UNIC|Articolul\s*\d+)\s*/i, "");
-  const sentences = body.split(/(?<=[.;])\s+(?=(?:\+\s*)?[A-ZĂÂÎȘŞȚŢ])/).map((sentence) => sentence.replace(/^\+\s*(ARTICOL UNIC|Articolul\s*\d+)\s*/i, "").trim()).filter(Boolean);
+  // The signature that closes the decree, looked for after "decretează" (the heading of some older decrees also reads "PREŞEDINTELE ROMÂNIEI").
+  const rest = text.slice(start.index + start[0].length);
+  const end = rest.search(/PRE[SȘŞ]EDINTELE ROM[AÂ]NIEI/);
+  const body = (end >= 0 ? rest.slice(0, end) : rest).replace(/^\s*\+?\s*(ARTICOL UNIC|Articolul\s*\d+)\s*/i, "");
+  const sentences = body.split(/(?<=[.;])(?<!\b(?:dr|ing|prof|conf|lect|gen|col|av|nr|art|alin|lit|pct)\.)\s+(?=(?:\+\s*)?[A-ZĂÂÎȘŞȚŢ])/).map((sentence) => sentence.replace(/^\+\s*(ARTICOL UNIC|Articolul\s*\d+)\s*/i, "").trim()).filter(Boolean);
   const people = new Map<string, NamedPerson>();
   for (const sentence of sentences) {
     for (const match of sentence.matchAll(HONORIFIC_NAME)) {
+      if (PREDECESSOR.test(sentence.slice(Math.max(0, match.index - 40), match.index))) continue;
       const name = match[1]!.replace(/\.$/, "").replace(/\s+/g, " ").trim();
       if (name.split(" ").length < 2 || people.has(fold(name))) continue;
       people.set(fold(name), { name, role: sentence.length > 300 ? `${sentence.slice(0, 297)}…` : sentence, sentence });

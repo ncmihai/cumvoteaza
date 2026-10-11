@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getPresidents } from "@/lib/president-data";
-import { personName } from "@/lib/president-format";
+import { personName, periodsText } from "@/lib/president-format";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { titled } from "@/lib/page-metadata";
 import { PageIntro } from "../../_components/ui/PageIntro";
@@ -44,7 +44,7 @@ export default async function PresidentsPage({ params }: { params: Promise<{ loc
                       <span className="font-display text-xl font-bold text-ink">{personName(president.name)}</span>
                       {president.interim ? <span className="rounded-full bg-wash px-2.5 py-0.5 text-xs font-semibold text-ink-soft">{ro ? "interimar" : "acting"}</span> : null}
                     </p>
-                    <p className="mt-1 text-sm text-muted">{formatDate(president.first, locale)} – {formatDate(president.last, locale)}</p>
+                    <p className="mt-1 text-sm text-muted">{periodsText(president.periods, president, (iso) => formatDate(iso, locale))}</p>
                     <p className="mt-3 text-sm text-ink-soft"><span className="font-semibold tabular-nums text-ink">{number(president.decrees)}</span> {ro ? "decrete semnate" : "decrees signed"}</p>
                     {president.elections.map((election) => <p key={election.id} className="mt-1 text-sm text-ink-soft">{ro ? "Ales la" : "Elected in"} {election.heldOn.slice(0, 4)}: {number(election.votes)} {ro ? "voturi" : "votes"} ({percent(election.share)})</p>)}
                   </div>

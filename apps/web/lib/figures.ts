@@ -21,8 +21,13 @@ export const slugOfName = (value: string) => value.normalize("NFD").replace(/\p{
 
 const figures = figuresJson as Record<string, Figure>;
 
+/** The same person under the full name a decree carries: George-Crin Laurențiu Antonescu is Crin Antonescu (Wikidata Q440970, the acting President of 2012). */
+const ALIASES: Record<string, string> = { "george-crin-laurentiu-antonescu": "crin-antonescu" };
+
 export function figureFor(name: string | undefined): Figure | undefined {
-  return name ? figures[slugOfName(name)] : undefined;
+  if (!name) return undefined;
+  const slug = slugOfName(name);
+  return figures[ALIASES[slug] ?? slug];
 }
 
 export function allFigures(): Array<[string, Figure]> {

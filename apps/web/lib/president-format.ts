@@ -27,3 +27,9 @@ export const SERVICE_LABELS: Record<string, { ro: string; en: string }> = {
   interior: { ro: "Ministerul Afacerilor Interne", en: "Ministry of Internal Affairs" },
   other: { ro: "Alte instituții", en: "Other bodies" }
 };
+
+/** "03 feb. 1992 – 27 nov. 1996 · 14 dec. 2000 – 17 dec. 2004": a President's runs of decrees, each from its first to its last day. */
+export function periodsText(periods: Array<{ first: string; last: string }>, fallback: { first: string; last: string }, format: (iso: string) => string): string {
+  const runs = periods.length > 0 ? periods : [fallback];
+  return runs.map((run) => `${format(run.first)} – ${format(run.last)}`).join(" · ");
+}

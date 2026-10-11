@@ -28,6 +28,8 @@ export interface PresidentSummary {
   inferred: number;
   first: string;
   last: string;
+  /** The runs of decrees this signer signed one after the other: a President who returned (Iliescu, 1992 to 1996 and 2000 to 2004) has two, with another signer's decrees between them. */
+  periods: Array<{ first: string; last: string }>;
   /** The presidential elections whose second round this President won, in our data. */
   elections: PresidentElection[];
 }
@@ -82,6 +84,11 @@ async function querySigners(): Promise<PresidentSummary[]> {
     const signers = [...(await db.execute<{ signer: string; interim: boolean; count: string; inferred: string; first: string; last: string }>(sql`
       select signer, bool_or(signed_as_interim) as interim, count(*)::text as count, count(*) filter (where signer_inferred)::text as inferred, min(issued_on)::text as first, max(issued_on)::text as last
       from presidential_decrees where signer is not null group by signer order by min(issued_on)`))];
+    const runs = [...(await db.execute<{ signer: string; first: string; last: string }>(sql`
+      with signed as (select signer, issued_on, number from presidential_decrees where signer is not null),
+           flagged as (select signer, issued_on, number, case when signer is distinct from lag(signer) over (order by issued_on, number) then 1 else 0 end as change from signed),
+           grouped as (select signer, issued_on, sum(change) over (order by issued_on, number rows unbounded preceding) as run from flagged)
+      select signer, min(issued_on)::text as first, max(issued_on)::text as last from grouped group by signer, run order by min(issued_on)`))];
     const winners = [...(await db.execute<{ id: string; label_ro: string; label_en: string; held_on: string; list_name: string; votes: string; total: string }>(sql`
       with t as (select election_id, list_name, sum(votes) as v from election_list_results where election_id like 'pres-%-r2' group by 1, 2),
            tot as (select election_id, sum(v) as total from t group by 1),
@@ -95,6 +102,7 @@ async function querySigners(): Promise<PresidentSummary[]> {
       inferred: Number(row.inferred),
       first: row.first,
       last: row.last,
+      periods: runs.filter((run) => run.signer === row.signer).map((run) => ({ first: run.first, last: run.last })),
       elections: winners.filter((winner) => foldName(winner.list_name) === foldName(row.signer)).map((winner) => ({ id: winner.id, label: { ro: winner.label_ro, en: winner.label_en }, heldOn: winner.held_on, votes: Number(winner.votes), share: Number(winner.total) ? Number(winner.votes) / Number(winner.total) : 0 }))
     }));
   } finally {
@@ -102,7 +110,7 @@ async function querySigners(): Promise<PresidentSummary[]> {
   }
 }
 
-const cachedSigners = unstable_cache(async () => querySigners(), ["presidents-v1"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedSigners = unstable_cache(async () => querySigners(), ["presidents-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 // A failed read throws inside the cache (so that it is not remembered) and the callers turn it into "nothing".
 /** The signers of the decree catalog, oldest first. */
@@ -175,7 +183,7 @@ const toHolding = (row: HoldingRow): Holding => ({
   ...(row.signer ? { signer: row.signer } : {})
 });
 
-const cachedPresidentPage = unstable_cache(async (slug: string) => (await queryPresidentPage(slug)) ?? null, ["president-page-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedPresidentPage = unstable_cache(async (slug: string) => (await queryPresidentPage(slug)) ?? null, ["president-page-v3"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 export async function getPresidentPage(slug: string): Promise<PresidentPage | undefined> {
   try {
@@ -210,7 +218,7 @@ async function queryOfficeSummaries(): Promise<OfficeSummary[]> {
   }
 }
 
-const cachedOfficeSummaries = unstable_cache(async () => queryOfficeSummaries(), ["office-summaries-v1"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedOfficeSummaries = unstable_cache(async () => queryOfficeSummaries(), ["office-summaries-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 export async function getOfficeSummaries(): Promise<OfficeSummary[]> {
   try {
@@ -235,7 +243,7 @@ async function queryOfficeHoldings(office: string): Promise<Holding[]> {
   }
 }
 
-const cachedOfficeHoldings = unstable_cache(async (office: string) => queryOfficeHoldings(office), ["office-holdings-v2"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+const cachedOfficeHoldings = unstable_cache(async (office: string) => queryOfficeHoldings(office), ["office-holdings-v3"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
 
 /** Every decree that names someone to, or removes someone from, this office, newest first (the most recent 600). */
 export async function getOfficeHoldings(office: string): Promise<Holding[]> {
