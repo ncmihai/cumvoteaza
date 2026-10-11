@@ -86,6 +86,14 @@ describe("senate.ro Voturi Plen", () => {
     expect(votes.map((vote) => vote.item)).toContain("PH - JOIN (2026) 25 final");
   });
 
+  it("keeps a vote whose day page leaves every count blank (votes by phone, early 2021) and says its totals are missing", () => {
+    const blank = `<table><tr class="voturi-plen-agenda-tr"><td>0:00</td><td>L626/12.10.2020</td><td><a href="./VoturiPlenDetaliu.aspx?AppID=EA2D3964-6B1E-4B1D-B9DA-091E824743EB">L626/12.10.2020<br />Proiect de lege</a></td><td>Adoptat</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>`;
+    const [vote] = parseSenateDayVotes(blank, "2020-12-28");
+    expect(vote).toMatchObject({ id: "ea2d3964-6b1e-4b1d-b9da-091e824743eb", resolution: "Adoptat", totalsMissing: true });
+    // One blank count among real ones is still an error: only a row with nothing at all is "missing".
+    expect(() => parseSenateDayVotes(blank.replace("<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>", "<td>5</td><td>&nbsp;</td><td>0</td><td>0</td><td>0</td>"), "2020-12-28")).toThrow(/expected a whole number/);
+  });
+
   it("confirms the selected day from the page itself", () => {
     expect(senateSelectedDate(text("senate-voturi-plen-day-2026-09-30.html"))).toBe("2026-09-30");
   });

@@ -18,6 +18,8 @@ export interface OfficialSenateVote {
   abstention: number;
   notVoting: number;
   totalsConsistent: boolean;
+  /** True when the day page leaves every count blank (the first months of the 2020 legislature, votes by phone): the vote is real and its detail page lists the names, but there is no total to check against. */
+  totalsMissing?: boolean;
 }
 
 export function parseSenateDayVotes(html: string, date: string): OfficialSenateVote[] {
@@ -37,11 +39,12 @@ export function parseSenateDayVotes(html: string, date: string): OfficialSenateV
       if (!/^\d+$/.test(text)) throw new Error(`Senate day ${date} row ${index + 1}: column ${cell + 1} is "${text}", expected a whole number`);
       return Number(text);
     };
-    const present = number(4);
-    const forCount = number(5);
-    const against = number(6);
-    const abstention = number(7);
-    const notVoting = number(8);
+    const totalsMissing = [4, 5, 6, 7, 8].every((cell) => $(cells[cell]).text().replace(/\u00a0/g, " ").trim() === "");
+    const present = totalsMissing ? 0 : number(4);
+    const forCount = totalsMissing ? 0 : number(5);
+    const against = totalsMissing ? 0 : number(6);
+    const abstention = totalsMissing ? 0 : number(7);
+    const notVoting = totalsMissing ? 0 : number(8);
     votes.push({
       id: appId,
       date,
@@ -54,7 +57,8 @@ export function parseSenateDayVotes(html: string, date: string): OfficialSenateV
       against,
       abstention,
       notVoting,
-      totalsConsistent: present === forCount + against + abstention + notVoting
+      totalsConsistent: present === forCount + against + abstention + notVoting,
+      ...(totalsMissing ? { totalsMissing: true } : {})
     });
   });
   return votes;

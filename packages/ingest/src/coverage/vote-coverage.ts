@@ -25,6 +25,8 @@ export interface OfficialVoteRecord {
   isTest: boolean;
   totals: VoteTotals;
   totalsConsistent: boolean;
+  /** The day page gives no counts for this vote, so `totals` are not real and are never compared. */
+  totalsMissing?: boolean;
   /** The Senate's own verdict column. CDEP's list has none. */
   resolution?: string;
   /** Joint amendment votes that D-022 keeps as one summary row per sitting instead of importing them. */
@@ -67,6 +69,7 @@ export function officialFromSenate(vote: OfficialSenateVote): OfficialVoteRecord
     isTest: false,
     totals: { present: vote.present, for: vote.for, against: vote.against, abstention: vote.abstention, notVoting: vote.notVoting },
     totalsConsistent: vote.totalsConsistent,
+    ...(vote.totalsMissing ? { totalsMissing: true } : {}),
     resolution: vote.resolution
   };
 }
@@ -126,6 +129,8 @@ export interface VoteCoverageReport {
   storedWithoutOfficialId: string[];
   /** Official records that are neither a Chamber, Senate nor joint vote. */
   unknownChamber: number;
+  /** Official rows whose day page gives no counts (nothing to compare a stored vote with). */
+  totalsMissing: number;
 }
 
 const FIELDS: Array<[keyof VoteTotals, (vote: StoredVoteRow) => number]> = [
@@ -164,13 +169,15 @@ export function buildVoteCoverage(input: {
   const officialInconsistent: VoteCoverageReport["officialInconsistent"] = [];
   const officialKeys = new Set<string>();
   let unknownChamber = 0;
+  let totalsMissing = 0;
 
   for (const record of official) {
     if (!inRange(record.date)) continue;
     const key = `${record.source}:${record.officialId}`;
     officialKeys.add(key);
     if (record.chamber === "unknown") unknownChamber += 1;
-    if (!record.totalsConsistent) officialInconsistent.push({ source: record.source, officialId: record.officialId, date: record.date });
+    if (record.totalsMissing) totalsMissing += 1;
+    else if (!record.totalsConsistent) officialInconsistent.push({ source: record.source, officialId: record.officialId, date: record.date });
     const cellKey = `${record.date.slice(0, 7)}|${record.chamber}`;
     const cell = cells.get(cellKey) ?? { month: record.date.slice(0, 7), chamber: record.chamber, official: 0, tests: 0, summarised: 0, noNames: 0, held: 0, missing: 0, percent: null, missingIds: [] };
     cells.set(cellKey, cell);
@@ -195,7 +202,7 @@ export function buildVoteCoverage(input: {
     }
     cell.held += 1;
     if (held.heldOn !== record.date) dateMismatches.push({ source: record.source, officialId: record.officialId, storedId: held.id, storedDate: held.heldOn, officialDate: record.date });
-    const differences = FIELDS.flatMap(([field, read]) => (read(held) === record.totals[field] ? [] : [{ field, official: record.totals[field], stored: read(held) }]));
+    const differences = record.totalsMissing ? [] : FIELDS.flatMap(([field, read]) => (read(held) === record.totals[field] ? [] : [{ field, official: record.totals[field], stored: read(held) }]));
     if (differences.length) totalsMismatches.push({ source: record.source, officialId: record.officialId, storedId: held.id, date: record.date, differences });
   }
 
@@ -238,7 +245,8 @@ export function buildVoteCoverage(input: {
     storedNotOnOfficialList,
     storedUnverifiable: { count: unverifiable, days: [...unverifiableDays].sort() },
     storedWithoutOfficialId,
-    unknownChamber
+    unknownChamber,
+    totalsMissing
   };
 }
 
@@ -264,6 +272,7 @@ export function renderCoverageMarkdown(report: VoteCoverageReport, generatedAt: 
   for (const item of report.storedNotOnOfficialList.slice(0, 25)) lines.push(`  - ${item.storedId} (${item.date})`);
   lines.push(`- Votes held on days no list was fetched for (cannot be checked yet): **${report.storedUnverifiable.count}**${report.storedUnverifiable.days.length ? ` on ${report.storedUnverifiable.days.length} days` : ""}`);
   lines.push(`- Official rows whose own numbers do not add up: **${report.officialInconsistent.length}**`);
+  lines.push(`- Official rows whose day page gives no counts (cannot be compared): **${report.totalsMissing}**`);
   lines.push(`- Held votes without an official identifier: **${report.storedWithoutOfficialId.length}**`);
   return `${lines.join("\n")}\n`;
 }
