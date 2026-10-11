@@ -240,7 +240,10 @@ test("the Presidents' pages: who signed, how they were elected, whom they appoin
   await link.first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Klaus-Werner Iohannis" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Decretele semnate, pe tipuri" })).toContainText("Promulgarea unei legi");
-  await expect(page.getByRole("link", { name: /Rezultatul pe hartă/ })).toHaveAttribute("href", /elections\/map\?election=pres-2014-r2/);
+  // Both of his elections, 2014 and 2019, are on the map by commune.
+  const resultLinks = page.getByRole("link", { name: /Rezultatul pe hartă/ });
+  await expect(resultLinks.first()).toHaveAttribute("href", /elections\/map\?election=pres-2014-r2/);
+  await expect(resultLinks.nth(1)).toHaveAttribute("href", /elections\/map\?election=pres-2019-r2/);
   await page.goto("/ro/presidency/appointments");
   await expect(page.getByRole("heading", { name: "Directorul Serviciului Român de Informații" })).toBeVisible();
   await page.goto("/ro/presidency/appointments/sri-director");
