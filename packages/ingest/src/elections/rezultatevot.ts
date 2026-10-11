@@ -54,14 +54,14 @@ async function getJson<T>(cache: RawCache, fetcher: PoliteFetcher, key: string, 
 }
 
 /** Saves the county, locality and country answers of the given ballots (3 is the first round of 2019, 2 the second). Without `live` it only counts what is saved. */
-export async function fetchRezultatevot(options: { repoRoot: string; live: boolean; ballots: number[]; delayMs?: number; maxRequests?: number; log?: (line: string) => void }): Promise<FetchRezultatevotResult> {
+export async function fetchRezultatevot(options: { repoRoot: string; live: boolean; ballots: number[]; /** The ballot whose list of localities is used for every ballot (the first by default; the second round's own list adds every village). */ listBallot?: number; delayMs?: number; maxRequests?: number; log?: (line: string) => void }): Promise<FetchRezultatevotResult> {
   const cache = new RawCache(path.join(options.repoRoot, "data/coverage/raw"));
   const fetcher = new PoliteFetcher({ maxRequests: options.maxRequests ?? 8000, delayMs: options.delayMs ?? 1000, timeoutMs: 60_000, retries: 2, maxConsecutiveFailures: 5, userAgent: "cumvoteaza-research/0.1 (+https://cumvoteaza.vercel.app; one request at a time)" });
   const counters = { cached: 0, requested: 0 };
   const failed: string[] = [];
   let remaining = 0;
   let stopped: string | undefined;
-  const first = options.ballots[0]!;
+  const first = options.listBallot ?? options.ballots[0]!;
   try {
     const counties = (await getJson<County[]>(cache, fetcher, "counties", `${REZULTATEVOT_API}/counties`, options.live, counters)) ?? [];
     const localities: Locality[] = [];
@@ -72,7 +72,7 @@ export async function fetchRezultatevot(options: { repoRoot: string; live: boole
     const countries: Country[] = [];
     for (const ballot of options.ballots) {
       const list = await getJson<Country[]>(cache, fetcher, rawKey(["countries", `b${ballot}`]), `${REZULTATEVOT_API}/countries?ballotId=${ballot}`, options.live, counters);
-      if (ballot === first) countries.push(...(list ?? []));
+      if (countries.length === 0) countries.push(...(list ?? []));
     }
     // The totals the pages of the county and the country give: what the sums of the localities are checked against.
     const queue: Array<{ key: string; url: string }> = [];
@@ -134,7 +134,7 @@ export interface RezultatevotReading extends AreaReading {
 }
 
 /** One ballot's saved answers as commune results, the communes found by name (as the 2012 stations are). */
-export async function readRezultatevotAreas(repoRoot: string, ballotId: number, index: NameIndex): Promise<RezultatevotReading> {
+export async function readRezultatevotAreas(repoRoot: string, ballotId: number, index: NameIndex, listBallotId = ballotId): Promise<RezultatevotReading> {
   const cache = new RawCache(path.join(repoRoot, "data/coverage/raw"));
   const keys = await cache.keys("rezultatevot");
   const prefix = `b${ballotId}-`;
@@ -143,6 +143,15 @@ export async function readRezultatevotAreas(repoRoot: string, ballotId: number, 
   const unmatched = new Map<string, { circumscription: number; name: string; votes: number }>();
   const problems: string[] = [];
   const totalsByCandidate = new Map<string, number>();
+  // The second round's list of localities also names the villages of each commune (their answers add up to the commune's, which is in the list too), so only the places of the first round's list are read.
+  const allowed = new Set<string>();
+  for (const key of keys.filter((name) => name.startsWith(`localities-b${listBallotId}-`))) {
+    try {
+      for (const place of JSON.parse((await cache.read("rezultatevot", key))!.toString("utf8")) as Array<{ id: number; countyId?: number }>) allowed.add(`c${place.countyId ?? key.split("-c")[1]}-l${place.id}`);
+    } catch (error) {
+      problems.push(`${key}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   const add = (key: string, circumscriptionNumber: number, name: string, answer: BallotAnswer) => {
     const results = answer.results;
     if (!results) return;
@@ -177,6 +186,7 @@ export async function readRezultatevotAreas(repoRoot: string, ballotId: number, 
       const name = answer.scope?.countryName ?? rest;
       add(`abroad:${plain(name).replace(/ /g, "-")}`, 43, name, answer);
     } else if (/^c\d+-l\d+$/.test(rest)) {
+      if (allowed.size > 0 && !allowed.has(rest)) continue;
       const countyName = answer.scope?.countyName ?? "";
       const circumscription = circumscriptionOfCounty(countyName);
       const place = answer.scope?.localityName ?? "";

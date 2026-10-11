@@ -39,7 +39,7 @@ export interface ElectionSource {
   /** An election with no polling-station files, known only by the national totals an official act prints (the Constitutional Court's decisions on the 2019 presidential rounds): one row per candidate, no circumscription. */
   nationalOnly?: { registered: number; present: number; valid: number; invalid: number; results: Array<{ name: string; votes: number }> };
   /** The commune results of a `nationalOnly` round, from the answers saved by `elections:rezultatevot:fetch` (Code for Romania's Rezultate Vot API, the AEP's results by locality); read against the national totals. */
-  rezultatevot?: { ballotId: number };
+  rezultatevot?: { ballotId: number; /** The ballot whose list of localities is the list of communes (the second round's list adds every village). */ listBallotId?: number };
   files: ElectionFile[];
 }
 
@@ -89,7 +89,7 @@ function nationalRound(id: string, heldOn: string, label: { ro: string; en: stri
       en: `National totals only, from the Constitutional Court's Decision no. ${act.decision} of 2019 (Official Gazette no. ${act.gazette}), which reproduces the Central Electoral Bureau's minutes: ${en(totals.registered)} voters on the permanent lists, ${en(totals.present)} came, ${en(totals.valid)} valid votes, ${en(totals.invalid)} null. The 2019 results by county and commune are not loaded, so there is no map for this round.`
     },
     nationalOnly: totals,
-    rezultatevot: { ballotId },
+    rezultatevot: { ballotId, listBallotId: 3 },
     files: []
   };
 }

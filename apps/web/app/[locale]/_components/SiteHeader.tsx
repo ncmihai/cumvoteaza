@@ -29,11 +29,17 @@ function navigation(locale: AppLocale): NavItem[] {
         { label: ro ? "Toți parlamentarii" : "All members", href: at("/members"), hint: ro ? "Deputați și senatori, după județ sau partid" : "Deputies and senators, by county or party" },
         { label: ro ? "Compoziția Parlamentului" : "Composition of Parliament", href: at("/compozitii"), hint: ro ? "Locurile fiecărui partid, acum și în timp" : "Each party's seats, now and over time" },
         { label: ro ? "Conducerea" : "Leadership", href: at("/leadership"), hint: ro ? "Birouri permanente, lideri de grup, comisii" : "Permanent bureaus, group leaders, committees" },
-        { label: ro ? "Alegeri parlamentare" : "Parliamentary elections", href: at("/elections"), hint: ro ? "Voturi pe liste, 2016, 2020 și 2024" : "Votes by list, 2016, 2020 and 2024" },
+        { label: ro ? "Alegeri parlamentare" : "Parliamentary elections", href: at("/elections"), hint: ro ? "Voturi și mandate pe liste, 2012–2024" : "Votes and mandates by list, 2012 to 2024" },
         { label: ro ? "Harta alegerilor" : "Election map", href: at("/elections/map"), hint: ro ? "Pe județe și pe comune" : "By county and by commune" }
       ]
     },
-    { key: "parties", label: ro ? "Partide" : "Parties", href: at("/parties"), match: ["/parties"] },
+    {
+      key: "parties", label: ro ? "Partide" : "Parties", href: at("/parties"), match: ["/parties", "/finance"],
+      children: [
+        { label: ro ? "Toate partidele" : "All parties", href: at("/parties"), hint: ro ? "Locuri, istoric, membri" : "Seats, history, members" },
+        { label: ro ? "Finanțarea partidelor" : "Party finance", href: at("/finance"), hint: ro ? "Venituri și cheltuieli, după rapoartele AEP" : "Income and expenses, from the AEP's reports" }
+      ]
+    },
     {
       key: "government", label: ro ? "Guvern" : "Government", href: at("/governments"), match: ["/governments", "/ministries", "/motions", "/presidency", "/questions"],
       children: [

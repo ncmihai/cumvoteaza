@@ -61,6 +61,7 @@
     "elections:rezultatevot:fetch": "tsx src/cli.ts elections:rezultatevot:fetch",
     "finance:aep:fetch": "tsx src/cli.ts finance:aep:fetch",
     "finance:aep:report": "tsx src/cli.ts finance:aep:report",
+    "finance:aep:import": "tsx src/cli.ts finance:aep:import",
     "members:profile-facts:import": "tsx src/cli.ts members:profile-facts:import",
     "bills:reports:fetch": "tsx src/cli.ts bills:reports:fetch",
     "bills:reports:import": "tsx src/cli.ts bills:reports:import",

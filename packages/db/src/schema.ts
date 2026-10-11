@@ -1,9 +1,10 @@
 import {
   boolean,
   date,
-  integer,
   index,
+  integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   pgView,
@@ -1588,4 +1589,46 @@ export const contentReactions = pgTable("content_reactions", {
     table.visitorHash
   ),
   aggregateIdx: index("content_reactions_aggregate_idx").on(table.entityType, table.entityId, table.reaction, table.createdAt)
+}));
+
+
+/**
+ * Party money (Sprint 15 follow-up): what the Permanent Electoral Authority's control reports in the Official Gazette say a party took in and spent in a year, by source, with the sanction. One row
+ * per party and year of a report (a report can cover two years). The amounts are the AEP's, in lei; a report whose lines do not add up to its total says so (`lines_add_up`). `party_id` is set only
+ * where the party's name is exactly one we hold.
+ */
+export const partyFinanceYears = pgTable("party_finance_years", {
+  id: text("id").primaryKey(),
+  /** The report's id on the legislative portal. */
+  reportId: text("report_id").notNull(),
+  reportNumber: text("report_number"),
+  reportDate: date("report_date"),
+  gazetteNumber: text("gazette_number"),
+  gazetteOn: date("gazette_on"),
+  portalUrl: text("portal_url").notNull(),
+  partyName: text("party_name").notNull(),
+  partyId: text("party_id").references(() => parties.id),
+  year: integer("year").notNull(),
+  /** Null where the report gives no figures (the party did not submit its documents, or declared nothing). */
+  incomeTotal: numeric("income_total", { precision: 16, scale: 2 }),
+  incomeDues: numeric("income_dues", { precision: 16, scale: 2 }).notNull().default("0"),
+  incomeDonations: numeric("income_donations", { precision: 16, scale: 2 }).notNull().default("0"),
+  incomeLoans: numeric("income_loans", { precision: 16, scale: 2 }).notNull().default("0"),
+  incomeSubsidy: numeric("income_subsidy", { precision: 16, scale: 2 }).notNull().default("0"),
+  incomeRefund: numeric("income_refund", { precision: 16, scale: 2 }).notNull().default("0"),
+  incomeInterest: numeric("income_interest", { precision: 16, scale: 2 }).notNull().default("0"),
+  incomeOther: numeric("income_other", { precision: 16, scale: 2 }).notNull().default("0"),
+  expensesTotal: numeric("expenses_total", { precision: 16, scale: 2 }),
+  linesAddUp: boolean("lines_add_up").notNull(),
+  nothingRegistered: boolean("nothing_registered").notNull().default(false),
+  /** What the report says when it has no figures ("did not submit the documents", "declared no income or expenses"). */
+  note: text("note"),
+  fineLei: numeric("fine_lei", { precision: 16, scale: 2 }),
+  confiscatedLei: numeric("confiscated_lei", { precision: 16, scale: 2 }),
+  /** The articles of Law 334/2006 the control found broken, as the report lists them. */
+  violations: jsonb("violations").$type<string[]>().notNull().default([]),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  partyYearIdx: index("party_finance_years_party_idx").on(table.partyId, table.year),
+  yearIdx: index("party_finance_years_year_idx").on(table.year)
 }));

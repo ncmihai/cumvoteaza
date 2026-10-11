@@ -66,3 +66,35 @@ describe("parseControlReport", () => {
     expect(single.violations).toHaveLength(7);
   });
 });
+
+// The sentence forms of 2018 to 2022 (Official Gazette of 2019 to 2023): the sources in a sentence, a total with no breakdown, nothing declared, nothing sent.
+const UDMR_2018 = "RAPORT nr. 29.577 din 11 decembrie 2019 în urma verificării respectării prevederilor legale privind veniturile și cheltuielile Uniunii Democrate Maghiare din România în anul 2018 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ Publicat în MONITORUL OFICIAL nr. 1 din 6 ianuarie 2020 - extras - + Constatări: Ca urmare a verificărilor efectuate asupra documentelor justificative puse la dispoziția echipei de control, s-a constatat că în anul 2018 veniturile Uniunii Democrate Maghiare din România au fost în cuantum total de 28.374.179,98 lei, din care: cotizații ale membrilor de partid în sumă de 1.421.043,46 lei, donații în sumă de 694.996,77 lei, dobânzi în sumă de 404,62 lei, alte venituri din activități fără scop patrimonial în sumă de 84.892,12 lei, venituri din cedarea activelor corporale în sumă de 15.261,44 lei, venituri din creanțe reactivate în sumă de 101,57 lei și resurse obținute de la bugetul de stat în sumă de 26.157.480,00 lei. Cheltuielile totale au fost în sumă de 24.381.556,41 lei. În urma controlului efectuat nu s-au constatat încălcări. București, 11 decembrie 2019.";
+const PNL_1718 = "RAPORT nr. 29.578 din 11 decembrie 2019 în urma verificării respectării prevederilor legale privind veniturile și cheltuielile Partidului Național Liberal în anii 2017-2018 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ - extras - + Constatări: Ca urmare a verificărilor efectuate asupra documentelor puse la dispoziția echipei de control s-a constatat că pentru anul 2017 veniturile Partidului Național Liberal au totalizat 18.394.050,92 lei și au fost obținute din cotizații, donații, venituri din alte surse și subvenții de la bugetul de stat. Cheltuielile au fost în sumă de 11.201.817,85 lei. Ca urmare a verificărilor efectuate asupra documentelor puse la dispoziția echipei de control s-a constatat că pentru anul 2018 veniturile Partidului Național Liberal au totalizat 53.304.092,41 lei, fiind obținute din cotizații în sumă de 6.794.189,66 lei, donații în sumă de 720.370,84 lei, subvenții de la bugetul de stat în sumă de 44.441.815,46 lei și venituri din activități fără scop patrimonial, inclusiv venituri din dobânzi, în sumă de 1.347.716,45 lei. Cheltuielile au fost în sumă de 16.362.796,77 lei. În urma controlului efectuat s-a constatat că au fost încălcate prevederile art. 3 alin. (8) , art. 5 alin. (4) , art. 16 alin. (1) , art. 45 alin (2) și ale art. 60 alin. (3) din Legea nr. 334/2006, republicată. București, 11 decembrie 2019.";
+const NOT_DECLARED = "RAPORT nr. 17.725 din 15 septembrie 2021 în urma verificării respectării prevederilor legale privind veniturile și cheltuielile Partidului Dreapta Conservatoare în anii 2019 și 2020 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ - extras - + Constatări: Ca urmare a verificărilor efectuate asupra documentelor puse la dispoziția echipei de control, sa constatat că formațiunea politică nu a declarat venituri și cheltuieli pentru anii 2019 și 2020. În urma controlului efectuat s-a constatat că au fost încălcate prevederile art. 49 alin. (1) și (3) din Legea nr. 334/2006, republicată. București, 15 septembrie 2021.";
+const NOT_SENT = "RAPORT nr. 29.211 din 6 decembrie 2019 în urma verificării respectării prevederilor legale privind veniturile și cheltuielile Partidului Social Democrat Independent în anul 2018 EMITENT AUTORITATEA ELECTORALĂ PERMANENTĂ - extras - + Constatări: Întrucât Partidul Social Democrat Independent nu a transmis în termen de 15 zile documentele solicitate de Autoritatea Electorală Permanentă, echipa de control nu a putut verifica veniturile și cheltuielile formațiunii politice aferente anului 2018. În urma controlului efectuat s-a constatat că au fost încălcate prevederile art. 43 alin. (4) și ale art. 49 alin. (1) și (3) din Legea nr. 334/2006. București, 6 decembrie 2019.";
+
+describe("parseControlReport on the sentence forms", () => {
+  it("reads the sources a sentence lists after 'din care', including the one whose name holds commas", () => {
+    const report = parseControlReport(UDMR_2018)!;
+    expect(report.party).toBe("Uniunea Democrată Maghiară din România");
+    expect(report.years.map((year) => [year.year, year.incomeTotal, year.expensesTotal, year.linesAddUp])).toEqual([[2018, 28374179.98, 24381556.41, true]]);
+    expect(report.years[0]!.income.find((line) => line.kind === "subsidy")?.lei).toBe(26157480);
+    const pnl = parseControlReport(PNL_1718)!;
+    expect(pnl.party).toBe("Partidul Național Liberal");
+    expect(pnl.years.map((year) => [year.year, year.incomeTotal, year.expensesTotal, year.linesAddUp])).toEqual([[2017, 18394050.92, 11201817.85, false], [2018, 53304092.41, 16362796.77, true]]);
+    expect(pnl.years[1]!.income.map((line) => line.kind)).toEqual(["dues", "donations", "subsidy", "other"]);
+    expect(pnl.violations).toHaveLength(5);
+  });
+
+  it("gives a year with no figures its note, never a zero it was not told", () => {
+    const declared = parseControlReport(NOT_DECLARED)!;
+    expect(declared.years.map((year) => [year.year, year.incomeTotal])).toEqual([[2019, undefined], [2020, undefined]]);
+    expect(declared.years[0]!.note).toMatch(/declared no income/);
+    const sent = parseControlReport(NOT_SENT)!;
+    expect(sent.years).toHaveLength(1);
+    expect(sent.years[0]!.year).toBe(2018);
+    expect(sent.years[0]!.incomeTotal).toBeUndefined();
+    expect(sent.years[0]!.note).toMatch(/did not send/);
+    expect(sent.violations).toEqual(["art. 43 alin. (4)", "art. 49 alin. (1) și (3)"]);
+  });
+});

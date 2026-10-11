@@ -385,3 +385,16 @@ test("pages stay free of application errors @db", async ({ page }) => {
   for (const path of ["/ro", "/ro/votes", "/ro/bills", "/ro/members", "/ro/compozitii", "/ro/parties", "/ro/governments", "/ro/methodology", "/en"]) await page.goto(path);
   expect(errors).toEqual([]);
 });
+
+test("party finance: the AEP's control reports give each party's income, the state subsidy and the report behind it @db", async ({ page }) => {
+  await page.goto("/ro/finance?year=2020");
+  await expect(page.getByRole("heading", { level: 1, name: "Finanțarea partidelor" })).toBeVisible();
+  const table = page.getByRole("table", { name: "Veniturile și cheltuielile partidelor" });
+  // The reports are imported by the owner (Sprint 15 follow-up); until then this site has none, and this test says nothing there.
+  test.skip((await table.count()) === 0, "the AEP reports have not been imported on this site yet");
+  const psd = table.getByRole("row", { name: /^Partidul Social Democrat/ });
+  await expect(psd).toContainText("147.419.259 lei");
+  await expect(psd.getByRole("link", { name: /Raportul AEP 22427/ })).toHaveAttribute("href", /legislatie\.just\.ro\/Public\/DetaliiDocument\/\d+/);
+  await page.goto("/ro/parties/psd");
+  await expect(page.getByRole("table", { name: "Veniturile și cheltuielile partidului pe ani" })).toBeVisible();
+});

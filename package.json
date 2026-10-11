@@ -75,6 +75,7 @@
     "ingest:elections:rezultatevot:fetch": "npm --workspace @cumsevoteaza/ingest run elections:rezultatevot:fetch --",
     "ingest:finance:aep:fetch": "npm --workspace @cumsevoteaza/ingest run finance:aep:fetch --",
     "ingest:finance:aep:report": "npm --workspace @cumsevoteaza/ingest run finance:aep:report --",
+    "ingest:finance:aep:import": "npm --workspace @cumsevoteaza/ingest run finance:aep:import --",
     "ingest:members:profile-facts:import": "npm --workspace @cumsevoteaza/ingest run members:profile-facts:import --",
     "ingest:bills:reports:fetch": "npm --workspace @cumsevoteaza/ingest run bills:reports:fetch --",
     "ingest:bills:reports:import": "npm --workspace @cumsevoteaza/ingest run bills:reports:import --",

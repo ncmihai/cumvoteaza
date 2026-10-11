@@ -713,7 +713,20 @@ async function main() {
     const reports = read.flatMap((item) => (item.report ? [item.report] : []));
     const rows = reports.flatMap((report) => report.years.map((year) => ({ year, report })));
     console.log(JSON.stringify({ saved: read.length, read: reports.length, yearsRead: rows.length, linesAddUp: rows.filter((row) => row.year.linesAddUp).length, skipped: read.filter((item) => item.skipped).map((item) => ({ id: item.portalId, why: item.skipped, title: item.title.slice(0, 140) })) }, null, 2));
-    for (const { year: row, report } of rows.sort((a, b) => a.year.year - b.year.year || a.year.party.localeCompare(b.year.party))) console.log(`${row.year}  ${row.party.slice(0, 46).padEnd(46)} income ${row.incomeTotal.toLocaleString("en-GB")}  subsidy ${(row.income.filter((line) => line.kind === "subsidy").reduce((sum, line) => sum + line.lei, 0)).toLocaleString("en-GB")}  expenses ${row.expensesTotal?.toLocaleString("en-GB") ?? "?"}  fine ${report.fineLei?.toLocaleString("en-GB") ?? "-"}${row.linesAddUp ? "" : "  (lines do not add up)"}`);
+    for (const { year: row, report } of rows.sort((a, b) => a.year.year - b.year.year || a.year.party.localeCompare(b.year.party))) console.log(`${row.year}  ${row.party.slice(0, 46).padEnd(46)} income ${row.incomeTotal?.toLocaleString("en-GB") ?? "-"}  subsidy ${(row.income.filter((line) => line.kind === "subsidy").reduce((sum, line) => sum + line.lei, 0)).toLocaleString("en-GB")}  expenses ${row.expensesTotal?.toLocaleString("en-GB") ?? "?"}  fine ${report.fineLei?.toLocaleString("en-GB") ?? "-"}${row.linesAddUp ? "" : "  (lines do not add up)"}`);
+    return;
+  }
+
+  if (command === "finance:aep:import") {
+    // Party money: party_finance_years from the saved AEP reports (offline apart from the database). Dry run unless --persist.
+    const { importFinance } = await import("./finance/import");
+    const session = createDbSession();
+    try {
+      console.log(JSON.stringify(await importFinance(session.db, { repoRoot, persist: hasFlag("persist") }), null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 
@@ -721,7 +734,7 @@ async function main() {
     // D-043 follow-up: the 2019 presidential rounds by commune from Code for Romania's Rezultate Vot API (the AEP's results by locality), saved byte for byte under data/coverage/raw/rezultatevot.
     // One request at a time, --delay-ms apart (default 1000), resumable; plan only (what is saved) without --live. Ballots 3 and 2 are the first and second round.
     const { fetchRezultatevot } = await import("./elections/rezultatevot");
-    const result = await fetchRezultatevot({ repoRoot, live: hasFlag("live"), ballots: (flag("ballots") ?? "3,2").split(",").map(Number), delayMs: numberFlag("delay-ms") ?? 1000, maxRequests: numberFlag("max-requests") ?? 8000, log: (line) => console.log(line) });
+    const result = await fetchRezultatevot({ repoRoot, live: hasFlag("live"), ballots: (flag("ballots") ?? "3,2").split(",").map(Number), ...(numberFlag("list-ballot") ? { listBallot: numberFlag("list-ballot")! } : {}), delayMs: numberFlag("delay-ms") ?? 1000, maxRequests: numberFlag("max-requests") ?? 8000, log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to request what is not saved yet.");
     return;

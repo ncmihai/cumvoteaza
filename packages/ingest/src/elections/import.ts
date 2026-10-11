@@ -124,7 +124,7 @@ export async function readElectionAreas(repoRoot: string, election: ElectionSour
   if (election.rezultatevot) {
     // A round known by its national totals, with the commune results read from the saved Rezultate Vot answers (rezultatevot.ts), checked against the totals the official act prints.
     if (!nameIndex) return out;
-    const reading = await readRezultatevotAreas(repoRoot, election.rezultatevot.ballotId, nameIndex);
+    const reading = await readRezultatevotAreas(repoRoot, election.rezultatevot.ballotId, nameIndex, election.rezultatevot.listBallotId);
     if (reading.areas.length === 0) return out;
     const wanted = election.nationalOnly?.results ?? [];
     const plainName = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

@@ -1,4 +1,5 @@
 import { getPartyElections } from "@/lib/election-data";
+import { getFinance } from "@/lib/finance-data";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -43,6 +44,7 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
   const { party, legislatureSummaries, groupTotals, votes, formationEvents, governmentParticipations, tribunalSources } = data;
   const members = await getPartyCurrentMembers(party.id);
   const electionResults = await getPartyElections(party.id);
+  const finance = await getFinance(party.id);
   const kind = (party.kind ?? "party") as keyof (typeof KIND_LABEL)["ro"];
   const chamberSeats = (chamber: "deputies" | "senate") => {
     const entry = composition.chambers.find((candidate) => candidate.chamber === chamber);
@@ -161,7 +163,35 @@ export default async function PartyPage({ params }: { params: Promise<{ locale: 
                   </tbody>
                 </table>
               </div>
-              <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Alegerile din 2016, 2020 și 2024, din datele AEP (pentru 2024 fișierele dau doar voturile, fără mandate). Un partid care a candidat într-o alianță apare sub numele alianței, nu aici." : "The 2016, 2020 and 2024 elections, from the AEP's data (for 2024 the files give only the votes, no mandates). A party that ran in an alliance appears under the alliance's name, not here."}</p>
+              <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Alegerile din 2012, 2016, 2020 și 2024, din datele AEP (mandatele din 2024 sunt numărate din listele aleșilor ale Biroului Electoral Central). Un partid care a candidat într-o alianță apare sub numele alianței, nu aici." : "The 2012, 2016, 2020 and 2024 elections, from the AEP's data (the 2024 mandates are counted from the Central Electoral Bureau's lists of the elected). A party that ran in an alliance appears under the alliance's name, not here."}</p>
+            </section>
+          ) : null}
+
+          {finance.length > 0 ? (
+            <section aria-labelledby="party-finance">
+              <SectionHeader eyebrow={ro ? "Bani" : "Money"} title={ro ? "Venituri și cheltuieli, după rapoartele AEP" : "Income and expenses, from the AEP's reports"} href={`/${locale}/finance`} linkLabel={ro ? "Toate partidele" : "All parties"} />
+              <div className="mt-5 overflow-x-auto rounded-card border border-line bg-surface" tabIndex={0} role="region" aria-label={ro ? "Venituri și cheltuieli pe ani" : "Income and expenses by year"}>
+                <table className="w-full min-w-[28rem] border-collapse text-sm">
+                  <caption className="sr-only">{ro ? "Veniturile și cheltuielile partidului pe ani" : "The party's income and expenses by year"}</caption>
+                  <thead className="bg-wash text-left text-xs text-ink-soft"><tr><th scope="col" className="px-4 py-2 font-semibold">{ro ? "Anul" : "Year"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Venituri" : "Income"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Din bugetul de stat" : "State budget"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Cheltuieli" : "Expenses"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Amendă" : "Fine"}</th><th scope="col" className="px-4 py-2 text-right font-semibold">{ro ? "Raport" : "Report"}</th></tr></thead>
+                  <tbody className="divide-y divide-line">
+                    {finance.map((row) => {
+                      const lei = (value: number) => `${Math.round(value).toLocaleString(ro ? "ro-RO" : "en-GB")} lei`;
+                      return (
+                        <tr key={row.id}>
+                          <td className="px-4 py-2 font-medium text-ink">{row.year}{row.note ? <span className="block text-xs font-normal text-muted">{row.note}</span> : null}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.incomeTotal === undefined ? "–" : lei(row.incomeTotal)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.breakdown ? lei(row.breakdown.subsidy) : "–"}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.expensesTotal === undefined ? "–" : lei(row.expensesTotal)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{row.fine === undefined ? "–" : lei(row.fine)}</td>
+                          <td className="px-4 py-2 text-right"><a href={row.portalUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand hover:text-brand-strong">{row.reportNumber ? `nr. ${row.reportNumber}` : ro ? "Raport" : "Report"}</a></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Rapoartele de control ale Autorității Electorale Permanente din Monitorul Oficial; sumele sunt ale AEP. Un an lipsește unde raportul nu a apărut încă sau nu dă cifre." : "The Permanent Electoral Authority's control reports in the Official Gazette; the amounts are the AEP's. A year is missing where its report has not appeared yet or gives no figures."}</p>
             </section>
           ) : null}
         </div>

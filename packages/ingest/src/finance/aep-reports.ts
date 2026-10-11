@@ -72,8 +72,11 @@ export interface IncomeLine {
 export interface AnnualReport {
   party: string;
   year: number;
-  incomeTotal: number;
+  /** Undefined where the report gives no figures (see `note`). */
+  incomeTotal?: number;
   income: IncomeLine[];
+  /** What the report says in place of figures ("did not submit the documents"). */
+  note?: string;
   expensesTotal?: number;
   /** The articles of Law 334/2006 the control found broken, as the report lists them; empty when it found none. */
   violations: string[];
@@ -83,15 +86,16 @@ export interface AnnualReport {
 }
 
 /** "147.419.259,28" → 147419259.28 */
-export const leiOf = (value: string) => Number(value.replace(/\./g, "").replace(",", "."));
+export const leiOf = (value: string) => (value.includes(",") ? Number(value.replace(/\./g, "").replace(",", ".")) : Number(value.replace(/\./g, "")));
 
 export function incomeKindOf(label: string): IncomeKind {
   const folded = fold(label);
-  if (/subven/.test(folded)) return "subsidy";
   if (/rambursare/.test(folded)) return "refund";
+  if (/subven|bugetul de stat/.test(folded)) return "subsidy";
   if (/cotiza/.test(folded)) return "dues";
   if (/donat/.test(folded)) return "donations";
   if (/imprumut/.test(folded)) return "loans";
+  if (/fara scop patrimonial/.test(folded)) return "other";
   if (/dobanz/.test(folded)) return "interest";
   return "other";
 }
@@ -104,7 +108,7 @@ export function incomeKindOf(label: string): IncomeKind {
 export function parseAnnualReport(text: string): AnnualReport | undefined {
   const head = /(?:veniturile\s+și\s+cheltuielile|veniturile\s+si\s+cheltuielile)\s+(.+?)\s+în\s+anul\s+(\d{4})/i.exec(text) ?? /înregistrate\s+de\s+(.+?)\s+în\s+anul\s+(\d{4})/i.exec(text);
   // The title writes the party in the genitive ("Partidului Social Democrat"); the body names it as it is called ("Partidul Social Democrat a obținut").
-  const named = /(?:înregistrate\s+de|constatat\s+că)\s+((?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+.+?)(?:\s+în\s+anul|\s+a\s+obținut)/.exec(text)?.[1];
+  const named = /(?:înregistrate\s+de|constatat\s+că)\s+((?:Partidul|Alianța|Uniunea|Organizația|Forumul|Asociația|Federația|Comunitatea)\s+.{3,120}?)(?:\s+în\s+(?:anul|anii|perioada)|\s+a\s+obținut)/.exec(text)?.[1];
   const total = /venituri(?:\s+aferente\s+activității\s+curente)?\s+în\s+sumă\s+totală\s+de\s+([\d.]+,\d{2})\s+lei(?:\s*,?\s*astfel\s*:)?([^]*?)(?:Cheltuielile\b|$)/i.exec(text);
   if (!head || !total) return undefined;
   const lines: IncomeLine[] = [];
@@ -118,7 +122,7 @@ export function parseAnnualReport(text: string): AnnualReport | undefined {
   const violations = broken ? broken[1]!.split(/,\s*(?=(?:ale\s+)?art\.)|\s+și\s+(?:ale\s+)?(?=art\.)/).map((part) => part.replace(/\s+/g, " ").replace(/^ale\s+/, "").trim()).filter(Boolean) : [];
   const sum = Math.round(lines.reduce((acc, line) => acc + line.lei, 0) * 100) / 100;
   return {
-    party: (named ?? head[1]!).replace(/\s+/g, " ").trim(),
+    party: cleanParty(named ?? nominative(head[1]!)),
     year: Number(head[2]),
     incomeTotal,
     income: lines,
@@ -197,12 +201,97 @@ function sanctionsOf(text: string): Pick<ControlReport, "violations" | "noViolat
   };
 }
 
+const GENITIVE: Array<[RegExp, string]> = [[/^Partidului\b/, "Partidul"], [/^Uniunii\b/, "Uniunea"], [/^Alianței\b/, "Alianța"], [/^Alianţei\b/, "Alianța"], [/^Organizației\b/, "Organizația"], [/^Forumului\b/, "Forumul"], [/^Asociației\b/, "Asociația"], [/^Federației\b/, "Federația"], [/^Comunității\b/, "Comunitatea"]];
+const cleanParty = (name: string) => name.replace(/\s*-?\s*extras\b.*$/i, "").replace(/\s+în\s+(?:anul|anii|perioada)\b.*$/i, "").replace(/[\s,.;:-]+$/, "").replace(/\s+/g, " ").trim();
+const nominative = (name: string) => GENITIVE.reduce((acc, [pattern, to]) => acc.replace(pattern, to), cleanParty(name)).replace(/^Uniunea Democrate Maghiare\b/, "Uniunea Democrată Maghiară");
+
+/** The years a title or sentence names: "în anul 2018", "în anii 2017-2018", "în anii 2019 și 2020", "în perioada 1.01.2023-31.12.2024". */
+export function yearsOf(text: string): number[] {
+  const range = /perioada\s+(?:verificată\s+fiind\s+)?\d{1,2}\.\d{1,2}\.(\d{4})\s*-\s*\d{1,2}\.\d{1,2}\.(\d{4})/.exec(text) ?? /anii\s+(\d{4})\s*-\s*(\d{4})/.exec(text);
+  if (range) return Array.from({ length: Number(range[2]) - Number(range[1]) + 1 }, (_, index) => Number(range[1]) + index);
+  return [...new Set([...text.matchAll(/(?:anul|anii|anului)\s+(\d{4})(?:\s*(?:și|şi)\s*(?:în\s+anul\s+)?(\d{4}))?/g)].flatMap((match) => [Number(match[1]), ...(match[2] ? [Number(match[2])] : [])]))];
+}
+
+const amountPattern = "([\\d.]+(?:,\\d{1,2})?)";
+
+/**
+ * The older and the shorter reports write sentences, not lists: "pentru anul 2018 veniturile Partidului X au totalizat 53.304.092,41 lei, fiind obținute din cotizații în sumă de 6.794.189,66 lei,
+ * donații în sumă de ...", "Cheltuielile au fost în sumă de 16.362.796,77 lei", "formațiunea politică nu a declarat venituri și cheltuieli pentru anii 2019 și 2020", "nu a transmis documentele".
+ * Only the figures a sentence gives are taken; a year with none gets the report's note.
+ */
+function parseSentenceReport(text: string): ControlReport | undefined {
+  const title = /privind\s+veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)\b/i.exec(text) ?? /veniturile\s+și\s+cheltuielile\s+(?:înregistrate\s+de\s+)?(.+?)\s+în\s+(?:anul|anii|perioada)/i.exec(text);
+  if (!title) return undefined;
+  const party = nominative(title[1]!);
+  const heading = /RAPORT[^]*?(?:în\s+(?:anul|anii|perioada)[^]*?)(?=EMITENT)/.exec(text)?.[0] ?? "";
+  const titleYears = yearsOf(heading);
+  // The findings follow the last "Constatări" (the first is in the page's table of contents).
+  const marks = [...text.matchAll(/Constat[aă]ri\s*:?/g)];
+  const start = marks.length ? marks[marks.length - 1]!.index! : -1;
+  const ends = [...text.slice(Math.max(start, 0)).matchAll(/În\s+urma\s+controlului\s+efectuat|II\.\s*Sancțiuni|București,\s+\d/g)];
+  if (start < 0) return undefined;
+  const segment = text.slice(start, ends.length ? start + ends[0]!.index! : undefined);
+  const years = new Map<number, AnnualReport>();
+  const ensure = (year: number) => {
+    let row = years.get(year);
+    if (!row) {
+      row = { party, year, income: [], violations: [], noViolations: false, linesAddUp: false };
+      years.set(year, row);
+    }
+    return row;
+  };
+  let current: number | undefined = titleYears.length === 1 ? titleYears[0] : undefined;
+  for (const sentence of segment.split(/\.\s+(?=[A-ZĂÂÎȘȚ])/)) {
+    const named = yearsOf(sentence.replace(/^.*?(?=\b(?:pentru|în)\s+anul)/, ""));
+    const income = new RegExp(`veniturile[^]*?(?:au\\s+totalizat|în\\s+cuantum\\s+total\\s+de|în\\s+valoare\\s+totală\\s+de)\\s+${amountPattern}\\s+lei([^]*)$`, "i").exec(sentence);
+    if (income) {
+      const year = named[0] ?? current ?? titleYears[0];
+      if (year === undefined) continue;
+      current = year;
+      const row = ensure(year);
+      row.incomeTotal = leiOf(income[1]!);
+      let from = 0;
+      const tail = income[2]!;
+      for (const item of tail.matchAll(/în\s+sumă\s+de\s+([\d.]+(?:,\d{1,2})?)\s+lei/g)) {
+        const label = tail.slice(from, item.index).replace(/^[\s,]*(?:și\s+|fiind\s+obținute\s+din\s+|și\s+au\s+fost\s+obținute\s+din\s+|din\s+care\s*:\s*|obținute\s+din\s+)*/i, "").replace(/[\s,]+$/, "").trim();
+        from = item.index! + item[0].length;
+        if (label) row.income.push({ label, kind: incomeKindOf(label), lei: leiOf(item[1]!) });
+      }
+      const sum = Math.round(row.income.reduce((acc, line) => acc + line.lei, 0) * 100) / 100;
+      row.linesAddUp = row.income.length > 0 && Math.abs(sum - row.incomeTotal) < 0.05;
+      continue;
+    }
+    const expenses = new RegExp(`^Cheltuielile(?:\\s+totale)?(?:\\s+în\\s+anul\\s+(\\d{4}))?\\s+(?:au\\s+fost\\s+în\\s+sumă\\s+de|au\\s+totalizat)\\s+${amountPattern}\\s+lei`, "i").exec(sentence.trim());
+    if (expenses) {
+      const year = expenses[1] ? Number(expenses[1]) : current;
+      if (year !== undefined) ensure(year).expensesTotal = leiOf(expenses[2]!);
+      continue;
+    }
+    const zero = /nu\s+a\s+(?:avut|înregistrat)\s+venituri|s-a\s+înființat[^]*?nu\s+a\s+avut\s+venituri/i.test(sentence);
+    const note = /nu\s+a\s+transmis/i.test(sentence) ? "The party did not send the documents the AEP asked for, so the control could not check its income and expenses."
+      : /nu\s+a\s+declarat\s+venituri/i.test(sentence) ? "The party declared no income or expenses."
+      : zero ? "The party had no income and no expenses in the period."
+      : undefined;
+    if (note) {
+      for (const year of (named.length ? named : titleYears)) {
+        const row = ensure(year);
+        row.note = note;
+        if (zero) { row.incomeTotal = 0; row.expensesTotal = 0; row.linesAddUp = true; }
+      }
+    }
+  }
+  const rows = [...years.values()].sort((a, b) => a.year - b.year);
+  return rows.length ? { party, years: rows, ...sanctionsOf(text), nothingRegistered: rows.every((row) => row.incomeTotal === undefined || row.incomeTotal === 0) } : undefined;
+}
+
 /** Every shape of annual control report we read: one year in a sentence (2019 to 2021), a paragraph per year (2025, 2026), or "no income, no expenses". Undefined for any other text. */
 export function parseControlReport(text: string): ControlReport | undefined {
   const single = parseAnnualReport(text);
   if (single) return { party: single.party, years: [single], nothingRegistered: false, ...sanctionsOf(text), violations: single.violations.length ? single.violations : sanctionsOf(text).violations, noViolations: single.noViolations || sanctionsOf(text).noViolations };
   const paragraphs = parseYearParagraphs(text);
   if (paragraphs) return paragraphs;
+  const sentences = parseSentenceReport(text);
+  if (sentences) return sentences;
   const empty = /(?:înregistrate\s+de|echipa\s+de\s+control\s+a\s+constatat\s+că)\s+(.+?)\s+(?:în\s+(?:anul|perioada)|nu\s+a\s+înregistrat)/i.exec(text);
   const none = /nu\s+a\s+înregistrat\s+venituri\s+și\s+nu\s+a\s+efectuat\s+cheltuieli/i.test(text);
   const year = /perioada\s+verificată\s+fiind\s+1\.01\.(\d{4})-31\.12\.(\d{4})/i.exec(text) ?? /în\s+anul\s+(\d{4})/i.exec(text);
@@ -287,6 +376,8 @@ export interface ReadReport {
   title: string;
   issuedOn?: string;
   gazetteNumber?: string;
+  gazetteOn?: string;
+  number?: string;
 }
 
 /** The annual reports in the saved pages, each with its list entry (date, gazette). */
@@ -301,11 +392,11 @@ export async function readAnnualReports(repoRoot: string): Promise<ReadReport[]>
   for (const [portalId, item] of entries) {
     const bytes = await cache.read("legislatie-aep-report", reportPageKey(portalId));
     if (!bytes) {
-      out.push({ portalId, skipped: "page not saved", title: item.title, issuedOn: item.issuedOn, gazetteNumber: item.gazetteNumber });
+      out.push({ portalId, skipped: "page not saved", title: item.title, issuedOn: item.issuedOn, gazetteNumber: item.gazetteNumber, gazetteOn: item.gazetteOn, number: item.number });
       continue;
     }
     const report = parseControlReport(decreePageText(decodeOfficialBytes(bytes)));
-    out.push({ portalId, title: item.title, issuedOn: item.issuedOn, gazetteNumber: item.gazetteNumber, ...(report ? { report } : { skipped: "the text does not have the shape of an annual report (income by source and expenses)" }) });
+    out.push({ portalId, title: item.title, issuedOn: item.issuedOn, gazetteNumber: item.gazetteNumber, gazetteOn: item.gazetteOn, number: item.number, ...(report ? { report } : { skipped: "the text does not have the shape of an annual report (income by source and expenses)" }) });
   }
   return out.sort((a, b) => (a.issuedOn ?? "").localeCompare(b.issuedOn ?? ""));
 }
