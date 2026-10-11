@@ -3,6 +3,1073 @@
   "exceptions": [
     {
       "source": "senate",
+      "officialId": "170738b4-48fd-4347-bf3e-17c72fe0ed71",
+      "voteId": "vote-senate-l262-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=170738b4-48fd-4347-bf3e-17c72fe0ed71 (automatic: 83 name rows counted on the raw page, 84 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "303ddf6f-cc6e-40c6-b9e8-7cb9c22d63a3",
+      "voteId": "vote-senate-l335-2022-06-22-vf-respingere",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=303ddf6f-cc6e-40c6-b9e8-7cb9c22d63a3 (automatic: 86 name rows counted on the raw page, 87 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "5fc84083-9d21-4aab-8110-dd56549b7e0f",
+      "voteId": "vote-senate-l317-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=5fc84083-9d21-4aab-8110-dd56549b7e0f (automatic: 84 name rows counted on the raw page, 85 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "9cbc055a-6902-4fd2-9e2e-64ca03931a54",
+      "voteId": "vote-senate-l376-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=9cbc055a-6902-4fd2-9e2e-64ca03931a54 (automatic: 85 name rows counted on the raw page, 86 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "b36bcfbf-d2cc-40f1-b6b3-465b6965df67",
+      "voteId": "vote-senate-l385-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=b36bcfbf-d2cc-40f1-b6b3-465b6965df67 (automatic: 79 name rows counted on the raw page, 80 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ccc1d0a8-e806-425d-bb21-125537eb264e",
+      "voteId": "vote-senate-l336-2022-06-22-vf-respingere",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ccc1d0a8-e806-425d-bb21-125537eb264e (automatic: 86 name rows counted on the raw page, 87 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "cfc6c0ee-d72a-429b-9897-6b5c98710ed3",
+      "voteId": "vote-senate-l386-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=cfc6c0ee-d72a-429b-9897-6b5c98710ed3 (automatic: 82 name rows counted on the raw page, 83 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "e6b1ef57-4895-42f4-826f-a7f64699b440",
+      "voteId": "vote-senate-l384-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=e6b1ef57-4895-42f4-826f-a7f64699b440 (automatic: 82 name rows counted on the raw page, 83 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ee381399-f7c6-4dea-88c1-41de5ad8c06c",
+      "voteId": "vote-senate-l327-2022-06-22-vf",
+      "date": "2022-06-22",
+      "shortBy": {
+        "against": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ee381399-f7c6-4dea-88c1-41de5ad8c06c (automatic: 85 name rows counted on the raw page, 86 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "064e618f-f612-4932-8221-54527f39102a",
+      "voteId": "vote-senate-l527-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=064e618f-f612-4932-8221-54527f39102a (automatic: 112 name rows counted on the raw page, 113 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "0f50bd26-ab79-41f8-a64e-1139540f702e",
+      "voteId": "vote-senate-l530-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=0f50bd26-ab79-41f8-a64e-1139540f702e (automatic: 113 name rows counted on the raw page, 114 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "248f8fbb-048a-45b7-b41e-45bc13da62d4",
+      "voteId": "vote-senate-l529-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=248f8fbb-048a-45b7-b41e-45bc13da62d4 (automatic: 113 name rows counted on the raw page, 114 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "25c291d7-1f3a-4686-83f9-b12d3a0d57a7",
+      "voteId": "vote-senate-l541-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=25c291d7-1f3a-4686-83f9-b12d3a0d57a7 (automatic: 113 name rows counted on the raw page, 114 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "3554fe8a-a58b-4e6a-b0cb-461e5afd3e74",
+      "voteId": "vote-senate-l504-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=3554fe8a-a58b-4e6a-b0cb-461e5afd3e74 (automatic: 112 name rows counted on the raw page, 113 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "3e9f25e3-473e-4f98-8ee8-ca1def885905",
+      "voteId": "vote-senate-l412-2022-10-05-final",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=3e9f25e3-473e-4f98-8ee8-ca1def885905 (automatic: 111 name rows counted on the raw page, 112 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "441655ea-6ad1-4ebe-9168-986213ad2e65",
+      "voteId": "vote-senate-l535-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=441655ea-6ad1-4ebe-9168-986213ad2e65 (automatic: 111 name rows counted on the raw page, 112 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "64779667-adbd-4ca3-946a-854803930db9",
+      "voteId": "vote-senate-l486-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=64779667-adbd-4ca3-946a-854803930db9 (automatic: 110 name rows counted on the raw page, 111 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "6cd7d45e-b293-49f5-a6b8-109c9d7ed35c",
+      "voteId": "vote-senate-l539-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=6cd7d45e-b293-49f5-a6b8-109c9d7ed35c (automatic: 114 name rows counted on the raw page, 115 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "7475f271-67cf-4f05-b949-95a7a428bb6b",
+      "voteId": "vote-senate-l571-2022-10-05-final",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=7475f271-67cf-4f05-b949-95a7a428bb6b (automatic: 112 name rows counted on the raw page, 113 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "74a6fa94-292e-40cb-a1d4-69b31b328e20",
+      "voteId": "vote-senate-l568-2022-10-05-final",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=74a6fa94-292e-40cb-a1d4-69b31b328e20 (automatic: 112 name rows counted on the raw page, 113 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "b1b1cbbf-ce5e-40c5-9990-66747e967f42",
+      "voteId": "vote-senate-l537-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=b1b1cbbf-ce5e-40c5-9990-66747e967f42 (automatic: 114 name rows counted on the raw page, 115 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "b6b2e5db-e6a4-49e7-8cf5-d399e566c766",
+      "voteId": "vote-senate-l503-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=b6b2e5db-e6a4-49e7-8cf5-d399e566c766 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "bbe8bf47-1ed2-445d-9a42-9a2aa3bb47e7",
+      "voteId": "vote-senate-l509-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=bbe8bf47-1ed2-445d-9a42-9a2aa3bb47e7 (automatic: 107 name rows counted on the raw page, 108 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "bc3e201d-fb9e-40ad-8c87-e174eac25949",
+      "voteId": "vote-senate-l531-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=bc3e201d-fb9e-40ad-8c87-e174eac25949 (automatic: 110 name rows counted on the raw page, 111 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "bcfbff88-4c00-423f-896e-116508f556a4",
+      "voteId": "vote-senate-l518-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=bcfbff88-4c00-423f-896e-116508f556a4 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "e2358d12-b1e0-4d6e-9228-fc6d00c05c5a",
+      "voteId": "vote-senate-l526-2022-10-05-proiect-de-lege-de-aprobare",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=e2358d12-b1e0-4d6e-9228-fc6d00c05c5a (automatic: 113 name rows counted on the raw page, 114 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ea3f61d9-260a-401a-90d2-58b497e22265",
+      "voteId": "vote-senate-l497-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ea3f61d9-260a-401a-90d2-58b497e22265 (automatic: 114 name rows counted on the raw page, 115 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "edf62ab4-ff25-4243-8389-878c38168682",
+      "voteId": "vote-senate-l489-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=edf62ab4-ff25-4243-8389-878c38168682 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ee4fdba6-5bac-452d-b56f-ca0319bc4aeb",
+      "voteId": "vote-senate-l506-2022-10-05-final-respingere",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ee4fdba6-5bac-452d-b56f-ca0319bc4aeb (automatic: 105 name rows counted on the raw page, 106 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "faff8db3-c053-430a-b266-6d78f804f59c",
+      "voteId": "vote-senate-l550-2022-10-05-final",
+      "date": "2022-10-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=faff8db3-c053-430a-b266-6d78f804f59c (automatic: 113 name rows counted on the raw page, 114 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "03d96eae-4320-40c9-85bd-cc02ab77707d",
+      "voteId": "vote-senate-l705-2022-12-12-proiect-de-lege-de-aprobare",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=03d96eae-4320-40c9-85bd-cc02ab77707d (automatic: 112 name rows counted on the raw page, 113 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "0f1b197a-2699-414e-b576-70c00556eb71",
+      "voteId": "vote-senate-l721-2022-12-12-proiect-de-lege-de-aprobare",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=0f1b197a-2699-414e-b576-70c00556eb71 (automatic: 108 name rows counted on the raw page, 109 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "10fbb807-8bcf-40d7-a267-6f0e6cc19318",
+      "voteId": "vote-senate-l714-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=10fbb807-8bcf-40d7-a267-6f0e6cc19318 (automatic: 111 name rows counted on the raw page, 112 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "1a63e37c-d1af-4a4d-8de3-d54253ce93bc",
+      "voteId": "vote-senate-l672-2022-12-12-final",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=1a63e37c-d1af-4a4d-8de3-d54253ce93bc (automatic: 110 name rows counted on the raw page, 111 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "245c9a41-8dd8-4bf8-aace-a200bd27e865",
+      "voteId": "vote-senate-l735-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=245c9a41-8dd8-4bf8-aace-a200bd27e865 (automatic: 111 name rows counted on the raw page, 112 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "256a5ed6-4327-460f-9d22-9e569733033c",
+      "voteId": "vote-senate-l687-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=256a5ed6-4327-460f-9d22-9e569733033c (automatic: 111 name rows counted on the raw page, 112 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "6ecdcb24-b951-459a-9b3b-1f53534e5548",
+      "voteId": "vote-senate-l712-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=6ecdcb24-b951-459a-9b3b-1f53534e5548 (automatic: 112 name rows counted on the raw page, 113 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "76d3156e-dfc9-412f-aef6-d686b5a57674",
+      "voteId": "vote-senate-senate-vote-12-12-ph-com-2022-495-final",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=76d3156e-dfc9-412f-aef6-d686b5a57674 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "85980ccc-75b6-4efd-932b-e81609ac8c6e",
+      "voteId": "vote-senate-l700-2022-12-12-final",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=85980ccc-75b6-4efd-932b-e81609ac8c6e (automatic: 111 name rows counted on the raw page, 112 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "8f0163ff-bf30-4675-9499-2719534042c4",
+      "voteId": "vote-senate-l691-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=8f0163ff-bf30-4675-9499-2719534042c4 (automatic: 108 name rows counted on the raw page, 109 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "93acae15-cba7-495d-8c75-26669ec248e5",
+      "voteId": "vote-senate-l725-2022-12-12-proiect-de-lege-de-aprobare",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=93acae15-cba7-495d-8c75-26669ec248e5 (automatic: 110 name rows counted on the raw page, 111 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "a64285ad-af46-447f-8226-31d5c89f67c0",
+      "voteId": "vote-senate-l753-2022-12-12-final",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=a64285ad-af46-447f-8226-31d5c89f67c0 (automatic: 108 name rows counted on the raw page, 109 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "b9b2d6c0-af0a-4ebc-a798-099aaef255ce",
+      "voteId": "vote-senate-l730-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=b9b2d6c0-af0a-4ebc-a798-099aaef255ce (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "d2cd3775-5674-49a1-869b-659f2bbae852",
+      "voteId": "vote-senate-senate-vote-12-12-ph-join-2022-53-final",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=d2cd3775-5674-49a1-869b-659f2bbae852 (automatic: 108 name rows counted on the raw page, 109 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "dfa2983c-60f1-44da-9682-9e497a9a0546",
+      "voteId": "vote-senate-l724-2022-12-12-proiect-de-lege-de-aprobare",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=dfa2983c-60f1-44da-9682-9e497a9a0546 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ea79fb46-aa1f-45dd-88f8-997cd37f2523",
+      "voteId": "vote-senate-l776-2022-12-12-final",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ea79fb46-aa1f-45dd-88f8-997cd37f2523 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ec9be529-e602-4f0e-b1d2-722f3d20f3e7",
+      "voteId": "vote-senate-l674-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ec9be529-e602-4f0e-b1d2-722f3d20f3e7 (automatic: 113 name rows counted on the raw page, 114 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "f7e9b9cb-e0d2-424c-9a7b-68f4af1590c8",
+      "voteId": "vote-senate-l709-2022-12-12-final-respingere",
+      "date": "2022-12-12",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=f7e9b9cb-e0d2-424c-9a7b-68f4af1590c8 (automatic: 109 name rows counted on the raw page, 110 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "0871603a-0769-4d89-b60c-1a203bf48d1d",
+      "voteId": "vote-senate-l556-2024-11-26-final",
+      "date": "2024-11-26",
+      "shortBy": {
+        "against": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=0871603a-0769-4d89-b60c-1a203bf48d1d (automatic: 84 name rows counted on the raw page, 85 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "23fcf9c0-6dc7-400e-9594-398570d371c3",
+      "voteId": "vote-senate-l568-2024-11-26-final-respingere",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=23fcf9c0-6dc7-400e-9594-398570d371c3 (automatic: 95 name rows counted on the raw page, 96 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "2c5ff3aa-dc4f-4791-b844-1f6250647f27",
+      "voteId": "vote-senate-l588-2024-11-26-final",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=2c5ff3aa-dc4f-4791-b844-1f6250647f27 (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "3e2819e2-d2a3-4a2d-b839-ed570e6dd09c",
+      "voteId": "vote-senate-l602-2024-11-26-final",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=3e2819e2-d2a3-4a2d-b839-ed570e6dd09c (automatic: 87 name rows counted on the raw page, 88 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "4cb764e4-7e2f-4a9c-9e82-921a6f2b08ee",
+      "voteId": "vote-senate-l549-2024-11-26-final-respingere",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=4cb764e4-7e2f-4a9c-9e82-921a6f2b08ee (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "79214f59-2e41-4224-83da-1e8ba4f85020",
+      "voteId": "vote-senate-l159-2019-11-26-final-respingere-a-legii",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=79214f59-2e41-4224-83da-1e8ba4f85020 (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "913ec09c-22e2-47f8-880a-d43bc165ab2b",
+      "voteId": "vote-senate-l586-2024-11-26-final-respingere",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=913ec09c-22e2-47f8-880a-d43bc165ab2b (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "9342da10-3d20-4204-8dda-5c56f66a5b28",
+      "voteId": "vote-senate-l579-2024-11-26-final",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=9342da10-3d20-4204-8dda-5c56f66a5b28 (automatic: 87 name rows counted on the raw page, 88 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "97233bc5-64e2-4d4d-bddc-dd059655d94e",
+      "voteId": "vote-senate-l539-2024-11-26-final",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=97233bc5-64e2-4d4d-bddc-dd059655d94e (automatic: 88 name rows counted on the raw page, 89 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "9aa65804-48cc-455f-9d44-3da662f5142d",
+      "voteId": "vote-senate-l567-2024-11-26-final-respingere",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=9aa65804-48cc-455f-9d44-3da662f5142d (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "a23f404f-6859-4900-a8e6-710df565119a",
+      "voteId": "vote-senate-l595-2024-11-26-proiect-de-lege-de-aprobare",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=a23f404f-6859-4900-a8e6-710df565119a (automatic: 88 name rows counted on the raw page, 89 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "a4417e0d-9deb-4996-870f-708a3d5c229e",
+      "voteId": "vote-senate-l216-2024-11-26-final-respingere",
+      "date": "2024-11-26",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=a4417e0d-9deb-4996-870f-708a3d5c229e (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "bd8c2017-1084-433d-a143-904c249cce5b",
+      "voteId": "vote-senate-l550-2024-11-26-final",
+      "date": "2024-11-26",
+      "shortBy": {
+        "against": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=bd8c2017-1084-433d-a143-904c249cce5b (automatic: 88 name rows counted on the raw page, 89 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "0f9199b0-42fb-4560-bdb5-cc539a61d86f",
+      "voteId": "vote-senate-senate-vote-12-03-ph-com-2024-495-final",
+      "date": "2024-12-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=0f9199b0-42fb-4560-bdb5-cc539a61d86f (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "1aeface2-b465-4058-98e8-1108f967c5ac",
+      "voteId": "vote-senate-senate-vote-12-03-ph-vacantare",
+      "date": "2024-12-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=1aeface2-b465-4058-98e8-1108f967c5ac (automatic: 81 name rows counted on the raw page, 82 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "cca00240-d0a0-4ecb-857a-baffbd3d1563",
+      "voteId": "vote-senate-l587-2024-12-03-final",
+      "date": "2024-12-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=cca00240-d0a0-4ecb-857a-baffbd3d1563 (automatic: 90 name rows counted on the raw page, 91 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "db19c4eb-d64d-47e2-935c-c391fe326f92",
+      "voteId": "vote-senate-senate-vote-12-03-ph-com-2024-496-final",
+      "date": "2024-12-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=db19c4eb-d64d-47e2-935c-c391fe326f92 (automatic: 88 name rows counted on the raw page, 89 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "f68fd519-41a9-4db0-ace5-fb8179959e4c",
+      "voteId": "vote-senate-senate-vote-12-03-ph-com-2024-426-final",
+      "date": "2024-12-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=f68fd519-41a9-4db0-ace5-fb8179959e4c (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "faa4fb63-4a8b-4597-bb40-32a72cb06d4e",
+      "voteId": "vote-senate-l596-2024-12-03-proiect-de-lege-de-aprobare",
+      "date": "2024-12-03",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=faa4fb63-4a8b-4597-bb40-32a72cb06d4e (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "4476f8e3-b977-4389-bc50-adbba9eeba0c",
+      "voteId": "vote-senate-l557-2024-12-09-final",
+      "date": "2024-12-09",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=4476f8e3-b977-4389-bc50-adbba9eeba0c (automatic: 102 name rows counted on the raw page, 103 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "6624a7c3-3263-496a-ac48-b30dbbf21f5a",
+      "voteId": "vote-senate-senate-vote-12-09-ph-regulament",
+      "date": "2024-12-09",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=6624a7c3-3263-496a-ac48-b30dbbf21f5a (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "83b4295e-fb43-4bba-a3ee-46d9f8b33e72",
+      "voteId": "vote-senate-l631-2024-12-09-final",
+      "date": "2024-12-09",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=83b4295e-fb43-4bba-a3ee-46d9f8b33e72 (automatic: 103 name rows counted on the raw page, 104 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "c8f332f4-6cd7-4226-b936-e1bebb2aad00",
+      "voteId": "vote-senate-l578-2024-12-09-final",
+      "date": "2024-12-09",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=c8f332f4-6cd7-4226-b936-e1bebb2aad00 (automatic: 104 name rows counted on the raw page, 105 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ed34851d-97c5-488a-a917-1b472683ead2",
+      "voteId": "vote-senate-senate-vote-12-09-ph-buget",
+      "date": "2024-12-09",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ed34851d-97c5-488a-a917-1b472683ead2 (automatic: 94 name rows counted on the raw page, 95 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "fc1cefa9-3f63-4629-bf89-6b86612ed45c",
+      "voteId": "vote-senate-senate-vote-12-09-ph-com-2024-671-final",
+      "date": "2024-12-09",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=fc1cefa9-3f63-4629-bf89-6b86612ed45c (automatic: 103 name rows counted on the raw page, 104 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "0186c0a4-82d8-4405-b909-f1fc361c33c0",
+      "voteId": "vote-senate-l617-2024-12-16-proiect-de-lege-de-aprobare",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=0186c0a4-82d8-4405-b909-f1fc361c33c0 (automatic: 94 name rows counted on the raw page, 95 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "05b9899b-2077-4c19-9212-8e0f8f8d1571",
+      "voteId": "vote-senate-l565-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=05b9899b-2077-4c19-9212-8e0f8f8d1571 (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "093fe159-2474-4b95-970b-cab2390399c7",
+      "voteId": "vote-senate-l606-2024-12-16-proiect-de-lege-de-aprobare",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=093fe159-2474-4b95-970b-cab2390399c7 (automatic: 94 name rows counted on the raw page, 95 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "168d592e-fd82-41cb-a5ca-af4a0e9729dd",
+      "voteId": "vote-senate-l574-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=168d592e-fd82-41cb-a5ca-af4a0e9729dd (automatic: 95 name rows counted on the raw page, 96 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "2b6a3d31-8a7a-4fdd-be9f-ad56e4ecf6db",
+      "voteId": "vote-senate-l637-2024-12-16-proiect-de-lege-de-aprobare",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=2b6a3d31-8a7a-4fdd-be9f-ad56e4ecf6db (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "2f28133d-77df-4eac-a742-75fb8417d29b",
+      "voteId": "vote-senate-l643-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=2f28133d-77df-4eac-a742-75fb8417d29b (automatic: 90 name rows counted on the raw page, 91 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "4712cc91-a755-49bd-be4d-036cc2d5aa1e",
+      "voteId": "vote-senate-l573-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=4712cc91-a755-49bd-be4d-036cc2d5aa1e (automatic: 94 name rows counted on the raw page, 95 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "606495f6-6ef5-4381-9f88-6bd716e35504",
+      "voteId": "vote-senate-l564-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=606495f6-6ef5-4381-9f88-6bd716e35504 (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "6c397893-793c-47fd-9c66-92c2f276b852",
+      "voteId": "vote-senate-l570-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=6c397893-793c-47fd-9c66-92c2f276b852 (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "72afb91b-fe31-4940-bd12-1f9ac00d37d9",
+      "voteId": "vote-senate-l625-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=72afb91b-fe31-4940-bd12-1f9ac00d37d9 (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "73ed4b9d-bac9-40f9-ad89-c5d3fced23b7",
+      "voteId": "vote-senate-l623-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=73ed4b9d-bac9-40f9-ad89-c5d3fced23b7 (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "797274b0-fc5a-48eb-af9c-5eee9f423c8b",
+      "voteId": "vote-senate-l624-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=797274b0-fc5a-48eb-af9c-5eee9f423c8b (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "7eb58586-6d44-4025-b556-863b3398640e",
+      "voteId": "vote-senate-l607-2024-12-16-proiect-de-lege-de-aprobare",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=7eb58586-6d44-4025-b556-863b3398640e (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "88ce64b7-fdea-4c03-84dd-5f1140d1135f",
+      "voteId": "vote-senate-l636-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=88ce64b7-fdea-4c03-84dd-5f1140d1135f (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "8af688cf-ba27-436e-9af1-0a9f96b2f34b",
+      "voteId": "vote-senate-l605-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=8af688cf-ba27-436e-9af1-0a9f96b2f34b (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "959e0618-c98b-4a72-840b-53861bdfde38",
+      "voteId": "vote-senate-l646-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "abstention": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=959e0618-c98b-4a72-840b-53861bdfde38 (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "9e5e791e-60a1-407b-bea6-08f68192d475",
+      "voteId": "vote-senate-l844-2022-12-16-proiect-de-lege-de-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=9e5e791e-60a1-407b-bea6-08f68192d475 (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "bec31988-ee65-4025-9273-fbcc02270bab",
+      "voteId": "vote-senate-l576-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=bec31988-ee65-4025-9273-fbcc02270bab (automatic: 92 name rows counted on the raw page, 93 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ddce724b-d18d-4c9a-b26c-3efd8b245b19",
+      "voteId": "vote-senate-l611-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ddce724b-d18d-4c9a-b26c-3efd8b245b19 (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "e1047c31-2dc6-470e-9c36-7c86d0aa72ee",
+      "voteId": "vote-senate-l632-2024-12-16-proiect-de-lege-de-aprobare",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=e1047c31-2dc6-470e-9c36-7c86d0aa72ee (automatic: 93 name rows counted on the raw page, 94 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ebf26c6c-fbea-42dd-84a1-5a66e7cdfba7",
+      "voteId": "vote-senate-l572-2024-12-16-final-respingere",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ebf26c6c-fbea-42dd-84a1-5a66e7cdfba7 (automatic: 90 name rows counted on the raw page, 91 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "ed9e4a39-4d1b-4972-9d1b-3b7e9e092be2",
+      "voteId": "vote-senate-l615-2024-12-16-final",
+      "date": "2024-12-16",
+      "shortBy": {
+        "abstention": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=ed9e4a39-4d1b-4972-9d1b-3b7e9e092be2 (automatic: 91 name rows counted on the raw page, 92 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "f7ea54b8-3519-4546-9de7-233faa7d30bf",
+      "voteId": "vote-senate-senate-vote-12-16-ph-regulament-senat",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=f7ea54b8-3519-4546-9de7-233faa7d30bf (automatic: 84 name rows counted on the raw page, 85 present)"
+    },
+    {
+      "source": "senate",
+      "officialId": "f819e2c4-dbfd-491f-8a57-28071d80c6f0",
+      "voteId": "vote-senate-l634-2024-12-16-proiect-de-lege-de-aprobare",
+      "date": "2024-12-16",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-11",
+      "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=f819e2c4-dbfd-491f-8a57-28071d80c6f0 (automatic: 90 name rows counted on the raw page, 91 present)"
+    },
+    {
+      "source": "senate",
       "officialId": "06b5c13b-efb2-45cc-85ed-0e25d5c4a3c2",
       "voteId": "vote-senate-l325-2024-02-17-final-respingere",
       "date": "2025-02-17",

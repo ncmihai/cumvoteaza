@@ -20,6 +20,27 @@ export interface ParsedSenateVote {
   individualVotes: IndividualVote[];
 }
 
+/** The official id (AppID) a senat.ro vote page is addressed by, lower case. */
+export function senateAppId(url: string): string | undefined {
+  return /AppID=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i.exec(url)?.[1]?.toLowerCase();
+}
+
+/**
+ * The vote id is made of the bill (or the heading), the day and the month, so two votes of one day on the same words ("Vacantare mandat senator" twice, two appointments of a deputy secretary general)
+ * would be one vote. A vote that finds its id held by another page gets the first eight characters of its own AppID added, in the vote and in every row that carries its id.
+ */
+export function reidSenateVote(parsed: ParsedSenateVote, suffix: string): ParsedSenateVote {
+  const from = parsed.vote.id;
+  const to = `${from}-${suffix}`;
+  const swap = (value: string) => value.split(from).join(to);
+  return {
+    ...parsed,
+    vote: { ...parsed.vote, id: to },
+    groupVoteTotals: parsed.groupVoteTotals.map((total) => ({ ...total, id: swap(total.id), voteId: to })),
+    individualVotes: parsed.individualVotes.map((row) => ({ ...row, id: swap(row.id), voteId: to }))
+  };
+}
+
 export function parseSenateVote(html: string, sourceUrl: string): ParsedSenateVote {
   const $ = cheerio.load(html);
   const sourceSnapshot = snapshotFor("senate-vote-detail", sourceUrl, html, "parsed");

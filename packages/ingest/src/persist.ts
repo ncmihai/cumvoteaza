@@ -32,7 +32,7 @@ import type {
   Vote
 } from "@cumsevoteaza/parliament-model";
 import type { ParsedSenateBill } from "./parsers/senate-bill";
-import type { ParsedSenateVote } from "./parsers/senate-vote";
+import { reidSenateVote, senateAppId, type ParsedSenateVote } from "./parsers/senate-vote";
 import { legislatureCatalog, type ParsedRoster } from "./parsers/roster";
 import type { ParsedDeputiesBill } from "./parsers/deputies-bill";
 import type { ParsedChamberVote } from "./parsers/chamber-vote";
@@ -80,6 +80,11 @@ export async function persistSenateVote(parsed: ParsedSenateVote, suppliedSessio
   try {
     return await session.db.transaction(async (db) => {
     await db.insert(schema.legislatures).values(legislatureForDate(parsed.vote.heldOn)).onConflictDoNothing();
+    // A vote whose id is held by another official page (two votes of one day on the same words) is stored under its own id.
+    const held = await db.execute<{ source_url: string | null }>(sql`select s.source_url from votes v left join source_snapshots s on s.id = v.source_snapshot_id where v.id = ${parsed.vote.id}`);
+    const heldAppId = held[0]?.source_url ? senateAppId(held[0].source_url) : undefined;
+    const ownAppId = senateAppId(parsed.sourceSnapshot.sourceUrl);
+    if (heldAppId && ownAppId && heldAppId !== ownAppId) parsed = reidSenateVote(parsed, ownAppId.slice(0, 8));
     await upsertSourceSnapshot(db, parsed.sourceSnapshot);
 
     let vote = parsed.vote;
@@ -103,6 +108,8 @@ export async function persistSenateVote(parsed: ParsedSenateVote, suppliedSessio
     const voters = await resolveVoteVoters(db, "senate", vote.heldOn, parsed.members);
     await upsertVote(db, vote);
     await Promise.all(parsed.groupVoteTotals.map((total) => upsertGroupVoteTotal(db, total)));
+    // The page is the whole vote: rows an earlier import of another page left under this id (before votes could get their own id) are not kept.
+    await db.execute(sql`delete from individual_vote_rows where vote_num = (select num from votes where id = ${vote.id})`);
     await upsertIndividualVotes(db, canonicalIndividualVotes(parsed.individualVotes, voters));
 
     return {
