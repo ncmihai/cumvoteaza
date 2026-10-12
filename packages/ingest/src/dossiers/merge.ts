@@ -131,6 +131,21 @@ function firstChamberFrom(registrations: DossierRegistration[]): "deputies" | "s
  * in short); the Presidency's steps come from both, once. Initiators come from the Chamber page when it lists member
  * profiles (exact), otherwise from the Senate page (names).
  */
+/**
+ * The fate from the stage line of the page that has seen the latest step. The law's number is printed by the Chamber's page ("Lege 180/2022") while the Senate's page of the same bill can still read
+ * "Trimis la Cameră pentru dezbatere"; where the chosen line has no law number, the other page's line is tried, and used only for the number it states.
+ */
+function fateOf(input: Parameters<typeof deriveFate>[0], otherStages: Array<string | undefined>) {
+  const fate = deriveFate(input);
+  if (fate.lawNumber) return fate;
+  for (const stage of otherStages) {
+    if (!stage || stage === input.stage) continue;
+    const retry = deriveFate({ ...input, stage });
+    if (retry.lawNumber) return { ...retry };
+  }
+  return fate;
+}
+
 export function mergeDossiers(group: PageGroup): MergedDossier {
   const cdep = group.pages.find((page) => page.source === "cdep");
   const senate = group.pages.find((page) => page.source === "senate");
@@ -199,7 +214,7 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
     initiatorCountText: cdep?.initiatorCountText,
     consulted: cdep?.consulted ?? [],
     steps,
-    fate: deriveFate({ steps, stage, decisionChamber }),
+    fate: fateOf({ steps, stage, decisionChamber }, [cdep?.stage, senate?.stage]),
     unrecognised: pages.flatMap((page) => page.unrecognised)
   };
 }

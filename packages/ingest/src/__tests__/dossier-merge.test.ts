@@ -92,3 +92,15 @@ describe("a blank stage cell", () => {
     expect(mergeDossiers(group!).stage).toBe("Trimis la Cameră pentru dezbatere");
   });
 });
+
+describe("the law's number when the two pages' stage lines differ", () => {
+  it("is taken from the Chamber's line ('Lege 180/2022') although the Senate's page, with the later step, still reads 'Trimis la Cameră pentru dezbatere'", () => {
+    const chamberPage = { ...page("cdep", "PL-x 134/2022", [{ body: "cdep", number: "134", date: "2022-03-21" }, { body: "senate", number: "L62", year: 2021 }], [step("cdep", "deputies", "2022-06-14", "promulgation")]), stage: "Lege 180/2022" };
+    const senatePage = { ...page("senate", "L62/2021", [{ body: "senate", number: "L62", date: "2021-12-15" }], [step("senate", "senate", "2022-06-15", "registered")]), stage: "Trimis la Cameră pentru dezbatere" };
+    const [group] = groupPages([chamberPage, senatePage]);
+    const merged = mergeDossiers(group!);
+    expect(merged.stage).toBe("Trimis la Cameră pentru dezbatere");
+    expect(merged.fate).toMatchObject({ outcome: "promulgated", lawNumber: "180", lawYear: 2022 });
+  });
+});
+
