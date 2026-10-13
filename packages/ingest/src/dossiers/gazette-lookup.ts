@@ -51,11 +51,18 @@ export function lawGazette(acts: LegislatieAct[], number: string): { gazetteNumb
   return undefined;
 }
 
+/** The portal's service answers 500 now and then and then answers the same call a few seconds later: a call is tried three times, 3 and 8 seconds apart, before it fails. */
 async function soap(action: string, body: string): Promise<string> {
   const envelope = `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>${body}</s:Body></s:Envelope>`;
-  const response = await fetch(ENDPOINT, { method: "POST", headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: `${NS}IFreeWebService/${action}` }, body: envelope });
-  if (!response.ok) throw new Error(`legislatie.just.ro ${action}: HTTP ${response.status}`);
-  return response.text();
+  let status = 0;
+  for (const wait of [0, 3000, 8000]) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    const response = await fetch(ENDPOINT, { method: "POST", headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: `${NS}IFreeWebService/${action}` }, body: envelope });
+    if (response.ok) return response.text();
+    status = response.status;
+    if (status < 500) break;
+  }
+  throw new Error(`legislatie.just.ro ${action}: HTTP ${status}`);
 }
 
 export async function legislatieToken(): Promise<string> {
@@ -66,10 +73,23 @@ export async function legislatieToken(): Promise<string> {
 }
 
 /** Every act of the year with that number (laws, decisions, orders, decrees...); `lawGazette` picks the law. */
-export async function searchActs(token: string, year: number, number: string): Promise<LegislatieAct[]> {
-  const model = `<a:NumarPagina>0</a:NumarPagina><a:RezultatePagina>50</a:RezultatePagina><a:SearchAn>${year}</a:SearchAn><a:SearchNumar>${number}</a:SearchNumar><a:SearchText i:nil="true"/><a:SearchTitlu i:nil="true"/>`;
+export async function searchActs(token: string, year: number, number: string, page = 0): Promise<LegislatieAct[]> {
+  const model = `<a:NumarPagina>${page}</a:NumarPagina><a:RezultatePagina>50</a:RezultatePagina><a:SearchAn>${year}</a:SearchAn><a:SearchNumar>${number}</a:SearchNumar><a:SearchText i:nil="true"/><a:SearchTitlu i:nil="true"/>`;
   const answer = await soap("Search", `<Search xmlns="${NS}"><SearchModel xmlns:a="http://schemas.datacontract.org/2004/07/FreeWebService" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">${model}</SearchModel><tokenKey>${token}</tokenKey></Search>`);
   return parseLegislatieSearch(answer);
+}
+
+/**
+ * The law of that number among the acts of the year, looking page by page (the portal answers ten acts at a time and a number can be shared by more than ten decisions, orders and decrees)
+ * until the law is found or a page is short; at most `maxPages` pages.
+ */
+export async function findLawGazette(search: (page: number) => Promise<LegislatieAct[]>, number: string, maxPages = 6): Promise<ReturnType<typeof lawGazette>> {
+  for (let page = 0; page < maxPages; page += 1) {
+    const acts = await search(page);
+    const found = lawGazette(acts, number);
+    if (found || acts.length < 10) return found;
+  }
+  return undefined;
 }
 
 /** Acts of the year whose title holds the word (first page of the results; the portal answers ten at a time). Decrees of the Presidency among them are what the cabinet watcher looks at. */

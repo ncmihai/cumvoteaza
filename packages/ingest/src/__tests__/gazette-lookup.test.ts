@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lawGazette, parseLegislatieSearch } from "../dossiers/gazette-lookup";
+import { findLawGazette, lawGazette, parseLegislatieSearch } from "../dossiers/gazette-lookup";
 
 const act = (type: string, issuer: string, text: string) => `<a:Legi><a:DataVigoare>2025-12-23</a:DataVigoare><a:Emitent>${issuer}</a:Emitent><a:LinkHtml>http://legislatie.just.ro/Public/DetaliiDocument/1</a:LinkHtml><a:Numar>244</a:Numar><a:Text>${text}</a:Text><a:TipAct>${type}</a:TipAct><a:Titlu>t</a:Titlu></a:Legi>`;
 const xml = `<s:Envelope><s:Body><SearchResponse><SearchResult>${[
@@ -21,3 +21,25 @@ describe("legislatie.just.ro law lookup", () => {
     expect(lawGazette(parseLegislatieSearch(xml), "245")).toBeUndefined();
   });
 });
+
+describe("looking page by page for a law", () => {
+  const filler = (count: number) => Array.from({ length: count }, (_, index) => ({ type: "HOTĂRÂRE", issuer: "Guvernul", title: `h${index}`, link: "", text: `HOTĂRÂRE nr. 232 din 1 martie 2016 Publicat în MONITORUL OFICIAL nr. 1 din 2 martie 2016` }));
+  const law = parseLegislatieSearch(xml);
+
+  it("goes on to the next page while a full page of ten acts has no law, and stops where the law is found", async () => {
+    const asked: number[] = [];
+    const found = await findLawGazette(async (page) => { asked.push(page); return page === 1 ? [...law, ...filler(7)] : filler(10); }, "244");
+    expect(found?.gazetteNumber).toBe("1194");
+    expect(asked).toEqual([0, 1]);
+  });
+
+  it("stops at a short page, and at the page limit", async () => {
+    const asked: number[] = [];
+    expect(await findLawGazette(async (page) => { asked.push(page); return filler(3); }, "232")).toBeUndefined();
+    expect(asked).toEqual([0]);
+    const full: number[] = [];
+    expect(await findLawGazette(async (page) => { full.push(page); return filler(10); }, "232", 3)).toBeUndefined();
+    expect(full).toEqual([0, 1, 2]);
+  });
+});
+

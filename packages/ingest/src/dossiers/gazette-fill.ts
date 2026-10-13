@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { DbClient } from "@cumsevoteaza/db";
-import { lawGazette, legislatieToken, searchActs } from "./gazette-lookup";
+import { findLawGazette, legislatieToken, searchActs } from "./gazette-lookup";
 
 export interface GazetteFillResult {
   withoutGazette: number;
@@ -24,7 +24,14 @@ export async function fillGazetteNumbers(db: DbClient, options: { persist: boole
   for (const row of rows) {
     const law = `${row.law_number}/${row.law_year}`;
     await new Promise((resolve) => setTimeout(resolve, options.delayMs));
-    const gazette = lawGazette(await searchActs(token, row.law_year, row.law_number), row.law_number);
+    let gazette;
+    try {
+      gazette = await findLawGazette((page) => searchActs(token, row.law_year, row.law_number, page), row.law_number);
+    } catch (error) {
+      // One law the portal cannot answer for leaves that law without a number, not the others.
+      notFound.push({ bill: row.bill_id, law, reason: error instanceof Error ? error.message : String(error) });
+      continue;
+    }
     if (!gazette) notFound.push({ bill: row.bill_id, law, reason: "no published law with that number and year yet" });
     else if (row.decree_on && gazette.lawOn !== row.decree_on.slice(0, 10)) notFound.push({ bill: row.bill_id, law, reason: `the law is dated ${gazette.lawOn}, the promulgation decree ${row.decree_on.slice(0, 10)}` });
     else found.push({ bill: row.bill_id, law, gazetteNumber: gazette.gazetteNumber, gazetteOn: gazette.gazetteOn });
