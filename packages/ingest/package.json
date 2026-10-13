@@ -106,6 +106,7 @@
     "audit:vote-classification": "tsx src/cli.ts audit:vote-classification",
     "votes:classify": "tsx src/cli.ts votes:classify",
     "repair:link-vote-bill": "tsx src/cli.ts repair:link-vote-bill",
+    "repair:member-source-slugs": "tsx src/cli.ts repair:member-source-slugs",
     "repair:refresh-missing-procedure": "tsx src/cli.ts repair:refresh-missing-procedure",
     "repair:duplicate-bill-plan": "tsx src/cli.ts repair:duplicate-bill-plan",
     "refresh-read-models": "tsx src/cli.ts refresh-read-models",

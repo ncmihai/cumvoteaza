@@ -3,7 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
 
 /**
- * The President's decrees (Sprint 14, D-037), read from `presidential_decrees`: the portal's catalog since 2014, each typed by its title and signed as the decree's own signature says.
+ * The President's decrees (Sprint 14, D-037), read from `presidential_decrees`: the portal's catalog since 1990, each typed by its title and signed as the decree's own signature says.
  * Answers "nothing" when the table is not there yet (the deploy can come before the migration).
  */
 export interface DecreeItem {

@@ -4,6 +4,26 @@ import * as schema from "@cumsevoteaza/db";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
 import { dataUnavailable } from "./data-availability";
 
+/** The English line under each ministry's name. The catalog stores the Romanian text in both languages until the English one is loaded; this answers for the sixteen ministries by their address. */
+const MINISTRY_DESCRIPTIONS_EN: Record<string, string> = {
+  interne: "Internal administration, public order, civil protection and services for citizens.",
+  aparare: "Defence policy, the armed forces and Romania's military security.",
+  transporturi: "Road, rail, naval and air transport, and the national infrastructure.",
+  finante: "The state budget, taxation, public debt and the management of public finances.",
+  justitie: "Justice policy and the legal framework of the judicial system.",
+  agricultura: "Agriculture, rural development, the food industry and European agricultural policy.",
+  energie: "Energy policy, security of supply and the energy transition.",
+  sanatate: "Public health, medical services and national health policy.",
+  "fonduri-europene": "The coordination of European funds, investments and development programmes.",
+  educatie: "Education, higher education, research and innovation.",
+  externe: "Foreign policy, diplomacy and Romania's international relations.",
+  mediu: "Environmental protection, waters, forests and climate policy.",
+  munca: "Labour, pensions, family, youth and social protection policy.",
+  economie: "The economy, digitalisation, entrepreneurship, industry and tourism.",
+  dezvoltare: "Territorial development, public administration and public works.",
+  cultura: "Heritage, cultural institutions and national cultural policy."
+};
+
 export interface MinistryTermView {
   id: string;
   person: { id: string; displayName: string };
@@ -261,7 +281,7 @@ async function assembleMinistries(session: ReturnType<typeof createWebDbSession>
       name: ministry.name,
       shortName: ministry.shortName,
       descriptionRo: ministry.descriptionRo,
-      descriptionEn: ministry.descriptionEn,
+      descriptionEn: MINISTRY_DESCRIPTIONS_EN[ministry.slug] ?? ministry.descriptionEn,
       aliases: aliases.filter((alias) => alias.ministryId === ministry.id).map((alias) => alias.name),
       terms,
       current: terms.find((term) => term.startsOn <= today && (!term.endsOn || term.endsOn >= today)),

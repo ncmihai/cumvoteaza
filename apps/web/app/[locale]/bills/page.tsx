@@ -29,7 +29,7 @@ export default async function BillsPage({
   const labels = pageLabels[locale];
 
   return (
-    <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum găsești un proiect?" : "How to find a bill"} body={locale === "ro" ? "Caută după număr sau subiect, apoi restrânge rezultatele după legislatură și cameră." : "Search by number or subject, then narrow results by legislature and chamber."} items={locale === "ro" ? ["Caută după identificator sau cuvinte din titlu.", "Folosește filtrele pentru rezultate precise.", "Deschide proiectul pentru traseu, documente și voturi."] : ["Search by identifier or title words.", "Use filters for precise results.", "Open a bill for its timeline, documents and votes."]} />}>
+    <EditorialPage aside={<EditorialGuide title={locale === "ro" ? "Cum găsești un proiect?" : "How to find a bill"} body={locale === "ro" ? "Caută după număr sau subiect, apoi restrânge rezultatele după legislatură și cameră." : "Search by number or subject, then narrow results by legislature and chamber."} items={locale === "ro" ? ["Caută după identificator sau cuvinte din titlu.", "Folosește filtrele pentru rezultate precise.", "Deschide proiectul pentru traseu, documente și voturi."] : ["Search by identifier or title words.", "Use filters for precise results.", "Open a bill for its timeline, documents and votes."]}  locale={locale === "ro" ? "ro" : "en"} />}>
       
       <SearchEngagementTracker entityType="bill" query={filters.q} locale={locale} />
       <EditorialPageHeader eyebrow={messages.nav.bills} title={labels.title} subtitle={labels.subtitle} />

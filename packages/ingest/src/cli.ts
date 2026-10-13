@@ -85,6 +85,7 @@ import {
 } from "./persist";
 import { snapshotFor } from "./parsers/utils";
 import { refreshReadModels } from "./read-models";
+import { tidyMemberSlugs } from "./identity/member-slug-repair";
 import { writePoliticalEntityCandidates } from "./political-entity-candidates";
 import { seedPoliticalFormationEvents } from "./political-formation-events";
 import {
@@ -898,6 +899,20 @@ async function main() {
     try {
       const result = await mergeParties(session.db, { persist: hasFlag("persist") });
       console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "repair:member-source-slugs") {
+    // The Senate members of 2020 to 2024 whose profile address ends in the source's key ("...-senate-4fc59328-a7c5-...") get the address their record id gives; the old address redirects.
+    // Dry run unless --persist; then ingest:site:revalidate.
+    const session = createDbSession();
+    try {
+      const result = await tidyMemberSlugs(session.db, { persist: hasFlag("persist") });
+      console.log(JSON.stringify({ ...result, slugs: result.slugs.slice(0, 5), changed: result.slugs.length }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
     } finally {
       await session.close();

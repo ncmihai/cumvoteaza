@@ -120,6 +120,7 @@
     "ingest:audit:vote-classification": "npm --workspace @cumsevoteaza/ingest run audit:vote-classification --",
     "ingest:votes:classify": "npm --workspace @cumsevoteaza/ingest run votes:classify --",
     "repair:link-vote-bill": "npm --workspace @cumsevoteaza/ingest run repair:link-vote-bill --",
+    "ingest:repair:member-source-slugs": "npm --workspace @cumsevoteaza/ingest run repair:member-source-slugs --",
     "repair:refresh-missing-procedure": "npm --workspace @cumsevoteaza/ingest run repair:refresh-missing-procedure --",
     "repair:duplicate-bill-plan": "npm --workspace @cumsevoteaza/ingest run repair:duplicate-bill-plan --",
     "ingest:refresh-read-models": "npm --workspace @cumsevoteaza/ingest run refresh-read-models --",

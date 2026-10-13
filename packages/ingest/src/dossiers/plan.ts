@@ -183,6 +183,18 @@ export const contradicts = (a: string, b: string) => {
   return Boolean(first && second && first !== second);
 };
 
+/** The title a vote gave a bill before its dossier was read: "L103/2022 — vot final", "PL-x 135/2022 - Retrimitere la Comisie", "L109/2015 — proiect de lege de respingere". It names the vote, not the bill. */
+export const isVoteStyleTitle = (title: string) => /^(?:PL-?x|PLx|BP|L|B)\s?\d+\/\d{4}\s+[—–-]\s+\S/i.test(title.trim());
+
+/**
+ * The title a bill is stored with: what is stored stays, unless it is a title a vote gave it (the dossier's own title replaces that: a third of the bills were showing "L103/2022 — vot final" as
+ * their title) or contradicts the dossier (it approves another ordinance: an older mislink wrote another bill's title here).
+ */
+export function chosenBillTitle(existing: string | undefined, dossier: string | undefined, billId: string): string {
+  const keepExisting = existing && existing !== "unknown" && !(dossier && isVoteStyleTitle(existing)) && !(dossier && contradicts(existing, dossier));
+  return keepExisting ? existing : (dossier ?? existing ?? billId);
+}
+
 export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapshot[]; fetchedAt: Partial<Record<"cdep" | "senate", string>>; context: PlanContext; existingIndex: Map<string, ExistingBill[]>; /** Stored bills another dossier already holds. */ exclude?: Set<string> }): BillPlan {
   const { merged, context } = input;
   const matches: ExistingBill[] = [];
@@ -311,8 +323,7 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     claimsStoredBill: Boolean(existing && canonical && existing.id === billIdForIdentifier(canonical)),
     alsoMatches: matches.slice(1).map((bill) => bill.id),
     bill: {
-      // The stored title stays, unless it contradicts the dossier (it approves another ordinance: an older mislink wrote another bill's title here).
-      title: existing?.title && existing.title !== "unknown" && !(merged.title && contradicts(existing.title, merged.title)) ? existing.title : (merged.title ?? existing?.title ?? billId),
+      title: chosenBillTitle(existing?.title, merged.title, billId),
       identifiers: mergedIdentifiers,
       // The dossier says which chamber was notified first (the Senate page prints "Prima cameră", the Chamber's registration dates show it) and which decides:
       // that replaces what an older import stored (for more than half of the bills it had written the Chamber of Deputies as the origin).
