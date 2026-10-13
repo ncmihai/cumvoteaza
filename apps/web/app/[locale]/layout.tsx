@@ -16,11 +16,20 @@ import "../globals.css";
 const bricolage = localFont({ src: "../fonts/bricolage-latin.woff2", weight: "400 800", style: "normal", variable: "--font-bricolage", display: "swap", fallback: ["system-ui", "sans-serif"] });
 const inter = localFont({ src: "../fonts/inter-latin.woff2", weight: "400 700", style: "normal", variable: "--font-inter", display: "swap", fallback: ["system-ui", "sans-serif"] });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://cumvoteaza.vercel.app"),
-  title: { default: "cumsevoteaza", template: TITLE_TEMPLATE },
-  description: "Romanian Parliament votes, bills, and parliamentary career history."
+/** The description of a page that gives none of its own, in the page's language (it was English on every Romanian page). */
+const DEFAULT_DESCRIPTION = {
+  ro: "Voturile, proiectele de lege și parlamentarii României, din surse oficiale, cu legătura către sursă la fiecare cifră.",
+  en: "The votes, bills and members of the Romanian Parliament, from official sources, with a link to the source for every figure."
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    metadataBase: new URL("https://cumvoteaza.vercel.app"),
+    title: { default: "cumsevoteaza", template: TITLE_TEMPLATE },
+    description: DEFAULT_DESCRIPTION[isLocale(locale) ? locale : "ro"]
+  };
+}
 
 export function generateStaticParams() {
   return [{ locale: "ro" }, { locale: "en" }];

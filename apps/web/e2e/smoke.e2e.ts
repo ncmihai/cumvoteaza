@@ -420,3 +420,20 @@ test("party finance: the campaign reports give each party's contributions and sp
   await expect(table.getByRole("row", { name: /^Alianța pentru Unirea Românilor/ })).toContainText("69.139.607 lei");
   await expect(table.getByRole("row", { name: /^Partidul Social Democrat/ }).getByRole("link", { name: /Raportul AEP/ })).toHaveAttribute("href", /legislatie\.just\.ro/);
 });
+
+test("a bill is titled by its dossier, not by the vote that named it first @db", async ({ page }) => {
+  // A third of the bills used to show "L103/2022 — vot final" as their title: the stored title always won over the dossier's.
+  await page.goto("/ro/bills/bill-l103-2022");
+  const title = (await page.locator("h1").first().textContent()) ?? "";
+  expect(title).not.toMatch(/^(?:PL-x|L|B)\s?\d+\/\d{4}\s+[—–-]\s+/);
+  expect(title.length).toBeGreaterThan(20);
+});
+
+test("the English pages keep their own words for what the site says about itself @db", async ({ page }) => {
+  await page.goto("/en/members");
+  await expect(page.getByText("Official data", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Informațiile păstrează legătura")).toHaveCount(0);
+  await page.goto("/en/ministries");
+  await expect(page.locator("main")).not.toContainText("Administrația internă, ordinea publică");
+});
+
