@@ -4,6 +4,9 @@ import { countyLabel, foldKey, normalizeRomanian, titleCaseRo } from "./text";
 describe("text helpers", () => {
   it("writes comma-below letters", () => {
     expect(normalizeRomanian("Asociaţia Şcolii Ţării")).toBe("Asociația Școlii Țării");
+    // The tilde a the Chamber prints for ă, and text that needs nothing is returned as it is.
+    expect(normalizeRomanian("Ordonanţei de urgenţã a Guvernului, Cãlãraşi")).toBe("Ordonanței de urgență a Guvernului, Călărași");
+    expect(normalizeRomanian("Ordonanței de urgență")).toBe("Ordonanței de urgență");
   });
   it("folds to a key without capitals or accents", () => {
     expect(foldKey("BISTRIŢA-NĂSĂUD")).toBe("bistrita-nasaud");

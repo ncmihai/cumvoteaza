@@ -1,9 +1,12 @@
 /**
  * Small text helpers for what the official sources print. The Chamber and the Senate still write the old cedilla letters (ş ţ) and county names in capitals;
- * the page shows the correct comma-below forms and ordinary capitalisation. The stored text is not changed.
+ * the page shows the correct comma-below forms and ordinary capitalisation. The stored text is not changed. Every text value the web reads from the database goes through `normalizeRomanian` (server-db.ts).
  */
+const LEGACY_LETTERS = /[ŞşŢţÃã]/;
 export function normalizeRomanian(value: string): string {
-  return value.replace(/ş/g, "ș").replace(/Ş/g, "Ș").replace(/ţ/g, "ț").replace(/Ţ/g, "Ț");
+  if (!LEGACY_LETTERS.test(value)) return value;
+  // ş ţ are the old cedilla letters, ã the tilde one the Chamber's pages print for ă.
+  return value.replace(/ş/g, "ș").replace(/Ş/g, "Ș").replace(/ţ/g, "ț").replace(/Ţ/g, "Ț").replace(/ã/g, "ă").replace(/Ã/g, "Ă");
 }
 
 /** Lower case without accents, for comparing and for addresses: "ARGEŞ" → "arges". */

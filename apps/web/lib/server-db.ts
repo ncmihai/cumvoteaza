@@ -1,4 +1,5 @@
 import { createPooledDbSession } from "@cumsevoteaza/db";
+import { normalizeRomanian } from "./text";
 
 export const CACHE_TAGS = {
   home: "home",
@@ -36,7 +37,8 @@ export function coalesce<T>(key: string, work: () => Promise<T>): Promise<T> {
 }
 
 export function createWebDbSession() {
-  return createPooledDbSession();
+  // The sources print ş ţ ã; every page shows ș ț ă (the stored text stays as printed).
+  return createPooledDbSession(undefined, { mapText: normalizeRomanian });
 }
 
 export async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {

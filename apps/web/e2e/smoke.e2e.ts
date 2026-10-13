@@ -437,3 +437,12 @@ test("the English pages keep their own words for what the site says about itself
   await expect(page.locator("main")).not.toContainText("Administrația internă, ordinea publică");
 });
 
+test("the pages show ș ț ă, not the old cedilla and tilde letters the sources print @db", async ({ page }) => {
+  for (const path of ["/ro/bills/bill-l103-2022", "/ro/bills", "/ro/members", "/ro/parties/psd", "/en/bills/bill-l103-2022"]) {
+    await page.goto(path);
+    await expect(page.locator("h1").first()).toBeVisible();
+    const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+    expect(text.match(/[ţşãŢŞÃ]/g) ?? [], `legacy letters on ${path}`).toEqual([]);
+  }
+});
+
