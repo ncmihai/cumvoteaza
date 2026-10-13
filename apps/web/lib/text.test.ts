@@ -23,3 +23,11 @@ describe("text helpers", () => {
     expect(countyLabel("ARGEŞ", "ro")).toBe("Argeș");
   });
 });
+
+describe("place text after the display mapper", () => {
+  it("still drops the party trailer whichever spelling of ț the text has", async () => {
+    const { placeForDisplay } = await import("./presentation");
+    expect(placeForDisplay("Argeș Formaţiunea politică PSD")).toBe("Argeș");
+    expect(placeForDisplay("Argeș Formațiunea politică PSD")).toBe("Argeș");
+  });
+});

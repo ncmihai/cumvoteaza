@@ -137,7 +137,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           ) : null}
 
           <Section title={ro ? "Ultima actualizare" : "Last update"}>
-            <p>{ro ? "Actualizarea porneşte la cerere sau o dată pe zi (nu în timp real); datele de mai jos sunt ale celui mai recent vot păstrat și ale ultimei pagini oficiale citite pentru el." : "Updating starts on request or once a day (not in real time); the dates below are the most recent vote we hold and the last official page read for it."}</p>
+            <p>{ro ? "Actualizarea pornește la cerere sau o dată pe zi (nu în timp real); datele de mai jos sunt ale celui mai recent vot păstrat și ale ultimei pagini oficiale citite pentru el." : "Updating starts on request or once a day (not in real time); the dates below are the most recent vote we hold and the last official page read for it."}</p>
             <ul className="space-y-1">
               {data.lastUpdate.map((item) => <li key={item.chamber}><strong>{voteChamberLabels[locale][item.chamber]}</strong>: {ro ? "ultimul vot" : "last vote"} {date(item.lastVoteOn)}; {ro ? "pagină citită" : "page read"} {date(item.lastFetchedAt)}</li>)}
               <li><strong>{ro ? "Dosarele proiectelor" : "Bill files"}</strong>: {ro ? "citite la" : "read on"} {date(data.bills.lastReadAt)}</li>

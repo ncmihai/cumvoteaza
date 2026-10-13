@@ -16,6 +16,6 @@ export function placeForDisplay(value?: string): string {
   return (value ?? "")
     .replace(/data validării.*$/i, "")
     .replace(/data validarii.*$/i, "")
-    .replace(/formaţiunea politică.*$/i, "")
+    .replace(/forma[țţ]iunea politică.*$/i, "")
     .trim() || "—";
 }

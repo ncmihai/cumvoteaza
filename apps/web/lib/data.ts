@@ -3120,7 +3120,7 @@ function cleanHistoryDetail(value?: string): string | undefined {
     .replace(/data validării.*$/i, "")
     .replace(/data validarii.*$/i, "")
     .replace(/\bn\.\s*\d.*$/i, "")
-    .replace(/Formaţiunea politică.*$/i, "")
+    .replace(/Forma[țţ]iunea politică.*$/i, "")
     .replace(/Formatiunea politica.*$/i, "")
     .trim();
   return cleaned || undefined;

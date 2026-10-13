@@ -39,7 +39,7 @@ export async function getLeadership(): Promise<LeadershipData | undefined> {
       select c.chamber::text as chamber, c.committee_name as scope, c.role as title, m.display_name as name, m.slug,
              to_char(c.starts_on, 'YYYY-MM-DD') as starts_on, c.starts_on_precision as precision
       from member_committee_memberships c join members m on m.id = c.member_id
-      where c.ends_on is null and c.role ~* '^(pre[sş]edint|vicepre[sş]edint)' and c.chamber in ('deputies', 'senate')
+      where c.ends_on is null and c.role ~* '^(pre[sşș]edint|vicepre[sşș]edint)' and c.chamber in ('deputies', 'senate')
         and c.starts_on >= (select starts_on from legislatures order by starts_on desc limit 1) - interval '1 day'
         and exists (select 1 from member_mandates mm where mm.member_id = c.member_id and mm.ends_on is null and mm.legislature_id = (select id from legislatures order by starts_on desc limit 1))
       order by c.chamber, c.committee_name, c.role`))];
