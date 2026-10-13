@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { FITTING_WIDTHS, REFERENCE_VOTE, expect, expectNoSidewaysScroll, test } from "./support";
 
 test.describe("touch input", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 375, height: 812 } });
   test("tapping enlarged members updates and dismisses the bottom sheet", async ({ page }) => {
-    await page.goto("/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356");
+    await page.goto(REFERENCE_VOTE);
     await page.getByRole("button", { name: "PSD · 91", exact: true }).tap();
     await page.getByRole("button", { name: "Adrian Câciu Pentru", exact: true }).tap();
     await expect(page.getByRole("dialog")).toContainText("Adrian Câciu");
@@ -27,17 +27,17 @@ for (const locale of ["ro", "en"]) {
     // A ministry page reads whole tables: on a cold server the first navigation can take longer than a click's default wait.
     await Promise.all([page.waitForURL(new RegExp(`${ministryHref}$`), { timeout: 60_000 }), ministry.click()]);
     await expect(page.getByRole("heading", { name: locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history", exact: true })).toBeVisible({ timeout: 30_000 });
-    for (const width of [320, 375, 768, 854, 1024, 1280, 1920]) {
+    for (const width of FITTING_WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      await expectNoSidewaysScroll(page, page.url());
     }
     const history = page.locator("section").filter({ has: page.getByRole("heading", { name: locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history", exact: true }) });
     await expect(history.locator('a[target="_blank"]').first()).toHaveAttribute("href", /^https?:\/\//);
     await Promise.all([page.waitForURL(new RegExp(`/${locale}/governments/`), { timeout: 60_000 }), history.locator(`a[href^="/${locale}/governments/"]`).first().click()]);
     await expect(page.locator("h1")).toContainText(locale === "ro" ? "Guvernul" : "Government", { timeout: 30_000 });
-    for (const width of [320, 375, 768, 854, 1024, 1280, 1920]) {
+    for (const width of FITTING_WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      await expectNoSidewaysScroll(page, page.url());
     }
     const initial = page.locator("summary").filter({ hasText: locale === "ro" ? "Cabinetul la învestire" : "Cabinet at investiture" });
     await initial.click();
@@ -52,7 +52,7 @@ for (const locale of ["ro", "en"]) {
 }
 
 test("seat arrows and layered Escape preserve keyboard focus", async ({ page }) => {
-  await page.goto("/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356");
+  await page.goto(REFERENCE_VOTE);
   const first = page.getByRole("button", { name: "Adrian Câciu, PSD, Pentru", exact: true });
   await first.focus();
   await first.press("ArrowRight");
@@ -71,7 +71,7 @@ test("seat arrows and layered Escape preserve keyboard focus", async ({ page }) 
 });
 
 test("removed search origin falls back to the selected seat", async ({ page }) => {
-  await page.goto("/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356");
+  await page.goto(REFERENCE_VOTE);
   const search = page.getByRole("textbox");
   await search.fill("arges popa");
   await page.getByRole("button", { name: "Dorin Popa PSD · Pentru", exact: true }).click();
@@ -82,7 +82,7 @@ test("removed search origin falls back to the selected seat", async ({ page }) =
 
 test("group label, seat and arc share hover feedback and respect reduced motion", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/ro/votes/vote-deputies-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-37356");
+  await page.goto(REFERENCE_VOTE);
   const map = page.getByRole("region", { name: "Harta votului în plen", exact: true });
   const seat = page.getByRole("button", { name: "Adrian Câciu, PSD, Pentru", exact: true });
   const other = page.getByRole("button", { name: "Adrian Mocanu, PNL, Pentru", exact: true });
