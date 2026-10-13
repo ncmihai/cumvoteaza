@@ -14,6 +14,7 @@ import {
   type VoteChamber
 } from "@cumsevoteaza/parliament-model";
 import { CACHE_TAGS, createWebDbSession, timed } from "./server-db";
+import { normalizeRomanian } from "./text";
 import { dataUnavailable, requireDatabase } from "./data-availability";
 
 export type SourceStatusFilter = "parsed" | "partial" | "failed";
@@ -637,10 +638,11 @@ function mapVotePreviewGroups(value: unknown): VotePreviewGroup[] {
     const item = row as Record<string, unknown>;
     return {
       groupId: String(item.groupId ?? ""),
-      shortName: String(item.shortName ?? item.groupId ?? "—"),
-      name: String(item.name ?? item.shortName ?? item.groupId ?? "—"),
+      // json_agg output skips the connection's text parser, so tidy the letters here.
+      shortName: normalizeRomanian(String(item.shortName ?? item.groupId ?? "—")),
+      name: normalizeRomanian(String(item.name ?? item.shortName ?? item.groupId ?? "—")),
       color: String(item.color ?? "#64748b"),
-      partyShortName: typeof item.partyShortName === "string" ? item.partyShortName : undefined,
+      partyShortName: typeof item.partyShortName === "string" ? normalizeRomanian(item.partyShortName) : undefined,
       logoAssetId: typeof item.logoAssetId === "string" ? item.logoAssetId : undefined,
       for: Number(item.for ?? 0),
       against: Number(item.against ?? 0),
