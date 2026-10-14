@@ -46,8 +46,8 @@ function RoleRow({ role, locale }: { role: NonNullable<Awaited<ReturnType<typeof
 }
 
 const outcomeLabels = {
-  ro: { invested: "Învestit", failed: "Nu a obținut încrederea Parlamentului", revoked_before_vote: "Desemnare revocată înainte de vot" },
-  en: { invested: "Invested", failed: "Did not win Parliament's confidence", revoked_before_vote: "Designation revoked before the vote" }
+  ro: { invested: "Învestit", failed: "Nu a obținut încrederea Parlamentului", revoked_before_vote: "Desemnare revocată înainte de vot", pending: "Votul de învestitură nu a avut loc încă" },
+  en: { invested: "Invested", failed: "Did not win Parliament's confidence", revoked_before_vote: "Designation revoked before the vote", pending: "Investiture vote not held yet" }
 } as const;
 const motionOutcomeLabels = { ro: { adopted: "Adoptată", rejected: "Respinsă", unknown: "Fără vot" }, en: { adopted: "Adopted", rejected: "Rejected", unknown: "No vote" } } as const;
 
@@ -62,7 +62,7 @@ function voteLine(attempt: Formation, locale: AppLocale) {
 
 function AttemptCard({ attempt, locale }: { attempt: Formation; locale: AppLocale }) {
   const ro = locale === "ro";
-  const tone = attempt.outcome === "invested" ? "border-vote-for-fill bg-vote-for-bg text-vote-for" : "border-vote-abstain-fill bg-vote-abstain-bg text-vote-abstain";
+  const tone = attempt.outcome === "invested" ? "border-vote-for-fill bg-vote-for-bg text-vote-for" : attempt.outcome === "pending" ? "border-line bg-wash text-ink-soft" : "border-vote-abstain-fill bg-vote-abstain-bg text-vote-abstain";
   return <article className="min-w-0 border border-line p-4 rounded-control">
     <div className="flex flex-wrap items-start justify-between gap-2"><strong className="font-display text-lg text-ink">{attempt.designee.memberSlug ? <Link href={`/${locale}/members/${attempt.designee.memberSlug}`} className="hover:text-brand">{attempt.designee.displayName}</Link> : attempt.designee.displayName}</strong><span className={`border px-2 py-0.5 text-xs font-bold uppercase ${tone}`}>{outcomeLabels[locale][attempt.outcome]}</span></div>
     <p className="mt-2 text-xs leading-5 text-muted">{ro ? "Desemnat" : "Designated"} {formatDate(attempt.designatedOn, locale)}{attempt.designationDecree ? <> · {attempt.designationDecreeUrl ? <a href={attempt.designationDecreeUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand">{attempt.designationDecree}</a> : attempt.designationDecree}</> : null}</p>

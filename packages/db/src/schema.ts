@@ -532,8 +532,8 @@ export const governmentFormationAttempts = pgTable("government_formation_attempt
   votesAgainst: integer("votes_against"),
   votesVoid: integer("votes_void"),
   threshold: integer("threshold"),
-  /** invested | failed | revoked_before_vote */
-  outcome: text("outcome").$type<"invested" | "failed" | "revoked_before_vote">().notNull(),
+  /** invested | failed | revoked_before_vote | pending (designated, the vote is not held yet) */
+  outcome: text("outcome").$type<"invested" | "failed" | "revoked_before_vote" | "pending">().notNull(),
   parliamentDecision: text("parliament_decision"),
   parliamentDecisionUrl: text("parliament_decision_url"),
   appointmentDecree: text("appointment_decree"),

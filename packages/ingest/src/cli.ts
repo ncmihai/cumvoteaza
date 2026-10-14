@@ -1267,7 +1267,22 @@ async function main() {
   }
 
   if (command === "governments:skeleton") {
-    console.log(JSON.stringify(await persistGovernmentSkeleton(governmentSkeletonData()), null, 2));
+    const data = governmentSkeletonData();
+    const onlyFormation = flag("only-formation");
+    if (onlyFormation) {
+      // A new designation or a vote result between full rebuilds: writes this one attempt and its designee, nothing else.
+      const attempt = data.formationAttempts.find((item) => item.id === onlyFormation);
+      if (!attempt) throw new Error(`No formation attempt ${onlyFormation}; known: ${data.formationAttempts.map((item) => item.id).join(", ")}`);
+      console.log(JSON.stringify(await persistGovernmentSkeleton({
+        people: data.people.filter((person) => person.id === attempt.designeePersonId),
+        governments: [],
+        roles: [],
+        events: [],
+        formationAttempts: [attempt]
+      }), null, 2));
+      return;
+    }
+    console.log(JSON.stringify(await persistGovernmentSkeleton(data), null, 2));
     return;
   }
 

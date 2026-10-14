@@ -21,7 +21,7 @@ export interface FormationAttemptSeed {
   votesAgainst?: number;
   votesVoid?: number;
   threshold?: number;
-  outcome: "invested" | "failed" | "revoked_before_vote";
+  outcome: "invested" | "failed" | "revoked_before_vote" | "pending";
   parliamentDecision?: string;
   parliamentDecisionUrl?: string;
   appointmentDecree?: string;
@@ -137,5 +137,19 @@ export const formationAttemptSeeds: FormationAttemptSeed[] = [
       { label: "Parlamentul se reunește pentru votul de învestitură a Guvernului Siegfried Mureșan", url: "https://agerpres.ro/politic/2026/09/30/parlamentul-se-reuneste-pentru-votul-de-investitura-a-guvernului-siegfried-muresan--1598178", kind: "reported" }
     ],
     notes: "Ședința comună din 30 septembrie 2026. Parlamentarii AUR nu au fost în sală; cei ai PSD au fost prezenți, dar nu au votat. Cifrele sunt raportate de presă: stenograma ședinței nu era încă publicată pe senat.ro la 4 octombrie 2026, deci procesul-verbal nu a putut fi verificat. Numărul prezenților nu este cunoscut (presa dă 313 la înregistrare și 321 la vot). Președintele a anunțat noi consultări pentru 5 octombrie 2026."
+  },
+  {
+    id: "formation-niculescu-2026",
+    designee: "Luca-Alexandru Niculescu",
+    precedingGovernmentId: "government-bolojan-2025-present",
+    designatedOn: "2026-10-06",
+    designationDecree: "Decretul nr. 794/2026 (M.Of. 842/06.10.2026)",
+    designationDecreeUrl: portal(315032),
+    outcome: "pending",
+    sources: [
+      { label: "Decretul nr. 794/2026", url: portal(315032), kind: "official" },
+      { label: "Luca Niculescu, desemnat de președintele Nicușor Dan candidat la funcția de premier (fișă biografică)", url: "https://agerpres.ro/2026/10/05/luca-niculescu-desemnat-de-presedintele-nicusor-dan-candidat-la-functia-de-premier-fisa-biografica--1600082", kind: "reported" }
+    ],
+    notes: "Desemnat prin decretul din 6 octombrie 2026, după ce Parlamentul nu a acordat încrederea guvernului Mureșan. Votul de învestitură nu a avut loc încă: candidatul trebuie să ceară încrederea Parlamentului asupra programului și a listei Guvernului în termenul din Constituție (art. 103 alin. 2), iar votul se dă în ședința comună a Camerei Deputaților și Senatului (233 de voturi). Pagina se actualizează după vot."
   }
 ];

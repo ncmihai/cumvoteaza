@@ -493,7 +493,8 @@ export interface GovernmentFormationAttempt {
   votesAgainst?: number;
   votesVoid?: number;
   threshold?: number;
-  outcome: "invested" | "failed" | "revoked_before_vote";
+  /** pending = designated, the investiture vote has not been held yet */
+  outcome: "invested" | "failed" | "revoked_before_vote" | "pending";
   parliamentDecision?: string;
   parliamentDecisionUrl?: string;
   appointmentDecree?: string;

@@ -35,13 +35,26 @@ describe("government formation attempts", () => {
     }
   });
 
-  it("records the three designations made after the Bolojan government was dismissed (2026)", () => {
+  it("records the four designations made after the Bolojan government was dismissed (2026)", () => {
     const after = formationAttemptSeeds.filter((attempt) => attempt.precedingGovernmentId === "government-bolojan-2025-present");
     expect(after.map((attempt) => [attempt.designee, attempt.designationDecree?.match(/nr\. (\d+\/\d{4})/)?.[1], attempt.outcome])).toEqual([
       ["Eugen Tomac", "316/2026", "revoked_before_vote"],
       ["Adrian-Ioan Veștea", "328/2026", "failed"],
-      ["Siegfried Mureșan", "770/2026", "failed"]
+      ["Siegfried Mureșan", "770/2026", "failed"],
+      ["Luca-Alexandru Niculescu", "794/2026", "pending"]
     ]);
+  });
+
+  it("keeps a designation whose vote is not held yet free of any vote figure, revocation or resulting government, and backed by its decree", () => {
+    const pending = formationAttemptSeeds.filter((attempt) => attempt.outcome === "pending");
+    expect(pending.map((attempt) => attempt.id)).toEqual(["formation-niculescu-2026"]);
+    for (const attempt of pending) {
+      expect(attempt.voteHeldOn).toBeUndefined();
+      expect(attempt.votesFor).toBeUndefined();
+      expect(attempt.revokedOn).toBeUndefined();
+      expect(attempt.resultingGovernmentId).toBeUndefined();
+      expect(attempt.sources.some((source) => source.kind === "official" && source.url === attempt.designationDecreeUrl)).toBe(true);
+    }
   });
 
   it("backs every investiture figure the Senate has published with its stenogram, and flags the rest as press reports", () => {
