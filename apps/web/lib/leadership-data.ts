@@ -9,6 +9,8 @@ export interface LeadershipPerson {
   slug: string;
   startsOn: string;
   startsOnPrecision: "day" | "month";
+  /** The Chamber's or the Senate's own portrait of the member, where we hold one (served by /api/assets/<id>). */
+  photoAssetId?: string;
 }
 
 export interface LeadershipData {
@@ -21,7 +23,10 @@ export interface LeadershipData {
 export const positionRank = (title: string): number =>
   /^(?:vice(?:pre[sşș]edinte|lider))/i.test(title) ? 1 : /^(?:pre[sşș]edinte|lider)/i.test(title) ? 0 : /^secretar/i.test(title) ? 2 : 3;
 
-type Row = { chamber: LeadershipChamber; scope: string | null; title: string; name: string; slug: string; starts_on: string; precision: string };
+type Row = { chamber: LeadershipChamber; scope: string | null; title: string; name: string; slug: string; starts_on: string; precision: string; photo: string | null };
+
+/** The smallest stored portrait of the member: a list shows faces a few dozen pixels wide. */
+const PHOTO = sql`(select s.id from stored_assets s where s.entity_id = m.id and s.asset_type = 'photo' and s.fetch_status = 'stored' order by coalesce(s.width, 0) asc, s.created_at desc limit 1)`;
 
 /** Who holds each leadership role today: the Permanent Bureaus, the groups' leaders and the committees' chairs. */
 export async function getLeadership(): Promise<LeadershipData | undefined> {
@@ -30,20 +35,20 @@ export async function getLeadership(): Promise<LeadershipData | undefined> {
   try {
     const rows = [...(await session.db.execute<Row>(sql`
       select r.chamber::text as chamber, case when r.kind = 'group' then g.short_name else null end as scope, r.title, m.display_name as name, m.slug,
-             to_char(r.starts_on, 'YYYY-MM-DD') as starts_on, r.starts_on_precision as precision, r.kind
+             to_char(r.starts_on, 'YYYY-MM-DD') as starts_on, r.starts_on_precision as precision, r.kind, ${PHOTO} as photo
       from member_roles r join members m on m.id = r.member_id left join parliamentary_groups g on g.id = r.group_id
       where r.kind in ('bureau', 'group') and r.ends_on is null
         and r.starts_on >= (select starts_on from legislatures order by starts_on desc limit 1) - interval '1 day'
       order by r.chamber, r.kind, g.short_name, r.starts_on`))] as Array<Row & { kind: string }>;
     const committeeRows = [...(await session.db.execute<Row>(sql`
       select c.chamber::text as chamber, c.committee_name as scope, c.role as title, m.display_name as name, m.slug,
-             to_char(c.starts_on, 'YYYY-MM-DD') as starts_on, c.starts_on_precision as precision
+             to_char(c.starts_on, 'YYYY-MM-DD') as starts_on, c.starts_on_precision as precision, ${PHOTO} as photo
       from member_committee_memberships c join members m on m.id = c.member_id
       where c.ends_on is null and c.role ~* '^(pre[sşș]edint|vicepre[sşș]edint)' and c.chamber in ('deputies', 'senate')
         and c.starts_on >= (select starts_on from legislatures order by starts_on desc limit 1) - interval '1 day'
         and exists (select 1 from member_mandates mm where mm.member_id = c.member_id and mm.ends_on is null and mm.legislature_id = (select id from legislatures order by starts_on desc limit 1))
       order by c.chamber, c.committee_name, c.role`))];
-    const person = (row: Row): LeadershipPerson => ({ title: row.title, name: row.name, slug: row.slug, startsOn: row.starts_on, startsOnPrecision: row.precision === "month" ? "month" : "day" });
+    const person = (row: Row): LeadershipPerson => ({ title: row.title, name: row.name, slug: row.slug, startsOn: row.starts_on, startsOnPrecision: row.precision === "month" ? "month" : "day", ...(row.photo ? { photoAssetId: row.photo } : {}) });
     const bureau: LeadershipData["bureau"] = { deputies: [], senate: [] };
     const groups = new Map<string, LeadershipData["groups"][number]>();
     for (const row of rows) {

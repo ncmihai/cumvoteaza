@@ -4,17 +4,21 @@ import type { Metadata } from "next";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getLeadership, type LeadershipPerson } from "@/lib/leadership-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
+import { PersonAvatar } from "../_components/ui/PersonAvatar";
 
 const chamberName = { ro: { deputies: "Camera Deputaților", senate: "Senatul" }, en: { deputies: "Chamber of Deputies", senate: "Senate" } } as const;
 
-function People({ people, locale }: { people: LeadershipPerson[]; locale: AppLocale }) {
+function People({ people, locale, size = 40 }: { people: LeadershipPerson[]; locale: AppLocale; size?: number }) {
   return (
     <ul className="divide-y divide-line">
       {people.map((person) => (
-        <li key={`${person.title}-${person.slug}`} className="grid gap-1 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-          <span className="text-muted">{person.title}</span>
-          <Link href={`/${locale}/members/${person.slug}`} className="font-semibold text-ink hover:text-brand">{person.name}</Link>
-          <span className="text-xs text-muted">{locale === "ro" ? "din" : "since"} {formatDate(person.startsOn, locale, person.startsOnPrecision)}</span>
+        <li key={`${person.title}-${person.slug}`} className="flex items-center gap-3 py-2 text-sm">
+          <Link href={`/${locale}/members/${person.slug}`} tabIndex={-1} aria-hidden="true" className="shrink-0"><PersonAvatar name={person.name} photoUrl={person.photoAssetId ? `/api/assets/${encodeURIComponent(person.photoAssetId)}` : undefined} size={size} /></Link>
+          <div className="grid min-w-0 flex-1 gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <span className="text-muted">{person.title}</span>
+            <Link href={`/${locale}/members/${person.slug}`} className="font-semibold text-ink hover:text-brand">{person.name}</Link>
+            <span className="text-xs text-muted">{locale === "ro" ? "din" : "since"} {formatDate(person.startsOn, locale, person.startsOnPrecision)}</span>
+          </div>
         </li>
       ))}
     </ul>
@@ -41,7 +45,7 @@ export default async function LeadershipPage({ params }: { params: Promise<{ loc
             {(["deputies", "senate"] as const).map((chamber) => (
               <section key={chamber} className="border border-line bg-surface p-5 rounded-card">
                 <h2 className="font-display text-xl font-bold text-ink">{ro ? "Biroul permanent" : "Permanent Bureau"} · {chamberName[locale][chamber]}</h2>
-                {data.bureau[chamber].length ? <div className="mt-2"><People people={data.bureau[chamber]} locale={locale} /></div> : <p className="mt-2 text-sm text-muted">{ro ? "Încă neimportat pentru această Cameră." : "Not imported yet for this chamber."}</p>}
+                {data.bureau[chamber].length ? <div className="mt-2"><People people={data.bureau[chamber]} locale={locale} size={52} /></div> : <p className="mt-2 text-sm text-muted">{ro ? "Încă neimportat pentru această Cameră." : "Not imported yet for this chamber."}</p>}
               </section>
             ))}
           </div>
