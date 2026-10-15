@@ -6,7 +6,7 @@ function initialsOf(name: string): string {
 }
 
 /** A person's photo where we hold one (the Chamber's or the Senate's own), otherwise their initials. Portraits are 3:4, avatars are round. */
-export function PersonAvatar({ name, photoUrl, size = 40, shape = "round" }: { name: string; photoUrl?: string; size?: number; shape?: "round" | "portrait" }) {
+export function PersonAvatar({ name, photoUrl, size = 40, shape = "round", eager = false }: { name: string; photoUrl?: string; size?: number; shape?: "round" | "portrait"; eager?: boolean }) {
   const box = shape === "portrait" ? { width: size, height: Math.round(size * 4 / 3) } : { width: size, height: size };
   const radius = shape === "portrait" ? "rounded-card" : "rounded-full";
   const fallback = (
@@ -15,6 +15,6 @@ export function PersonAvatar({ name, photoUrl, size = 40, shape = "round" }: { n
     </span>
   );
   return (
-    <ImageWithFallback src={photoUrl} alt={name} className={`shrink-0 bg-wash object-cover object-top ${radius}`} fallback={fallback} style={box} />
+    <ImageWithFallback src={photoUrl} alt={name} className={`shrink-0 bg-wash object-cover object-top ${radius}`} fallback={fallback} style={box} eager={eager} fallbackWhileLoading={eager} />
   );
 }

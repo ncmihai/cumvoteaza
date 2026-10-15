@@ -5,16 +5,18 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { arc } from "d3-shape";
 import { Check, ChevronDown, Circle, ExternalLink, Info, Minus, Search, Slash, SlidersHorizontal, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { voteChoiceLabels, type ChamberId, type GroupVoteTotal, type IndividualVote, type Locale, type Member, type ParliamentaryGroup, type VoteChoice } from "@cumsevoteaza/parliament-model";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 import { nominalShortfalls, nominalSurpluses } from "@/lib/vote-integrity";
 import { matchesVoteSearch, normalizeVoteSearch } from "@/lib/vote-search";
 import { readVoteMapState, updateVoteMapUrl } from "@/lib/vote-map-url";
 import { placeMapLabels } from "@/lib/map-labels";
+import { driftedBeyondSlop, nearestSeatIndex, placePopover, SCRUB, type PopoverPlacement } from "@/lib/seat-popover";
 import type { VoteTotals } from "@cumsevoteaza/parliament-model";
 import { countyLabel } from "@/lib/text";
 import { NominalTable } from "./ui/NominalTable";
+import { PersonAvatar } from "./ui/PersonAvatar";
 import { PartyMark, type PartyMarkParty } from "./ui/PartyMark";
 import { SplitBar } from "./ui/SplitBar";
 
@@ -56,14 +58,24 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   const selectionOriginRef = useRef<HTMLElement | null>(null);
   const focusSelectionRef = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
-  const setSelectedId = (value: string | null, origin?: HTMLElement | null) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  // A seat chosen on the map opens a card over the seat; one chosen from a list or the search opens the panel (below the map, or a sheet on a phone).
+  const [selectionOnMap, setSelectionOnMap] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
+  const touchRef = useRef<{ pointerId: number; startX: number; startY: number; x: number; y: number; active: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null);
+  const previewedRef = useRef<string | null>(null);
+  const suppressClickRef = useRef(false);
+  // via: "list" (a list, the search, a link), "pointer" (a click or tap on the map: nothing is focused, so the page does not move) or "keyboard" (focus goes to the card).
+  const setSelectedId = (value: string | null, origin?: HTMLElement | null, via: "list" | "pointer" | "keyboard" = "list") => {
+    setSelectionOnMap(Boolean(value) && via !== "list");
     if (value) {
       selectionOriginRef.current = origin ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-      focusSelectionRef.current = true;
+      focusSelectionRef.current = via !== "pointer";
       // Selecting the same person does not change the URL, but must still reach their panel.
       if (value === selectedId) {
         focusSelectionRef.current = false;
-        sectionRef.current?.querySelector<HTMLElement>('[role="dialog"] a, [role="dialog"] button')?.focus();
+        if (via !== "pointer") sectionRef.current?.querySelector<HTMLElement>('[role="dialog"] a, [role="dialog"] button')?.focus();
       }
     } else {
       focusSelectionRef.current = false;
@@ -75,6 +87,16 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
     }
     updateMap("mapSeat", value);
   };
+  useEffect(() => {
+    const node = overlayRef.current;
+    if (!node) return;
+    // React attaches touchmove as passive, which cannot stop the page from scrolling; this one can, and only while a slide is under way.
+    const hold = (event: TouchEvent) => { if (touchRef.current?.active && event.cancelable) event.preventDefault(); };
+    const noMenu = (event: Event) => event.preventDefault();
+    node.addEventListener("touchmove", hold, { passive: false });
+    node.addEventListener("contextmenu", noMenu);
+    return () => { node.removeEventListener("touchmove", hold); node.removeEventListener("contextmenu", noMenu); };
+  }, []);
   useEffect(() => {
     if (!focusSelectionRef.current) return;
     focusSelectionRef.current = false;
@@ -139,6 +161,10 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
   const filteredNominalSeats = matchingSeats.filter((seat) => nominalIds.has(seat.vote.id));
   const selected = seats.find((seat) => seat.vote.id === selectedId);
   const previewed = seats.find((seat) => seat.vote.id === previewedId);
+  // The card over a seat: a pinned one stays until it is closed; a preview (hover, or a finger sliding) takes its place only while it lasts.
+  const pinnedSeat = selected && selectionOnMap ? selected : undefined;
+  const previewShown = previewed && (!pinnedSeat || scrubbing);
+  const popoverSeat = previewShown ? previewed : pinnedSeat;
   const selectedGroupSeats = groupFilter ? matchingSeats : [];
   const present = counts.for + counts.against + counts.abstention + counts.present_not_voting;
   const profileHref = (seat: Seat) => seat.member ? `/${locale}/members/${seat.member.slug}?fromVote=${encodeURIComponent(voteId)}` : undefined;
@@ -157,25 +183,78 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
 
   function nearestSeat(element: HTMLElement, clientX: number, clientY: number) {
     const rect = element.getBoundingClientRect();
-    return seats.map((seat) => ({ seat, distance: Math.hypot(rect.left + seat.left / 100 * rect.width - clientX, rect.top + seat.top / 100 * rect.height - clientY) }))
-      .sort((a, b) => a.distance - b.distance)[0];
+    const index = nearestSeatIndex(seats, rect, clientX, clientY, Infinity);
+    if (index === undefined) return undefined;
+    const seat = seats[index]!;
+    return { seat, distance: Math.hypot(rect.left + seat.left / 100 * rect.width - clientX, rect.top + seat.top / 100 * rect.height - clientY) };
   }
 
   function selectSeatAt(event: MouseEvent<HTMLDivElement>) {
     if (event.detail === 0) return;
+    // A press-and-slide ends with a click on the seat the finger was lifted over; the slide has already chosen the seat.
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     const nearest = nearestSeat(event.currentTarget, event.clientX, event.clientY);
-    if (nearest && nearest.distance <= (window.innerWidth < 768 ? 20 : 16)) {
+    if (nearest && nearest.distance <= (window.innerWidth < 768 ? SCRUB.touchRadius : SCRUB.mouseRadius)) {
       const index = seats.indexOf(nearest.seat);
       setFocusedIndex(index);
-      setSelectedId(nearest.seat.vote.id, buttonRefs.current[index]);
-    }
+      setPreview(null);
+      setSelectedId(nearest.seat.vote.id, buttonRefs.current[index], "pointer");
+    } else if (pinnedSeat) setSelectedId(null);
+  }
+
+  function setPreview(id: string | null) {
+    previewedRef.current = id;
+    setPreviewedId(id);
   }
 
   function previewSeatAt(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== "mouse") return;
-    const nearest = nearestSeat(event.currentTarget, event.clientX, event.clientY);
-    const nearbySeat = nearest && nearest.distance <= 16 ? nearest.seat : null;
-    setPreviewedId(nearbySeat?.vote.id ?? null);
+    if (event.pointerType === "mouse") {
+      // A pinned card stays put: the cursor may need to travel to its link across other seats.
+      if (pinnedSeat) return;
+      const nearest = nearestSeat(event.currentTarget, event.clientX, event.clientY);
+      setPreview(nearest && nearest.distance <= SCRUB.mouseRadius ? nearest.seat.vote.id : null);
+      return;
+    }
+    const press = touchRef.current;
+    if (!press || press.pointerId !== event.pointerId) return;
+    press.x = event.clientX;
+    press.y = event.clientY;
+    if (press.active) scrubTo(event.currentTarget, event.clientX, event.clientY);
+    // Moved before the hold was over: the finger is scrolling the page, so leave it alone.
+    else if (driftedBeyondSlop(event.clientX - press.startX, event.clientY - press.startY)) { clearTimeout(press.timer); touchRef.current = null; }
+  }
+
+  /** Touch and pen: hold for a moment, then slide over the seats; lifting the finger pins the seat it is over. */
+  function pressStart(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse") return;
+    const element = event.currentTarget;
+    clearTimeout(touchRef.current?.timer);
+    const press = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, active: false, timer: undefined as ReturnType<typeof setTimeout> | undefined };
+    press.timer = setTimeout(() => { press.active = true; setScrubbing(true); scrubTo(element, press.x, press.y); }, SCRUB.holdMs);
+    touchRef.current = press;
+  }
+
+  function scrubTo(element: HTMLElement, x: number, y: number) {
+    const nearest = nearestSeat(element, x, y);
+    if (!nearest || nearest.distance > SCRUB.touchRadius || nearest.seat.vote.id === previewedRef.current) return;
+    setPreview(nearest.seat.vote.id);
+    // A short tick on phones that can (not iPhones), so moving to the next person is felt.
+    try { navigator.vibrate?.(6); } catch { /* not allowed */ }
+  }
+
+  function pressEnd(event: PointerEvent<HTMLDivElement>) {
+    const press = touchRef.current;
+    if (!press || press.pointerId !== event.pointerId) return;
+    clearTimeout(press.timer);
+    touchRef.current = null;
+    if (!press.active) return;
+    setScrubbing(false);
+    suppressClickRef.current = true;
+    setTimeout(() => { suppressClickRef.current = false; }, 400);
+    const id = previewedRef.current;
+    setPreview(null);
+    const index = id ? seats.findIndex((seat) => seat.vote.id === id) : -1;
+    if (index >= 0 && event.type !== "pointercancel") { setFocusedIndex(index); setSelectedId(id, buttonRefs.current[index], "pointer"); }
   }
 
   return <section ref={sectionRef} className="min-w-0" aria-label={labels.chamberMap} onKeyDown={(event) => {
@@ -201,17 +280,17 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
     <div className={view === "map" ? undefined : "hidden"}>
     <div className="mt-3 flex flex-wrap gap-1.5 lg:hidden" aria-label={labels.chooseGroup}>{groupsShown.map((group) => <button key={group.id} type="button" aria-pressed={groupFilter === group.id} onPointerEnter={() => setHoveredGroupId(group.id)} onPointerLeave={() => setHoveredGroupId(null)} onFocus={() => setHoveredGroupId(group.id)} onBlur={() => setHoveredGroupId(null)} onClick={() => { setGroupFilter(groupFilter === group.id ? null : group.id); setMobileGroupOpen(window.innerWidth < 768); }} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${groupFilter === group.id ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink"}`}><PartyMark party={markOf(group)} size={16}/>{group.shortName} · {seats.filter((seat) => seat.group?.id === group.id).length}</button>)}</div>
     <div className="md:hidden">{groupFilter ? <><button type="button" onClick={() => setMobileGroupOpen((open) => !open)} className="mt-2 w-full border border-line bg-surface px-3 py-2 text-sm font-semibold text-brand rounded-control">{mobileGroupOpen ? labels.hideGroup : labels.enlargeGroup} · {groupsShown.find((group) => group.id === groupFilter)?.shortName}</button>{mobileGroupOpen ? <div className="mt-2 max-h-64 overflow-auto rounded-card border border-line bg-surface p-2">{!selectedGroupSeats.length ? <p className="p-2 text-sm">{labels.noResults}</p> : null}{selectedGroupSeats.map((seat) => <button key={seat.vote.id} type="button" onClick={() => setSelectedId(seat.vote.id)} className="flex min-h-11 w-full items-center justify-between gap-2 border-b border-line px-2 py-2 text-left text-sm last:border-0"><span>{seat.name}</span><span className="ml-2 inline-flex shrink-0 items-center gap-1 text-xs"><VoteSymbol choice={seat.vote.choice}/>{voteChoiceLabels[locale][seat.vote.choice]}</span></button>)}</div> : null}</> : <p className="mt-2 text-xs text-muted">{labels.mobileHint}</p>}</div>
-    <div className="relative mx-auto mt-4 aspect-[2/1] min-h-[190px] w-full max-w-[1060px]" aria-label={`${labels.chamberMap}: ${seats.length} ${labels.seats}`}>
+    <div ref={mapRef} className="relative mx-auto mt-4 aspect-[2/1] min-h-[190px] w-full max-w-[1060px]" aria-label={`${labels.chamberMap}: ${seats.length} ${labels.seats}`}>
       <div ref={chartRef} className="absolute left-1/2 top-0 h-[85%] w-[85%] -translate-x-1/2 lg:h-full lg:w-[84%]">
       <svg viewBox="0 0 1000 500" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" aria-hidden="true"><g transform="translate(500 440) scale(480 360)">{groupArcs.map(({group, path, hitPath}) => <g key={group.id} onPointerEnter={() => setHoveredGroupId(group.id)} onPointerLeave={() => setHoveredGroupId(null)} onClick={() => setGroupFilter(groupFilter === group.id ? null : group.id)} className={`cursor-pointer transition-opacity duration-200 motion-reduce:transition-none ${highlightedGroupId && highlightedGroupId !== group.id ? "opacity-35" : "opacity-100"}`}><path d={path} fill={group.color ?? "#94a3b8"} stroke={group.color ?? "#94a3b8"} className="pointer-events-auto transition-[stroke-width,filter] duration-200 motion-reduce:transition-none" style={{strokeWidth:hoveredGroupId === group.id ? .008 : 0,filter:hoveredGroupId === group.id ? `drop-shadow(0 0 5px ${group.color ?? "#94a3b8"})` : "none"}}/><path d={hitPath} fill="transparent" className="pointer-events-auto"/></g>)}</g></svg>
       {groupLabels.map(({ group, count, tiny, x, y, translateX, translateY }) => <button key={group.id} type="button" aria-pressed={groupFilter === group.id} aria-label={`${group.shortName}, ${count} ${labels.seats}; ${labels.filterGroup}`} title={group.name} onPointerEnter={() => setHoveredGroupId(group.id)} onPointerLeave={() => setHoveredGroupId(null)} onFocus={() => setHoveredGroupId(group.id)} onBlur={() => setHoveredGroupId(null)} onClick={() => setGroupFilter(groupFilter === group.id ? null : group.id)} className={`absolute z-30 hidden whitespace-nowrap rounded-md font-display text-xs font-bold leading-tight text-ink shadow-sm ring-1 transition-colors hover:bg-wash focus-visible:outline-2 focus-visible:outline-brand lg:flex ${tiny ? "items-center gap-1.5 px-1.5 py-0.5" : "flex-col items-center px-1.5 py-1 text-center"} ${groupFilter === group.id ? "bg-brand-soft ring-brand" : "bg-surface/90 ring-line"}`} style={{ left: `${x}%`, top: `${y}%`, transform: `translate(${translateX}%, ${translateY}%)` }}><PartyMark party={markOf(group)} size={16}/><span>{group.shortName}</span><span className="font-medium text-muted">{count}</span></button>)}
-      <div className="absolute inset-0" onPointerMove={previewSeatAt} onPointerLeave={() => setPreviewedId(null)} onClick={selectSeatAt}>
+      <div ref={overlayRef} className="absolute inset-0 select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]" onPointerDown={pressStart} onPointerMove={previewSeatAt} onPointerUp={pressEnd} onPointerCancel={pressEnd} onPointerLeave={(event) => { if (event.pointerType === "mouse") setPreview(null); }} onClick={selectSeatAt}>
       <Image src={chamber === "senate" ? "/chambers/senate-dais.png" : "/chambers/deputies-dais.png"} width={2098} height={750} sizes="144px" alt="" aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[63%] z-0 hidden w-28 -translate-x-1/2 opacity-45 md:block lg:w-36"/>
       <div className="pointer-events-none absolute left-1/2 top-[77%] -translate-x-1/2 text-center md:top-[80%]"><div className="font-display text-2xl font-bold leading-none text-ink md:text-4xl">{seats.length}</div><div className="mt-0.5 text-xs font-bold uppercase text-muted">{labels.seats}</div></div>
-      {seats.map((seat, index) => <button key={seat.vote.id} ref={(node) => { buttonRefs.current[index] = node; }} type="button" tabIndex={index === focusedIndex ? 0 : -1} aria-label={`${seat.name}, ${seat.group?.shortName ?? labels.unknownGroup}, ${voteChoiceLabels[locale][seat.vote.choice]}`} aria-pressed={selectedId === seat.vote.id} onPointerEnter={(event) => { if (event.pointerType === "mouse") setHoveredGroupId(seat.group?.id ?? null); }} onPointerLeave={() => setHoveredGroupId(null)} onFocus={() => setFocusedIndex(index)} onKeyDown={(event) => moveFocus(event, index)} onClick={(event) => { if (event.detail === 0) setSelectedId(seat.vote.id); }} title={`${seat.name} · ${seat.group?.shortName ?? labels.unknownGroup} · ${voteChoiceLabels[locale][seat.vote.choice]}`} className={`absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border shadow-sm outline-offset-2 transition-[opacity,scale,box-shadow] duration-200 motion-reduce:transition-none focus-visible:z-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand ${selectedId === seat.vote.id ? "z-20 ring-2 ring-ink ring-offset-1" : "z-10"} ${(highlightedGroupId && seat.group?.id !== highlightedGroupId) || (matchingSeats.length !== seats.length && !matches(seat)) ? "opacity-35 hover:opacity-100 focus-visible:opacity-100" : "opacity-100"}`} style={{ left: `${seat.left}%`, top: `${seat.top}%`, width: "clamp(6px, 1.45vw, 16px)", height: "clamp(6px, 1.45vw, 16px)", scale: hoveredGroupId === seat.group?.id ? 1.18 : 1, borderWidth: "clamp(0.75px, 0.1vw, 1.5px)", borderColor: seat.group?.color ?? "#94a3b8", backgroundColor: seatVoteColors[seat.vote.choice] }}><span className="hidden xl:block"><VoteSymbol choice={seat.vote.choice} inverse/></span></button>)}
-      {previewed && previewed.vote.id !== selectedId ? <div className="pointer-events-none absolute bottom-2 left-1/2 z-40 hidden -translate-x-1/2 border border-line bg-surface px-3 py-1.5 text-xs shadow-md md:block rounded-control"><strong>{previewed.name}</strong> · {previewed.group?.shortName ?? labels.unknownGroup} · {voteChoiceLabels[locale][previewed.vote.choice]}</div> : null}
+      {seats.map((seat, index) => <button key={seat.vote.id} ref={(node) => { buttonRefs.current[index] = node; }} type="button" tabIndex={index === focusedIndex ? 0 : -1} aria-label={`${seat.name}, ${seat.group?.shortName ?? labels.unknownGroup}, ${voteChoiceLabels[locale][seat.vote.choice]}`} aria-pressed={selectedId === seat.vote.id} onPointerEnter={(event) => { if (event.pointerType === "mouse") setHoveredGroupId(seat.group?.id ?? null); }} onPointerLeave={() => setHoveredGroupId(null)} onFocus={() => setFocusedIndex(index)} onKeyDown={(event) => moveFocus(event, index)} onClick={(event) => { if (event.detail === 0) setSelectedId(seat.vote.id, undefined, "keyboard"); }} className={`absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border shadow-sm outline-offset-2 transition-[opacity,scale,box-shadow] duration-200 motion-reduce:transition-none focus-visible:z-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand ${selectedId === seat.vote.id ? "z-20 ring-2 ring-ink ring-offset-1" : "z-10"} ${(highlightedGroupId && seat.group?.id !== highlightedGroupId) || (matchingSeats.length !== seats.length && !matches(seat)) ? "opacity-35 hover:opacity-100 focus-visible:opacity-100" : "opacity-100"}`} style={{ left: `${seat.left}%`, top: `${seat.top}%`, width: "clamp(6px, 1.45vw, 16px)", height: "clamp(6px, 1.45vw, 16px)", scale: hoveredGroupId === seat.group?.id ? 1.18 : 1, borderWidth: "clamp(0.75px, 0.1vw, 1.5px)", borderColor: seat.group?.color ?? "#94a3b8", backgroundColor: seatVoteColors[seat.vote.choice] }}><span className="hidden xl:block"><VoteSymbol choice={seat.vote.choice} inverse/></span></button>)}
       </div>
       </div>
+      {popoverSeat ? <SeatPopover seat={popoverSeat} pinned={popoverSeat === pinnedSeat && !scrubbing} photoUrl={seatPhotoUrls[popoverSeat.vote.memberId]} constituency={seatConstituencies[popoverSeat.vote.memberId]} mark={popoverSeat.group ? markOf(popoverSeat.group) : undefined} mapRef={mapRef} chartRef={chartRef} chartBox={chartBox} locale={locale} copy={labels} profileHref={profileHref(popoverSeat)} onClose={() => setSelectedId(null)} /> : null}
     </div>
     </div>
     <div className={`mt-2 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-line py-3 text-xs sm:grid-cols-3 xl:grid-cols-6 ${view === "map" ? "" : "hidden"}`}>{choices.filter((choice) => counts[choice]).map((choice) => <button key={choice} type="button" aria-pressed={choiceFilter === choice} onClick={() => setChoiceFilter(choiceFilter === choice ? null : choice)} className={`flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-brand ${choiceFilter === choice ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong hover:bg-wash"}`}><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-wash"><VoteSymbol choice={choice}/></span><span className="text-muted">{voteChoiceLabels[locale][choice]} <strong className="text-ink">{counts[choice]}</strong></span></button>)}</div>
@@ -221,7 +300,7 @@ export function VoteChamberExplorer({ voteId, locale, chamber, groups, members, 
     {counts.absent + counts.unknown > 0 ? <p className="mt-2 flex gap-2 rounded-card border border-line bg-wash p-3 text-xs leading-5 text-ink-soft"><Info size={15} className="mt-0.5 shrink-0 text-brand" aria-hidden="true"/><span>{locale === "ro" ? <><strong className="text-ink">„{voteChoiceLabels.ro.unknown}”</strong> înseamnă că parlamentarul avea un loc în {chamber === "senate" ? "Senat" : "Camera Deputaților"} la data votului, dar lista nominală oficială nu are niciun vot pentru el. Sursa numără drept prezenți doar pe cei de pe listă ({officialTotals.present}) și nu spune de ce lipsește cineva. Nu este vot secret: la un vot secret nu se publică nicio listă și nu afișăm harta.</> : <><strong className="text-ink">“{voteChoiceLabels.en.unknown}”</strong> means the member held a seat in the {chamber === "senate" ? "Senate" : "Chamber of Deputies"} on the day of the vote, but the official name list has no vote for them. The source counts only the people on the list as present ({officialTotals.present}) and does not say why anyone is missing. This is not a secret ballot: for a secret ballot no list is published and we show no map.</>}</span></p> : null}
     {capacity !== undefined && capacity !== seats.length ? <p className="mt-2 text-xs leading-5 text-muted">{locale === "ro" ? `Harta are ${seats.length} de locuri din cele ${capacity} ale camerei. Diferența poate fi locuri vacante sau mandate pe care sursele oficiale nu ne permit să le stabilim.` : `The map has ${seats.length} of the chamber's ${capacity} seats. The difference may be vacant seats or mandates the official sources do not let us establish.`}</p> : null}
     <div className={view === "map" ? undefined : "hidden"}>
-    {selected ? <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] overflow-auto rounded-t-card border-t-2 border-brand bg-surface p-4 shadow-[0_-10px_30px_rgba(20,18,43,.18)] md:static md:mt-3 md:w-full md:max-h-none md:rounded-card md:border md:border-line md:shadow-lift" role="dialog" aria-modal="false" aria-label={labels.selectedPerson}><div className="flex items-start gap-4">{seatPhotoUrls[selected.vote.memberId] ? <img src={seatPhotoUrls[selected.vote.memberId]} alt="" className="h-24 w-[4.5rem] shrink-0 rounded-control border border-line object-cover object-top"/> : null}<div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-wide text-brand">{labels.selectedPerson}</p><h3 className="mt-1 font-display text-xl font-bold text-ink">{selected.name}</h3><div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted"><span className="inline-flex items-center gap-2">{selected.group ? <PartyMark party={markOf(selected.group)} size={24}/> : null}{selected.group?.shortName ?? labels.unknownGroup}</span>{seatConstituencies[selected.vote.memberId] ? <span>{seatConstituencies[selected.vote.memberId]}</span> : null}<span className="inline-flex items-center gap-2"><VoteSymbol choice={selected.vote.choice}/><strong className="text-ink">{voteChoiceLabels[locale][selected.vote.choice]}</strong></span></div>{profileHref(selected) ? <Link href={profileHref(selected)!} className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand-soft">{labels.profile}<ExternalLink size={14}/></Link> : null}</div><button type="button" onClick={() => setSelectedId(null)} aria-label={labels.close} className="grid min-h-11 min-w-11 shrink-0 place-items-center text-ink"><X size={20}/></button></div></div> : <div className="mt-3 hidden rounded-card border border-line bg-wash px-4 py-3 text-sm text-muted md:block">{labels.selectPrompt}</div>}
+    {selected && !selectionOnMap ? <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] overflow-auto rounded-t-card border-t-2 border-brand bg-surface p-4 shadow-[0_-10px_30px_rgba(20,18,43,.18)] md:static md:mt-3 md:w-full md:max-h-none md:rounded-card md:border md:border-line md:shadow-lift" role="dialog" aria-modal="false" aria-label={labels.selectedPerson}><div className="flex items-start gap-4">{seatPhotoUrls[selected.vote.memberId] ? <img src={seatPhotoUrls[selected.vote.memberId]} alt="" className="h-24 w-[4.5rem] shrink-0 rounded-control border border-line object-cover object-top"/> : null}<div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-wide text-brand">{labels.selectedPerson}</p><h3 className="mt-1 font-display text-xl font-bold text-ink">{selected.name}</h3><div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted"><span className="inline-flex items-center gap-2">{selected.group ? <PartyMark party={markOf(selected.group)} size={24}/> : null}{selected.group?.shortName ?? labels.unknownGroup}</span>{seatConstituencies[selected.vote.memberId] ? <span>{seatConstituencies[selected.vote.memberId]}</span> : null}<span className="inline-flex items-center gap-2"><VoteSymbol choice={selected.vote.choice}/><strong className="text-ink">{voteChoiceLabels[locale][selected.vote.choice]}</strong></span></div>{profileHref(selected) ? <Link href={profileHref(selected)!} className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand-soft">{labels.profile}<ExternalLink size={14}/></Link> : null}</div><button type="button" onClick={() => setSelectedId(null)} aria-label={labels.close} className="grid min-h-11 min-w-11 shrink-0 place-items-center text-ink"><X size={20}/></button></div></div> : !selected ? <p className="mt-3 rounded-card border border-line bg-wash px-4 py-3 text-sm text-muted"><span className="hidden [@media(hover:hover)]:inline">{labels.hintPointer}</span><span className="[@media(hover:hover)]:hidden">{labels.hintTouch}</span></p> : null}
     <span className="sr-only" aria-live="polite">{selected ? `${selected.name}, ${selected.group?.shortName ?? labels.unknownGroup}, ${voteChoiceLabels[locale][selected.vote.choice]}` : ""}</span>
     </div>
     {view === "table" ? <div className="mt-4"><NominalTable locale={locale} caption={labels.nominalList} rows={filteredNominalSeats.map((seat) => ({ id: seat.vote.id, name: seat.name, href: profileHref(seat), groupKey: seat.group?.id ?? "", groupLabel: seat.group?.shortName ?? labels.unknownGroup, groupMark: seat.group ? markOf(seat.group) : { shortName: "?", color: "#94a3b8" }, county: seatConstituencies[seat.vote.memberId] ? countyLabel(seatConstituencies[seat.vote.memberId]!, locale) : undefined, choice: seat.vote.choice }))} /></div> : null}
@@ -249,9 +328,50 @@ function Filter({ active, onClick, children }: { active: boolean; onClick: () =>
 function VoteSymbol({ choice, inverse = false }: { choice: VoteChoice; inverse?: boolean }) { const props = { size: inverse ? 9 : 12, strokeWidth: 3, color: inverse && !noVote(choice) ? "#fff" : symbolColors[choice], "aria-hidden": true as const }; if (choice === "for") return <Check {...props}/>; if (choice === "against") return <X {...props}/>; if (choice === "abstention") return <Minus {...props}/>; if (choice === "present_not_voting") return <Circle {...props}/>; return <Slash {...props}/>; }
 function buildSlots(total: number) { const rows = total > 260 ? 8 : total > 170 ? 7 : 6; const weights = Array.from({length:rows}, (_, index) => .7 + index * .25); const sum = weights.reduce((a,b) => a+b,0); const counts = weights.map((weight) => Math.max(1, Math.round(total * weight / sum))); while (counts.reduce((a,b) => a+b,0) > total) counts[counts.indexOf(Math.max(...counts))]!--; while (counts.reduce((a,b) => a+b,0) < total) counts[counts.length-1]!++; const slots: Array<{left:number;top:number;progress:number;row:number}> = []; counts.forEach((count,row) => { const fraction = row / Math.max(rows-1,1); const radiusX = 24 + fraction * 21; const radiusY = 34 + fraction * 32; for (let index=0;index<count;index++) { const progress = count===1 ? .5 : index/(count-1); const angle = (-.5 + progress)*Math.PI; slots.push({left:Math.round((50+Math.sin(angle)*radiusX)*1000)/1000,top:Math.round((88-Math.cos(angle)*radiusY)*1000)/1000,progress,row}); } }); return slots.sort((a,b)=>a.progress-b.progress||b.row-a.row); }
 
+const CARD_WIDTH = 248;
+
+/** The card over a seat. A preview (hover, or a finger sliding) cannot be clicked; a pinned one has the profile link and a close button. */
+function SeatPopover({ seat, pinned, photoUrl, constituency, mark, mapRef, chartRef, chartBox, locale, copy: labels, profileHref, onClose }: {
+  seat: Seat; pinned: boolean; photoUrl?: string; constituency?: string; mark?: PartyMarkParty; mapRef: RefObject<HTMLDivElement | null>; chartRef: RefObject<HTMLDivElement | null>;
+  chartBox: { width: number; height: number }; locale: Locale; copy: (typeof copy)[Locale]; profileHref?: string; onClose: () => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<PopoverPlacement | null>(null);
+  useLayoutEffect(() => {
+    const map = mapRef.current;
+    const chart = chartRef.current;
+    const card = cardRef.current;
+    if (!map || !chart || !card) return;
+    const mapBox = map.getBoundingClientRect();
+    const chartRect = chart.getBoundingClientRect();
+    const next = placePopover({
+      seatX: chartRect.left + seat.left / 100 * chartRect.width, seatY: chartRect.top + seat.top / 100 * chartRect.height,
+      cardWidth: CARD_WIDTH, cardHeight: card.offsetHeight, viewportWidth: document.documentElement.clientWidth, topLimit: 76
+    });
+    // The card is placed inside the map's box, so it scrolls with the map.
+    setPlace({ ...next, left: next.left - mapBox.left, top: next.top - mapBox.top });
+  }, [seat.vote.id, seat.left, seat.top, pinned, chartBox.width, chartBox.height, mapRef, chartRef]);
+  const choice = seat.vote.choice;
+  return <div ref={cardRef} data-testid="seat-popover" {...(pinned ? { role: "dialog", "aria-modal": false, "aria-label": labels.selectedPerson } : { "aria-hidden": true })}
+    className={`absolute z-50 rounded-card border border-line bg-surface p-3 shadow-lift ${pinned ? "" : "pointer-events-none"}`}
+    style={{ width: `min(${CARD_WIDTH}px, calc(100vw - 16px))`, left: place?.left ?? 0, top: place?.top ?? 0, visibility: place ? "visible" : "hidden" }}>
+    <span aria-hidden="true" className={`absolute size-3 rotate-45 border-line bg-surface ${place?.above === false ? "-top-1.5 border-l border-t" : "-bottom-1.5 border-b border-r"}`} style={{ left: (place?.arrowX ?? 24) - 6 }} />
+    <div className="flex items-start gap-3">
+      <PersonAvatar name={seat.name} photoUrl={photoUrl} size={52} shape="portrait" eager />
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-base font-bold leading-tight text-ink">{seat.name}</p>
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">{mark ? <PartyMark party={mark} size={16}/> : null}<span className="truncate">{seat.group?.shortName ?? labels.unknownGroup}{constituency ? ` · ${countyLabel(constituency, locale)}` : ""}</span></p>
+        <p className="mt-1.5 flex items-start gap-1.5 text-sm font-semibold text-ink"><span className="mt-0.5 shrink-0"><VoteSymbol choice={choice}/></span>{voteChoiceLabels[locale][choice]}</p>
+      </div>
+      {pinned ? <button type="button" onClick={onClose} aria-label={labels.close} className="-mr-1 -mt-1 grid size-9 shrink-0 place-items-center rounded-full text-ink hover:bg-wash"><X size={18}/></button> : null}
+    </div>
+    {pinned && profileHref ? <Link href={profileHref} className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-brand px-3 py-1.5 text-sm font-semibold text-brand hover:bg-brand-soft">{labels.profile}<ExternalLink size={14}/></Link> : null}
+  </div>;
+}
+
 const copy = {
-  ro: { chamberMap:"Harta votului în plen", search:"Găsește un deputat (nume, partid, județ)", searchSenator:"Găsește un senator (nume, partid, județ)", filters:"Filtre", groups:"Grupuri parlamentare", votes:"Voturi", allGroups:"Toate grupurile", allVotes:"Toate voturile", matches:"rezultate", instructions:"Cursor: previzualizare · Click: fixează · Tastatură: săgeți + Enter", results:"Rezultate căutare", noResults:"Niciun parlamentar nu corespunde căutării și filtrelor.", unknownGroup:"Grup necunoscut", seats:"mandate", chooseGroup:"Alege un grup pentru a inspecta parlamentarii", filterGroup:"Filtrează grupul", enlargeGroup:"Mărește grupul", hideGroup:"Ascunde lista grupului", legendHint:"Apasă pe un vot de mai sus ca să vezi pe hartă exact cine l-a dat.", legendActive:"Harta arată doar parlamentarii cu acest vot.", legendClear:"Arată toate voturile", mobileHint:"Pentru selecție mai ușoară, alege un grup de mai sus și deschide lista membrilor.", selectedPerson:"Parlamentar selectat", close:"Închide fișa", profile:"Vezi profilul", selectPrompt:"Selectează un loc pentru a vedea persoana și votul său.", groupBreakdown:"Vot pe grupuri", nominalList:"Lista nominală", nominalRecords:"înregistrări nominale", groupRecords:"grupuri cu date", previous:"Înapoi", next:"Următorii" },
-  en: { chamberMap:"Chamber voting map", search:"Find a deputy (name, party, constituency)", searchSenator:"Find a senator (name, party, constituency)", filters:"Filters", groups:"Parliamentary groups", votes:"Votes", allGroups:"All groups", allVotes:"All votes", matches:"matches", instructions:"Pointer: preview · Click: pin · Keyboard: arrows + Enter", results:"Search results", noResults:"No members match the search and filters.", unknownGroup:"Unknown group", seats:"seats", chooseGroup:"Choose a group to inspect its members", filterGroup:"Filter group", enlargeGroup:"Enlarge group", hideGroup:"Hide group list", legendHint:"Press a vote above to see on the map exactly who cast it.", legendActive:"The map shows only the members with this vote.", legendClear:"Show all votes", mobileHint:"For easier selection, choose a group above and open its member list.", selectedPerson:"Selected member", close:"Close panel", profile:"View profile", selectPrompt:"Select a seat to see the person and their vote.", groupBreakdown:"Group votes", nominalList:"Nominal list", nominalRecords:"nominal records", groupRecords:"groups with data", previous:"Previous", next:"Next" }
+  ro: { chamberMap:"Harta votului în plen", search:"Găsește un deputat (nume, partid, județ)", searchSenator:"Găsește un senator (nume, partid, județ)", filters:"Filtre", groups:"Grupuri parlamentare", votes:"Voturi", allGroups:"Toate grupurile", allVotes:"Toate voturile", matches:"rezultate", instructions:"Cursor: previzualizare · Click: fixează · Tastatură: săgeți + Enter", results:"Rezultate căutare", noResults:"Niciun parlamentar nu corespunde căutării și filtrelor.", unknownGroup:"Grup necunoscut", seats:"mandate", chooseGroup:"Alege un grup pentru a inspecta parlamentarii", filterGroup:"Filtrează grupul", enlargeGroup:"Mărește grupul", hideGroup:"Ascunde lista grupului", legendHint:"Apasă pe un vot de mai sus ca să vezi pe hartă exact cine l-a dat.", legendActive:"Harta arată doar parlamentarii cu acest vot.", legendClear:"Arată toate voturile", mobileHint:"Pentru selecție mai ușoară, alege un grup de mai sus și deschide lista membrilor.", selectedPerson:"Parlamentar selectat", close:"Închide fișa", profile:"Vezi profilul", selectPrompt:"Selectează un loc pentru a vedea persoana și votul său.", hintPointer:"Treci cu cursorul peste un loc ca să vezi cine stă acolo; apasă pe el ca să-l fixezi.", hintTouch:"Apasă pe un loc. Sau ține apăsat o clipă și glisează degetul ca să treci de la o persoană la alta.", groupBreakdown:"Vot pe grupuri", nominalList:"Lista nominală", nominalRecords:"înregistrări nominale", groupRecords:"grupuri cu date", previous:"Înapoi", next:"Următorii" },
+  en: { chamberMap:"Chamber voting map", search:"Find a deputy (name, party, constituency)", searchSenator:"Find a senator (name, party, constituency)", filters:"Filters", groups:"Parliamentary groups", votes:"Votes", allGroups:"All groups", allVotes:"All votes", matches:"matches", instructions:"Pointer: preview · Click: pin · Keyboard: arrows + Enter", results:"Search results", noResults:"No members match the search and filters.", unknownGroup:"Unknown group", seats:"seats", chooseGroup:"Choose a group to inspect its members", filterGroup:"Filter group", enlargeGroup:"Enlarge group", hideGroup:"Hide group list", legendHint:"Press a vote above to see on the map exactly who cast it.", legendActive:"The map shows only the members with this vote.", legendClear:"Show all votes", mobileHint:"For easier selection, choose a group above and open its member list.", selectedPerson:"Selected member", close:"Close panel", profile:"View profile", selectPrompt:"Select a seat to see the person and their vote.", hintPointer:"Move the cursor over a seat to see who sits there; click it to pin the card.", hintTouch:"Tap a seat. Or press and hold for a moment, then slide your finger to move from one person to the next.", groupBreakdown:"Group votes", nominalList:"Nominal list", nominalRecords:"nominal records", groupRecords:"groups with data", previous:"Previous", next:"Next" }
 } satisfies Record<Locale, Record<string,string>>;
 
 const choiceLabelsRo = { for: "pentru", against: "contra", abstention: "abținere", present_not_voting: "prezent, nu a votat" } as const;
