@@ -1,0 +1,63 @@
+{
+  "_readme": "Owner decisions on bills the identifiers do not link (packages/ingest/src/identity/bill-merge.ts, D-050). 'same': one dossier seen from two pages; the merge step folds the second record into the first like any duplicate. 'different': two bills that must never be merged. A 'different' pair the identifiers would join stops the merge with an error. Evidence: who filed them (bill_sponsors), registrations and dates.",
+  "same": [
+    {
+      "bills": [
+        "bill-l520-2021",
+        "bill-pl-x-594-2021"
+      ],
+      "reason": "Contul general anual de executie a bugetului de stat: the same Government project (Government no. 118 of 2021-07-08 on both pages), registered on 2021-12-10 at the Senate (L520, B348 of 2021-07-23) and at the Chamber (PL-x 594, BPI 415 of 2021-07-23). Owner decision 2026-10-15."
+    },
+    {
+      "bills": [
+        "bill-l521-2021",
+        "bill-pl-x-595-2021"
+      ],
+      "reason": "Contul general anual de executie a bugetului asigurarilor sociale de stat: the same Government project (Government no. 119 of 2021-07-08 on both pages), registered on 2021-12-10 at the Senate (L521, B349) and at the Chamber (PL-x 595, BPI 416). Owner decision 2026-10-15."
+    },
+    {
+      "bills": [
+        "bill-pl-x-3-2026",
+        "bill-l323-2026"
+      ],
+      "reason": "Same title; all 39 initiators of PL-x 3/2026 are initiators of L323/2026 (which lists 42), the Chamber page says 'la Senat'. Owner decision 2026-10-15."
+    },
+    {
+      "bills": [
+        "bill-pl-x-316-2025",
+        "bill-b678-2025"
+      ],
+      "reason": "Same title; all 65 initiators of PL-x 316/2025 are initiators of B678/2025 (66). Owner decision 2026-10-15."
+    },
+    {
+      "bills": [
+        "bill-pl-x-345-2026",
+        "bill-b438-2026"
+      ],
+      "reason": "Same title; the same single initiator. Owner decision 2026-10-15."
+    },
+    {
+      "bills": [
+        "bill-pl-x-400-2026",
+        "bill-b383-2026"
+      ],
+      "reason": "Same title; the same 35 initiators. Owner decision 2026-10-15."
+    },
+    {
+      "bills": [
+        "bill-b400-2026",
+        "bill-pl-x-403-2026"
+      ],
+      "reason": "Same title; 38 shared initiators of 40 and 39. Owner decision 2026-10-15."
+    }
+  ],
+  "different": [
+    {
+      "bills": [
+        "bill-pl-x-137-2022",
+        "bill-l482-2026"
+      ],
+      "reason": "Same title (art. 76 alin. 4 of the Fiscal Code), no initiator in common: 3 deputies in 2022 (rejected by both chambers) against 58 senators and deputies in 2026. A rejected idea filed again. Owner decision 2026-10-15."
+    }
+  ]
+}

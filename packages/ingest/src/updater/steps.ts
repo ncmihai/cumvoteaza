@@ -9,7 +9,7 @@ import { PoliteFetcher } from "../coverage/polite-fetcher";
 import { fillGazetteNumbers } from "../dossiers/gazette-fill";
 import { legislatieToken, searchByTitle } from "../dossiers/gazette-lookup";
 import { importBillDossiers } from "../dossiers/import";
-import { applyBillMergePlan, loadBillRecords, planBillMerges } from "../identity/bill-merge";
+import { applyBillMergePlan, loadBillLinkDecisions, loadBillRecords, planBillMerges } from "../identity/bill-merge";
 import { cabinetDecrees, diffDossier, pickBillPagesToRefresh, type BillPageState, type DossierSnapshot, type HeldItem, type StepResult } from "./plan";
 import { looksComplete, missingMembers, parseRosterPage, storedProfileKeys, type OfficialMember } from "./roster-check";
 import { seenEntities, type NewRevision } from "./store";
@@ -187,7 +187,8 @@ export async function stepBillImport(ctx: StepContext): Promise<StepResult> {
   let gazette = 0;
   let revisions = 0;
   if (ctx.persist) {
-    const plan = planBillMerges(await loadBillRecords(ctx.db));
+    const plan = planBillMerges(await loadBillRecords(ctx.db), await loadBillLinkDecisions());
+    if (plan.conflicts.length) throw new Error(`Bill link decisions conflict with the identifiers: ${plan.conflicts.join("; ")}`);
     if (plan.merges.length) {
       await ctx.db.transaction((tx) => applyBillMergePlan(tx as unknown as typeof ctx.db, plan));
       merged = plan.merges.reduce((total, merge) => total + merge.from.length, 0);

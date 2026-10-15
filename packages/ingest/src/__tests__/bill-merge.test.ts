@@ -52,3 +52,31 @@ describe("a bill's title when a vote named it first", () => {
   });
 });
 
+
+describe("owner decisions on bills (D-050)", () => {
+  const two = [
+    bill("bill-l520-2021", { senate: "L520/2021", senate_l: "L520/2021", senate_b: "B348/2021" }, ["senate-bill"]),
+    bill("bill-pl-x-594-2021", { deputies: "PL-x 594/2021" }, ["deputies-bill"])
+  ];
+  it("merges a pair the identifiers do not link when the owner says they are the same, labelled as the owner's decision", () => {
+    expect(planBillMerges(two).merges).toEqual([]);
+    const plan = planBillMerges(two, { same: [{ bills: ["bill-l520-2021", "bill-pl-x-594-2021"], reason: "same project" }], different: [] });
+    expect(plan.merges).toEqual([{ into: "bill-l520-2021", from: ["bill-pl-x-594-2021"], key: "owner decision" }]);
+    expect(plan.conflicts).toEqual([]);
+  });
+  it("keeps the identifiers' label when they join the pair as well", () => {
+    const joined = [bill("bill-l1-2026", { senate: "L1/2026", deputies: "PL-x 9/2026" }, ["senate-bill"]), bill("bill-pl-x-9-2026", { deputies: "PL-x 9/2026" }, ["chamber-nominal-vote"])];
+    const plan = planBillMerges(joined, { same: [{ bills: ["bill-l1-2026", "bill-pl-x-9-2026"], reason: "x" }], different: [] });
+    expect(plan.merges[0]!.key).toBe("deputies:PL-x 9/2026, owner decision");
+  });
+  it("never merges a pair decided to be different, and stops with a conflict if the identifiers would", () => {
+    const apart = { same: [], different: [{ bills: ["bill-l520-2021", "bill-pl-x-594-2021"] as [string, string], reason: "refiled" }] };
+    expect(planBillMerges(two, apart)).toMatchObject({ merges: [], conflicts: [] });
+    const linked = [bill("bill-l520-2021", { senate: "L520/2021", deputies: "PL-x 594/2021" }, ["senate-bill"]), bill("bill-pl-x-594-2021", { deputies: "PL-x 594/2021" }, ["deputies-bill"])];
+    expect(planBillMerges(linked, apart).conflicts).toHaveLength(1);
+  });
+  it("skips a decision about a record that no longer exists (it was merged already)", () => {
+    const plan = planBillMerges([two[0]!], { same: [{ bills: ["bill-l520-2021", "bill-pl-x-594-2021"], reason: "same project" }], different: [] });
+    expect(plan.merges).toEqual([]);
+  });
+});

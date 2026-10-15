@@ -55,7 +55,7 @@ import { runIdentityJob } from "./identity/identity-job";
 import { describeSenateItem } from "./parsers/senate-vote";
 import { runIntegrityChecks } from "./integrity/checks";
 import { applyMemberMergePlan, planMemberMerges } from "./identity/member-merge";
-import { applyBillMergePlan, loadBillRecords, planBillMerges } from "./identity/bill-merge";
+import { applyBillMergePlan, loadBillLinkDecisions, loadBillRecords, planBillMerges } from "./identity/bill-merge";
 import { applyGovernmentPersonLinks, planGovernmentPersonLinks, readGovernmentPersonLinks } from "./identity/government-people";
 import { importCdepHistoryProfiles } from "./cdep-history-import";
 import { auditCurrentLegislature } from "./current-legislature-audit";
@@ -1271,7 +1271,8 @@ async function main() {
     // D22: one bill record per dossier. Dry run by default.
     const session = createDbSession();
     try {
-      const plan = planBillMerges(await loadBillRecords(session.db));
+      const plan = planBillMerges(await loadBillRecords(session.db), await loadBillLinkDecisions(flag("decisions")));
+      if (plan.conflicts.length) throw new Error(`Bill link decisions conflict with the identifiers:\n${plan.conflicts.join("\n")}`);
       if (hasFlag("persist")) await session.db.transaction((tx) => applyBillMergePlan(tx as unknown as typeof session.db, plan));
       await writeImport("bills-merge-duplicates", plan, JSON.stringify(plan, null, 2));
       console.log(JSON.stringify({

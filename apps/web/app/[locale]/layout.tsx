@@ -8,6 +8,7 @@ import { TITLE_TEMPLATE } from "@/lib/page-metadata";
 import { FeedbackWidget } from "./_components/FeedbackWidget";
 import { SiteFooter } from "./_components/SiteFooter";
 import { SiteHeader } from "./_components/SiteHeader";
+import { SupportBanner } from "./_components/SupportBanner";
 import { RevealObserver } from "./_components/ui/RevealObserver";
 import "../globals.css";
 
@@ -57,6 +58,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <div className="min-h-screen">
             <RevealObserver />
+            <SupportBanner locale={locale} />
             <SiteHeader locale={locale} />
             {children}
             <SiteFooter locale={locale} />

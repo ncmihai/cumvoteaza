@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { sql } from "drizzle-orm";
 import type { DbClient } from "@cumsevoteaza/db";
 
@@ -16,8 +17,30 @@ export type BillRecord = {
   parsers: string[];
 };
 
+/**
+ * Owner decisions on bills the identifiers do not link (data/curated/bill-links.json, D-050): `same` = one dossier seen from two pages (the Chamber's page prints a Senate number
+ * imprecisely, or none), merged like any duplicate; `different` = two bills that must never be merged, whatever the identifiers say.
+ */
+export type BillLinkDecisions = {
+  same: Array<{ bills: [string, string]; reason: string }>;
+  different: Array<{ bills: [string, string]; reason: string }>;
+};
+export const DEFAULT_BILL_LINKS_PATH = new URL("../../../../data/curated/bill-links.json", import.meta.url);
+
+export async function loadBillLinkDecisions(path: string | URL = DEFAULT_BILL_LINKS_PATH): Promise<BillLinkDecisions> {
+  try {
+    const parsed = JSON.parse(await readFile(path, "utf8")) as Partial<BillLinkDecisions>;
+    return { same: parsed.same ?? [], different: parsed.different ?? [] };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { same: [], different: [] };
+    throw error;
+  }
+}
+
 export type BillMergePlan = {
   merges: Array<{ into: string; from: string[]; key: string }>;
+  /** Owner decisions the plan could not honour (a "different" pair the identifiers would merge). The caller must stop. */
+  conflicts: string[];
   /** Different dossiers that share a Senate B-number. Left untouched. */
   sharedRegistrationNumbers: Array<{ number: string; bills: string[] }>;
 };
@@ -32,7 +55,7 @@ export function billDossierKeys(identifiers: Record<string, string>): string[] {
   return keys;
 }
 
-export function planBillMerges(bills: BillRecord[]): BillMergePlan {
+export function planBillMerges(bills: BillRecord[], decisions: BillLinkDecisions = { same: [], different: [] }): BillMergePlan {
   const parent = new Map(bills.map((bill) => [bill.id, bill.id]));
   const find = (id: string): string => {
     let root = id;
@@ -53,15 +76,33 @@ export function planBillMerges(bills: BillRecord[]): BillMergePlan {
     }
   }
 
+  // Owner decisions: a "same" pair is joined; a record that no longer exists is skipped (it was merged already).
+  const ids = new Set(bills.map((bill) => bill.id));
+  const decidedRoots = new Set<string>();
+  for (const decision of decisions.same) {
+    const [x, y] = decision.bills;
+    if (!ids.has(x) || !ids.has(y)) continue;
+    const [a, b] = [find(x), find(y)];
+    if (a !== b) parent.set(b, a);
+    decidedRoots.add(find(x));
+  }
+  const conflicts: string[] = [];
+  for (const decision of decisions.different) {
+    const [x, y] = decision.bills;
+    if (ids.has(x) && ids.has(y) && find(x) === find(y)) conflicts.push(`${x} and ${y} are decided to be different bills (${decision.reason.slice(0, 120)}) but their identifiers or another decision join them`);
+  }
+
   const groups = new Map<string, BillRecord[]>();
   for (const bill of bills) groups.set(find(bill.id), [...(groups.get(find(bill.id)) ?? []), bill]);
   const merges: BillMergePlan["merges"] = [];
-  for (const members of groups.values()) {
+  for (const [root, members] of groups) {
     if (members.length < 2) continue;
     const [into, ...rest] = [...members].sort(survivorOrder);
     const keys = members.flatMap((bill) => billDossierKeys(bill.identifiers));
     const shared = [...new Set(keys.filter((key, index) => keys.indexOf(key) !== index))];
-    merges.push({ into: into!.id, from: rest.map((bill) => bill.id).sort(), key: shared.sort().join(", ") });
+    // A group the owner joined is labelled so; a group joined by identifiers keeps their names.
+    const decided = [...decidedRoots].some((decidedRoot) => find(decidedRoot) === root);
+    merges.push({ into: into!.id, from: rest.map((bill) => bill.id).sort(), key: [...shared.sort(), ...(decided ? ["owner decision"] : [])].join(", ") });
   }
 
   const byRegistration = new Map<string, Set<string>>();
@@ -74,7 +115,7 @@ export function planBillMerges(bills: BillRecord[]): BillMergePlan {
     .map(([number, roots]) => ({ number, bills: [...roots].sort() }))
     .sort((a, b) => a.number.localeCompare(b.number));
 
-  return { merges: merges.sort((a, b) => a.into.localeCompare(b.into)), sharedRegistrationNumbers };
+  return { merges: merges.sort((a, b) => a.into.localeCompare(b.into)), conflicts, sharedRegistrationNumbers };
 }
 
 /** The record built from the richest source survives: Senate bill page, then CDEP bill page, then a vote placeholder. */

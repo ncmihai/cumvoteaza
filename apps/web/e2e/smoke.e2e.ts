@@ -461,3 +461,37 @@ test("a member page shows the CV the member filed, labelled as their own declara
   // The member's dated entries are also on the career timeline, marked as declared.
   await expect(page.getByText("CV declarat").first()).toBeVisible();
 });
+
+test("every page carries the support bar: a plain donation link, no widget, closed for good once closed", async ({ page }) => {
+  for (const path of ["/ro", "/en", "/ro/votes", "/ro/methodology"]) {
+    await page.goto(path);
+    const bar = page.getByTestId("support-banner");
+    await expect(bar).toBeVisible();
+    const link = bar.getByRole("link");
+    await expect(link).toHaveAttribute("href", "https://buymeacoffee.com/ncm1");
+    await expect(link).toHaveAttribute("rel", /noopener/);
+    await expect(link).toHaveAttribute("target", "_blank");
+  }
+  // Nothing is loaded from the other site.
+  const external: string[] = [];
+  page.on("request", (request) => { if (/buymeacoffee/i.test(request.url())) external.push(request.url()); });
+  await page.goto("/ro");
+  expect(external).toEqual([]);
+  await page.getByTestId("support-banner").getByRole("button").click();
+  await expect(page.getByTestId("support-banner")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("support-banner")).toHaveCount(0);
+});
+
+test("the support bar fits a 320 px phone without moving the page sideways", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/ro/votes");
+  const bar = page.getByTestId("support-banner");
+  await expect(bar).toBeVisible();
+  const box = (await bar.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(320);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  const link = (await bar.getByRole("link").boundingBox())!;
+  expect(link.x).toBeGreaterThanOrEqual(0);
+  expect(link.x + link.width).toBeLessThanOrEqual(320);
+});

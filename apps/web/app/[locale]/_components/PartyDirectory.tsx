@@ -5,6 +5,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { PartyDirectoryEntry } from "@/lib/directory-data";
 import { foldKey } from "@/lib/text";
+import { neverRepresented, searchTextOf } from "@/lib/party-directory-rules";
 import { PartyMark } from "./ui/PartyMark";
 
 type Locale = "ro" | "en";
@@ -44,7 +45,9 @@ export function PartyDirectory({ entries, legislatures, locale }: { entries: Par
   const visible = useMemo(() => {
     const needle = foldKey(query);
     return entries.filter((entry) => {
-      if (needle && !foldKey(`${entry.shortName} ${entry.name}`).includes(needle)) return false;
+      // An organisation that never had a member is not listed (D-050); its name still finds the organisation it varies.
+      if (neverRepresented(entry)) return false;
+      if (needle && !foldKey(searchTextOf(entry)).includes(needle)) return false;
       if (legislature === ALL) return true;
       if (legislature === CURRENT) return entry.deputies + entry.senators > 0 || (newest ? entry.legislatures.includes(newest) : false);
       return entry.legislatures.includes(legislature);

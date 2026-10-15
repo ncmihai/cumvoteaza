@@ -259,6 +259,62 @@
         "member-senate-2012-88"
       ],
       "reason": "Review row 13, web research 2026-10-04. Dragos Luchian: senat.ro and ro.wikipedia give birth dates 16 August 1932 (senator 1990-1992, Suceava) and 6 March 1968 (senator 2012-2016, Bacau)."
+    },
+    {
+      "members": [
+        "member-deputies-1992-128",
+        "member-senate-2004-47"
+      ],
+      "reason": "Constantin Gheorghe: the 1992 Gorj deputy (PRM) is born 1928-06-11, the 2004 Suceava senator (PDL) 1951-02-18, both as the profile pages print them. Owner decision 2026-10-15 (review of the birth-date disagreements, D-036/D-050); also identity-review.md row 8."
+    },
+    {
+      "members": [
+        "member-deputies-1990-218",
+        "member-deputies-1992-197"
+      ],
+      "reason": "Vasile Matei: the 1990 Caras-Severin deputy (FSN) is born 1933-08-26, the 1992 and 1996 Cluj deputy (PUNR, PDSR) 1939-11-23, both as the profile pages print them. Owner decision 2026-10-15; settles identity-review.md row 2, which was 'unsure'."
+    },
+    {
+      "members": [
+        "member-deputies-1990-218",
+        "member-deputies-1996-317"
+      ],
+      "reason": "Vasile Matei: the 1990 Caras-Severin deputy (FSN) is born 1933-08-26, the 1992 and 1996 Cluj deputy (PUNR, PDSR) 1939-11-23, both as the profile pages print them. Owner decision 2026-10-15; settles identity-review.md row 2, which was 'unsure'."
+    },
+    {
+      "members": [
+        "member-deputies-1990-129",
+        "member-deputies-2000-101"
+      ],
+      "reason": "Nicolae Enescu: the 1990 Arges deputy (PNL) is born 1911-11-26, the 2000 Sibiu deputy (PRM) 1953-04-16, both as the profile pages print them. Owner decision 2026-10-15; also identity-review.md row 1."
+    },
+    {
+      "members": [
+        "member-senate-1990-57",
+        "member-deputies-2004-191"
+      ],
+      "reason": "Ioan Munteanu: the 1990 Giurgiu senator (FSN) is born 1932-03-09, the 2004-2018 Neamt deputy (PSD) 1949-08-07, both as the profile pages print them. Owner decision 2026-10-15; also identity-review.md row 11."
+    },
+    {
+      "members": [
+        "member-senate-1990-57",
+        "member-deputies-2008-189"
+      ],
+      "reason": "Ioan Munteanu: the 1990 Giurgiu senator (FSN) is born 1932-03-09, the 2004-2018 Neamt deputy (PSD) 1949-08-07, both as the profile pages print them. Owner decision 2026-10-15; also identity-review.md row 11."
+    },
+    {
+      "members": [
+        "member-senate-1990-57",
+        "member-deputies-2012-240"
+      ],
+      "reason": "Ioan Munteanu: the 1990 Giurgiu senator (FSN) is born 1932-03-09, the 2004-2018 Neamt deputy (PSD) 1949-08-07, both as the profile pages print them. Owner decision 2026-10-15; also identity-review.md row 11."
+    },
+    {
+      "members": [
+        "member-senate-1990-57",
+        "member-deputies-2016-187"
+      ],
+      "reason": "Ioan Munteanu: the 1990 Giurgiu senator (FSN) is born 1932-03-09, the 2004-2018 Neamt deputy (PSD) 1949-08-07, both as the profile pages print them. Owner decision 2026-10-15; also identity-review.md row 11."
     }
   ]
 }
