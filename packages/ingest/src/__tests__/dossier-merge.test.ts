@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseCdepDossier } from "../dossiers/cdep-dossier";
-import { approvedOrdinance, groupPages, keysOfPage, mergeDossiers } from "../dossiers/merge";
+import { approvedOrdinance, groupPages, keysOfPage, lawReferences, mergeDossiers, titlesNameDifferentLaws } from "../dossiers/merge";
 import type { DossierStep, ParsedDossier } from "../dossiers/types";
 
 const step = (source: "cdep" | "senate", chamber: DossierStep["chamber"], occurredOn: string, type: DossierStep["type"]): DossierStep => ({ source, chamber, occurredOn, order: 0, type, text: type, documents: [] });
@@ -74,7 +74,41 @@ describe("pages that approve different ordinances", () => {
 
   it("join when the titles agree or name no ordinance", () => {
     expect(groupPages([chamberPage, withTitle(senatePage, "Proiect de lege privind aprobarea Ordonanţei de urgenţã a Guvernului nr.76/2025 pentru modificarea")])).toHaveLength(1);
-    expect(groupPages([withTitle(chamberPage, "Propunere legislativă pentru modificarea Legii nr.95/2006"), senatePage])).toHaveLength(1);
+    expect(groupPages([withTitle(chamberPage, "Propunere legislativă pentru modificarea legii"), senatePage])).toHaveLength(1);
+  });
+});
+
+describe("pages whose titles cannot be one bill", () => {
+  const chamberTitle = "Proiect de Lege pentru modificarea şi completarea Legii nr.58/1934 asupra cambiei şi biletului la ordin";
+  const chamberPage = { ...page("cdep", "PL-x 134/2022", [{ body: "cdep", number: "134", date: "2022-03-21" }, { body: "senate", number: "L62", date: "2021-12-15" }], []), title: chamberTitle };
+  // The Senate's page of the other L62 (2021): the Senate lists the Chamber number without checking the year.
+  const wrongYear = { ...page("senate", "L62/2021", [{ body: "senate", number: "L62", date: "2021-03-22" }, { body: "cdep", number: "PLX134/2022" }], []), title: "Propunere legislativă pentru modificarea Ordonanţei nr.26/2013 privind întărirea disciplinei financiare" };
+  const rightYear = { ...page("senate", "L62/2022", [{ body: "senate", number: "L62", date: "2022-02-07" }, { body: "cdep", number: "PLX134/2022" }], []), title: "Propunere legislativă pentru modificarea și completarea Legii nr.58/1934 asupra cambiei și biletului la ordin" };
+
+  it("name different laws: the Senate page of the wrong year stays out and the right one joins", () => {
+    const groups = groupPages([chamberPage, wrongYear, rightYear]);
+    expect(groups.map((group) => group.pages.map((item) => item.selfId))).toEqual([["PL-x 134/2022", "L62/2022"], ["L62/2021"]]);
+  });
+
+  it("take the Senate's own L number and the Chamber's own PL-x number for the merged keys", () => {
+    const [group] = groupPages([chamberPage, rightYear]);
+    expect(group!.keys).toMatchObject({ deputies: "PL-x 134/2022", senateL: "L62/2022" });
+  });
+
+  it("with no law named, share no subject word at all", () => {
+    expect(titlesNameDifferentLaws("Propunere legislativă pentru amenajarea, omologarea şi întreţinerea traseelor turistice din România", "Proiect de lege privind aprobarea Ordonanţei de urgenţã a Guvernului pentru sprijinirea antreprenorilor mici şi mijlocii din industrie")).toBe(true);
+    expect(titlesNameDifferentLaws("Propunere legislativă pentru instituirea Zilei Memoriale a Holodomorului", "Proiect de Lege pentru instituirea Zilei de comemorare a victimelor Marii Foamete (Holodomor)")).toBe(false);
+    expect(titlesNameDifferentLaws("Propunere legislativă pentru modificarea legii", "Proiect privind traseele turistice")).toBe(false);
+  });
+
+  it("name different law numbers (one mistyped) but speak of the same subject", () => {
+    expect(titlesNameDifferentLaws("Proiect de Lege privind modificarea şi completarea Legii nr.61/1991 pentru sancţionarea faptelor de încălcare a unor norme de convieţuire socială", "Propunere legislativă privind modificarea și completarea Legii nr.16/1991 pentru sancționarea faptelor de încălcare a unor norme de conviețuire socială")).toBe(false);
+    expect(titlesNameDifferentLaws("Proiect de Lege pentru completarea art.469 alin.(2) din Legea nr.227/2015 privind Codul fiscal", "Propunere legislativă pentru completarea Legea apiculturii nr.383/2013")).toBe(true);
+  });
+
+  it("share one law, however many more they name", () => {
+    expect(titlesNameDifferentLaws("Legii nr.95/2006 și Legii nr.1/2011", "Ordonanței nr.5/2020 și Legii nr.1/2011")).toBe(false);
+    expect(lawReferences("Legii nr.58/1934, republicată, și art.7 din Legea 75/1994")).toEqual(new Set(["58/1934", "75/1994"]));
   });
 });
 

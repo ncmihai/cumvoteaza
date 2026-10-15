@@ -3,7 +3,7 @@ import type { SourceSnapshot } from "@cumsevoteaza/parliament-model";
 import { classifyDeputiesDocumentKind } from "../parsers/deputies-bill";
 import { billIdForIdentifier, canonicalBillIdentifier, identifierRecord, normalizeOfficialIdentifier, type OfficialIdentifier } from "../parsers/identifiers";
 import { slugify } from "../parsers/utils";
-import { approvedOrdinance, lawTypeOf, type MergedDossier } from "./merge";
+import { approvedOrdinance, lawTypeOf, titlesNameDifferentLaws, type MergedDossier } from "./merge";
 import { matchByName, type NameCandidate } from "./member-match";
 import type { DossierStep } from "./types";
 
@@ -35,6 +35,8 @@ export interface PlanContext {
   aliasIds: Set<string>;
   /** Where each merged-away id now points: the record it was folded into. */
   aliasTargets?: Map<string, string>;
+  /** The Chamber numbers (lower case, no spaces) that a Chamber page of this run names: a stored bill carrying one of them is that page's bill. */
+  chamberPageNumbers?: Set<string>;
 }
 
 export interface SponsorRow {
@@ -231,7 +233,7 @@ export const isVoteStyleTitle = (title: string) => /^(?:PL-?x|PLx|BP|L|B)\s?\d+\
  * their title) or contradicts the dossier (it approves another ordinance: an older mislink wrote another bill's title here).
  */
 export function chosenBillTitle(existing: string | undefined, dossier: string | undefined, billId: string): string {
-  const keepExisting = existing && existing !== "unknown" && !(dossier && isVoteStyleTitle(existing)) && !(dossier && contradicts(existing, dossier));
+  const keepExisting = existing && existing !== "unknown" && !(dossier && isVoteStyleTitle(existing)) && !(dossier && contradicts(existing, dossier)) && !(dossier && titlesNameDifferentLaws(existing, dossier));
   return keepExisting ? existing : (dossier ?? existing ?? billId);
 }
 
@@ -245,7 +247,12 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
   const isStrong = (bill: ExistingBill) => existingKeys(bill).some((key) => strongKeys.has(key));
   // A stored bill that shares only the Senate B number and carries another Chamber number is another Chamber registration of that Senate bill (D-025), not this one.
   const ownChamber: Record<string, string> = merged.keys.deputies ? { deputies: merged.keys.deputies } : {};
-  const matches = found.filter((bill) => isStrong(bill) || !areDifferentChamberRegistrations(bill.identifiers, ownChamber));
+  // A Senate page with no Chamber page of its own does not take the stored bill of a Chamber page that exists (the Senate listed the wrong Chamber number for it).
+  // (Unless the stored bill's id is the one this dossier's own Senate number gives: then only the Chamber number it carries was wrong.)
+  const ownCanonical = canonicalBillIdentifier(identifiersOf(merged.keys));
+  const ownId = ownCanonical ? billIdForIdentifier(ownCanonical) : undefined;
+  const heldByAChamberPage = (bill: Pick<ExistingBill, "identifiers">) => !merged.keys.deputies && Boolean(bill.identifiers.deputies && context.chamberPageNumbers?.has(bill.identifiers.deputies.toLowerCase().replace(/\s+/g, "")));
+  const matches = found.filter((bill) => (bill.id === ownId || !heldByAChamberPage(bill)) && (isStrong(bill) || !areDifferentChamberRegistrations(bill.identifiers, ownChamber)));
   matches.sort((a, b) => Number(isStrong(b)) - Number(isStrong(a)) || Number(b.id.startsWith("bill-l")) - Number(a.id.startsWith("bill-l")) || a.id.localeCompare(b.id));
   const existing = matches[0];
 
@@ -257,7 +264,10 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
   const billId = existing?.id ?? (canonical ? billIdForIdentifier(canonical) : `bill-${slugify(merged.title ?? "unknown").slice(0, 60)}`);
   const slug = existing?.slug ?? slugify(canonical?.value ?? billId);
   // Such a bill keeps only its Chamber number, also on a re-read: it must not take the other dossier's Senate number back (the duplicate merge would fold it in again).
-  const mergedIdentifiers = lostItsBill ? identifierRecord(identifiers) : { ...(existing?.identifiers ?? {}), ...identifierRecord(identifiers) };
+  // A Senate-only dossier drops the Chamber number the stored bill carried when a Chamber page of this run holds that number (it was printed on the wrong bill).
+  const carried = { ...(existing?.identifiers ?? {}) };
+  if (heldByAChamberPage({ identifiers: carried })) delete carried.deputies;
+  const mergedIdentifiers = lostItsBill ? identifierRecord(identifiers) : { ...carried, ...identifierRecord(identifiers) };
   const earliest = [...merged.registrations.map((item) => item.date), ...merged.steps.map((step) => step.occurredOn)].filter(Boolean).sort()[0];
 
   // Initiators: the Chamber's profile link is exact; a Senate name is matched only when it is unique among those who sat that day.

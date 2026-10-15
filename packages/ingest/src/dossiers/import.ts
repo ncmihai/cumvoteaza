@@ -10,7 +10,7 @@ import { decodeOfficialBytes, RawCache } from "../coverage/raw-cache";
 import { snapshotFor } from "../parsers/utils";
 import { parseCdepDossier } from "./cdep-dossier";
 import { loadBillLinkDecisions } from "../identity/bill-merge";
-import { groupPages, keyList, keysOfPage, mergeDossiers, type PageGroup } from "./merge";
+import { groupPages, keyList, keysOfPage, mergeDossiers, titlesNameDifferentLaws, type PageGroup } from "./merge";
 import type { NameCandidate } from "./member-match";
 import { areDifferentChamberRegistrations, contradicts, documentKey, existingKeys, indexExistingBills, planBill, summarisePlans, type BillPlan, type ExistingBill, type PlanContext, type PlanSummary } from "./plan";
 import { parseSenateDossier } from "./senate-dossier";
@@ -158,6 +158,7 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
   const existingIndex = indexExistingBills(context.existingBills);
   const byParsed = new Map(pages.map((page) => [page.parsed, page]));
   let groups = groupPages(pages.map((page) => page.parsed), bridges);
+  context.chamberPageNumbers = new Set(groups.flatMap((group) => (group.pages.some((page) => page.source === "cdep") && group.keys.deputies ? [group.keys.deputies.toLowerCase().replace(/\s+/g, "")] : [])));
   if (options.limit !== undefined) groups = groups.slice(0, options.limit);
   const planGroup = (group: PageGroup, exclude?: Set<string>) => {
     const members = group.pages.map((page) => byParsed.get(page)!);
@@ -175,7 +176,8 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
     let changed = false;
     for (const [billId, items] of holders) {
       if (items.length < 2) continue;
-      const keeper = items.find((item) => item.plan.claimsStoredBill) ?? items[0]!;
+      // The id of a Senate bill belongs to the Senate's own page: a Senate-only dossier outranks a Chamber dossier that merely prints that Senate number.
+      const keeper = items.find((item) => item.plan.claimsStoredBill && item.group.pages.every((page) => page.source === "senate")) ?? items.find((item) => item.plan.claimsStoredBill) ?? items[0]!;
       for (const item of items) {
         if (item === keeper) continue;
         item.excluded.add(billId);
@@ -193,10 +195,10 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
     // The id of an old merge. Undone when the dossier it was folded into approves a different ordinance (the merge rested on a number the Chamber printed on the wrong bill).
     const keeper = [...item.excluded].map((id) => plansByBill.get(id)).find(Boolean);
     // Also undone when the two are different Chamber registrations of one Senate bill (two PL-x numbers naming one L number): each registration is its own bill with its own page (D-025), so the later one must not be folded into the first.
-    if (keeper && (contradicts(keeper.bill.title, plan.bill.title) || areDifferentChamberRegistrations(keeper.bill.identifiers, plan.bill.identifiers))) return [{ ...plan, unmerge: true }];
+    if (keeper && (contradicts(keeper.bill.title, plan.bill.title) || titlesNameDifferentLaws(keeper.bill.title, plan.bill.title) || areDifferentChamberRegistrations(keeper.bill.identifiers, plan.bill.identifiers))) return [{ ...plan, unmerge: true }];
     // The same when no other dossier competes for it: the record it was folded into is stored under another Chamber number.
     const target = context.billById?.get(context.aliasTargets?.get(plan.billId) ?? "");
-    if (!keeper && target && areDifferentChamberRegistrations(target.identifiers, plan.bill.identifiers)) return [{ ...plan, unmerge: true }];
+    if (!keeper && target && (areDifferentChamberRegistrations(target.identifiers, plan.bill.identifiers) || titlesNameDifferentLaws(target.title, plan.bill.title))) return [{ ...plan, unmerge: true }];
     shadowed.push(plan);
     return [];
   });
@@ -204,7 +206,25 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
   const seen = new Set<string>();
   const leftOut: BillPlan[] = [...shadowed];
   const unique = plans.filter((plan) => (seen.has(plan.billId) ? (leftOut.push(plan), false) : (seen.add(plan.billId), true)));
+  settleVoteConflicts(unique);
   return { plans: unique, summary: summarisePlans(unique, leftOut), pagesRead: { cdep: pages.filter((page) => page.parsed.source === "cdep").length, senate: pages.filter((page) => page.parsed.source === "senate").length }, unreadable };
+}
+
+/**
+ * A vote one dossier names but another bill holds is a conflict, unless the holder is covered by a dossier of this same run that does not name the vote: then the holder only had it from an
+ * older mislink (a page joined to the wrong bill) and the vote moves to the dossier that names it.
+ */
+export function settleVoteConflicts(plans: BillPlan[]): void {
+  const named = new Map(plans.map((plan) => [plan.billId, new Set(plan.steps.flatMap((step) => (step.voteId ? [step.voteId] : [])))]));
+  const covering = (storedBillId: string) => plans.find((plan) => plan.billId === storedBillId || plan.alsoMatches.includes(storedBillId));
+  for (const plan of plans) {
+    plan.voteConflicts = plan.voteConflicts.filter((conflict) => {
+      const holder = conflict.reason === "stored_bill_has_its_own_dossier" ? covering(conflict.storedBillId) : undefined;
+      if (!holder || holder === plan || named.get(holder.billId)?.has(conflict.voteId)) return true;
+      plan.voteLinks.push({ voteId: conflict.voteId, billId: plan.billId, replaces: conflict.storedBillId });
+      return false;
+    });
+  }
 }
 
 const chunks = <T>(items: T[], size: number): T[][] => {

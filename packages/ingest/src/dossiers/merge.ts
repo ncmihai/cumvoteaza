@@ -43,6 +43,38 @@ export interface PageGroup {
 }
 
 /** The ordinance a "bill approving an ordinance" names first ("OUG nr.74/2025" -> "74/2025"); undefined when the title names none. Two pages that approve different ordinances are not one bill. */
+/**
+ * The laws a title names, as "number/year" ("Legii nr.58/1934", "Ordonanței nr.26/2013"). Two pages whose titles both name laws and share none are not one bill:
+ * the Chamber prints a Senate number with the year of another date, and the Senate lists a Chamber number without checking the year, so one number can reach two different bills.
+ */
+export function lawReferences(title: string | undefined): Set<string> {
+  const found = new Set<string>();
+  for (const match of fold(title ?? "").matchAll(/(?<![\d/])(\d{1,4})\s*\/\s*(\d{4})(?!\d)/g)) found.add(`${Number(match[1])}/${match[2]}`);
+  return found;
+}
+
+// Words that open nearly every title: they say nothing about the subject.
+const TITLE_FILLER = new Set(["pentru", "privind", "legii", "legea", "proiect", "propunere", "legislativa", "modificarea", "completarea", "aprobarea", "unele", "normative", "precum", "prin", "care", "ordonantei", "urgenta", "guvernului", "ordonanta", "completare", "modificare", "masuri", "alineatului", "articolului", "republicata", "publicata", "monitorul", "oficial", "romaniei", "partea", "ulterioare", "completarile", "modificarile"]);
+
+/** The first four letters of each word of five or more that carries the subject ("educatiei" and "educatia" meet). */
+function titleStems(title: string | undefined): Set<string> {
+  return new Set(fold(title ?? "").split(/[^a-z0-9]+/).filter((word) => word.length >= 5 && !TITLE_FILLER.has(word) && !/^\d+$/.test(word)).map((word) => word.slice(0, 4)));
+}
+
+/**
+ * Two titles that cannot be the same bill: no law in common and no word that carries the subject in common. A law number is often mistyped on one side ("16/1991" and "61/1991"), so different
+ * laws alone decide nothing when the subject words agree; and a title with fewer than three subject words and no law named is too short to tell.
+ */
+export const titlesNameDifferentLaws = (a: string | undefined, b: string | undefined): boolean => {
+  const first = lawReferences(a);
+  const second = lawReferences(b);
+  if ([...first].some((reference) => second.has(reference))) return false;
+  const [stemsA, stemsB] = [titleStems(a), titleStems(b)];
+  const noSubjectInCommon = ![...stemsA].some((stem) => stemsB.has(stem));
+  if (first.size > 0 && second.size > 0) return noSubjectInCommon;
+  return stemsA.size >= 3 && stemsB.size >= 3 && noSubjectInCommon;
+};
+
 export function approvedOrdinance(title: string | undefined): string | undefined {
   const match = fold(title ?? "").match(/(?:ordon+a\w*|oug|o\.u\.g\.|og)\s*(?:de urgenta\s*)?(?:a guvernului\s*)?nr\.?\s*(\d+)\s*\/\s*(\d{4})/);
   return match ? `${match[1]}/${match[2]}` : undefined;
@@ -66,6 +98,7 @@ export function groupPages(pages: ParsedDossier[], bridges: Array<[string, strin
     const ordinanceA = approvedOrdinance(pages[a]!.title);
     const ordinanceB = approvedOrdinance(pages[b]!.title);
     if (ordinanceA && ordinanceB && ordinanceA !== ordinanceB) return;
+    if (titlesNameDifferentLaws(pages[a]!.title, pages[b]!.title)) return;
     parent[rootB] = rootA;
     chamberPages[rootA] = chamberPages[rootA]! + chamberPages[rootB]!;
   };
@@ -84,16 +117,23 @@ export function groupPages(pages: ParsedDossier[], bridges: Array<[string, strin
   }
   const groups = new Map<number, ParsedDossier[]>();
   pages.forEach((page, index) => groups.set(find(index), [...(groups.get(find(index)) ?? []), page]));
-  return [...groups.values()].map((group) => ({ pages: group, keys: mergeKeys(group.map(keysOfPage)) }));
+  const result = [...groups.values()].map((group) => ({ pages: group, keys: mergeKeys(group) }));
+  // A Senate page that names a Chamber number whose own page is in another group (the titles refused the join) was wrong about it: it keeps no claim on that number.
+  const chamberNumbers = new Set(result.flatMap((group) => (group.pages.some((page) => page.source === "cdep") ? [group.keys.deputies?.toLowerCase()] : [])));
+  for (const group of result) if (!group.pages.some((page) => page.source === "cdep") && group.keys.deputies && chamberNumbers.has(group.keys.deputies.toLowerCase())) delete group.keys.deputies;
+  return result;
 }
 
-function mergeKeys(all: BillKeys[]): BillKeys {
+/** The Chamber's page is the authority for its own PL-x number and the Senate's page for its own L number: the number each prints for the other carries a guessed year. */
+function mergeKeys(pages: ParsedDossier[]): BillKeys {
+  const keysOf = (source: ParsedDossier["source"]) => pages.filter((page) => page.source === source).map(keysOfPage);
+  const [cdep, senate] = [keysOf("cdep"), keysOf("senate")];
   const merged: BillKeys = { senateB: [] };
-  for (const keys of all) {
-    merged.deputies ??= keys.deputies;
-    merged.senateL ??= keys.senateL;
-    for (const b of keys.senateB) if (!merged.senateB.includes(b)) merged.senateB.push(b);
-  }
+  merged.deputies = [...cdep, ...senate].find((keys) => keys.deputies)?.deputies;
+  merged.senateL = [...senate, ...cdep].find((keys) => keys.senateL)?.senateL;
+  for (const keys of [...senate, ...cdep]) for (const b of keys.senateB) if (!merged.senateB.includes(b)) merged.senateB.push(b);
+  if (!merged.deputies) delete merged.deputies;
+  if (!merged.senateL) delete merged.senateL;
   return merged;
 }
 
@@ -162,6 +202,8 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
     for (const registration of page.registrations) {
       const index = registrations.findIndex((item) => item.body === registration.body && item.number.toLowerCase() === registration.number.toLowerCase());
       if (index < 0) registrations.push(registration);
+      // The Senate's own page is the authority for its own registrations (the Chamber prints the date of the B registration beside the L number).
+      else if (page.source === "senate" && registration.body === "senate") registrations[index] = registration;
       else if (!registrations[index]!.date && registration.date) registrations[index] = { ...registrations[index]!, date: registration.date };
     }
   }
