@@ -54,6 +54,17 @@ Use a generated secret, not the site password. A 32+ character random value is
 enough; for example, generate one locally with `openssl rand -base64 32` and
 store that value only in Vercel/local env.
 
+For feedback reports as GitHub issues (D-048), optional:
+
+```text
+GITHUB_FEEDBACK_TOKEN=<fine-grained personal access token>
+GITHUB_FEEDBACK_REPO=ncmihai/cumvoteaza
+```
+
+Create the token on GitHub (Settings, Developer settings, Fine-grained tokens) for the one repository only, with **Issues: Read and write** and nothing else, and
+put it in Vercel's environment for Production, then redeploy. Without the token the reports are only stored in the database. The repository should be private:
+an issue is readable by everyone on a public one. The visitor's contact detail is never sent; the message goes into a code block.
+
 For anonymous first-party engagement counts:
 
 ```text

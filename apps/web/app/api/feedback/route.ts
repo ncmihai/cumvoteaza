@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import * as schema from "@cumsevoteaza/db";
 import { FEEDBACK_FLOOD, parseFeedback } from "@/lib/feedback";
+import { feedbackIssue, githubTargetFromEnv, postFeedbackIssue } from "@/lib/feedback-github";
 import { createWebDbSession } from "@/lib/server-db";
 
 export const runtime = "nodejs";
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * The feedback form (D-031). It stores what the visitor typed and the path of the page, nothing else: no IP, no cookie, no browser details (D-015).
- * Because nobody is identified, the flood guard counts everyone together.
+ * Because nobody is identified, the flood guard counts everyone together. When GITHUB_FEEDBACK_TOKEN is set, the report is also opened as a GitHub issue
+ * after the answer is sent (D-048); the contact detail stays in the database.
  */
 export async function POST(request: NextRequest) {
   // A form on another site must not be able to post here.
@@ -32,8 +34,9 @@ export async function POST(request: NextRequest) {
     if ((recent[0]?.ten_minutes ?? 0) >= FEEDBACK_FLOOD.perTenMinutes || (recent[0]?.day ?? 0) >= FEEDBACK_FLOOD.perDay) {
       return NextResponse.json({ error: "busy" }, { status: 429 });
     }
+    const id = `fb-${randomUUID()}`;
     await session.db.insert(schema.feedbackReports).values({
-      id: `fb-${randomUUID()}`,
+      id,
       kind: parsed.value.kind,
       message: parsed.value.message,
       pagePath: parsed.value.pagePath ?? null,
@@ -42,6 +45,14 @@ export async function POST(request: NextRequest) {
       status: "new",
       createdAt: new Date()
     });
+    const target = githubTargetFromEnv();
+    if (target) {
+      const issue = feedbackIssue({ id, value: parsed.value }, request.nextUrl.origin);
+      after(async () => {
+        const result = await postFeedbackIssue(issue, target);
+        if (!result.ok) console.error(`feedback ${id}: GitHub issue not created (HTTP ${result.status})`);
+      });
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "unavailable" }, { status: 503 });
