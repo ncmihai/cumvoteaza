@@ -5,15 +5,15 @@ import { useEffect, useState } from "react";
 import { SITE } from "@/lib/site";
 
 /**
- * A slim bar at the top of every page (D-050): the site is free, has no ads and one person's time behind it; a plain donation link for those who want to support it.
+ * A slim bar at the top of every page (D-050): one sentence and a plain donation link for those who want to support the project.
  * Nothing is loaded from the other site (a link, not a widget, so no script and no tracking of readers), and closing it is remembered for 30 days in this browser only.
  */
 const KEY = "cumvoteaza:support-banner-until";
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
 const copy = {
-  ro: { label: "Susține proiectul", text: "Un proiect independent, gratuit și fără reclame.", cta: "Cumpără-mi o cafea", close: "Ascunde mesajul pentru 30 de zile" },
-  en: { label: "Support the project", text: "An independent project: free, and without ads.", cta: "Buy me a coffee", close: "Hide this message for 30 days" }
+  ro: { label: "Susține proiectul", before: "Dacă vrei să susții proiectul,", cta: "cumpără-mi o cafea", close: "Ascunde mesajul pentru 30 de zile" },
+  en: { label: "Support the project", before: "If you want to support the project,", cta: "buy me a coffee", close: "Hide this message for 30 days" }
 } as const;
 
 export function SupportBanner({ locale }: { locale: "ro" | "en" }) {
@@ -28,7 +28,7 @@ export function SupportBanner({ locale }: { locale: "ro" | "en" }) {
   const t = copy[locale];
   return <div data-testid="support-banner" role="region" aria-label={t.label} className="border-b border-line bg-brand-soft">
     <div className="mx-auto flex max-w-page items-center justify-center gap-x-3 gap-y-1 px-4 py-1.5 text-xs text-ink-soft sm:text-sm lg:px-8">
-      <p className="min-w-0 text-center">{t.text}{" "}
+      <p className="min-w-0 text-center">{t.before}{" "}
         <a href={SITE.support.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap font-bold text-brand-strong underline decoration-brand/40 underline-offset-2 hover:text-brand">
           <Coffee size={14} aria-hidden="true" />{t.cta}
         </a>

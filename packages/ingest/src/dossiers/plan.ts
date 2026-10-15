@@ -16,6 +16,9 @@ export interface ExistingBill {
   decisionChamber: string | null;
   lawType: string | null;
   sourceSnapshotIds: string[];
+  /** Whether a dossier has been read for this bill, and how many steps it holds: a bill with neither is only what a vote's title made. */
+  hasDossier?: boolean;
+  stepCount?: number;
 }
 
 export interface PlanContext {
@@ -24,10 +27,14 @@ export interface PlanContext {
   profileKeyToMember: Map<string, string>;
   candidatesByChamber: Record<"deputies" | "senate", NameCandidate[]>;
   /** `cdep:36828` or `senate:<appid>` to the vote we hold. */
-  voteByRef: Map<string, { id: string; billId: string | null }>;
+  voteByRef: Map<string, { id: string; billId: string | null; heldOn?: string }>;
+  /** Every stored bill by id, for the bill a vote is stored under. */
+  billById?: Map<string, ExistingBill>;
   slugsTaken: Set<string>;
   /** Ids of bills that were merged into another record (`id_aliases`): a bill must not be created under one of them. */
   aliasIds: Set<string>;
+  /** Where each merged-away id now points: the record it was folded into. */
+  aliasTargets?: Map<string, string>;
 }
 
 export interface SponsorRow {
@@ -125,12 +132,45 @@ export interface BillPlan {
   documents: DocumentRow[];
   /** `replaces` is the placeholder bill (an empty record the vote importer made from the vote page) the vote moves away from. */
   voteLinks: Array<{ voteId: string; billId: string; replaces?: string }>;
-  voteConflicts: Array<{ voteId: string; storedBillId: string }>;
+  voteConflicts: Array<{ voteId: string; storedBillId: string; reason?: string }>;
   unrecognised: string[];
 }
 
 /** Bills the vote importer made from a vote page when it did not know the bill: an id built from the page address, no numbers, no steps. */
 export const isPlaceholderBillId = (id: string) => /^bill-(deputies|senate)-https-/.test(id);
+
+/**
+ * A bill the vote importer made from a vote's title ("L84/2022 — vot final"): no dossier, no steps, nothing but the number the title printed. The Senate sometimes prints that
+ * number with the wrong year, so such a bill can be an empty stub of a real bill under another number.
+ */
+export function isVoteStub(bill: Pick<ExistingBill, "title" | "identifiers" | "hasDossier" | "stepCount">): boolean {
+  if (bill.hasDossier || (bill.stepCount ?? 0) > 0) return false;
+  const known = new Set(["senate", "senate_l", "senate_b", "deputies"]);
+  return isVoteStyleTitle(bill.title) && Object.keys(bill.identifiers).every((key) => known.has(key));
+}
+
+/** What to do with a vote a dossier lists among its steps while it is stored under another bill (D-050, Sprint 19). */
+export type VoteLinkDecision = { action: "move"; replaces: string } | { action: "conflict"; reason: "stored_bill_has_its_own_dossier" | "vote_predates_the_bill" };
+
+/**
+ * The dossier is the bill's official page and names the vote itself, so it outranks a bill built only from the vote's title: the vote moves to the dossier's bill and the empty stub
+ * goes. It does not outrank a stored bill that has a dossier of its own (two bills claiming one vote: the one the vote's title names keeps it, and the case is reported), and a vote
+ * held before the dossier's first record cannot belong to it.
+ */
+export function decideVoteLink(input: { stored: Pick<ExistingBill, "id" | "title" | "identifiers" | "hasDossier" | "stepCount"> | undefined; voteHeldOn?: string; dossierEarliest?: string }): VoteLinkDecision {
+  const { stored, voteHeldOn, dossierEarliest } = input;
+  if (voteHeldOn && dossierEarliest && voteHeldOn < dossierEarliest) return { action: "conflict", reason: "vote_predates_the_bill" };
+  if (stored && isVoteStub(stored)) return { action: "move", replaces: stored.id };
+  return { action: "conflict", reason: "stored_bill_has_its_own_dossier" };
+}
+
+const sameChamberNumber = (a: string | undefined, b: string | undefined) => Boolean(a && b && a.toLowerCase().replace(/\s+/g, "") === b.toLowerCase().replace(/\s+/g, ""));
+
+/** Two dossiers that name one Senate number but different Chamber numbers are two Chamber registrations, each with its own page (D-025): they must not be one bill. */
+export function areDifferentChamberRegistrations(a: Record<string, string>, b: Record<string, string>): boolean {
+  const norm = (value: string | undefined) => value?.toLowerCase().replace(/\s+/g, "");
+  return Boolean(norm(a.deputies) && norm(b.deputies) && norm(a.deputies) !== norm(b.deputies));
+}
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -145,7 +185,7 @@ export function documentKey(url: string): string {
   }
 }
 
-function existingKeys(bill: ExistingBill): string[] {
+export function existingKeys(bill: ExistingBill): string[] {
   const id = bill.identifiers;
   const keys: string[] = [];
   const add = (prefix: string, value: string | undefined) => value && keys.push(`${prefix}:${value.toLowerCase().replace(/\s+/g, "")}`);
@@ -197,12 +237,15 @@ export function chosenBillTitle(existing: string | undefined, dossier: string | 
 
 export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapshot[]; fetchedAt: Partial<Record<"cdep" | "senate", string>>; context: PlanContext; existingIndex: Map<string, ExistingBill[]>; /** Stored bills another dossier already holds. */ exclude?: Set<string> }): BillPlan {
   const { merged, context } = input;
-  const matches: ExistingBill[] = [];
-  for (const key of groupKeys(merged.keys)) for (const bill of input.existingIndex.get(key) ?? []) if (!matches.some((item) => item.id === bill.id) && !input.exclude?.has(bill.id)) matches.push(bill);
+  const found: ExistingBill[] = [];
+  for (const key of groupKeys(merged.keys)) for (const bill of input.existingIndex.get(key) ?? []) if (!found.some((item) => item.id === bill.id) && !input.exclude?.has(bill.id)) found.push(bill);
   // A Chamber (PL-x) or Senate (L) number belongs to one bill; a Senate B number is shared by every bill sent on from one Senate registration, and the stored copy of one may be wrong.
   // So a stored bill that matches by PL-x or L ranks before one that matches only by a B number.
   const strongKeys = new Set(groupKeys(merged.keys).filter((key) => !key.startsWith("b:")));
   const isStrong = (bill: ExistingBill) => existingKeys(bill).some((key) => strongKeys.has(key));
+  // A stored bill that shares only the Senate B number and carries another Chamber number is another Chamber registration of that Senate bill (D-025), not this one.
+  const ownChamber: Record<string, string> = merged.keys.deputies ? { deputies: merged.keys.deputies } : {};
+  const matches = found.filter((bill) => isStrong(bill) || !areDifferentChamberRegistrations(bill.identifiers, ownChamber));
   matches.sort((a, b) => Number(isStrong(b)) - Number(isStrong(a)) || Number(b.id.startsWith("bill-l")) - Number(a.id.startsWith("bill-l")) || a.id.localeCompare(b.id));
   const existing = matches[0];
 
@@ -269,8 +312,15 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
       if (!vote.billId || isPlaceholderBillId(vote.billId)) voteLinks.push({ voteId: vote.id, billId, ...(vote.billId ? { replaces: vote.billId } : {}) });
       // A vote stored under the other record of this same dossier is not a conflict: the duplicate merge makes it one bill.
       // A vote the dossier names, stored under a bill this dossier lost to another dossier (an older mislink), moves to this bill.
-      else if (input.exclude?.has(vote.billId)) voteLinks.push({ voteId: vote.id, billId, replaces: vote.billId });
-      else if (vote.billId !== billId && !matches.some((bill) => bill.id === vote.billId)) voteConflicts.push({ voteId: vote.id, storedBillId: vote.billId });
+      // A Senate vote stays with the bill that carries the Senate number: the dossier that lost it keeps only its Chamber number, so only the Chamber's votes follow it.
+      else if (input.exclude?.has(vote.billId)) {
+        if (!(lostItsBill && reference?.source === "senate")) voteLinks.push({ voteId: vote.id, billId, replaces: vote.billId });
+      }
+      else if (vote.billId !== billId && !matches.some((bill) => bill.id === vote.billId)) {
+        const decision = decideVoteLink({ stored: context.billById?.get(vote.billId), voteHeldOn: vote.heldOn, dossierEarliest: earliest });
+        if (decision.action === "move") voteLinks.push({ voteId: vote.id, billId, replaces: decision.replaces });
+        else voteConflicts.push({ voteId: vote.id, storedBillId: vote.billId, reason: decision.reason });
+      }
     }
     const notes = [step.detail, step.stenogramUrl && undefined].filter(Boolean).join(" | ") || undefined;
     return {
@@ -320,7 +370,8 @@ export function planBill(input: { merged: MergedDossier; snapshots: SourceSnapsh
     originChanged: Boolean(existing && existing.chamberOfOrigin !== "unknown" && settledFirst && originAgrees && existing.chamberOfOrigin !== settledFirst),
     decisionChanged: Boolean(existing?.decisionChamber && merged.decisionChamber && originAgrees && existing.decisionChamber !== merged.decisionChamber),
     originConflict: !originAgrees,
-    claimsStoredBill: Boolean(existing && canonical && existing.id === billIdForIdentifier(canonical)),
+    // The dossier whose Chamber number is the one the stored bill already carries keeps it (a later registration of the same Senate bill must not take it over).
+    claimsStoredBill: Boolean(existing && ((canonical && existing.id === billIdForIdentifier(canonical)) || sameChamberNumber(existing.identifiers.deputies, merged.keys.deputies))),
     alsoMatches: matches.slice(1).map((bill) => bill.id),
     bill: {
       title: chosenBillTitle(existing?.title, merged.title, billId),
@@ -378,7 +429,7 @@ export interface PlanSummary {
   sponsors: Record<SponsorRow["resolution"], number>;
   unmatchedSponsorNames: Array<{ name: string; count: number }>;
   voteLinksToWrite: number;
-  voteConflicts: Array<{ bill: string; voteId: string; storedBillId: string }>;
+  voteConflicts: Array<{ bill: string; voteId: string; storedBillId: string; reason?: string }>;
   duplicateBills: Array<{ bill: string; alsoMatches: string[] }>;
   /** Bills whose stored chamber of origin / deciding chamber the dossier corrects. */
   originCorrections: { origin: number; decision: number; conflicts: string[] };

@@ -64,6 +64,8 @@ describe("pages that approve different ordinances", () => {
     expect(approvedOrdinance(chamberPage.title)).toBe("76/2025");
     expect(approvedOrdinance(senatePage.title)).toBe("74/2025");
     expect(approvedOrdinance("Propunere legislativă pentru modificarea Legii nr.95/2006")).toBeUndefined();
+    // The Chamber spells "Ordonanței" with a doubled n in some titles; the first ordinance named is still the one approved, not the one it amends.
+    expect(approvedOrdinance("Proiect de Lege privind aprobarea Ordonnaţei de urgenţă nr.15/2021 pentru modificarea Ordonanţei de urgenţă a Guvernului nr.146/2020")).toBe("15/2021");
   });
 
   it("stay two bills even when the Chamber page prints the Senate's number by mistake", () => {
@@ -104,3 +106,18 @@ describe("the law's number when the two pages' stage lines differ", () => {
   });
 });
 
+
+describe("pages the owner has linked (Sprint 19)", () => {
+  const chamber = { source: "cdep", selfId: "PL-x 594/2021", registrations: [] } as unknown as Parameters<typeof groupPages>[0][number];
+  const senate = { source: "senate", selfId: "L520/2021", registrations: [] } as unknown as Parameters<typeof groupPages>[0][number];
+  it("joins a Chamber page and a Senate page that share no number when a bridge names both keys", () => {
+    expect(groupPages([chamber, senate])).toHaveLength(2);
+    const groups = groupPages([chamber, senate], [["d:pl-x594/2021", "l:l520/2021"]]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.pages).toHaveLength(2);
+  });
+  it("still never joins two Chamber pages, bridge or not", () => {
+    const other = { source: "cdep", selfId: "PL-x 595/2021", registrations: [] } as unknown as typeof chamber;
+    expect(groupPages([chamber, other], [["d:pl-x594/2021", "d:pl-x595/2021"]])).toHaveLength(2);
+  });
+});

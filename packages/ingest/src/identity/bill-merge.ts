@@ -64,6 +64,9 @@ export function planBillMerges(bills: BillRecord[], decisions: BillLinkDecisions
     return root;
   };
   const owner = new Map<string, string>();
+  // The Chamber numbers (PL-x) of each group: two bills that carry different ones are two Chamber registrations, each with its own page (D-025), and a Senate number they both name
+  // does not make them one bill. (Folding them lost the later registration's dossier: 19 bills showed a stale status.)
+  const chamberNumbers = new Map<string, Set<string>>(bills.map((bill) => [bill.id, new Set(billDossierKeys(bill.identifiers).filter((key) => key.startsWith("deputies:")))]));
   for (const bill of bills) {
     for (const key of billDossierKeys(bill.identifiers)) {
       const other = owner.get(key);
@@ -72,7 +75,11 @@ export function planBillMerges(bills: BillRecord[], decisions: BillLinkDecisions
         continue;
       }
       const [a, b] = [find(other), find(bill.id)];
-      if (a !== b) parent.set(b, a);
+      if (a === b) continue;
+      const [first, second] = [chamberNumbers.get(a)!, chamberNumbers.get(b)!];
+      if (first.size > 0 && second.size > 0 && [...second].some((number) => !first.has(number))) continue;
+      parent.set(b, a);
+      for (const number of second) first.add(number);
     }
   }
 

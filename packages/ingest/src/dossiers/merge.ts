@@ -34,7 +34,7 @@ export function keysOfPage(page: ParsedDossier): BillKeys {
   return keys;
 }
 
-const keyList = (keys: BillKeys) => [keys.deputies && `d:${keys.deputies.toLowerCase().replace(/\s+/g, "")}`, keys.senateL && `l:${keys.senateL.toLowerCase()}`, ...keys.senateB.map((b) => `b:${b.toLowerCase()}`)].filter(Boolean) as string[];
+export const keyList = (keys: BillKeys) => [keys.deputies && `d:${keys.deputies.toLowerCase().replace(/\s+/g, "")}`, keys.senateL && `l:${keys.senateL.toLowerCase()}`, ...keys.senateB.map((b) => `b:${b.toLowerCase()}`)].filter(Boolean) as string[];
 
 export interface PageGroup {
   /** Every page that names one of the group's identifiers (at most one Chamber page and one Senate page in practice). */
@@ -44,7 +44,7 @@ export interface PageGroup {
 
 /** The ordinance a "bill approving an ordinance" names first ("OUG nr.74/2025" -> "74/2025"); undefined when the title names none. Two pages that approve different ordinances are not one bill. */
 export function approvedOrdinance(title: string | undefined): string | undefined {
-  const match = fold(title ?? "").match(/(?:ordonant\w*|oug|o\.u\.g\.|og)\s*(?:de urgenta\s*)?(?:a guvernului\s*)?nr\.?\s*(\d+)\s*\/\s*(\d{4})/);
+  const match = fold(title ?? "").match(/(?:ordon+a\w*|oug|o\.u\.g\.|og)\s*(?:de urgenta\s*)?(?:a guvernului\s*)?nr\.?\s*(\d+)\s*\/\s*(\d{4})/);
   return match ? `${match[1]}/${match[2]}` : undefined;
 }
 
@@ -52,8 +52,9 @@ export function approvedOrdinance(title: string | undefined): string | undefined
  * Pages to bills: pages that share any identifier are one bill. Two different Chamber pages are never one bill, though:
  * when the Senate sent one bill down twice, the Chamber registered it twice (PL-x 34/2026 and PL-x 35/2026) and both pages name the same Senate number.
  * Each Chamber page keeps its own dossier; a Senate page that names both joins the first.
+ * `bridges` are pairs of keys the owner has said belong to one bill: the pages that own them are joined (still never two Chamber pages).
  */
-export function groupPages(pages: ParsedDossier[]): PageGroup[] {
+export function groupPages(pages: ParsedDossier[], bridges: Array<[string, string]> = []): PageGroup[] {
   const parent = pages.map((_, index) => index);
   const chamberPages: number[] = pages.map((page) => (page.source === "cdep" ? 1 : 0));
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
@@ -76,6 +77,11 @@ export function groupPages(pages: ParsedDossier[]): PageGroup[] {
       else join(seen, index);
     }
   });
+  // Owner-linked bills (data/curated/bill-links.json) carry both numbers on the stored bill; the two pages name only their own, so the link joins them.
+  for (const [first, second] of bridges) {
+    const [x, y] = [owner.get(first), owner.get(second)];
+    if (x !== undefined && y !== undefined) join(x, y);
+  }
   const groups = new Map<number, ParsedDossier[]>();
   pages.forEach((page, index) => groups.set(find(index), [...(groups.get(find(index)) ?? []), page]));
   return [...groups.values()].map((group) => ({ pages: group, keys: mergeKeys(group.map(keysOfPage)) }));

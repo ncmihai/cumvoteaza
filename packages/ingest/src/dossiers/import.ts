@@ -9,9 +9,10 @@ import { COVERAGE_RAW_DIR } from "../coverage/run-fetch";
 import { decodeOfficialBytes, RawCache } from "../coverage/raw-cache";
 import { snapshotFor } from "../parsers/utils";
 import { parseCdepDossier } from "./cdep-dossier";
-import { groupPages, mergeDossiers, type PageGroup } from "./merge";
+import { loadBillLinkDecisions } from "../identity/bill-merge";
+import { groupPages, keyList, keysOfPage, mergeDossiers, type PageGroup } from "./merge";
 import type { NameCandidate } from "./member-match";
-import { contradicts, documentKey, indexExistingBills, planBill, summarisePlans, type BillPlan, type ExistingBill, type PlanContext, type PlanSummary } from "./plan";
+import { areDifferentChamberRegistrations, contradicts, documentKey, existingKeys, indexExistingBills, planBill, summarisePlans, type BillPlan, type ExistingBill, type PlanContext, type PlanSummary } from "./plan";
 import { parseSenateDossier } from "./senate-dossier";
 import type { ParsedDossier } from "./types";
 
@@ -47,7 +48,7 @@ interface LoadedPage {
   key: string;
 }
 
-async function loadPages(cache: RawCache, only: Set<string> | undefined): Promise<{ pages: LoadedPage[]; unreadable: Array<{ key: string; error: string }> }> {
+async function loadPages(cache: RawCache, only: Set<string> | undefined, bridges: Array<[string, string]> = [], storedKeys: string[][] = []): Promise<{ pages: LoadedPage[]; unreadable: Array<{ key: string; error: string }> }> {
   const pages: LoadedPage[] = [];
   const unreadable: Array<{ key: string; error: string }> = [];
   for (const source of ["cdep", "senate"] as const) {
@@ -73,15 +74,25 @@ async function loadPages(cache: RawCache, only: Set<string> | undefined): Promis
   const wanted = (page: LoadedPage) => only.has(page.key.toLowerCase()) || (page.parsed.selfId && only.has(page.parsed.selfId.toLowerCase().replace(/\s+/g, "")));
   const direct = pages.filter(wanted);
   // A bill is read from both of its pages: keep every page that shares an identifier with a wanted one.
-  const groups = groupPages(pages.map((page) => page.parsed));
-  const keep = new Set<ParsedDossier>();
-  for (const group of groups) if (group.pages.some((page) => direct.some((item) => item.parsed === page))) for (const page of group.pages) keep.add(page);
+  const groups = groupPages(pages.map((page) => page.parsed), bridges);
+  const wantedGroups = new Set<PageGroup>(groups.filter((group) => group.pages.some((page) => direct.some((item) => item.parsed === page))));
+  // Dossiers that compete for one stored bill (two Chamber pages naming the same Senate number) must be planned together, or the one planned alone takes the bill over from the other.
+  // So every group that shares a Chamber or Senate number with a wanted one is kept too, and so on from those (the Senate B number is shared too widely to count).
+  // A stored bill ties its own numbers together too: the first registration it was stored under competes for it with the later one, even when their pages share no number.
+  const strongKeys = (group: PageGroup) => group.pages.flatMap((page) => keyList(keysOfPage(page))).filter((key) => !key.startsWith("b:"));
+  for (let changed = true; changed; ) {
+    changed = false;
+    const taken = new Set([...wantedGroups].flatMap(strongKeys));
+    for (const stored of storedKeys) if (stored.some((key) => taken.has(key))) for (const key of stored) taken.add(key);
+    for (const group of groups) if (!wantedGroups.has(group) && strongKeys(group).some((key) => taken.has(key))) { wantedGroups.add(group); changed = true; }
+  }
+  const keep = new Set<ParsedDossier>([...wantedGroups].flatMap((group) => group.pages));
   return { pages: pages.filter((page) => keep.has(page.parsed)), unreadable };
 }
 
 async function loadContext(db: Db): Promise<PlanContext> {
-  const bills = await db.execute<{ id: string; slug: string; title: string; identifiers: Record<string, string>; chamber_of_origin: string; decision_chamber: string | null; law_type: string | null; source_snapshot_ids: string[] }>(
-    sql`select id, slug, title, identifiers, chamber_of_origin, decision_chamber::text as decision_chamber, law_type, source_snapshot_ids from bills`
+  const bills = await db.execute<{ id: string; slug: string; title: string; identifiers: Record<string, string>; chamber_of_origin: string; decision_chamber: string | null; law_type: string | null; has_dossier: boolean; step_count: number; source_snapshot_ids: string[] }>(
+    sql`select id, slug, title, identifiers, chamber_of_origin, decision_chamber::text as decision_chamber, law_type, source_snapshot_ids, exists (select 1 from bill_dossiers d where d.bill_id = bills.id) as has_dossier, (select count(*) from bill_procedure_steps s where s.bill_id = bills.id)::int as step_count from bills`
   );
   const existingBills: ExistingBill[] = [...bills].map((row) => ({
     id: row.id,
@@ -91,7 +102,9 @@ async function loadContext(db: Db): Promise<PlanContext> {
     chamberOfOrigin: row.chamber_of_origin,
     decisionChamber: row.decision_chamber,
     lawType: row.law_type,
-    sourceSnapshotIds: row.source_snapshot_ids ?? []
+    sourceSnapshotIds: row.source_snapshot_ids ?? [],
+    hasDossier: row.has_dossier,
+    stepCount: row.step_count
   }));
 
   const profileKeyToMember = new Map<string, string>();
@@ -103,28 +116,48 @@ async function loadContext(db: Db): Promise<PlanContext> {
     from members m join member_mandates mm on mm.member_id = m.id join legislatures l on l.id = mm.legislature_id`);
   for (const row of mandates) candidatesByChamber[row.chamber].push({ id: row.id, name: row.name, startsOn: row.starts_on, endsOn: row.ends_on } satisfies NameCandidate);
 
-  const voteByRef = new Map<string, { id: string; billId: string | null }>();
-  const votes = await db.execute<{ id: string; chamber: string; bill_id: string | null; source_url: string | null }>(
-    sql`select v.id, v.chamber::text as chamber, v.bill_id, s.source_url from votes v left join source_snapshots s on s.id = v.source_snapshot_id`
+  const voteByRef = new Map<string, { id: string; billId: string | null; heldOn?: string }>();
+  const votes = await db.execute<{ id: string; chamber: string; bill_id: string | null; source_url: string | null; held_on: string }>(
+    sql`select v.id, v.chamber::text as chamber, v.bill_id, v.held_on::text as held_on, s.source_url from votes v left join source_snapshots s on s.id = v.source_snapshot_id`
   );
   for (const row of votes) {
     const key = storedOfficialKey({ id: row.id, chamber: row.chamber, sourceUrl: row.source_url } as Parameters<typeof storedOfficialKey>[0]);
-    if (key) voteByRef.set(`${key.source}:${key.officialId}`, { id: row.id, billId: row.bill_id });
+    if (key) voteByRef.set(`${key.source}:${key.officialId}`, { id: row.id, billId: row.bill_id, heldOn: row.held_on });
   }
 
   const slugs = await db.execute<{ slug: string }>(sql`select slug from bills`);
-  const aliases = await db.execute<{ alias_id: string }>(sql`select alias_id from id_aliases where alias_id like 'bill-%'`);
-  return { existingBills, profileKeyToMember, candidatesByChamber, voteByRef, slugsTaken: new Set([...slugs].map((row) => row.slug)), aliasIds: new Set([...aliases].map((row) => row.alias_id)) };
+  const aliases = await db.execute<{ alias_id: string; canonical_id: string }>(sql`select alias_id, canonical_id from id_aliases where alias_id like 'bill-%'`);
+  return { existingBills, billById: new Map(existingBills.map((bill) => [bill.id, bill])), profileKeyToMember, candidatesByChamber, voteByRef, slugsTaken: new Set([...slugs].map((row) => row.slug)), aliasIds: new Set([...aliases].map((row) => row.alias_id)), aliasTargets: new Map([...aliases].map((row) => [row.alias_id, row.canonical_id])) };
+}
+
+/**
+ * The keys of a stored bill that the owner linked to another record (the survivor of a merge carries both numbers): the Chamber number is bridged to each Senate number it now carries, so the two
+ * official pages of the one bill become one dossier.
+ */
+export async function ownerBridges(existingBills: ExistingBill[]): Promise<Array<[string, string]>> {
+  const decisions = await loadBillLinkDecisions();
+  const byId = new Map(existingBills.map((bill) => [bill.id, bill]));
+  const bridges: Array<[string, string]> = [];
+  for (const { bills } of decisions.same) {
+    const survivors = bills.map((id) => byId.get(id)).filter((bill): bill is ExistingBill => Boolean(bill));
+    if (survivors.length !== 1) continue;
+    const identifiers = survivors[0]!.identifiers;
+    const chamber = identifiers.deputies && `d:${identifiers.deputies.toLowerCase().replace(/\s+/g, "")}`;
+    if (!chamber) continue;
+    for (const key of [identifiers.senate_l && `l:${identifiers.senate_l.toLowerCase()}`, identifiers.senate_b && `b:${identifiers.senate_b.toLowerCase()}`]) if (key) bridges.push([chamber, key]);
+  }
+  return bridges;
 }
 
 export async function planDossierImport(db: Db, repoRoot: string, options: { only?: string[]; limit?: number }): Promise<{ plans: BillPlan[]; summary: PlanSummary; pagesRead: { cdep: number; senate: number }; unreadable: Array<{ key: string; error: string }> }> {
   const cache = new RawCache(COVERAGE_RAW_DIR(repoRoot));
   const only = options.only?.length ? new Set(options.only.map((value) => value.toLowerCase().replace(/\s+/g, ""))) : undefined;
-  const { pages, unreadable } = await loadPages(cache, only);
   const context = await loadContext(db);
+  const bridges = await ownerBridges(context.existingBills);
+  const { pages, unreadable } = await loadPages(cache, only, bridges, context.existingBills.map((bill) => existingKeys(bill).filter((key) => !key.startsWith("b:"))));
   const existingIndex = indexExistingBills(context.existingBills);
   const byParsed = new Map(pages.map((page) => [page.parsed, page]));
-  let groups = groupPages(pages.map((page) => page.parsed));
+  let groups = groupPages(pages.map((page) => page.parsed), bridges);
   if (options.limit !== undefined) groups = groups.slice(0, options.limit);
   const planGroup = (group: PageGroup, exclude?: Set<string>) => {
     const members = group.pages.map((page) => byParsed.get(page)!);
@@ -157,9 +190,13 @@ export async function planDossierImport(db: Db, repoRoot: string, options: { onl
   const plans = planned.flatMap((item) => {
     const plan = item.plan;
     if (!(plan.isNew && context.aliasIds.has(plan.billId))) return [plan];
-    // The id of an old merge. Undone only when the dossier it was folded into approves a different ordinance (the merge rested on a number the Chamber printed on the wrong bill).
+    // The id of an old merge. Undone when the dossier it was folded into approves a different ordinance (the merge rested on a number the Chamber printed on the wrong bill).
     const keeper = [...item.excluded].map((id) => plansByBill.get(id)).find(Boolean);
-    if (keeper && contradicts(keeper.bill.title, plan.bill.title)) return [{ ...plan, unmerge: true }];
+    // Also undone when the two are different Chamber registrations of one Senate bill (two PL-x numbers naming one L number): each registration is its own bill with its own page (D-025), so the later one must not be folded into the first.
+    if (keeper && (contradicts(keeper.bill.title, plan.bill.title) || areDifferentChamberRegistrations(keeper.bill.identifiers, plan.bill.identifiers))) return [{ ...plan, unmerge: true }];
+    // The same when no other dossier competes for it: the record it was folded into is stored under another Chamber number.
+    const target = context.billById?.get(context.aliasTargets?.get(plan.billId) ?? "");
+    if (!keeper && target && areDifferentChamberRegistrations(target.identifiers, plan.bill.identifiers)) return [{ ...plan, unmerge: true }];
     shadowed.push(plan);
     return [];
   });

@@ -27,6 +27,15 @@ describe("bill merges (D22)", () => {
     expect(plan.merges).toEqual([{ into: "bill-l94-2024", from: ["bill-l94-2024-vote", "bill-pl-x-151-2024"], key: "deputies:PL-x 151/2024, senate:L94/2024" }]);
   });
 
+  it("keeps two Chamber registrations apart when they name one Senate number, but folds a vote stub into either", () => {
+    const plan = planBillMerges([
+      bill("bill-l413-2021", { senate: "L413/2021", senate_l: "L413/2021", deputies: "PL-x 378/2021" }, ["senate-bill"]),
+      bill("bill-pl-x-562-2021", { senate: "L413/2021", senate_l: "L413/2021", deputies: "PL-x 562/2021" }, ["deputies-bill"]),
+      bill("bill-l413-2021-vote", { senate: "L413/2021" }, ["senate-vote-detail"])
+    ]);
+    expect(plan.merges).toEqual([{ into: "bill-l413-2021", from: ["bill-l413-2021-vote"], key: "senate:L413/2021" }]);
+  });
+
   it("reports different dossiers sharing a B-number instead of merging them", () => {
     const plan = planBillMerges([
       bill("bill-pl-x-267-2025", { senate: "B258/2025", deputies: "PL-x 267/2025", senate_b: "B258/2025" }, ["deputies-bill"]),
