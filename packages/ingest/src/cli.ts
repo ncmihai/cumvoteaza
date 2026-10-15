@@ -21,6 +21,9 @@ import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from
 import { fetchBulletins, importPriorities } from "./dossiers/priorities";
 import { importProfileFacts } from "./members/profile-facts";
 import { fetchCvPages } from "./members/cv-fetch";
+import { importCvEntries } from "./members/cv-import";
+import { checkCvEntries } from "./members/cv-check";
+import { formatCvChecks, listCvChecks, markCvChecks } from "./members/cv-review";
 import { fetchQuestions } from "./members/questions-fetch";
 import { importQuestions } from "./members/questions";
 import { fetchDecreePages, fetchDecreesByNumber } from "./presidency/decrees-fetch";
@@ -801,6 +804,58 @@ async function main() {
       const result = await importProfileFacts(session.db, { repoRoot, persist: hasFlag("persist") });
       console.log(JSON.stringify({ ...result, sittingWithoutBirth: result.sittingWithoutBirth.slice(0, 40), disagreements: result.disagreements.slice(0, 40) }, null, 2));
       if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "members:cv:import") {
+    // D-050: the saved CV pages (members:cv:fetch) read into member_cv_entries: experience, education, political activity, as filed. Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importCvEntries(session.db, { repoRoot, persist: hasFlag("persist"), log: (line) => console.log(line) });
+      console.log(JSON.stringify({ ...result, pagesWithoutEntries: result.pagesWithoutEntries.slice(0, 40) }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "members:cv:check") {
+    // D-050: each CV entry that claims a seat in Parliament or a ministry compared with our own mandates and government roles. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await checkCvEntries(session.db, { persist: hasFlag("persist") });
+      console.log(JSON.stringify({ ...result, differences: result.differences.slice(0, 60) }, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "members:cv:review") {
+    // D-050: the checks that wait for the owner. --status=differs|matches|unchecked (default differs), --reviewed=true|false, --limit=N, --json.
+    const session = createDbSession();
+    try {
+      const reviewed = flag("reviewed");
+      const rows = await listCvChecks(session.db, { status: flag("status"), ...(reviewed === "true" ? { reviewed: true } : reviewed === "false" ? { reviewed: false } : {}), limit: numberFlag("limit") });
+      console.log(hasFlag("json") ? JSON.stringify(rows, null, 2) : formatCvChecks(rows));
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
+  if (command === "members:cv:mark") {
+    // The owner's decision on checks: --ids=cv-a,cv-b [--status=unchecked|matches|differs] [--note="..."] [--unreview]. Marks them reviewed (the check may then be shown) unless --unreview.
+    const ids = listFlag("ids");
+    if (!ids?.length) throw new Error("Usage: members:cv:mark --ids=cv-a,cv-b [--status=unchecked|matches|differs] [--note=text] [--unreview]");
+    const session = createDbSession();
+    try {
+      console.log(`Updated ${await markCvChecks(session.db, ids, { reviewed: !hasFlag("unreview"), status: flag("status"), note: flag("note") })} entr${ids.length === 1 ? "y" : "ies"}.`);
     } finally {
       await session.close();
     }

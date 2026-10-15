@@ -290,6 +290,50 @@ export const personBiographies = pgTable("person_biographies", {
 });
 
 /**
+ * What a member says in the CV filed with the Chamber (D-050, reopening D-036): one row per entry of the sections "professional experience", "education" and
+ * "social and political activity", as filed. The text is the member's, not ours: it is shown as a declaration, with the CV address and the date the member
+ * last updated it. The personal-information block (contact details, family) is never read. Dates are parsed only where unambiguous.
+ *
+ * Each entry is a claim that can be checked later: `check_status` starts as `unchecked`; the checker (`members:cv:check`) compares what we can compare with our own
+ * records (mandates) and writes `matches` or `differs` with the records it compared. A `differs` is shown on the site only once the owner has reviewed it
+ * (`reviewed_on`), in neutral words; a `matches` may be shown at once.
+ */
+export const memberCvEntries = pgTable("member_cv_entries", {
+  id: text("id").primaryKey(),
+  personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  section: text("section").$type<"experience" | "education" | "political">().notNull(),
+  /** Order in the CV, from 0. */
+  position: integer("position").notNull(),
+  /** The entry as filed: its lines joined by a line break, whitespace tidied, nothing added. */
+  rawText: text("raw_text").notNull(),
+  /** The date range as written ("Februarie 2019 - Decembrie 2024"), where one was found at the start of the entry. */
+  datesText: text("dates_text"),
+  startsOn: date("starts_on"),
+  startsOnPrecision: text("starts_on_precision").$type<"day" | "month" | "year">(),
+  endsOn: date("ends_on"),
+  endsOnPrecision: text("ends_on_precision").$type<"day" | "month" | "year">(),
+  /** The range ends with "prezent" / "în curs" (so `ends_on` is empty on purpose). */
+  isCurrent: boolean("is_current").notNull().default(false),
+  sourceUrl: text("source_url").notNull(),
+  cvUpdatedOn: date("cv_updated_on"),
+  contentHash: text("content_hash").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull(),
+  /** unchecked | matches | differs | unverifiable (nothing to compare it with). */
+  checkStatus: text("check_status").$type<"unchecked" | "matches" | "differs" | "unverifiable">().notNull().default("unchecked"),
+  /** Why the checker said so, as a code (covered, not_covered, extends_beyond) and the records it compared: [{ kind, label, from, to }]. */
+  checkReason: text("check_reason"),
+  checkRecords: jsonb("check_records").$type<Array<{ kind: string; label: string; from?: string; to?: string; url?: string }>>().notNull().default([]),
+  checkedOn: date("checked_on"),
+  /** The owner has looked at the check and agrees it may be shown (a mismatch needs this before it is public). */
+  reviewedOn: date("reviewed_on"),
+  /** The owner's own note on a reviewed check. */
+  reviewNote: text("review_note")
+}, (table) => ({
+  personSectionIdx: uniqueIndex("member_cv_entries_person_section_position_idx").on(table.personId, table.section, table.position),
+  statusIdx: index("member_cv_entries_status_idx").on(table.checkStatus, table.reviewedOn)
+}));
+
+/**
  * Retired person/member IDs and the ID that replaced them. Every importer resolves IDs through this
  * table, so a merge is never undone by re-running an old import that still derives the old ID.
  */

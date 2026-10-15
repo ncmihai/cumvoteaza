@@ -26,6 +26,8 @@ import { OfficialActivityPanel } from "../../_components/OfficialActivityPanel";
 import { MemberBodiesPanel } from "../../_components/MemberBodiesPanel";
 import { QuestionsSummary } from "../../_components/QuestionsSummary";
 import { getQuestionsView } from "@/lib/question-data";
+import { getMemberCv } from "@/lib/cv-data";
+import { MemberCvPanel } from "../../_components/MemberCvPanel";
 import { getMandateElection } from "@/lib/election-data";
 import { officialCase } from "@/lib/text";
 
@@ -49,6 +51,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   }
   const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity, birth, cv, bodies } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
+  const cvView = await getMemberCv(member.personId);
   const questionsView = await getQuestionsView({ memberSlug: slug });
   // The list the mandate was won on, where the AEP's open data covers that election (2016, 2020).
   const mandateElection = mandate && selectedLegislature && (mandate.chamber === "deputies" || mandate.chamber === "senate")
@@ -85,6 +88,16 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
       startsOn: row.startsOn,
       endsOn: row.endsOn,
       sourceUrl: row.sourceUrl
+    })),
+    // Dated entries of the CV the member filed, as declarations. A seat or a ministry our own records already confirm is left out: it is on the line twice otherwise.
+    ...(cvView ? [...cvView.sections.experience, ...cvView.sections.political] : []).filter((entry) => entry.startsOn && !(entry.check?.status === "matches")).map((entry) => ({
+      id: `cv-${entry.id}`,
+      category: "profession" as const,
+      title: entry.title || (locale === "ro" ? "Intrare din CV" : "CV entry"),
+      details: entry.lines.filter((line) => line !== entry.title && !line.startsWith(entry.title)).slice(0, 2).join(" · "),
+      startsOn: entry.startsOn!,
+      endsOn: entry.endsOn,
+      sourceUrl: cvView!.sourceUrl
     })),
     ...governmentRoles.map((role) => ({
       id: `career-${role.id}`,
@@ -140,6 +153,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
 
     <MemberCareerTimeline career={career} locale={locale} memberSlug={member.slug} legislatures={legislatures} selectedLegislatureId={selectedLegislature?.id}/>
     <PublicCareerTimeline events={publicCareerEvents} locale={locale}/>
+    <MemberCvPanel cv={cvView} locale={locale}/>
 
     <div className="mt-8 flex flex-wrap items-center gap-2" aria-label={ro ? "Legislatura" : "Legislature"}>
       <span className="mr-1 text-sm font-semibold text-ink-soft">{ro ? "Legislatura" : "Legislature"}</span>

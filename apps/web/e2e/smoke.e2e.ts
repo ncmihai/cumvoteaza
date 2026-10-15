@@ -446,3 +446,18 @@ test("the pages show ș ț ă, not the old cedilla and tilde letters the sources
   }
 });
 
+
+test("a member page shows the CV the member filed, labelled as their own declaration, with no contact details @db", async ({ page }) => {
+  await page.goto("/ro/members/ion-marcel-ciolacu-deputies-59");
+  const panel = page.getByTestId("member-cv");
+  test.skip((await panel.count()) === 0, "this database holds no CV entries yet (ingest:members:cv:import)");
+  await expect(panel).toContainText("Declarat de parlamentar");
+  await expect(panel).toContainText("Nu este verificat de noi");
+  await expect(panel.getByRole("link", { name: "Vezi CV-ul oficial" })).toHaveAttribute("href", /cdep\.ro/);
+  await expect(panel.getByRole("heading", { name: /Experiență profesională/ })).toBeVisible();
+  const text = (await panel.innerText()).replace(/\s+/g, " ");
+  expect(text).not.toMatch(/@|mailto|telefon|stare civil|copii/i);
+  expect(text.match(/[ţşãŢŞÃ]/g) ?? []).toEqual([]);
+  // The member's dated entries are also on the career timeline, marked as declared.
+  await expect(page.getByText("CV declarat").first()).toBeVisible();
+});
