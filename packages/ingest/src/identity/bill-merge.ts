@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { sql } from "drizzle-orm";
 import type { DbClient } from "@cumsevoteaza/db";
+import { titlesNameDifferentLaws } from "../dossiers/merge";
+import { isVoteStyleTitle } from "../dossiers/plan";
 
 /**
  * One bill record per legislative dossier (D22). A bill is the same dossier in both chambers when it shares
@@ -13,6 +15,8 @@ export type BillRecord = {
   id: string;
   slug: string;
   identifiers: Record<string, string>;
+  /** The stored title: two bills whose titles name different laws are never one dossier, whatever numbers they carry (an import may have left a wrong number on one). */
+  title?: string;
   /** Parsers of the bill's source snapshots ("senate-bill", "deputies-bill", "chamber-nominal-vote", ...). */
   parsers: string[];
 };
@@ -67,6 +71,12 @@ export function planBillMerges(bills: BillRecord[], decisions: BillLinkDecisions
   // The Chamber numbers (PL-x) of each group: two bills that carry different ones are two Chamber registrations, each with its own page (D-025), and a Senate number they both name
   // does not make them one bill. (Folding them lost the later registration's dossier: 19 bills showed a stale status.)
   const chamberNumbers = new Map<string, Set<string>>(bills.map((bill) => [bill.id, new Set(billDossierKeys(bill.identifiers).filter((key) => key.startsWith("deputies:")))]));
+  const titleOf = new Map(bills.map((bill) => [bill.id, bill.title]));
+  // A title a vote gave a bill ("L71/2022 — vf") says nothing about its subject.
+  const differentSubjects = (x: string, y: string) => {
+    const [a, b] = [titleOf.get(x), titleOf.get(y)];
+    return Boolean(a && b && !isVoteStyleTitle(a) && !isVoteStyleTitle(b) && titlesNameDifferentLaws(a, b));
+  };
   for (const bill of bills) {
     for (const key of billDossierKeys(bill.identifiers)) {
       const other = owner.get(key);
@@ -76,6 +86,7 @@ export function planBillMerges(bills: BillRecord[], decisions: BillLinkDecisions
       }
       const [a, b] = [find(other), find(bill.id)];
       if (a === b) continue;
+      if (differentSubjects(other, bill.id)) continue;
       const [first, second] = [chamberNumbers.get(a)!, chamberNumbers.get(b)!];
       if (first.size > 0 && second.size > 0 && [...second].some((number) => !first.has(number))) continue;
       parent.set(b, a);
@@ -132,13 +143,13 @@ function survivorOrder(a: BillRecord, b: BillRecord): number {
 }
 
 export async function loadBillRecords(db: DbClient): Promise<BillRecord[]> {
-  const rows = await db.execute<{ id: string; slug: string; identifiers: Record<string, string>; parsers: string[] | null }>(sql`
-    select b.id, b.slug, b.identifiers,
+  const rows = await db.execute<{ id: string; slug: string; identifiers: Record<string, string>; title: string; parsers: string[] | null }>(sql`
+    select b.id, b.slug, b.identifiers, b.title,
       (select array_agg(distinct ss.parser) from jsonb_array_elements_text(b.source_snapshot_ids) sid
          join source_snapshots ss on ss.id = sid) as parsers
     from bills b
   `);
-  return rows.map((row) => ({ id: row.id, slug: row.slug, identifiers: row.identifiers ?? {}, parsers: row.parsers ?? [] }));
+  return rows.map((row) => ({ id: row.id, slug: row.slug, identifiers: row.identifiers ?? {}, title: row.title, parsers: row.parsers ?? [] }));
 }
 
 const BILL_CHILD_TABLES = ["votes", "bill_events", "bill_sponsors", "documents", "bill_procedure_steps", "bill_document_text_chunks"] as const;

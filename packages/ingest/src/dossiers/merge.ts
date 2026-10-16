@@ -222,6 +222,9 @@ export function mergeDossiers(group: PageGroup): MergedDossier {
       ...presidentOnce,
       ...[...cdep.steps, ...senate.steps].filter((step) => step.chamber === "unknown")
     ];
+  } else if (senate && !cdep && keysOfPage(senate).deputies && !group.keys.deputies) {
+    // The Senate page names a Chamber number whose own page belongs to another bill (the Senate looked it up without the year): the Chamber's steps it lists are that bill's, not this one's.
+    steps = senate.steps.filter((step) => step.chamber === "senate");
   } else steps = [...(cdep ?? senate)!.steps];
 
   const firstChamber = senate?.firstChamber ?? cdep?.firstChamber ?? firstChamberFrom(registrations);

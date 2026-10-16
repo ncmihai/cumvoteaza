@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { billDossierKeys, planBillMerges, type BillRecord } from "../identity/bill-merge";
 import { chosenBillTitle, isVoteStyleTitle } from "../dossiers/plan";
 
-const bill = (id: string, identifiers: Record<string, string>, parsers: string[]): BillRecord => ({ id, slug: id.replace(/^bill-/, ""), identifiers, parsers });
+const bill = (id: string, identifiers: Record<string, string>, parsers: string[], title?: string): BillRecord => ({ id, slug: id.replace(/^bill-/, ""), identifiers, parsers, ...(title ? { title } : {}) });
 
 describe("bill merges (D22)", () => {
   it("normalizes dossier keys and ignores Senate registration numbers", () => {
@@ -87,5 +87,28 @@ describe("owner decisions on bills (D-050)", () => {
   it("skips a decision about a record that no longer exists (it was merged already)", () => {
     const plan = planBillMerges([two[0]!], { same: [{ bills: ["bill-l520-2021", "bill-pl-x-594-2021"], reason: "same project" }], different: [] });
     expect(plan.merges).toEqual([]);
+  });
+});
+
+describe("bills whose titles name different laws", () => {
+  const evidenta = "Propunere legislativă pentru modificarea și completarea unor acte normative care cuprind dispoziții privind evidența persoanelor și actele de identitate";
+  const zi = "Lege pentru instituirea zilei de 11 aprilie ca Ziua naţională a educaţiei financiare";
+
+  it("are not joined by a Senate number an import left on the wrong one", () => {
+    // bill-pl-x-87-2022 kept "L71/2021" from an older import, but it is the Chamber bill of the day of financial education.
+    const plan = planBillMerges([
+      bill("bill-l71-2021", { senate: "L71/2021", senate_l: "L71/2021" }, ["senate-bill"], evidenta),
+      bill("bill-l71-2022", { senate: "L71/2022", senate_l: "L71/2022", deputies: "PL-x 87/2022" }, ["senate-bill"], zi),
+      bill("bill-pl-x-87-2022", { deputies: "PL-x 87/2022", senate_l: "L71/2021", senate: "L71/2021" }, ["deputies-bill"], zi)
+    ]);
+    expect(plan.merges).toEqual([{ into: "bill-l71-2022", from: ["bill-pl-x-87-2022"], key: "deputies:PL-x 87/2022" }]);
+  });
+
+  it("still fold a vote stub into the bill, whatever title the stub carries", () => {
+    const plan = planBillMerges([
+      bill("bill-l12-2022", { senate: "L12/2022", senate_l: "L12/2022", deputies: "PL-x 30/2022" }, ["senate-bill"], "Proiect de lege pentru completarea tabelelor-anexă la Legea nr.143/2000"),
+      bill("bill-l12-2022-stub", { senate: "L12/2022" }, ["senate-vote-detail"], "L12/2022 — vf")
+    ]);
+    expect(plan.merges).toHaveLength(1);
   });
 });

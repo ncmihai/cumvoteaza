@@ -90,6 +90,14 @@ describe("pages whose titles cannot be one bill", () => {
     expect(groups.map((group) => group.pages.map((item) => item.selfId))).toEqual([["PL-x 134/2022", "L62/2022"], ["L62/2021"]]);
   });
 
+  it("a Senate page whose Chamber number belongs to another bill keeps only its own steps", () => {
+    const withSteps = { ...wrongYear, steps: [step("senate", "senate", "2021-04-12", "rejected"), step("cdep", "deputies", "2022-05-25", "adopted")] };
+    const groups = groupPages([chamberPage, withSteps, rightYear]);
+    const alone = groups.find((group) => group.pages.every((item) => item.source === "senate"))!;
+    expect(alone.keys.deputies).toBeUndefined();
+    expect(mergeDossiers(alone).steps.map((item) => item.chamber)).toEqual(["senate"]);
+  });
+
   it("take the Senate's own L number and the Chamber's own PL-x number for the merged keys", () => {
     const [group] = groupPages([chamberPage, rightYear]);
     expect(group!.keys).toMatchObject({ deputies: "PL-x 134/2022", senateL: "L62/2022" });
