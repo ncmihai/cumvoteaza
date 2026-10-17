@@ -21,6 +21,7 @@ import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from
 import { fetchBulletins, importPriorities } from "./dossiers/priorities";
 import { importProfileFacts } from "./members/profile-facts";
 import { fetchSanctionPages } from "./members/sanctions-fetch";
+import { fetchSenateBiographies } from "./members/senate-bio-fetch";
 import { importSanctions } from "./members/sanctions-import";
 import { fetchCvPages } from "./members/cv-fetch";
 import { importCvEntries } from "./members/cv-import";
@@ -626,6 +627,15 @@ async function main() {
     } finally {
       await session.close();
     }
+    return;
+  }
+
+  if (command === "members:senate-bio:fetch") {
+    // D-050 (e): each sitting senator's biography (the card's Biografie tab, a form post), saved byte for byte under data/coverage/raw/senate-bio. One request every --delay-ms (default 6000), at most --limit
+    // per run, stops at the first sign of a block; plan only without --live.
+    const result = await fetchSenateBiographies({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 150, delayMs: numberFlag("delay-ms") ?? 6000, refresh: hasFlag("refresh"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
     return;
   }
 

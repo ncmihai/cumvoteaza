@@ -39,7 +39,12 @@ const stripDates = (line: string, datesText?: string) => (datesText ? line.repla
 /** The lines of an entry with the date line taken out when the line is only the date, and a title from the first line that has words. */
 export function presentCvEntry(row: Pick<Row, "raw_text" | "dates_text">): { lines: string[]; title: string } {
   const all = row.raw_text.split("\n").map((line) => line.trim()).filter(Boolean);
-  const lines = all.filter((line, index) => !(index === 0 && row.dates_text && stripDates(line, row.dates_text) === ""));
+  // The first line is only the date, or starts with it ("Din 2013 Președinte al ..."): the date is shown beside the entry, so it is not repeated in the text.
+  const lines = all.flatMap((line, index) => {
+    if (index !== 0 || !row.dates_text) return [line];
+    const rest = stripDates(line, row.dates_text);
+    return rest === "" ? [] : line.startsWith(row.dates_text) ? [rest] : [line];
+  });
   const first = lines.find((line) => /\p{L}{3}/u.test(stripDates(line, row.dates_text ?? undefined))) ?? lines[0] ?? "";
   const title = stripDates(first, row.dates_text ?? undefined);
   return { lines: lines.length ? lines : all, title: title.length > 110 ? `${title.slice(0, 109).trimEnd()}…` : title };

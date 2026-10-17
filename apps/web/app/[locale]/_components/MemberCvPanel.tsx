@@ -23,6 +23,20 @@ const copy = {
   }
 } as const;
 
+/** A sitting senator has no CV filed with the Chamber: the Senate's own card carries a biography, in the senator's words, and it is labelled as that. */
+const senate = {
+  ro: {
+    tag: "Declarat de parlamentar", title: "Biografia publicată de Senat",
+    intro: "Textul de mai jos este cel din fișa senatorului, secțiunea „Biografie”, publicată de Senat, așa cum este scris acolo. Nu este verificat de noi. Pagina Senatului ascunde detaliile unor intrări (de exemplu studiile) în spatele unui link „Mai mult...”, pe care nu îl citim, așa că unele intrări pot lipsi. Datele de contact nu sunt preluate.",
+    source: "Vezi fișa oficială"
+  },
+  en: {
+    tag: "Declared by the member", title: "The biography published by the Senate",
+    intro: "The text below is the senator's card, section \"Biografie\", as the Senate publishes it, worded as it is there. We have not verified it. The Senate's page hides the details of some entries (education, for example) behind a \"Mai mult...\" link that we do not follow, so some entries may be missing. Contact details are not taken.",
+    source: "See the official card"
+  }
+} as const;
+
 const SECTION_ICONS: Record<CvSectionName, typeof Briefcase> = { experience: Briefcase, education: GraduationCap, political: Landmark };
 
 function Check({ check, entry, locale }: { check: CvCheckView; entry: CvEntryView; locale: Locale }) {
@@ -57,7 +71,8 @@ function Entry({ entry, locale }: { entry: CvEntryView; locale: Locale }) {
 
 export function MemberCvPanel({ cv, locale }: { cv?: MemberCvView; locale: Locale }) {
   if (!cv) return null;
-  const t = copy[locale];
+  const fromSenate = cv.sourceUrl.includes("senat.ro");
+  const t = fromSenate ? { ...copy[locale], ...senate[locale], intro: () => senate[locale].intro } : copy[locale];
   return <section className="mt-5 border border-line bg-surface p-4 md:p-5 rounded-card" aria-labelledby="declared-cv" data-testid="member-cv">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div><p className="text-xs font-bold uppercase tracking-wide text-brand">{t.tag}</p><h2 id="declared-cv" className="mt-1 font-display text-xl font-bold text-ink md:text-3xl">{t.title}</h2></div>

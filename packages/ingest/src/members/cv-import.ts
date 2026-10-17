@@ -4,7 +4,9 @@ import { sql } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import type { DbClient } from "@cumsevoteaza/db";
 import { decodeOfficialBytes } from "../coverage/raw-cache";
-import { parseCv, type CvSection } from "./cv-parse";
+import { parseCv, type CvSection, type ParsedCv } from "./cv-parse";
+import { parseSenateBiography } from "./senate-bio-parse";
+import { senateCardUrl } from "./senate-bio-fetch";
 import { cvKey } from "./cv-fetch";
 import { readProfilePages } from "./profile-facts";
 
@@ -39,6 +41,11 @@ export async function importCvEntries(db: DbClient, options: { repoRoot: string;
     const previous = latest.get(member.person_id);
     if (!previous || member.key > previous.key) latest.set(member.person_id, { key: member.key, url: page.cvUrl });
   }
+  // A sitting senator's own biography (the Senate's card, members:senate-bio:fetch) stands in for a CV the Chamber does not hold: the Chamber's CV, where there is one, wins.
+  const senators = [...(await db.execute<{ person_id: string; guid: string }>(sql`
+    select m.person_id, m.source_ids->>'senatRoGuid' as guid from members m where m.person_id is not null and m.source_ids ? 'senatRoGuid'`))];
+  const biography = new Map<string, { guid: string; url: string }>();
+  for (const senator of senators) if (!latest.has(senator.person_id)) biography.set(senator.person_id, { guid: senator.guid.toLowerCase(), url: senateCardUrl(senator.guid.toLowerCase()) });
 
   const result: ImportCvResult = {
     persisted: options.persist, people: 0, pagesRead: 0, pagesWithEntries: 0,
@@ -49,15 +56,20 @@ export async function importCvEntries(db: DbClient, options: { repoRoot: string;
   const readAt = new Date();
   const rows: Array<typeof schema.memberCvEntries.$inferInsert> = [];
   const persons = new Set<string>();
-  for (const [personId, cv] of latest) {
+  const sources: Array<{ personId: string; key: string; url: string; file: string; parse: (html: string) => ParsedCv }> = [
+    ...[...latest].map(([personId, cv]) => ({ personId, key: cv.key, url: cv.url, file: path.join(cvDir, `${cvKey(cv.key)}.html`), parse: parseCv })),
+    ...[...biography].map(([personId, bio]) => ({ personId, key: `senate:${bio.guid}`, url: bio.url, file: path.join(options.repoRoot, "data/coverage/raw/senate-bio", `${bio.guid}.html`), parse: parseSenateBiography }))
+  ];
+  for (const { personId, key, url, file, parse } of sources) {
+    const cv = { key, url };
     let html: string;
     try {
-      html = decodeOfficialBytes(await readFile(path.join(cvDir, `${cvKey(cv.key)}.html`)));
+      html = decodeOfficialBytes(await readFile(file));
     } catch {
       continue;
     }
     result.pagesRead += 1;
-    const parsed = parseCv(html);
+    const parsed = parse(html);
     result.droppedContactLines += parsed.droppedContactLines;
     if (!parsed.entries.length) { result.pagesWithoutEntries.push(cv.key); continue; }
     result.pagesWithEntries += 1;

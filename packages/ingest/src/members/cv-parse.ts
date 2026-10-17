@@ -134,11 +134,11 @@ export function parseEntryDates(lines: string[]): { datesText: string; starts?: 
 }
 
 const EUROPASS_LABEL = /^(perioada|functia(\s+sau\s+postul\s+ocupat)?|postul\s+ocupat|principalele\s+(activitati|responsabilitati)[\w\s,şșţț]*|numele\s+si\s+adresa\s+angajatorului|numele\s+si\s+tipul\s+institutiei[\w\s,]*|tipul\s+activitatii\s+sau\s+sectorul\s+de\s+activitate|calificarea\s*\/?\s*diploma\s+obtinuta|domeniul[\w\s\/]*|nivelul\s+in\s+clasificarea[\w\s,]*|locul\s+de\s+munca|angajator|firma|departament|oras\s+lucru|tipul\s+de\s+activitate|disciplinele\s+principale[\w\s\/,]*|competente\s+profesionale\s+dobandite)\s*:?$/;
-const CONTACT_LINE = /@|\b(?:tel|telefon|fax|mobil|gsm|e-?mail)\b\s*[.:]|(?:\+|00)?40[\s.-]?\d[\d\s.-]{7,}|\b0\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4}\b/i;
+export const CONTACT_LINE = /@|\b(?:tel|telefon|fax|mobil|gsm|e-?mail)\b\s*[.:]|(?:\+|00)?40[\s.-]?\d[\d\s.-]{7,}|\b0\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4}\b/i;
 /** What the Chamber's page prints after the CV: the postal address and the time the page was made. It is never part of an entry. */
 const FOOTER_LINE = /^(adresa\s+postala|data\s+actualizare|(luni|marti|miercuri|joi|vineri|sambata|duminica),?\s+\d{1,2}\s+[a-z]+\s+\d{4})/;
 // Personal data is never kept, wherever the page prints it: marital and family status, sex, birth date and place, nationality, citizenship, home address.
-const FAMILY_LINE = /^(stare\s+civila|copii|numar\s+copii|statut\s+familial|sexul?|data\s+nasterii|locul\s+nasterii|nationalitatea|cetatenia|domiciliul|adresa\s+de\s+domiciliu)\b/;
+export const FAMILY_LINE = /^(stare\s+civila|copii|numar\s+copii|statut\s+familial|sexul?|data\s+nasterii|locul\s+nasterii|nationalitatea|cetatenia|domiciliul|adresa\s+de\s+domiciliu)\b/;
 
 /** The page as lines: headings marked, table cells of a row joined, breaks kept as empty lines (they separate entries). */
 export function flatten(html: string): string[] {
@@ -172,7 +172,7 @@ export function flatten(html: string): string[] {
   return flattened;
 }
 
-const hash = (text: string) => createHash("sha1").update(text).digest("hex").slice(0, 16);
+export const hash = (text: string) => createHash("sha1").update(text).digest("hex").slice(0, 16);
 
 export function parseCv(html: string): ParsedCv {
   const lines = flatten(html);
