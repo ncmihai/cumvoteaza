@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Landmark } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getGovernmentView } from "@/lib/ministry-data";
+import { getGovernmentSupport, type GovernmentSupport } from "@/lib/government-support";
 import type { AppLocale } from "@/lib/i18n";
 import { StatusPill } from "../../_components/ui/StatusPill";
 
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function GovernmentPage({ params }: { params: Promise<{ locale: AppLocale; slug: string }> }) {
   const { locale, slug } = await params;
-  const government = await getGovernmentView(slug);
+  const [government, support] = await Promise.all([getGovernmentView(slug), getGovernmentSupport(slug)]);
   if (!government) notFound();
   const today = new Date().toISOString().slice(0, 10);
   const referenceDate = government.endsOn ?? today;
@@ -34,6 +35,7 @@ export default async function GovernmentPage({ params }: { params: Promise<{ loc
     <div className="mt-5 flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wide text-brand">{locale === "ro" ? "Guvernul României" : "Government of Romania"}</p><h1 className="mt-2 font-display text-5xl font-semibold leading-none text-ink lg:text-6xl">{locale === "ro" ? "Guvernul" : "Government"} {government.name}</h1><p className="mt-3 text-sm text-muted">{formatDate(government.startsOn, locale)} — {government.endsOn ? formatDate(government.endsOn, locale) : (locale === "ro" ? "prezent" : "present")}</p></div>{government.caretakerSince ? <StatusPill tone="interim">{locale === "ro" ? `Interimar din ${formatDate(government.caretakerSince, locale)}` : `Caretaker since ${formatDate(government.caretakerSince, locale)}`}</StatusPill> : null}</div>
     {partialCoverage ? <aside className="mt-5 border border-vote-abstain-fill bg-vote-abstain-bg px-4 py-3 text-xs leading-relaxed text-vote-abstain"><strong>{locale === "ro" ? "Acoperire parțială." : "Partial coverage."}</strong> {locale === "ro" ? "Pentru acest guvern este documentat momentan doar prim-ministrul. Lista nu reprezintă cabinetul complet și va fi extinsă după verificarea surselor oficiale." : "Only the prime minister is currently documented for this government. This is not the complete cabinet and will be expanded after official sources are verified."}</aside> : null}
     <GovernmentFormation government={government} locale={locale}/>
+    {support ? <SupportPanel support={support} locale={locale}/> : null}
     <GovernmentRoster title={government.endsOn ? (locale === "ro" ? "Ultimul cabinet al mandatului" : "Final cabinet of the term") : (locale === "ro" ? "Cabinetul actual" : "Current cabinet")} roles={current} locale={locale}/>
     <GovernmentRoster title={locale === "ro" ? "Cabinetul la învestire" : "Cabinet at investiture"} roles={initial} locale={locale} collapsed/>
     {changes.length ? <section className="mt-5 border border-line bg-surface p-5 rounded-card"><h2 className="font-display text-xl font-bold text-ink">{locale === "ro" ? "Schimbări în cabinet" : "Cabinet changes"}</h2><div className="mt-3 divide-y divide-line">{changes.map((role) => <RoleRow key={role.id} role={role} locale={locale}/>)}</div></section> : null}
@@ -90,4 +92,41 @@ function GovernmentFormation({ government, locale }: { government: NonNullable<A
     {government.motions.length ? <section className="mt-5 border border-line bg-surface p-5 rounded-card"><h2 className="font-display text-xl font-bold text-ink">{ro ? "Moțiuni de cenzură" : "Motions of censure"}</h2><div className="mt-3 divide-y divide-line">{government.motions.map((motion) => <Link key={motion.id} href={`/${locale}/motions/${motion.id}`} className="grid gap-1 py-3 hover:bg-wash sm:grid-cols-[170px_minmax(0,1fr)_auto]"><span className="text-xs font-bold text-muted">{motion.number}/{motion.filedOn.slice(0, 4)} · {formatDate(motion.filedOn, locale)}</span><span className="line-clamp-2 text-sm text-ink">{motion.title}</span><span className={`text-xs font-bold ${motion.outcome === "adopted" ? "text-vote-against" : "text-muted"}`}>{motionOutcomeLabels[locale][motion.outcome]}{motion.votesFor != null ? ` · ${motion.votesFor}${motion.votesAgainst != null ? `–${motion.votesAgainst}` : ""}` : ""}</span></Link>)}</div></section> : null}
     {replacements.length ? <section className="mt-5 border border-line bg-surface p-5 rounded-card"><h2 className="font-display text-xl font-bold text-ink">{ro ? "Încercări de a forma un nou guvern" : "Attempts to form a new government"}</h2><p className="mt-1 text-xs leading-5 text-muted">{ro ? "Votul de învestitură este secret (cu bile): se publică doar totalurile. Totalurile marcate „Raportat” provin din presă până la verificarea cu stenograma." : "The investiture vote is a secret ballot: only totals are published. Totals marked “Reported” come from press reports until checked against the stenogram."}</p><div className="mt-3 grid gap-3">{replacements.map((attempt) => <AttemptCard key={attempt.id} attempt={attempt} locale={locale}/>)}</div></section> : null}
   </>;
+}
+
+
+/** The members of Parliament in the groups of the parties our records place in the government: who belonged, by party, with the people who joined or left on the way. */
+function SupportPanel({ support, locale }: { support: GovernmentSupport; locale: AppLocale }) {
+  const ro = locale === "ro";
+  const atStart = support.parties.reduce((sum, item) => sum + item.atStart, 0);
+  const deputies = support.parties.reduce((sum, item) => sum + item.deputies, 0);
+  const senators = support.parties.reduce((sum, item) => sum + item.senators, 0);
+  return <section id="parliamentarians" className="mt-5 rounded-card border border-line bg-surface p-5">
+    <h2 className="font-display text-xl font-bold text-ink">{ro ? "Parlamentarii partidelor de guvernare" : "The members of Parliament of the governing parties"}</h2>
+    <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">{ro
+      ? `Legislatura ${support.legislature.label}. La ${formatDate(support.governmentStartsOn, locale)}, ziua în care guvernul a intrat în funcție, grupurile partidelor pe care evidența noastră le pune la guvernare aveau ${atStart} parlamentari (${deputies} deputați și ${senators} senatori). Lista arată cine făcea parte din aceste grupuri, nu cum a votat fiecare.`
+      : `The ${support.legislature.label} legislature. On ${formatDate(support.governmentStartsOn, locale)}, the day the government took office, the groups of the parties our records place in the government had ${atStart} members (${deputies} deputies and ${senators} senators). The list shows who belonged to these groups, not how each voted.`}</p>
+    <div className="mt-4 space-y-2">
+      {support.parties.map((item) => (
+        <details key={item.party.shortName} className="group rounded-control border border-line">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+            <span aria-hidden="true" className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: item.party.color ?? "#64748b" }} />
+            <strong className="font-display text-lg text-ink">{item.party.shortName}</strong>
+            {item.atStart > 0 ? <span className="text-sm text-ink-soft">{item.atStart} {ro ? "la intrarea în funcție" : "when it took office"} ({item.deputies} {ro ? "deputați" : "deputies"}, {item.senators} {ro ? "senatori" : "senators"})</span> : <span className="text-sm text-ink-soft">{ro ? "se alătură guvernului pe parcurs" : "joins the government along the way"}</span>}
+            {item.total > item.atStart ? <span className="text-xs text-muted">{ro ? `${item.total} în total pe durata guvernului` : `${item.total} in all during the government`}</span> : null}
+            <span className="ml-auto text-xs font-bold text-brand group-open:hidden">{ro ? "Vezi lista" : "Show the list"}</span>
+          </summary>
+          <ul className="grid gap-x-4 gap-y-2 border-t border-line px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
+            {item.members.map((member) => (
+              <li key={`${member.slug}-${member.chamber}`} className="flex min-w-0 items-center gap-2.5">
+                <PersonAvatar name={member.name} photoUrl={member.photoUrl} size={32} />
+                <span className="min-w-0 text-sm"><Link href={`/${locale}/members/${member.slug}`} className="font-semibold text-ink hover:text-brand">{member.name}</Link>
+                  <span className="block text-xs text-muted">{member.chamber === "senate" ? (ro ? "senator" : "senator") : (ro ? "deputat" : "deputy")}{member.from ? ` · ${ro ? "din" : "from"} ${formatDate(member.from, locale)}` : ""}{member.to ? ` · ${ro ? "până la" : "until"} ${formatDate(member.to, locale)}` : ""}</span></span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </div>
+  </section>;
 }

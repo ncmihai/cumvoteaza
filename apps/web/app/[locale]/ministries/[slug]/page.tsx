@@ -93,7 +93,7 @@ function LegislationRow({ locale, item }: { locale: AppLocale; item: NonNullable
 }
 
 
-/** The ambassadors, from the President's decrees: the latest ones, and the way to the whole register. Who holds a post now is not worked out here: a decree names or recalls, it does not say who sits in the embassy today. */
+/** The ambassadors, from the President's decrees: the way to the page by country (who is named now, who was before, a timeline for each post) and the latest decrees. */
 function AmbassadorsPanel({ locale, holdings, counts }: { locale: AppLocale; holdings: Holding[]; counts: OfficeCounts }) {
   const ro = locale === "ro";
   const appointed = (counts.byAction.appointment ?? 0) + (counts.byAction.reappointment ?? 0);
@@ -102,14 +102,14 @@ function AmbassadorsPanel({ locale, holdings, counts }: { locale: AppLocale; hol
   return <section id="ambassadors" className="mt-6 rounded-card border border-line bg-surface p-4 md:p-5">
     <div className="flex flex-wrap items-end justify-between gap-2">
       <div><p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Misiunile diplomatice" : "Diplomatic missions"}</p><h2 className="font-display text-xl font-bold text-ink">{ro ? "Ambasadorii României" : "Romania's ambassadors"}</h2></div>
-      <Link href={`/${locale}/presidency/appointments/ambassador`} className="inline-flex items-center gap-1 text-sm font-bold text-brand">{ro ? "Toate numirile și rechemările" : "All appointments and recalls"}<ArrowRight size={14} aria-hidden="true" /></Link>
+      <Link href={`/${locale}/ministries/externe/ambassadors`} className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft px-3.5 py-1.5 text-sm font-bold text-brand-strong">{ro ? "Ambasadorii pe țări, cu steagul fiecăreia" : "Ambassadors by country, with each flag"}<ArrowRight size={14} aria-hidden="true" /></Link>
     </div>
-    <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{ro ? `Ambasadorii se numesc și se recheamă prin decrete ale Președintelui. În decretele noastre sunt ${appointed} numiri și ${recalled} rechemări${counts.firstYear ? `, de la ${counts.firstYear} încoace` : ""}. Un decret numește sau recheamă, dar nu spune cine ocupă azi un post, așa că nu afișăm „ambasadorul actual” al unei țări din presupunere.` : `Ambassadors are appointed and recalled by decrees of the President. Our decrees hold ${appointed} appointments and ${recalled} recalls${counts.firstYear ? `, from ${counts.firstYear} on` : ""}. A decree appoints or recalls but does not say who sits in a post today, so we do not show a country's "current ambassador" by guess.`}</p>
-    {latest.length ? <ul className="mt-3 divide-y divide-line">{latest.map((item) => (
+    <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{ro ? `Ambasadorii se numesc și se recheamă prin decrete ale Președintelui. În decretele noastre sunt ${appointed} numiri și ${recalled} rechemări${counts.firstYear ? `, de la ${counts.firstYear} încoace` : ""}. Pagina pe țări arată, pentru fiecare, cine este numit acum și cine a fost înainte. Un decret nu spune cine stă azi în ambasadă, așa că „acum” înseamnă ultima persoană numită, fără o rechemare sau un înlocuitor după ea.` : `Ambassadors are appointed and recalled by decrees of the President. Our decrees hold ${appointed} appointments and ${recalled} recalls${counts.firstYear ? `, from ${counts.firstYear} on` : ""}. The page by country shows, for each, who is named now and who was before. A decree does not say who sits in the embassy today, so "now" means the last person named, with no recall or successor after.`}</p>
+    {latest.length ? <><h3 className="mt-4 text-xs font-bold uppercase tracking-wide text-muted">{ro ? "Cele mai recente decrete" : "The latest decrees"}</h3><ul className="mt-1 divide-y divide-line">{latest.map((item) => (
       <li key={`${item.decreeId}-${item.name}`} className="grid gap-1 py-2.5 text-sm sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-baseline">
         <span className="text-xs font-semibold text-muted">{formatDate(item.issuedOn, locale)}</span>
         <span className="min-w-0"><strong className="text-ink">{item.name}</strong> <span className="text-ink-soft">· {ACTION_LABELS[item.action]?.[locale] ?? item.action}</span><span className="block text-xs leading-5 text-muted">{item.title ?? ""}</span></span>
         <a href={item.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-bold text-brand">{item.decreeNumber}/{item.decreeYear}<ExternalLink size={11} aria-hidden="true" /></a>
-      </li>))}</ul> : null}
+      </li>))}</ul></> : null}
   </section>;
 }
