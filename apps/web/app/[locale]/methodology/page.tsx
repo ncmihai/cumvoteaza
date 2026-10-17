@@ -3,8 +3,10 @@ import { titled } from "@/lib/page-metadata";
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
 import { getCoveragePageData, type CoverageStatus, type CoveragePageData } from "@/lib/coverage-data";
 import { getReportReadingStats } from "@/lib/report-reading-stats";
+import { getProgress } from "@/lib/progress-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { FeedbackLink } from "../_components/FeedbackLink";
+import { ProgressPanel } from "../_components/ProgressPanel";
 import { SITE } from "@/lib/site";
 
 
@@ -34,7 +36,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
   const { locale: rawLocale } = await params;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const ro = locale === "ro";
-  const [data, reportStats] = await Promise.all([getCoveragePageData(), getReportReadingStats()]);
+  const [data, reportStats, progress] = await Promise.all([getCoveragePageData(), getReportReadingStats(), getProgress()]);
   const n = (value: number) => new Intl.NumberFormat(ro ? "ro-RO" : "en-GB").format(value);
   const pct = (value: number | null) => (value === null ? "–" : `${value.toLocaleString(ro ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 })}%`);
   const date = (value?: string) => (value ? formatDate(value.slice(0, 10), locale) : "–");
@@ -48,6 +50,8 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
           ? "Fiecare număr de pe site vine dintr-o pagină oficială a Camerei Deputaților, a Senatului, a portalului legislativ sau a Autorității Electorale Permanente (sau, pentru un tur din 2019, din rezultatele ei publice așa cum le arată un proiect civic) și păstrează legătura către ea. Pagina aceasta spune ce este acoperit, cum calculăm ce nu publică sursa și ce nu avem încă."
           : "Every number on this site comes from an official page of the Chamber of Deputies, the Senate, the legislative portal or the Permanent Electoral Authority (or, for one round in 2019, from its public results as a civic project shows them), and keeps the link to it. This page says what is covered, how we work out what the source does not publish, and what we do not have yet."}
       </p>
+
+      {progress?.length ? <ProgressPanel areas={progress} locale={locale} /> : null}
 
       <Section title={ro ? "Sursele" : "Sources"}>
         <ul className="list-disc space-y-1 pl-5">
@@ -66,7 +70,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
       ) : (
         <>
           <Section title={ro ? "Voturi" : "Votes"}>
-            <p>{ro ? "Pentru legislatura curentă și pentru cea din 2020–2024 comparăm lista oficială a fiecărei zile de vot cu ce avem; legislaturile dinainte păstrează istoricul parlamentarilor, dar voturile lor sunt etichetate Parțial până la un import complet." : "For the current legislature and the one of 2020 to 2024 we compare each sitting day's official list with what we hold; legislatures before them keep their members' histories, but their votes are labelled Partial until a full import."}</p>
+            <p>{ro ? "Pentru legislatura în curs comparăm lista oficială a fiecărei zile de vot cu ce avem (comparația începe la 21 decembrie 2024); legislatura 2020–2024 este păstrată, dar încă necomparată cu listele oficiale, iar cele dinainte păstrează istoricul parlamentarilor, dar voturile lor lipsesc aproape cu totul. Toate sunt etichetate Parțial până la un import complet și o comparație." : "For the legislature in office we compare each sitting day's official list with what we hold (the comparison starts on 21 December 2024); the 2020 to 2024 legislature is held but not yet compared with the official lists, and those before it keep their members' histories but have almost no votes. All are labelled Partial until a full import and comparison."}</p>
             <div tabIndex={0} role="region" aria-label={ro ? "Voturi păstrate pe legislatură" : "Votes held per legislature"} className="overflow-x-auto"><table className="w-full min-w-[640px] border-collapse text-sm">
               <thead><tr className="border-b border-line"><th className={th}>{ro ? "Legislatura" : "Legislature"}</th><th className={th}>{ro ? "Cameră" : "Chamber"}</th><th className={`${th} text-right`}>{ro ? "Voturi păstrate" : "Votes held"}</th><th className={`${th} text-right`}>{ro ? "Cu voturi nominale" : "With named votes"}</th><th className={th}>{ro ? "Perioada voturilor" : "Votes between"}</th><th className={th}>{ro ? "Stare" : "Status"}</th></tr></thead>
               <tbody className="divide-y divide-line">
