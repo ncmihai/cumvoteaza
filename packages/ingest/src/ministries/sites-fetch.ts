@@ -15,8 +15,8 @@ export interface MinistryPage {
 }
 
 // Not here: justitie (a browser check). mdlpa.ro and madr.ro send their certificate without the intermediate that signed it, which a browser fetches by itself and Node does not: the command adds those public
-// intermediate certificates (tools/certs/intermediates.pem, each found at the address its certificate names) with NODE_EXTRA_CA_CERTS, so the check stays on and passes. "discover" pages are the home or
-// about pages we read once to find a leadership page whose address is not known yet; they are saved and not parsed.
+// intermediate certificates (tools/certs/intermediates.pem, each found at the address its certificate names) with NODE_EXTRA_CA_CERTS, so the check stays on and passes. The three leadership addresses that were not known
+// (agricultura, energie, munca) were found on the sites' own home and about pages, read once ("discover" pages, saved and not parsed).
 export const MINISTRY_PAGES: MinistryPage[] = [
   { slug: "externe", page: "leadership", url: "https://mae.ro/node/1965" },
   { slug: "externe", page: "missions", url: "https://mae.ro/romanian-missions" },
@@ -31,9 +31,9 @@ export const MINISTRY_PAGES: MinistryPage[] = [
   { slug: "mediu", page: "leadership", url: "https://mmediu.ro/despre-noi/conducere/" },
   { slug: "sanatate", page: "leadership", url: "https://ms.ro/minister/conducere/" },
   { slug: "transporturi", page: "leadership", url: "https://mt.ro/despre-noi/conducere/minister" },
-  { slug: "agricultura", page: "discover", url: "https://madr.ro/minister.html" },
-  { slug: "energie", page: "discover", url: "https://energie.gov.ro/ministerul-energiei/" },
-  { slug: "munca", page: "discover", url: "https://mmuncii.gov.ro/" }
+  { slug: "agricultura", page: "leadership", url: "https://madr.ro/conducere.html" },
+  { slug: "energie", page: "leadership", url: "https://energie.gov.ro/ministerul-energiei/conducerea-ministerului/" },
+  { slug: "munca", page: "leadership", url: "https://mmuncii.gov.ro/conducere/" }
 ];
 
 /** A site's own request to wait between two of its pages, where it states one (its robots.txt). */
