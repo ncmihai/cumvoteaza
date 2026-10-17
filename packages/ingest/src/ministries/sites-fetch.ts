@@ -14,20 +14,26 @@ export interface MinistryPage {
   url: string;
 }
 
-// Not here: dezvoltare (mdlpa.ro serves an incomplete certificate chain, which a program rejects and a browser may not; the check is not switched off) and justitie (a browser check).
+// Not here: justitie (a browser check). mdlpa.ro serves its certificate without the intermediate that signed it (GlobalSign GCC R6 AlphaSSL CA 2025), which a browser fetches by itself and Node does not: the
+// script adds that public intermediate certificate (tools/certs, found at the issuer address the certificate itself names) with NODE_EXTRA_CA_CERTS, so the check stays on and passes. "discover" pages are the
+// home or about pages we read once to find a leadership page whose address is not known yet; they are saved and not parsed.
 export const MINISTRY_PAGES: MinistryPage[] = [
   { slug: "externe", page: "leadership", url: "https://mae.ro/node/1965" },
   { slug: "externe", page: "missions", url: "https://mae.ro/romanian-missions" },
   { slug: "interne", page: "leadership", url: "https://www.mai.gov.ro/category/conducere/" },
   { slug: "aparare", page: "leadership", url: "https://www.mapn.ro/conducere/index.php" },
   { slug: "cultura", page: "leadership", url: "https://www.cultura.ro/conducere/" },
+  { slug: "dezvoltare", page: "leadership", url: "https://www.mdlpa.ro/pages/conducere" },
   { slug: "economie", page: "leadership", url: "https://economie.gov.ro/conducere/" },
   { slug: "educatie", page: "leadership", url: "https://edu.ro/echipa_conducere" },
   { slug: "finante", page: "leadership", url: "https://mfinante.gov.ro/ro/despre-minister/conducere" },
   { slug: "fonduri-europene", page: "leadership", url: "https://mfe.gov.ro/minister/conducere/" },
   { slug: "mediu", page: "leadership", url: "https://mmediu.ro/despre-noi/conducere/" },
   { slug: "sanatate", page: "leadership", url: "https://ms.ro/minister/conducere/" },
-  { slug: "transporturi", page: "leadership", url: "https://mt.ro/despre-noi/conducere/minister" }
+  { slug: "transporturi", page: "leadership", url: "https://mt.ro/despre-noi/conducere/minister" },
+  { slug: "agricultura", page: "discover", url: "https://madr.ro/minister.html" },
+  { slug: "energie", page: "discover", url: "https://energie.gov.ro/ministerul-energiei/" },
+  { slug: "munca", page: "discover", url: "https://mmuncii.gov.ro/" }
 ];
 
 /** A site's own request to wait between two of its pages, where it states one (its robots.txt). */
