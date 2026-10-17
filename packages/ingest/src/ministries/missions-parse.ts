@@ -72,12 +72,12 @@ export function parseMissionList(html: string): MissionCountry[] {
 /** The missions whose page names who heads them: embassies, permanent missions and consulates general. */
 export const headedMissions = (countries: MissionCountry[]) => countries.flatMap((country) => country.missions.filter((mission) => mission.kind === "embassy" || mission.kind === "representation_office" || mission.kind === "permanent_mission" || mission.kind === "consulate_general" || mission.kind === "consulate").map((mission) => ({ country: country.name, ...mission })));
 
-export type HeadKind = "ambassador" | "consul_general" | "consul" | "permanent_representative" | "charge_d_affaires" | "head_of_mission";
+export type HeadKind = "ambassador" | "consul_general" | "consul" | "permanent_representative" | "charge_d_affaires" | "acting_head" | "head_of_mission";
 
 export interface MissionHead {
-  /** The post as the page words it: "AMBASADOR", "Consul general", "Reprezentant permanent", "ÎNSĂRCINAT CU AFACERI a.i.". */
+  /** The post as the page words it: "AMBASADOR", "Consul general", "Reprezentant permanent", "ÎNSĂRCINAT CU AFACERI a.i.", "GERANT INTERIMAR". */
   role: string;
-  /** The post, read: an "însărcinat cu afaceri" is a chargé d'affaires, who heads a mission while it has no ambassador. */
+  /** The post, read: an "însărcinat cu afaceri" is a chargé d'affaires, who heads a mission while it has no ambassador; a "gerant interimar" does the same for a consulate. */
   kind: HeadKind;
   /** The name, in the form the page prints with the surname's capitals lowered. */
   name: string;
@@ -85,30 +85,34 @@ export interface MissionHead {
   printed: string;
 }
 
-/** ȘERBAN → Șerban, POPESCU-TĂRICEANU → Popescu-Tăriceanu; a word that is not all capitals is left alone. */
+const cedilla = (value: string) => value.replace(/ş/g, "ș").replace(/Ş/g, "Ș").replace(/ţ/g, "ț").replace(/Ţ/g, "Ț");
+
+/** ȘERBAN → Șerban, POPESCU-TĂRICEANU → Popescu-Tăriceanu, ŢURCANU → Țurcanu; a word that is not all capitals is left alone. */
 export function lowerCapitals(name: string): string {
-  return name.split(/\s+/).map((word) => (word.length > 1 && word === word.toLocaleUpperCase("ro") && /\p{L}/u.test(word) ? word.split("-").map((part) => part.charAt(0) + part.slice(1).toLocaleLowerCase("ro")).join("-") : word)).join(" ");
+  return cedilla(name).split(/\s+/).map((word) => (word.length > 1 && word === word.toLocaleUpperCase("ro") && /\p{L}/u.test(word) ? word.split("-").map((part) => part.charAt(0) + part.slice(1).toLocaleLowerCase("ro")).join("-") : word)).join(" ");
 }
 
-const POSTS = /(Ambasador(?:ul)?|Consul general|Consulul general|Reprezentant(?:ul)? permanent|[ÎI]nsărcinat cu afaceri(?: a\.?\s?i\.?)?|[ÎI]nsarcinat cu afaceri(?: a\.?\s?i\.?)?|Şef(?:ul)? al misiunii|Şef(?:ul)? al oficiului|Șef(?:ul)? al misiunii|Șef(?:ul)? al oficiului|Sef(?:ul)? al oficiului)\s*:\s*((?:domnul|doamna|dl\.?|d-na)\s+)?([^\n:]{3,80}?)(?=\s*(?:COORDONATE|Adres|Telefon|Tel\b|Web|E-?mail|Fax|Program|Contact|$|\n))/i;
+// The label of the head's line, as the pages print it (with a dot before the colon on some, a letter missing in "CNSUL" on one).
+const POSTS = /(Ambasador(?:ul)?|C(?:o)?nsul(?:ul)? general|Consul(?:ul)?(?!\s+general)|Reprezentant(?:ul)? permanent|[ÎI]ns[ăa]rcinat cu afr?aceri(?: a\.?\s?i\.?)?|Delegat(?:ul)? permanent al Rom[âa]niei pe l[âa]ng[ăa] [^:]{2,60}?|Ger[ăa]nt(?:ul)? interimar|[ȘŞS]ef(?:ul)? al (?:misiunii|oficiului|delega[țţt]iei))\.?\s*:\s*((?:domnul|doamna|dl\.?|d-na|dna\.?)\s+)?(.{3,160})/i;
+/** Where the name ends on the line: the next label or notice on the page. */
+const AFTER_NAME = /\s*(?:\(|COORDONATE|Acredit|Are acreditare|Adres|Telefon|Tel\b|Web|E-?mail|Fax|Program|Contact|Pentru|Atenți|Atenţi|\d)/;
 
 /** Who heads the mission, from its page: the line "Ambasador : domnul Octavian ȘERBAN". Returns nothing when the page names no one (a vacant post, a page of another layout). */
 export function parseMissionHead(html: string): MissionHead | undefined {
   const $ = cheerio.load(html);
   $("script, style, nav, header, footer").remove();
-  // The mission's own block comes first on the page; the text is searched line by line, as the page breaks it.
-  const body = $("body").text().replace(/ /g, " ").replace(/[ \t]+/g, " ");
-  const flat = body.replace(/\s*\n\s*/g, "\n");
-  const lines = flat.split("\n").map((line) => line.trim()).filter(Boolean);
-  for (const line of lines.slice(0, 400)) {
-    const match = POSTS.exec(line);
-    if (!match) continue;
-    const printed = match[3]!.replace(/\s+/g, " ").replace(/[.,;]+$/, "").trim();
+  const body = $("body").text().replace(/\u00a0/g, " ").replace(/[\u200b-\u200d\ufeff]/g, "").replace(/[ \t]+/g, " ");
+  const lines = body.split("\n").map((line) => line.trim()).filter(Boolean);
+  for (const match of lines.slice(0, 400).flatMap((line) => [...line.matchAll(new RegExp(POSTS.source, "gi"))])) {
+    const rest = match[3]!;
+    const cut = AFTER_NAME.exec(rest);
+    // Some pages print "Es Dl." (Excelența Sa, domnul) before the name.
+    const printed = (cut ? rest.slice(0, cut.index) : rest).replace(/\s+/g, " ").replace(/^(?:E\.?\s?S\.?|Es)\s+(?:Dl|Dna|Dl\.|Dna\.|domnul|doamna)\s*\.?\s+/i, "").replace(/[.,;]+$/, "").trim();
     const words = printed.split(" ");
     if (words.length < 2 || words.length > 6 || !words.every((word) => /^[\p{L}'’.\-]+$/u.test(word))) continue;
     const role = match[1]!.replace(/\s+/g, " ");
     const folded = role.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-    const kind: HeadKind = /ambasador/.test(folded) ? "ambassador" : /consul/.test(folded) ? "consul_general" : /reprezentant/.test(folded) ? "permanent_representative" : /insarcinat/.test(folded) ? "charge_d_affaires" : "head_of_mission";
+    const kind: HeadKind = /ambasador/.test(folded) ? "ambassador" : /consul general|cnsul general/.test(folded) ? "consul_general" : /consul/.test(folded) ? "consul" : /reprezentant/.test(folded) ? "permanent_representative" : /insarcinat/.test(folded) ? "charge_d_affaires" : /delegat permanent/.test(folded) ? "permanent_representative" : /gerant/.test(folded) ? "acting_head" : "head_of_mission";
     return { role, kind, name: lowerCapitals(printed), printed };
   }
   return undefined;

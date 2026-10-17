@@ -52,6 +52,22 @@ describe("a mission's page", () => {
     expect(parseMissionHead(page("CONSUL GENERAL : domnul RADU-DUMITRU FLOREA Adresă"))).toMatchObject({ kind: "consul_general", name: "Radu-Dumitru Florea" });
   });
 
+  it("reads the other ways the pages word the line: a dot before the colon, family name first, a date or an accreditation after the name, a typo, a delegation", () => {
+    expect(parseMissionHead(page("Ambasador.: domnul ŢURCANU CRISTIAN LEON COORDONATE DE CONTACT: Adresă"))).toMatchObject({ kind: "ambassador", name: "Țurcanu Cristian Leon" });
+    expect(parseMissionHead(page("AMBASADOR: dl. Iulian BUGA (de la 13 iulie 2022) Are acreditare și în Papua Noua Guinee."))).toMatchObject({ kind: "ambassador", name: "Iulian Buga" });
+    expect(parseMissionHead(page("AMBASADOR.: doamna Theodora Magdalena MIRCEA Acreditată şi în Antigua si Barbuda, Comunitatea Bahamas"))).toMatchObject({ name: "Theodora Magdalena Mircea" });
+    expect(parseMissionHead(page("AMBASADOR: Es Dl. Cristian BĂDESCU COORDONATE"))).toMatchObject({ name: "Cristian Bădescu" });
+    expect(parseMissionHead(page("CNSUL GENERAL: doamna Aurelia GROSU COORDONATE DE CONTACT"))).toMatchObject({ kind: "consul_general", name: "Aurelia Grosu" });
+    expect(parseMissionHead(page("GERANT INTERIMAR: dl. Bogdan-Florin TOMA COORDONATE DE CONTACT"))).toMatchObject({ kind: "acting_head", name: "Bogdan-Florin Toma" });
+    expect(parseMissionHead(page("Însărcinat cu afraceri a.i.: domnul Anghel GHEORGHE Are acreditare în Republica Palau."))).toMatchObject({ kind: "charge_d_affaires", name: "Anghel Gheorghe" });
+    expect(parseMissionHead(page("Ambasador extraordinar și plenipotențiar Delegat permanent al României pe lângă UNESCO: doamna Ioana BIVOLARU"))).toMatchObject({ kind: "permanent_representative", name: "Ioana Bivolaru" });
+  });
+
+  it("names no one for a post printed empty (a vacant consulate)", () => {
+    expect(parseMissionHead(page("GERANT INTERIMAR: COORDONATE DE CONTACT: Adresă: Strada 1"))).toBeUndefined();
+    expect(parseMissionHead(page("CONSUL: - COORDONATE DE CONTACT"))).toBeUndefined();
+  });
+
   it("names no one when the page does not", () => {
     expect(parseMissionHead(page("COORDONATE DE CONTACT : Adresă : Strada 1"))).toBeUndefined();
   });

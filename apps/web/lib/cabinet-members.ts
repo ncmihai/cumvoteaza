@@ -43,3 +43,35 @@ export function endReasonLabel(reason: string | undefined | null, locale: "ro" |
   const pair = labels[reason];
   return pair ? pair[locale === "ro" ? 0 : 1] : undefined;
 }
+
+interface Continuable {
+  person: { id: string };
+  government: { id: string; slug: string; name: string };
+  startsOn: string;
+  endsOn?: string;
+  interim: boolean;
+  endReason?: string;
+  endSourceUrl?: string;
+  sourceUrl?: string;
+}
+
+/**
+ * The same person in the same post across governments is one stretch of office: the cabinet carried over when a Government ended and the next began the same day (or an acting one stood between), so the periods that
+ * touch are shown as one, from the first start to the last end, naming each government. `terms` come newest first, as the ministry page lists them; a period keeps the decree that began its first part, and the reason
+ * and decree of its last.
+ */
+export function mergeContinuations<T extends Continuable>(terms: T[]): Array<T & { governments: Array<{ id: string; slug: string; name: string }> }> {
+  const merged: Array<T & { governments: Array<{ id: string; slug: string; name: string }> }> = [];
+  for (const term of terms) {
+    const previous = merged.at(-1);
+    // `previous` is the later period; this one is earlier and ends where `previous` starts.
+    if (previous && previous.person.id === term.person.id && previous.interim === term.interim && term.endsOn === previous.startsOn) {
+      previous.startsOn = term.startsOn;
+      if (term.sourceUrl) previous.sourceUrl = term.sourceUrl;
+      if (!previous.governments.some((government) => government.id === term.government.id)) previous.governments.push(term.government);
+      continue;
+    }
+    merged.push({ ...term, governments: [term.government] });
+  }
+  return merged;
+}

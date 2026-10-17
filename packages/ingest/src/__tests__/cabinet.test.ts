@@ -106,6 +106,7 @@ describe("which ministry a post is", () => {
     expect(slug("ministrul muncii și justiției sociale")).toBe("munca");
     expect(slug("ministrul justiției și libertăților cetățenești")).toBe("justitie");
     expect(slug("ministrul culturii și cultelor")).toBe("cultura");
+    expect(slug("ministrul economiei și finanțelor")).toBe("finante");
   });
 
   it("takes the first of several domains in one name, and none for a coordinating, delegated or state-secretary post", () => {
@@ -203,6 +204,24 @@ describe("replaying the decrees into periods", () => {
       "Cora Cea|Ministrul sănătății|2020-06-20|2021-01-01|government_ended"
     ]);
     expect(roles.filter((role) => role.carried).map((role) => role.personName)).toEqual(["Cora Cea"]);
+  });
+
+  it("leaves out a post that was replaced the day it began (the same minister named twice in one day)", () => {
+    const { roles } = replayCabinets([
+      roster(1, "2020-01-10", ["Ana Alb - prim-ministru"]),
+      decree(2, "2020-03-01", "pentru numirea unui membru al Guvernului", "+ Articolul UNIC Se numește în funcția de membru al Guvernului domnul Bob Bun, ministrul justiției."),
+      decree(3, "2020-03-01", "pentru numirea unui membru al Guvernului", "+ Articolul UNIC Se numește în funcția de membru al Guvernului domnul Bob Bun, viceprim-ministru, ministrul justiției.")
+    ], [government("one", "2020-01-10", "2021-01-01")]);
+    expect(view(roles)).toEqual(["Bob Bun|Viceprim-ministru, ministrul justiției|2020-03-01|2021-01-01|government_ended"]);
+  });
+
+  it("ends an acting minister's post when a new cabinet names the seat's minister", () => {
+    const { roles } = replayCabinets([
+      roster(1, "2020-01-10", ["Ana Alb - prim-ministru", "Bob Bun - ministrul justiției"]),
+      decree(2, "2020-03-01", "pentru desemnarea unui membru al Guvernului ca ministru interimar", "+ Articolul UNIC Se desemnează domnul Bob Bun, ministrul justiției, ca ministru interimar al sănătății."),
+      roster(3, "2020-09-01", ["Ana Alb - prim-ministru", "Bob Bun - ministrul justiției", "Cora Cea - ministrul sănătății"])
+    ], [government("one", "2020-01-10", "2021-01-01")]);
+    expect(roles.find((role) => role.interim)).toMatchObject({ endsOn: "2020-09-01", endReason: "interim_ended" });
   });
 
   it("returns a dismissal with no open post and leaves a curated Government alone", () => {

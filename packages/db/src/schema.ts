@@ -585,7 +585,7 @@ export const missionHeads = pgTable("mission_heads", {
   personId: text("person_id").references(() => people.id, { onDelete: "set null" }),
   /** The post as the page prints it. */
   roleText: text("role_text").notNull(),
-  headKind: text("head_kind").$type<"ambassador" | "consul_general" | "consul" | "permanent_representative" | "charge_d_affaires" | "head_of_mission">().notNull(),
+  headKind: text("head_kind").$type<"ambassador" | "consul_general" | "consul" | "permanent_representative" | "charge_d_affaires" | "acting_head" | "head_of_mission">().notNull(),
   firstSeenOn: date("first_seen_on").notNull(),
   lastSeenOn: date("last_seen_on").notNull(),
   sourceUrl: text("source_url").notNull(),

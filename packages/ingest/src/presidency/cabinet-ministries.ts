@@ -20,7 +20,7 @@ const RULES: Array<[slug: string, pattern: RegExp]> = [
   ["externe", /afacerilor externe|\bde externe\b|afacerilor straine/],
   ["interne", /afacerilor interne|administratiei si internelor|internelor si reformei|\bde interne\b|\binternelor\b/],
   ["aparare", /apararii|\baparare\b/],
-  ["finante", /finantelor|\bfinante\b/],
+  ["finante", /economiei si finantelor|finantelor|\bfinante\b/],
   ["munca", /\bmuncii\b|solidaritatii sociale|protectiei sociale|\bfamiliei\b/],
   ["justitie", /\bjustitiei\b(?! sociale)/],
   ["sanatate", /sanatatii/],

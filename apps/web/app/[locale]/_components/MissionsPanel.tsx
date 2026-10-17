@@ -20,6 +20,7 @@ const HEAD_LABELS: Record<string, [string, string]> = {
   consul: ["Consul", "Consul"],
   permanent_representative: ["Reprezentant permanent", "Permanent representative"],
   charge_d_affaires: ["Însărcinat cu afaceri a.i.", "Chargé d'affaires a.i."],
+  acting_head: ["Gerant interimar", "Acting head"],
   head_of_mission: ["Șeful misiunii", "Head of mission"]
 };
 
@@ -34,6 +35,7 @@ export function MissionsPanel({ locale, data, decreeCurrentName }: { locale: App
   const honorary = data.missions.filter((mission) => mission.kind === "honorary_consulate").length;
   const label = (kind: string) => (KIND_LABELS[kind] ?? [kind, kind])[ro ? 0 : 1];
   const compare = (head: PlaceMissions["heads"][number]) => {
+    if (head.headKind === "acting_head") return ro ? "Pagina numește un gerant interimar: postul de titular nu e ocupat la data citirii." : "The page names an acting head: the post has no titular holder on the day it was read.";
     if (head.headKind === "charge_d_affaires") return ro ? "Pagina numește un însărcinat cu afaceri: misiunea nu are un ambasador în funcție la data citirii." : "The page names a chargé d'affaires: the mission has no ambassador in post on the day it was read.";
     if (head.headKind !== "ambassador" || head.missionKind !== "embassy") return undefined;
     if (!decreeCurrentName) return ro ? "Decretele noastre nu numesc acum un ambasador aici." : "Our decrees name no ambassador here now.";

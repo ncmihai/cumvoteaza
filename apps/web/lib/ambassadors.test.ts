@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOfficeTimeline, buildTimelines, postsOf, yearsBetween, type AmbassadorRow } from "./ambassadors";
+import { buildOfficeTimeline, buildTimelines, postsOf, sameName, yearsBetween, type AmbassadorRow } from "./ambassadors";
 import { normalizePlace, placeByKey, placeName, placeOf } from "./places";
 
 const keys = (title: string, name = "Ion Popescu") => postsOf(title, name).posts.map((post) => `${post.place.key}:${post.role}${post.residence ? `@${post.residence}` : ""}`);
@@ -12,6 +12,12 @@ describe("the places a decree line can name", () => {
     expect(placeOf("Regatul Haşemit al Iordaniei")?.key).toBe("jo");
     expect(placeOf("Regatul Țărilor de Jos (Olanda)")?.key).toBe("nl");
     expect(placeOf("Republica Atlantida")).toBeUndefined();
+    // The headings of the ministry's own list of missions.
+    expect(placeOf("CABO VERDE")?.key).toBe("cv");
+    expect(placeOf("R. CENTRAFRICANĂ")?.key).toBe("cf");
+    expect(placeOf("SUDANUL DE SUD")?.key).toBe("ss");
+    expect(placeOf("SAO TOME ŞI PRINCIPE")?.key).toBe("st");
+    expect(placeOf("ORDINUL SUVERAN DE MALTA")?.key).toBe("smom");
   });
 
   it("tries off a leading Republica, Regatul or Statul, and names a place in the reader's language", () => {
@@ -132,6 +138,11 @@ describe("who held a post, and when", () => {
     expect(denmark.current).toBeUndefined();
     expect(denmark.lapsed?.name).toBe("Ana Alb");
     expect(timelines.find((item) => item.place.key === "se")!.current?.name).toBe("Bob Bun");
+  });
+
+  it("reads â and î as one letter when comparing two spellings of a name", () => {
+    expect(sameName("Andreea Păstârnac", "Andreea Păstîrnac")).toBe(true);
+    expect(sameName("Daniela-Brândușa Băzăvan", "Daniela-Brîndușa Băzăvan")).toBe(true);
   });
 
   it("counts whole years", () => {

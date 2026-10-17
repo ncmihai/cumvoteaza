@@ -103,19 +103,25 @@ export async function importCabinets(db: DbClient, options: { repoRoot: string; 
   const people: KnownPerson[] = [...(await db.execute<{ id: string; display_name: string }>(sql`select id, display_name from people`))].map((row) => ({ id: row.id, displayName: row.display_name, tokens: tokensOf(row.display_name) }));
   const knownIds = new Set(people.map((person) => person.id));
   const resolution = new Map<string, { id: string; created: boolean; displayName: string } | { ambiguous: string[] }>();
-  const createdHere = new Map<string, string>();
+  const createdHere = new Map<string, { id: string; displayName: string }>();
   for (const name of new Set(roles.map((role) => role.personName))) {
+    if (NEW_PEOPLE.has(name)) {
+      // Marked new by hand: tied only to the person an earlier run made for them.
+      const earlier = people.find((person) => person.id === `person-${slugify(cedillaFix(name))}`);
+      if (earlier) { resolution.set(name, { id: earlier.id, created: false, displayName: earlier.displayName }); continue; }
+    }
     const found = NEW_PEOPLE.has(name) ? {} : resolvePerson(name, people);
     if (found.person) { resolution.set(name, { id: found.person.id, created: false, displayName: found.person.displayName }); continue; }
     if (found.ambiguous) { resolution.set(name, { ambiguous: found.ambiguous.map((person) => person.displayName) }); continue; }
     const displayName = cedillaFix(name).replace(/\s+/g, " ").trim();
+    // Two spellings of one name (a diacritic left out, the words in another order) are one new person.
+    const wordsKey = [...tokensOf(name)].sort().join(" ");
+    const sameNewPerson = createdHere.get(wordsKey);
+    if (sameNewPerson) { resolution.set(name, { id: sameNewPerson.id, created: false, displayName: sameNewPerson.displayName }); continue; }
     const id = `person-${slugify(displayName)}`;
-    // Two spellings of one name (with and without a diacritic) are the same new person.
-    const sameNewPerson = createdHere.get(id);
-    if (sameNewPerson) { resolution.set(name, { id, created: false, displayName: sameNewPerson }); continue; }
     if (knownIds.has(id)) { resolution.set(name, { ambiguous: [id] }); continue; }
     resolution.set(name, { id, created: true, displayName });
-    createdHere.set(id, displayName);
+    createdHere.set(wordsKey, { id, displayName });
     knownIds.add(id);
   }
   const ambiguous = [...resolution].flatMap(([name, value]) => ("ambiguous" in value ? [{ name, candidates: value.ambiguous }] : []));
@@ -134,7 +140,7 @@ export async function importCabinets(db: DbClient, options: { repoRoot: string; 
     decreesRead: inputs.length,
     governments: perGovernment,
     roles: writable.length,
-    people: { matched: [...resolution.values()].filter((value) => "id" in value && !value.created).length, created: [...resolution.values()].filter((value) => "id" in value && value.created).length, ambiguous, looselyMatched: [...resolution].flatMap(([name, value]) => ("id" in value && !value.created && !createdHere.has(value.id) && [...tokensOf(name)].sort().join(" ") !== [...tokensOf(value.displayName)].sort().join(" ") ? [{ printed: name, person: `${value.displayName} (${value.id})` }] : [])) },
+    people: { matched: [...resolution.values()].filter((value) => "id" in value && !value.created).length, created: [...resolution.values()].filter((value) => "id" in value && value.created).length, ambiguous, looselyMatched: [...resolution].flatMap(([name, value]) => ("id" in value && !value.created && ![...createdHere.values()].some((made) => made.id === value.id) && [...tokensOf(name)].sort().join(" ") !== [...tokensOf(value.displayName)].sort().join(" ") ? [{ printed: name, person: `${value.displayName} (${value.id})` }] : [])) },
     rolesNotWritten: roles.length - writable.length,
     report: { unread: report.unread, withoutOpenRole: report.withoutOpenRole, suspensions: report.suspensions, posts: [...report.posts].map(([post, ministry]) => ({ post, ministry })) }
   };

@@ -34,7 +34,7 @@ const foldWord = (word: string) => word.normalize("NFD").replace(/\p{M}/gu, "").
 /** A name as printed, without the capitalised words of the post before it; `offset` is where in `raw` the name starts, so the words left out can go back to the post. */
 function splitName(raw: string): { name: string; offset: number } {
   const trimmed = raw.replace(/\s+/g, " ");
-  const words = trimmed.trim().replace(/[.,;:]+$/, "").split(" ");
+  const words = trimmed.trim().replace(/[.,;:\-–]+$/, "").split(" ");
   let skipped = 0;
   while (words.length > 2 && NOT_NAME.has(foldWord(words[0]!))) { words.shift(); skipped += 1; }
   while (words.length > 3 && skipped < 4 && NOT_NAME.has(foldWord(words[1]!))) { words.shift(); skipped += 1; }

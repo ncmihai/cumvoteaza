@@ -70,7 +70,7 @@ export interface ReplayReport {
   posts: Map<string, string | undefined>;
 }
 
-const tokens = (name: string) => fold(name).replace(/[^a-z\s-]/g, "").split(/[\s-]+/).filter(Boolean);
+const tokens = (name: string) => fold(name.replace(/â/g, "î").replace(/Â/g, "Î")).replace(/[^a-z\s-]/g, "").split(/[\s-]+/).filter(Boolean);
 
 /** Two printings of a name are one person when the shorter one's words are all in the longer one (a missing middle name) and it has at least two words. */
 export function sameName(a: string, b: string): boolean {
@@ -188,6 +188,11 @@ export function replayCabinets(decrees: DecreeInput[], governments: GovernmentIn
           if (role.governmentId !== government.id || role.interim) continue;
           if (!wanted.some(({ member, info }) => sameName(member.name, role.personName) && sharesSeat(info.keys, role.post.keys))) close(role, decree.issuedOn, "new_cabinet", here);
         }
+        // The ministers a new cabinet names take the seat from any acting minister there.
+        for (const { info } of wanted) {
+          if (!info.ministrySlug || info.delegate) continue;
+          for (const role of [...open]) if (role.interim && role.governmentId === government.id && role.post.ministrySlug === info.ministrySlug) close(role, decree.issuedOn, "interim_ended", here);
+        }
         for (const { member, info } of wanted) {
           const already = [...open].some((role) => role.governmentId === government.id && !role.interim && sameName(role.personName, member.name) && sharesSeat(role.post.keys, info.keys));
           if (!already) begin(government, member.name, member.role, false, decree);
@@ -244,5 +249,7 @@ export function replayCabinets(decrees: DecreeInput[], governments: GovernmentIn
     const end = government ? effectiveEnd(government) : undefined;
     if (end) close(role, end, "government_ended");
   }
-  return { roles, report };
+  // A post replaced the day it began (the same minister named twice that day, an acting post and the titular named together) never had a day of its own.
+  const lasted = roles.filter((role) => !(role.endsOn === role.startsOn && (role.endReason === "replaced" || role.endReason === "interim_ended" || role.endReason === "new_cabinet")));
+  return { roles: lasted, report };
 }
