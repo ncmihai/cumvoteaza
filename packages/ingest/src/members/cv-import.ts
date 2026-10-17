@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { sql } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
@@ -6,7 +6,7 @@ import type { DbClient } from "@cumsevoteaza/db";
 import { decodeOfficialBytes } from "../coverage/raw-cache";
 import { parseCv, type CvSection, type ParsedCv } from "./cv-parse";
 import { parseSenateBiography } from "./senate-bio-parse";
-import { senateCardUrl } from "./senate-bio-fetch";
+import { pickSenateCards, senateCardUrl } from "./senate-bio-fetch";
 import { cvKey } from "./cv-fetch";
 import { readProfilePages } from "./profile-facts";
 
@@ -42,10 +42,11 @@ export async function importCvEntries(db: DbClient, options: { repoRoot: string;
     if (!previous || member.key > previous.key) latest.set(member.person_id, { key: member.key, url: page.cvUrl });
   }
   // A sitting senator's own biography (the Senate's card, members:senate-bio:fetch) stands in for a CV the Chamber does not hold: the Chamber's CV, where there is one, wins.
-  const senators = [...(await db.execute<{ person_id: string; guid: string }>(sql`
-    select m.person_id, m.source_ids->>'senatRoGuid' as guid from members m where m.person_id is not null and m.source_ids ? 'senatRoGuid'`))];
+  const seats = [...(await db.execute<{ person_id: string; guid: string; key: string }>(sql`
+    select m.person_id, m.source_ids->>'senatRoGuid' as guid, coalesce(m.source_ids->>'cdepProfileKey', m.id) as key from members m where m.person_id is not null and m.source_ids ? 'senatRoGuid'`))];
+  const savedCards = new Set((await readdir(path.join(options.repoRoot, "data/coverage/raw/senate-bio")).catch(() => [] as string[])).filter((name) => name.endsWith(".html")).map((name) => name.slice(0, -5)));
   const biography = new Map<string, { guid: string; url: string }>();
-  for (const senator of senators) if (!latest.has(senator.person_id)) biography.set(senator.person_id, { guid: senator.guid.toLowerCase(), url: senateCardUrl(senator.guid.toLowerCase()) });
+  for (const [personId, guid] of pickSenateCards(seats.map((seat) => ({ personId: seat.person_id, guid: seat.guid, key: seat.key })), savedCards)) if (!latest.has(personId)) biography.set(personId, { guid, url: senateCardUrl(guid) });
 
   const result: ImportCvResult = {
     persisted: options.persist, people: 0, pagesRead: 0, pagesWithEntries: 0,

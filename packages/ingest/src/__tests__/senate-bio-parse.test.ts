@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { biographyForm } from "../members/senate-bio-fetch";
+import { biographyForm, pickSenateCards } from "../members/senate-bio-fetch";
 import { parseSenateBiography } from "../members/senate-bio-parse";
 
 const category = (index: string, label: string, body: string) => `
@@ -55,5 +55,26 @@ describe("the form that asks the Senate for the biography tab", () => {
   it("is absent when the card has no biography tab or no view state", () => {
     expect(biographyForm('<html><body><form id="aspnetForm"><input type="hidden" name="__VIEWSTATE" value="abc" /></form></body></html>')).toBeUndefined();
     expect(biographyForm("<a href=\"javascript:__doPostBack('x$lnkBiog','')\">Biografie</a>")).toBeUndefined();
+  });
+});
+
+describe("which card a senator with a seat in two legislatures is read from", () => {
+  const seats = [
+    { personId: "p1", guid: "AAA-2020", key: "leg2020:cam1:idm119" },
+    { personId: "p1", guid: "BBB-2024", key: "leg2024:cam1:idm109" },
+    { personId: "p2", guid: "CCC-2024", key: "leg2024:cam1:idm95" },
+    { personId: "p2", guid: "DDD-2020", key: "leg2020:cam1:idm110" }
+  ];
+  const saved = new Set(["bbb-2024", "ccc-2024"]);
+
+  it("is the latest seat's card, in whatever order the rows come", () => {
+    const expected = new Map([["p1", "bbb-2024"], ["p2", "ccc-2024"]]);
+    expect(pickSenateCards(seats, saved)).toEqual(expected);
+    expect(pickSenateCards([...seats].reverse(), saved)).toEqual(expected);
+  });
+
+  it("skips a seat whose card was not saved and leaves out a person with no saved card", () => {
+    expect(pickSenateCards(seats, new Set(["aaa-2020"]))).toEqual(new Map([["p1", "aaa-2020"]]));
+    expect(pickSenateCards(seats, new Set())).toEqual(new Map());
   });
 });

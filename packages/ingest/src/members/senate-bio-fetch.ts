@@ -28,6 +28,21 @@ export async function biographyTargets(): Promise<BiographyTarget[]> {
   }
 }
 
+/**
+ * A person who sat in more than one legislature has a card id per seat, and the Senate keeps only the sitting one's: the latest seat whose card was saved, whatever order the rows come in
+ * (a pick that followed the order of an unsorted query chose differently on two copies of the same data).
+ */
+export function pickSenateCards(seats: Array<{ personId: string; guid: string; key: string }>, saved: ReadonlySet<string>): Map<string, string> {
+  const picked = new Map<string, { guid: string; key: string }>();
+  for (const seat of seats) {
+    const guid = seat.guid.toLowerCase();
+    if (!saved.has(guid)) continue;
+    const previous = picked.get(seat.personId);
+    if (!previous || seat.key > previous.key) picked.set(seat.personId, { guid, key: seat.key });
+  }
+  return new Map([...picked].map(([personId, card]) => [personId, card.guid]));
+}
+
 /** The form a browser would post for the biography tab, from the saved card page; undefined when the card has no such tab. */
 export function biographyForm(cardHtml: string): URLSearchParams | undefined {
   const target = BIOGRAPHY_TARGET_PATTERN.exec(cardHtml.replace(/&#39;/g, "'"))?.[1];

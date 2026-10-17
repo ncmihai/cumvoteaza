@@ -103,6 +103,7 @@ export function parseSanctionsPage(html: string, legislature: string): ParsedSan
 
   const entries: ParsedSanction[] = [];
   const informational: string[] = [];
+  const taken = new Set<string>();
   for (const nodes of groups) {
     const scope = $(nodes);
     const bolds = scope.find("b").add(scope.filter("b")).toArray().map((node) => tidy($(node).text())).filter(Boolean);
@@ -128,8 +129,14 @@ export function parseSanctionsPage(html: string, legislature: string): ParsedSan
       ? { outcome: (/admiterea/i.test(rulingText) ? "upheld" : "rejected") as "upheld" | "rejected", label: rulingText, ...(ruling ? { url: absolute(ruling.href) } : {}) }
       : undefined;
 
+    // The same words on the same day can be two entries (the 2016 page prints two withdrawals of the floor for one deputy on 8 April 2019, each with its own stenogram extract): the first keeps the id it
+    // always had and a later one adds the extract it points to, so neither is lost to the other.
+    let id = idOf(legislature, heldOn, headline);
+    if (taken.has(id)) id = idOf(legislature, heldOn, `${headline}|${steno ? absolute(steno.href) : entries.length}`);
+    taken.add(id);
+
     entries.push({
-      id: idOf(legislature, heldOn, headline),
+      id,
       legislature,
       ...(heldOn ? { heldOn } : {}),
       headline: rest,

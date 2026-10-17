@@ -60,6 +60,26 @@ describe("the Chamber's list of sanctions on deputies", () => {
   });
 });
 
+describe("two entries with the same words on the same day", () => {
+  const entry = (extract: number) => `<p><b>8 aprilie 2019 - Retragerea cuvântului doamnei deputat Cristina-Mădălina Prună, membru al Grupului parlamentar al USR. </b>
+<p align="right"><i><a href="/ords/pls/steno/steno2015.stenograma?ids=8049&idm=${extract}&idl=1" target="STENO">vezi extrasul din stenograma sedintei</a></i>
+<p><hr size=1><br>`;
+  const pageOf = (...extracts: number[]) => `<html><body><div class="grup-parlamentar-list">${extracts.map(entry).join("\n")}</div></body></html>`;
+
+  it("keeps both, the first under the id it has when it stands alone and the second under its own", () => {
+    const [first, second] = parseSanctionsPage(pageOf(4, 12), "2016").entries;
+    expect(first!.id).toBe(parseSanctionsPage(pageOf(4), "2016").entries[0]!.id);
+    expect(second!.id).not.toBe(first!.id);
+    expect(first!.stenogramUrl).toContain("idm=4");
+    expect(second!.stenogramUrl).toContain("idm=12");
+  });
+
+  it("gives them the same ids on every read", () => {
+    const ids = () => parseSanctionsPage(pageOf(4, 12), "2016").entries.map((item) => item.id);
+    expect(ids()).toEqual(ids());
+  });
+});
+
 describe("headline pieces", () => {
   it("reads a Romanian date at the start, with or without diacritics, and nothing otherwise", () => {
     expect(headlineDate("03 octombrie 2023 - Informare")).toEqual({ heldOn: "2023-10-03", rest: "Informare" });
