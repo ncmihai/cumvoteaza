@@ -52,7 +52,7 @@
     "members:sanctions:fetch": "tsx src/cli.ts members:sanctions:fetch",
     "members:sanctions:import": "tsx src/cli.ts members:sanctions:import",
     "members:senate-bio:fetch": "tsx src/cli.ts members:senate-bio:fetch",
-    "ministries:sites:fetch": "NODE_EXTRA_CA_CERTS=../../tools/certs/globalsign-gcc-r6-alphassl-ca-2025.pem tsx src/cli.ts ministries:sites:fetch",
+    "ministries:sites:fetch": "NODE_EXTRA_CA_CERTS=../../tools/certs/intermediates.pem tsx src/cli.ts ministries:sites:fetch",
     "members:cv:import": "tsx src/cli.ts members:cv:import",
     "members:cv:check": "tsx src/cli.ts members:cv:check",
     "members:cv:review": "tsx src/cli.ts members:cv:review",

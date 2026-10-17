@@ -14,9 +14,9 @@ export interface MinistryPage {
   url: string;
 }
 
-// Not here: justitie (a browser check). mdlpa.ro serves its certificate without the intermediate that signed it (GlobalSign GCC R6 AlphaSSL CA 2025), which a browser fetches by itself and Node does not: the
-// script adds that public intermediate certificate (tools/certs, found at the issuer address the certificate itself names) with NODE_EXTRA_CA_CERTS, so the check stays on and passes. "discover" pages are the
-// home or about pages we read once to find a leadership page whose address is not known yet; they are saved and not parsed.
+// Not here: justitie (a browser check). mdlpa.ro and madr.ro send their certificate without the intermediate that signed it, which a browser fetches by itself and Node does not: the command adds those public
+// intermediate certificates (tools/certs/intermediates.pem, each found at the address its certificate names) with NODE_EXTRA_CA_CERTS, so the check stays on and passes. "discover" pages are the home or
+// about pages we read once to find a leadership page whose address is not known yet; they are saved and not parsed.
 export const MINISTRY_PAGES: MinistryPage[] = [
   { slug: "externe", page: "leadership", url: "https://mae.ro/node/1965" },
   { slug: "externe", page: "missions", url: "https://mae.ro/romanian-missions" },
