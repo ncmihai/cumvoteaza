@@ -1,16 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getAmbassadorTimelines } from "@/lib/ambassador-data";
-import { LAPSE_YEARS, type DecreeRef, type HolderPeriod } from "@/lib/ambassadors";
+import { LAPSE_YEARS } from "@/lib/ambassadors";
 import { placeByKey, placeName } from "@/lib/places";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { titled } from "@/lib/page-metadata";
 import { Flag } from "../../../../_components/Flag";
 import { PageIntro } from "../../../../_components/ui/PageIntro";
-import { StatusPill } from "../../../../_components/ui/StatusPill";
+import { HolderTimeline } from "../../../../_components/HolderTimeline";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string; place: string }> }): Promise<Metadata> {
   const { locale, place: key } = await params;
@@ -30,31 +30,7 @@ export default async function AmbassadorPlacePage({ params }: { params: Promise<
   const { place } = timeline;
   const name = placeName(place, locale);
   const base = `/${locale}/ministries/externe/ambassadors`;
-  const decree = (item: DecreeRef) => <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap font-bold text-brand">{ro ? "decretul" : "decree"} {item.number}/{item.year}<ExternalLink size={11} aria-hidden="true" /></a>;
-  const alsoIn = (holder: HolderPeriod) => holder.alsoIn.flatMap((other) => { const target = placeByKey(other); return target ? [target] : []; });
   const title = place.kind === "organisation" || place.kind === "holy-see" ? name : (ro ? `Ambasadorii României în ${name}` : `Romania's ambassadors in ${name}`);
-
-  const when = (holder: HolderPeriod) => `${holder.startedOn ? formatDate(holder.startedOn, locale) : (ro ? "dată necunoscută" : "date unknown")} – ${holder.ended === "open" ? (ro ? "prezent" : "present") : holder.endedOn ? formatDate(holder.endedOn, locale) : "?"}`;
-  const end = (holder: HolderPeriod) => {
-    if (holder.ended === "recalled" && holder.endDecree) return <>{ro ? "Rechemat(ă) prin " : "Recalled by "}{decree(holder.endDecree)}</>;
-    if (holder.ended === "replaced" && holder.endDecree) return <>{ro ? "Înlocuit(ă) la numirea următorului, prin " : "Replaced when the next was named, by "}{decree(holder.endDecree)}{ro ? "; nu există un decret de rechemare în catalog." : "; there is no recall decree in the catalog."}</>;
-    return <>{ro ? "Niciun decret de rechemare sau de înlocuire după numire." : "No recall or replacement decree after the appointment."}</>;
-  };
-
-  const holderBlock = (holder: HolderPeriod, current: boolean) => (
-    <li key={`${holder.name}-${holder.startedOn ?? holder.endedOn}`} className="relative pb-6 pl-6 last:pb-0">
-      <span aria-hidden="true" className={`absolute left-0 top-1.5 h-3 w-3 rounded-full border-2 ${current ? "border-brand bg-brand" : "border-line-strong bg-surface"}`} />
-      <div className="flex flex-wrap items-center gap-2"><strong className="font-display text-lg text-ink">{holder.name}</strong>{current ? <StatusPill tone="current">{ro ? "numit(ă) acum" : "named now"}</StatusPill> : null}</div>
-      <p className="text-sm font-semibold text-ink-soft">{when(holder)}</p>
-      <p className="mt-1 text-xs leading-5 text-muted">
-        {holder.startDecree ? <>{ro ? "Numit(ă) prin " : "Appointed by "}{decree(holder.startDecree)}. </> : <>{ro ? "Numirea nu e în decretele noastre. " : "The appointment is not in our decrees. "}</>}
-        {holder.reappointedBy.length ? <>{ro ? "Reînvestit(ă) prin " : "Reappointed by "}{holder.reappointedBy.map((item, index) => <span key={item.id}>{index ? ", " : ""}{decree(item)}</span>)}. </> : null}
-        {end(holder)}
-      </p>
-      {holder.residence ? <p className="mt-1 text-xs text-muted">{ro ? `Decretul spune: cu reședința la ${holder.residence.charAt(0).toUpperCase()}${holder.residence.slice(1)}.` : `The decree says: residing in ${holder.residence.charAt(0).toUpperCase()}${holder.residence.slice(1)}.`}</p> : null}
-      {alsoIn(holder).length ? <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">{ro ? "Numit(ă) în același decret și în:" : "Named in the same decree to:"}{alsoIn(holder).map((other) => <Link key={other.key} href={`${base}/${other.key}`} className="inline-flex items-center gap-1 font-semibold text-brand"><Flag place={other} width={16} />{placeName(other, locale)}</Link>)}</p> : null}
-    </li>
-  );
 
   return (
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
@@ -80,7 +56,7 @@ export default async function AmbassadorPlacePage({ params }: { params: Promise<
 
       <section className="mt-5 rounded-card border border-line bg-surface p-5">
         <h2 className="font-display text-xl font-bold text-ink">{ro ? "Cronologia titularilor" : "Timeline of holders"}</h2>
-        <ol className="mt-4 border-l-2 border-line">{timeline.holders.map((holder) => holderBlock(holder, holder === timeline.current))}</ol>
+        <div className="mt-4"><HolderTimeline holders={timeline.holders} current={timeline.current} locale={locale} placeHref={(other) => `${base}/${other}`} endedBy={{ ro: "Rechemat(ă) prin ", en: "Recalled by " }} /></div>
         <p className="mt-4 text-xs leading-5 text-muted">{ro ? "Data este cea a decretului, nu ziua sosirii la post. Decretele sunt cele din catalogul nostru (portalul legislativ), de la 1990." : "The date is that of the decree, not the day of arrival at the post. The decrees are those of our catalog (the legislative portal), from 1990."}</p>
       </section>
     </main>

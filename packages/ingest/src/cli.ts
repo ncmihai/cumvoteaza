@@ -22,6 +22,7 @@ import { fetchBulletins, importPriorities } from "./dossiers/priorities";
 import { importProfileFacts } from "./members/profile-facts";
 import { fetchSanctionPages } from "./members/sanctions-fetch";
 import { fetchSenateBiographies } from "./members/senate-bio-fetch";
+import { fetchMinistryPages } from "./ministries/sites-fetch";
 import { importSanctions } from "./members/sanctions-import";
 import { fetchCvPages } from "./members/cv-fetch";
 import { importCvEntries } from "./members/cv-import";
@@ -634,6 +635,15 @@ async function main() {
     // D-050 (e): each sitting senator's biography (the card's Biografie tab, a form post), saved byte for byte under data/coverage/raw/senate-bio. One request every --delay-ms (default 6000), at most --limit
     // per run, stops at the first sign of a block; plan only without --live.
     const result = await fetchSenateBiographies({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 150, delayMs: numberFlag("delay-ms") ?? 6000, refresh: hasFlag("refresh"), log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "ministries:sites:fetch") {
+    // D-056: the ministries' own leadership pages and the Foreign Affairs list of missions, saved byte for byte under data/coverage/raw/ministry-site. One request at a time, the sites one after the other, at
+    // least 6 s apart (10 s between two mae.ro pages); a block on a site stops the requests to that site only. Plan only without --live. Meant to run on the BC250.
+    const result = await fetchMinistryPages({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 40, delayMs: numberFlag("delay-ms") ?? 6000, refresh: hasFlag("refresh"), log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
     return;

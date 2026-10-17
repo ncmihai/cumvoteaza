@@ -11,7 +11,12 @@ import { PageIntro } from "../../../_components/ui/PageIntro";
 import { Panel } from "../../../_components/ui/Panel";
 import { PresidencyTabs } from "../../../_components/PresidencyTabs";
 import { PersonAvatar } from "../../../_components/ui/PersonAvatar";
+import { HolderTimeline } from "../../../_components/HolderTimeline";
+import { buildOfficeTimeline } from "@/lib/ambassadors";
 import { figureFor } from "@/lib/figures";
+
+/** The offices that have one holder at a time, so that the decrees can be read as a line of succession. */
+const SINGLE_SEAT = new Set(["prosecutor-general", "dna-chief", "diicot-chief", "iccj-president", "sri-director", "sie-director"]);
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string; office: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
   const { office } = await params;
@@ -43,6 +48,15 @@ export default async function OfficePage({ params, searchParams }: { params: Pro
           {info.basis.map((basis) => <li key={basis.url}><a href={basis.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-brand">{basis.label}<ExternalLink size={11} aria-hidden="true" /></a></li>)}
         </ul>
       </Panel>
+      {SINGLE_SEAT.has(office) && holdings.length > 0 ? (() => {
+        const timeline = buildOfficeTimeline(holdings);
+        return (
+          <Panel id="timeline" title={ro ? "Cine a ocupat funcția, pe rând" : "Who held the office, in turn"} className="mt-5">
+            <p className="mb-4 max-w-3xl text-xs leading-5 text-muted">{ro ? "Funcția are un singur titular: fiecare persoană numită prin decret ia locul celei dinainte. Datele sunt cele ale decretelor din catalogul nostru; un decret nu spune cine ocupă funcția azi, așa că „numit acum” înseamnă ultima persoană numită, fără un decret de încetare sau un înlocuitor după ea." : "The office has one holder: each person named by decree takes the place of the one before. The dates are those of the decrees in our catalog; a decree does not say who holds the office today, so \"named now\" means the last person named, with no decree ending it and no successor after."}</p>
+            <HolderTimeline holders={timeline.holders} current={timeline.current} locale={locale} endedBy={{ ro: "Încetat prin ", en: "Ended by " }} />
+          </Panel>
+        );
+      })() : null}
       {!info.byDecree ? (
         <Panel id="holders" title={ro ? "Titularii" : "Office-holders"} className="mt-5">
           <p className="text-sm leading-6 text-muted">{ro ? "Directorul nu se numește prin decret, deci nu apare în catalogul de decrete. Titularii se numesc prin hotărâre a Parlamentului, în ședință comună, la propunerea Președintelui; hotărârile sunt mai jos." : "The director is not appointed by decree, so does not appear in the decree catalog. The office-holders are appointed by a decision of Parliament in joint sitting, on the President's proposal; the decisions are below."}</p>

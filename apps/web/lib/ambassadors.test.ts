@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTimelines, postsOf, yearsBetween, type AmbassadorRow } from "./ambassadors";
+import { buildOfficeTimeline, buildTimelines, postsOf, yearsBetween, type AmbassadorRow } from "./ambassadors";
 import { normalizePlace, placeByKey, placeName, placeOf } from "./places";
 
 const keys = (title: string, name = "Ion Popescu") => postsOf(title, name).posts.map((post) => `${post.place.key}:${post.role}${post.residence ? `@${post.residence}` : ""}`);
@@ -137,5 +137,31 @@ describe("who held a post, and when", () => {
   it("counts whole years", () => {
     expect(yearsBetween("2020-06-01", "2026-05-31")).toBe(5);
     expect(yearsBetween("2020-06-01", "2026-06-01")).toBe(6);
+  });
+});
+
+describe("who held an office with one seat", () => {
+  const line = (name: string, action: string, issuedOn: string, number = 1): AmbassadorRow => ({ name, action, issuedOn, decreeId: `d-${issuedOn}-${number}`, decreeNumber: number, decreeYear: Number(issuedOn.slice(0, 4)), portalUrl: "https://example.test", title: "procuror general" });
+
+  it("puts each person after the one before, ends a period by a release, and names the last person with nothing after as the holder", () => {
+    const { holders, current } = buildOfficeTimeline([
+      line("Ana Alb", "appointment", "2013-05-01"),
+      line("Ana Alb", "release", "2016-02-01"),
+      line("Bob Bun", "appointment", "2016-03-01"),
+      line("Cora Cea", "appointment", "2020-01-01")
+    ]);
+    expect(holders.map((holder) => `${holder.name}:${holder.ended}`)).toEqual(["Cora Cea:open", "Bob Bun:replaced", "Ana Alb:recalled"]);
+    expect(current?.name).toBe("Cora Cea");
+  });
+
+  it("reads two spellings of one name as one person: a missing middle name, a different order, other accents", () => {
+    const { holders } = buildOfficeTimeline([line("Tiberiu Nițu", "appointment", "2013-05-15"), line("Tiberiu-Mihail Nițu", "release", "2016-02-03"), line("Vasile Manea Dragulin", "appointment", "2016-03-01"), line("Manea-Dragulin Vasile", "release", "2017-03-01")]);
+    expect(holders.map((holder) => `${holder.name}:${holder.ended}`)).toEqual(["Vasile Manea Dragulin:recalled", "Tiberiu Nițu:recalled"]);
+  });
+
+  it("marks someone named as acting, and reads a resignation as an end", () => {
+    const { holders } = buildOfficeTimeline([line("Ana Alb", "interim", "2019-01-01"), line("Ana Alb", "resignation", "2019-06-01")]);
+    expect(holders).toHaveLength(1);
+    expect(holders[0]).toMatchObject({ acting: true, ended: "recalled" });
   });
 });
