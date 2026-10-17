@@ -40,3 +40,8 @@ data/cabinet-evidence/
 
 # Local import and runbook logs
 data/imports/
+
+# Raw and generated data never goes in git (CLAUDE.md): only the hand-written inputs in data/curated and the folder's README do.
+/data/*
+!/data/curated/
+!/data/README.md
