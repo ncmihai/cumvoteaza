@@ -556,6 +556,46 @@ export const ministryLeadership = pgTable("ministry_leadership", {
   personIdx: index("ministry_leadership_person_idx").on(table.personId)
 }));
 
+/**
+ * D-059: Romania's missions abroad as the Foreign Affairs ministry's own list gives them (one row per mission: embassy, representation office, permanent mission, consulate general, consulate, honorary consulate, cultural
+ * institute) and, for a country with no embassy of its own, a row of kind `covered_by` that carries the sentence naming the embassy that covers it. `countryName` is the heading in the list as printed ("ALBANIA").
+ */
+export const foreignMissions = pgTable("foreign_missions", {
+  id: text("id").primaryKey(),
+  countryName: text("country_name").notNull(),
+  officialName: text("official_name"),
+  name: text("name").notNull(),
+  kind: text("kind").notNull(),
+  url: text("url"),
+  readOn: date("read_on").notNull()
+}, (table) => ({
+  countryIdx: index("foreign_missions_country_idx").on(table.countryName)
+}));
+
+/**
+ * D-059: who the ministry's own page of a mission names as its head (ambassador, consul general, permanent representative, or a chargé d'affaires while there is no ambassador), the way `ministry_leadership` keeps
+ * readings: a row says the page named this person in this post on those days (`firstSeenOn` and `lastSeenOn` are the days of the first and last reading that named them), and a person no longer on the page keeps the
+ * older `lastSeenOn`. The name is as the page prints it with the surname's capitals lowered; it is tied to a person only when exactly one person has those words.
+ */
+export const missionHeads = pgTable("mission_heads", {
+  id: text("id").primaryKey(),
+  missionId: text("mission_id").notNull().references(() => foreignMissions.id, { onDelete: "cascade" }),
+  countryName: text("country_name").notNull(),
+  nameText: text("name_text").notNull(),
+  personId: text("person_id").references(() => people.id, { onDelete: "set null" }),
+  /** The post as the page prints it. */
+  roleText: text("role_text").notNull(),
+  headKind: text("head_kind").$type<"ambassador" | "consul_general" | "consul" | "permanent_representative" | "charge_d_affaires" | "head_of_mission">().notNull(),
+  firstSeenOn: date("first_seen_on").notNull(),
+  lastSeenOn: date("last_seen_on").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  contentHash: text("content_hash").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  missionIdx: index("mission_heads_mission_idx").on(table.missionId, table.lastSeenOn),
+  countryIdx: index("mission_heads_country_idx").on(table.countryName, table.lastSeenOn)
+}));
+
 export const policyPortfolios = pgTable("policy_portfolios", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull(),

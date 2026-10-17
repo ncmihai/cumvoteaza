@@ -148,7 +148,7 @@ export interface TimelineResult {
 
 const ref = (row: AmbassadorRow): DecreeRef => ({ id: row.decreeId, number: row.decreeNumber, year: row.decreeYear, issuedOn: row.issuedOn, url: row.portalUrl });
 /** The same person under two spellings of the name: all the words of the shorter name are in the longer one, in any order ("Tiberiu Nițu" and "Tiberiu-Mihail Nițu", "Vasile Manea Dragulin" and "Manea-Dragulin Vasile"). */
-function sameName(a: string, b: string): boolean {
+export function sameName(a: string, b: string): boolean {
   const words = (name: string) => new Set(fold(name).split(/[\s\-]+/).filter(Boolean));
   const [left, right] = [words(a), words(b)];
   const [small, large] = left.size <= right.size ? [left, right] : [right, left];

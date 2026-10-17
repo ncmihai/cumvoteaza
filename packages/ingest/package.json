@@ -121,7 +121,8 @@
     "refresh-read-models": "tsx src/cli.ts refresh-read-models",
     "presidency:decisions:fetch": "tsx src/cli.ts presidency:decisions:fetch",
     "presidency:decisions:import": "tsx src/cli.ts presidency:decisions:import",
-    "ministries:leadership:import": "tsx src/cli.ts ministries:leadership:import"
+    "ministries:leadership:import": "tsx src/cli.ts ministries:leadership:import",
+    "ministries:missions:import": "tsx src/cli.ts ministries:missions:import"
   },
   "dependencies": {
     "@cumsevoteaza/db": "0.1.0",

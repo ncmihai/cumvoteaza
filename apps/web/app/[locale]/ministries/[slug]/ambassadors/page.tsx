@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getAmbassadorTimelines } from "@/lib/ambassador-data";
+import { getMissionsByPlace } from "@/lib/mission-data";
 import { LAPSE_YEARS, type PlaceTimeline } from "@/lib/ambassadors";
 import { placeName } from "@/lib/places";
 import { isLocale, type AppLocale } from "@/lib/i18n";
@@ -23,7 +24,7 @@ export default async function AmbassadorsPage({ params, searchParams }: { params
   const query = await searchParams;
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const ro = locale === "ro";
-  const data = await getAmbassadorTimelines();
+  const [data, missions] = await Promise.all([getAmbassadorTimelines(), getMissionsByPlace()]);
   const base = `/${locale}/ministries/externe/ambassadors`;
   const needle = (query.q ?? "").trim().toLowerCase();
   const show = query.show === "current" || query.show === "none" ? query.show : "all";
@@ -47,6 +48,7 @@ export default async function AmbassadorsPage({ params, searchParams }: { params
     const current = item.current;
     const earlier = item.holders.filter((holder) => holder !== current).length;
     const last = item.holders[0];
+    const embassyHead = missions[item.place.key]?.heads.find((head) => head.inLatestReading && head.missionKind === "embassy");
     return (
       <li key={item.place.key}>
         <Link href={`${base}/${item.place.key}`} className="group flex h-full min-w-0 flex-col rounded-card border border-line bg-surface p-4 transition-colors hover:border-brand hover:bg-wash">
@@ -58,6 +60,7 @@ export default async function AmbassadorsPage({ params, searchParams }: { params
           ) : (
             <span className="mt-3 block text-xs leading-5 text-muted">{ro ? "Niciun ambasador numit acum în decretele noastre." : "No ambassador named now in our decrees."}{last?.endedOn ? ` ${ro ? "Ultimul" : "The last"}: ${last.name}, ${last.ended === "recalled" ? (ro ? "rechemat" : "recalled") : (ro ? "înlocuit" : "replaced")} ${formatDate(last.endedOn, locale)}.` : ""}</span>
           )}
+          {embassyHead ? <span className="mt-2 block text-xs leading-5 text-muted">{embassyHead.headKind === "charge_d_affaires" ? (ro ? `Pagina ministerului: însărcinat cu afaceri, ${embassyHead.name}` : `The ministry's page: chargé d'affaires, ${embassyHead.name}`) : `${ro ? "Pagina ministerului" : "The ministry's page"}: ${embassyHead.name}`}</span> : null}
           {earlier > 0 ? <span className="mt-2 text-xs text-muted">{ro ? `${earlier} ${earlier === 1 ? "titular anterior" : "titulari anteriori"}` : `${earlier} earlier ${earlier === 1 ? "holder" : "holders"}`}</span> : null}
         </Link>
       </li>

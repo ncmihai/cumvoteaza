@@ -644,9 +644,28 @@ async function main() {
   if (command === "ministries:sites:fetch") {
     // D-056: the ministries' own leadership pages and the Foreign Affairs list of missions, saved byte for byte under data/coverage/raw/ministry-site. One request at a time, the sites one after the other, at
     // least 6 s apart (10 s between two mae.ro pages); a block on a site stops the requests to that site only. Plan only without --live. Meant to run on the BC250.
-    const result = await fetchMinistryPages({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 40, delayMs: numberFlag("delay-ms") ?? 6000, refresh: hasFlag("refresh"), log: (line) => console.log(line) });
+    // --missions: the page of each embassy, permanent mission and consulate general on the saved list (about 165 pages, 10 s apart, resumable; the head of the mission is named on it).
+    const { missionPages } = await import("./ministries/sites-fetch");
+    const pages = hasFlag("missions") ? await missionPages(repoRoot) : undefined;
+    if (hasFlag("missions") && !pages?.length) { console.log("The list of missions is not saved yet: run this command without --missions first."); return; }
+    const result = await fetchMinistryPages({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? (pages ? 200 : 40), delayMs: numberFlag("delay-ms") ?? 6000, refresh: hasFlag("refresh"), ...(pages ? { pages } : {}), log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "ministries:missions:import") {
+    // D-059: the saved mae.ro list of missions and the pages of the embassies, permanent missions and consulates general read into foreign_missions and mission_heads (who the ministry's own page names as head,
+    // with the first and last day a reading named them). Offline apart from the database. Dry run unless --persist.
+    const { importMissions } = await import("./ministries/missions-import");
+    const session = createDbSession();
+    try {
+      const result = await importMissions(session.db, { repoRoot, persist: hasFlag("persist"), log: (line) => console.log(line) });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

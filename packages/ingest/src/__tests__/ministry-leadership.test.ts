@@ -41,6 +41,16 @@ describe("the leadership of a ministry", () => {
     expect(parsed.entries[0]!.role.startsWith("MINISTRUL")).toBe(true);
   });
 
+  it("reads a name with a comma and its post on one line, and a police rank before a name", () => {
+    const parsed = parseLeadership(page(["Marian-Cătălin PREDOIU, Viceprim-ministru, Ministrul Afacerilor Interne", "Chestor general de poliție Bogdan DESPESCU – Secretar de stat", "Chestor șef de poliție Ioana DOROBANȚU – Secretar general adjunct"]));
+    expect(parsed.entries.map((entry) => `${entry.kind}:${entry.name}`)).toEqual(["minister:Marian-Cătălin PREDOIU", "state_secretary:Bogdan DESPESCU", "secretary_general_deputy:Ioana DOROBANȚU"]);
+  });
+
+  it("reads a deputy prime minister's line as the minister's post, and a page that is one big form", () => {
+    const html = "<html><body><form action='/x'><div><p>Tánczos Barna</p><p>Viceprim-ministru, ministru interimar al Agriculturii și Dezvoltării Rurale</p><p>Florian-Emil Dumitru</p><p>Secretar de Stat</p></div><input name='q'></form></body></html>";
+    expect(parseLeadership(html).entries.map((entry) => `${entry.kind}:${entry.name}`)).toEqual(["minister:Tánczos Barna", "state_secretary:Florian-Emil Dumitru"]);
+  });
+
   it("does not take a name for two posts, and leaves the menu, the footer and scripts out", () => {
     const parsed = parseLeadership(page(["Ana Alb", "Secretar de stat", "Secretar de stat"]));
     expect(parsed.entries).toHaveLength(1);

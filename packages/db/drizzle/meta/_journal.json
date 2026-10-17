@@ -470,6 +470,13 @@
       "when": 1792240792985,
       "tag": "0066_government_role_end",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792242530283,
+      "tag": "0067_foreign_missions",
+      "breakpoints": true
     }
   ]
 }

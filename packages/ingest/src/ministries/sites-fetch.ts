@@ -1,6 +1,7 @@
 import path from "node:path";
 import { FetchStoppedError, PoliteFetcher } from "../coverage/polite-fetcher";
-import { RawCache } from "../coverage/raw-cache";
+import { decodeOfficialBytes, RawCache } from "../coverage/raw-cache";
+import { headedMissions, parseMissionList } from "./missions-parse";
 
 /**
  * D-056: the pages of the ministries' own sites that say who leads each ministry, and the Foreign Affairs list of missions, saved byte for byte under `data/coverage/raw/ministry-site`. The addresses are the ones each
@@ -77,7 +78,7 @@ export async function fetchMinistryPages(options: {
     if (requested > 0) await sleep(Math.max(options.delayMs, 6000));
     let fetcher = fetchers.get(site);
     if (!fetcher) {
-      fetcher = new PoliteFetcher({ maxRequests: 4, delayMs: Math.max(options.delayMs, SITE_DELAY_MS[site] ?? 0), timeoutMs: 45_000, retries: 0, sleep, ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}) });
+      fetcher = new PoliteFetcher({ maxRequests: Math.max(4, options.limit), delayMs: Math.max(options.delayMs, SITE_DELAY_MS[site] ?? 0), timeoutMs: 45_000, retries: 0, sleep, ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}) });
       fetchers.set(site, fetcher);
     }
     requested += 1;
@@ -98,4 +99,12 @@ export async function fetchMinistryPages(options: {
     }
   }
   return result;
+}
+
+/** The pages of the missions whose page names who heads them (embassies, permanent missions, consulates general), from the saved list: one page each, `externe--mission-<mae.ro number>`. */
+export async function missionPages(repoRoot: string): Promise<MinistryPage[]> {
+  const cache = new RawCache(path.join(repoRoot, "data/coverage/raw"));
+  const saved = await cache.read("ministry-site", pageKey({ slug: "externe", page: "missions", url: "" }));
+  if (!saved) return [];
+  return headedMissions(parseMissionList(decodeOfficialBytes(saved))).map((mission) => ({ slug: "externe", page: `mission-${mission.id}`, url: mission.url }));
 }

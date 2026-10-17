@@ -31,11 +31,11 @@ const ROLES: Array<[LeadershipKind, RegExp]> = [
   ["secretary_general", /^secretar(?:ul)? general\b/i],
   ["undersecretary", /^subsecretar(?:ul)? de stat/i],
   ["state_secretary", /^secretar(?:ul)? de stat/i],
-  ["minister", /^ministr(?:ul)?\b(?!\s+(?:de|al|pe|la)\b)/i]
+  ["minister", /^(?:(?:vice)?prim-ministru\b|ministr(?:ul)?\b(?!\s+(?:de|al|pe|la)\b))/i]
 ];
 
 const NOISE = /curriculum|declara[țt]|contact|\btel\b|fax|e-?mail|adres[ăa]|\bdata\b|agenda|audien|biografi|cabinet|organigram|vezi|mai mult|cite[șs]te|\bpdf\b|\bcv\b|ro\b|en\b|cookie|accept|meniu|căutare|cautare|acasă|acasa|anun[țt]|comunicat|legisla|transparen|contact|program|minister(?:ul)?\b|ministerului|guvernul|departament|direc[țt]ia|serviciul|biroul|institutul|ag[ei]n[țt]ia|autoritatea|consiliul|compartiment|oficiul|secretariat|statul major/i;
-const TITLES = /^(?:dr\.?|prof\.?|univ\.?|conf\.?|ing\.?|av\.?|general(?:\s+de\s+\w+)?|colonel|contraamiral|viceamiral|amiral|gl\.?|lt\.?|cdor\.?)\s+/i;
+const TITLES = /^(?:dr\.?|prof\.?|univ\.?|conf\.?|ing\.?|av\.?|general(?:\s+de\s+\w+)?|colonel|contraamiral|viceamiral|amiral|gl\.?|lt\.?|cdor\.?|(?:prim-)?chestor(?:\s+(?:general|[șs]ef|principal))?(?:\s+de\s+poli[țt]ie)?|comisar(?:\s+(?:general|[șs]ef|principal))?(?:\s+de\s+poli[țt]ie)?|inspector\s+general)\s+/i;
 const TOKEN = /^[A-ZĂÂÎȘȚŞŢÁÉÓÖŐÜŰ][\p{L}'’.\-]*$/u;
 
 function clean(line: string): string {
@@ -58,8 +58,15 @@ function inlineEntry(line: string): { name: string; role: string; kind: Leadersh
     const loose = new RegExp(pattern.source.replace(/^\^/, "(?<=\\s)"), "i");
     const at = loose.exec(line)?.index;
     if (at === undefined || at === 0) continue;
-    const name = nameOf(line.slice(0, at));
+    const name = nameOf(line.slice(0, at).replace(/[\s,–—-]+$/, ""));
     if (name) return { name, role: line.slice(at).trim(), kind };
+  }
+  // "Marian-Cătălin PREDOIU, Viceprim-ministru, Ministrul Afacerilor Interne": the name, a comma, then the post.
+  const comma = /^([^,]{5,60}),\s*((?:(?:vice)?prim-ministru|ministr|secretar|subsecretar|șef|sef)\b.*)$/i.exec(line);
+  if (comma) {
+    const name = nameOf(comma[1]!);
+    const kind = roleOf(comma[2]!);
+    if (name && kind) return { name, role: comma[2]!.trim(), kind };
   }
   return undefined;
 }
@@ -77,7 +84,9 @@ export function nameOf(line: string): string | undefined {
 
 export function parseLeadership(html: string): ParsedLeadership {
   const $ = cheerio.load(html);
-  $("script, style, noscript, nav, header, footer, form, select").remove();
+  // A page may be one big form (an ASP.NET-style page): unwrap forms, and take out only the fields in them.
+  $("script, style, noscript, nav, header, footer, select, input, button, textarea").remove();
+  $("form").each((_, form) => { $(form).replaceWith($(form).contents()); });
   const lines: string[] = [];
   const walk = (node: cheerio.Cheerio<AnyNode>) => {
     node.contents().each((_, child) => {

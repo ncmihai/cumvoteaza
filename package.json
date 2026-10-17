@@ -68,6 +68,7 @@
     "ingest:members:senate-bio:fetch": "npm --workspace @cumsevoteaza/ingest run members:senate-bio:fetch --",
     "ingest:ministries:sites:fetch": "npm --workspace @cumsevoteaza/ingest run ministries:sites:fetch --",
     "ingest:ministries:leadership:import": "npm --workspace @cumsevoteaza/ingest run ministries:leadership:import --",
+    "ingest:ministries:missions:import": "npm --workspace @cumsevoteaza/ingest run ministries:missions:import --",
     "ingest:members:cv:import": "npm --workspace @cumsevoteaza/ingest run members:cv:import --",
     "ingest:members:cv:check": "npm --workspace @cumsevoteaza/ingest run members:cv:check --",
     "ingest:members:cv:review": "npm --workspace @cumsevoteaza/ingest run members:cv:review --",

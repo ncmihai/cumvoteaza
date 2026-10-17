@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getAmbassadorTimelines } from "@/lib/ambassador-data";
+import { getMissionsByPlace } from "@/lib/mission-data";
 import { LAPSE_YEARS } from "@/lib/ambassadors";
 import { placeByKey, placeName } from "@/lib/places";
 import { isLocale, type AppLocale } from "@/lib/i18n";
@@ -11,6 +12,7 @@ import { titled } from "@/lib/page-metadata";
 import { Flag } from "../../../../_components/Flag";
 import { PageIntro } from "../../../../_components/ui/PageIntro";
 import { HolderTimeline } from "../../../../_components/HolderTimeline";
+import { MissionsPanel } from "../../../../_components/MissionsPanel";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string; place: string }> }): Promise<Metadata> {
   const { locale, place: key } = await params;
@@ -24,7 +26,7 @@ export default async function AmbassadorPlacePage({ params }: { params: Promise<
   if (slug !== "externe") notFound();
   const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
   const ro = locale === "ro";
-  const data = await getAmbassadorTimelines();
+  const [data, missions] = await Promise.all([getAmbassadorTimelines(), getMissionsByPlace()]);
   const timeline = data?.timelines.find((item) => item.place.key === key);
   if (!timeline) notFound();
   const { place } = timeline;
@@ -53,6 +55,8 @@ export default async function AmbassadorPlacePage({ params }: { params: Promise<
           <p className="mt-2 text-sm leading-6 text-ink-soft">{ro ? "Decretele noastre nu numesc acum niciun ambasador la acest post: ultimul titular a fost rechemat sau înlocuit și nu e numit altul după el." : "Our decrees name no ambassador at this post now: the last holder was recalled or replaced and no one is named after."}</p>
         )}
       </section>
+
+      {missions[key] ? <MissionsPanel locale={locale} data={missions[key]!} {...(timeline.current ? { decreeCurrentName: timeline.current.name } : {})} /> : null}
 
       <section className="mt-5 rounded-card border border-line bg-surface p-5">
         <h2 className="font-display text-xl font-bold text-ink">{ro ? "Cronologia titularilor" : "Timeline of holders"}</h2>
