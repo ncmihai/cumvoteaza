@@ -35,6 +35,12 @@ describe("the leadership of a ministry", () => {
     expect(parsed.postsWithoutName).toBe(1);
   });
 
+  it("reads a post that begins with a dash, and a name and its post on one line", () => {
+    const parsed = parseLeadership(page(["CSEKE Attila", "- MINISTRUL DEZVOLTĂRII, LUCRĂRILOR PUBLICE ȘI ADMINISTRAȚIEI", "Ákos DERZSI SECRETAR DE STAT", "Francisc-Oscar GAL SUBSECRETAR DE STAT", "Eduard CORJESCU SECRETAR GENERAL"]));
+    expect(parsed.entries.map((entry) => `${entry.kind}:${entry.name}`)).toEqual(["minister:CSEKE Attila", "state_secretary:Ákos DERZSI", "undersecretary:Francisc-Oscar GAL", "secretary_general:Eduard CORJESCU"]);
+    expect(parsed.entries[0]!.role.startsWith("MINISTRUL")).toBe(true);
+  });
+
   it("does not take a name for two posts, and leaves the menu, the footer and scripts out", () => {
     const parsed = parseLeadership(page(["Ana Alb", "Secretar de stat", "Secretar de stat"]));
     expect(parsed.entries).toHaveLength(1);

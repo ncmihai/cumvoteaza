@@ -42,9 +42,25 @@ function clean(line: string): string {
   return line.replace(/[​-‍﻿]/g, "").replace(/ /g, " ").replace(/\s+/g, " ").trim();
 }
 
+/** A post's line may begin with a dash or a bullet ("- MINISTRUL DEZVOLTĂRII"). */
+const bare = (line: string) => line.replace(/^[\s\-–—•►▪*]+/, "");
+
 function roleOf(line: string): LeadershipKind | undefined {
-  if (line.length > 140) return undefined;
-  for (const [kind, pattern] of ROLES) if (pattern.test(line)) return kind;
+  const text = bare(line);
+  if (text.length > 140) return undefined;
+  for (const [kind, pattern] of ROLES) if (pattern.test(text)) return kind;
+  return undefined;
+}
+
+/** A name and its post on one line ("Ákos DERZSI SECRETAR DE STAT"): the post starts where one of the post phrases does, and what is before it must read as a name. */
+function inlineEntry(line: string): { name: string; role: string; kind: LeadershipKind } | undefined {
+  for (const [kind, pattern] of ROLES) {
+    const loose = new RegExp(pattern.source.replace(/^\^/, "(?<=\\s)"), "i");
+    const at = loose.exec(line)?.index;
+    if (at === undefined || at === 0) continue;
+    const name = nameOf(line.slice(0, at));
+    if (name) return { name, role: line.slice(at).trim(), kind };
+  }
   return undefined;
 }
 
@@ -79,6 +95,14 @@ export function parseLeadership(html: string): ParsedLeadership {
   let postsWithoutName = 0;
   let used = -1;
   for (let at = 0; at < lines.length; at += 1) {
+    const inline = roleOf(lines[at]!) ? undefined : inlineEntry(lines[at]!);
+    if (inline) {
+      const next = lines[at + 1];
+      const since = next && /^\(.{3,60}\)$/.test(next) ? next.slice(1, -1) : undefined;
+      entries.push({ name: inline.name, role: inline.role, kind: inline.kind, ...(since ? { since } : {}), position: entries.length });
+      used = at;
+      continue;
+    }
     const kind = roleOf(lines[at]!);
     if (!kind) continue;
     const name = at > 0 && at - 1 > used ? nameOf(lines[at - 1]!) : undefined;
@@ -86,7 +110,7 @@ export function parseLeadership(html: string): ParsedLeadership {
     used = at;
     const next = lines[at + 1];
     const since = next && /^\(.{3,60}\)$/.test(next) ? next.slice(1, -1) : undefined;
-    entries.push({ name, role: lines[at]!, kind, ...(since ? { since } : {}), position: entries.length });
+    entries.push({ name, role: bare(lines[at]!), kind, ...(since ? { since } : {}), position: entries.length });
   }
   return { entries, postsWithoutName };
 }
