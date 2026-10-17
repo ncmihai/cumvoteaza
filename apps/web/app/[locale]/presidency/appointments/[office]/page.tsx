@@ -6,17 +6,19 @@ import { OFFICES, OFFICE_GROUP_LABELS, ROUTE_LABELS, formatDate } from "@cumsevo
 import { getOfficeHoldings, getParliamentAppointments, getPresidents } from "@/lib/president-data";
 import { ACTION_LABELS, personName } from "@/lib/president-format";
 import { isLocale, type AppLocale } from "@/lib/i18n";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import { PageIntro } from "../../../_components/ui/PageIntro";
 import { Panel } from "../../../_components/ui/Panel";
 import { PresidencyTabs } from "../../../_components/PresidencyTabs";
 import { PersonAvatar } from "../../../_components/ui/PersonAvatar";
 import { figureFor } from "@/lib/figures";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string; office: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string; office: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
   const { office } = await params;
   const info = (OFFICES as Record<string, (typeof OFFICES)[keyof typeof OFFICES]>)[office];
-  return titled(params, { ro: info?.label.ro ?? "Funcție", en: info?.label.en ?? "Office" });
+  return titled(params, { ro: info?.label.ro ?? "Funcție", en: info?.label.en ?? "Office" },
+    info ? { ro: `${info.label.ro}: cine a fost numit, de către cine și pe ce cale prevede legea numirea, din decretele Președintelui.`, en: `${info.label.en}: who was appointed, by whom and by what route the law sets for the appointment, from the President's decrees.` } : undefined,
+    info ? { path: `/presidency/appointments/${office}`, searchParams } : undefined);
 }
 
 export default async function OfficePage({ params, searchParams }: { params: Promise<{ locale: string; office: string }>; searchParams: Promise<{ president?: string }> }) {

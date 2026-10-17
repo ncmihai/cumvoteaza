@@ -5,10 +5,10 @@ import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getElectionView } from "@/lib/election-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { officialCase } from "@/lib/text";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Alegeri parlamentare", en: "Parliamentary elections" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Alegeri parlamentare", en: "Parliamentary elections" }, { ro: "Alegerile parlamentare: rezultatele pe liste și circumscripții și cine a câștigat fiecare mandat.", en: "The parliamentary elections: results by list and constituency and who won each seat." }, { path: "/elections", searchParams });
 }
 
 type Query = { election?: string; chamber?: string; circ?: string };

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { chamberLabels } from "@cumsevoteaza/parliament-model";
 import { getMemberDirectoryData } from "@/lib/data";
@@ -12,8 +12,8 @@ import { ArrowRight, Building2, Filter, MapPin, Search } from "lucide-react";
 import { DismissibleDetails } from "../_components/DismissibleDetails";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Parlamentari", en: "Members" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Parlamentari", en: "Members" }, { ro: "Deputații și senatorii României: voturi, prezență, proiecte de lege inițiate și activitate, cu sursa oficială la fiecare cifră.", en: "The deputies and senators of Romania: votes, attendance, bills filed and activity, with the official source behind every figure." }, { path: "/members", searchParams });
 }
 
 export default async function MembersPage({

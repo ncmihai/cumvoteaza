@@ -5,7 +5,7 @@ import { isLocale, type AppLocale } from "@/lib/i18n";
 import { PartyDirectory } from "../_components/PartyDirectory";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Partide", en: "Parties" });
+  return titled(params, { ro: "Partide", en: "Parties" }, { ro: "Partidele din Parlament: parlamentarii lor, voturile și cum s-a schimbat reprezentarea în timp.", en: "The parties in Parliament: their members, their votes and how their representation has changed over time." }, { path: "/parties" });
 }
 
 export default async function PartiesPage({ params }: { params: Promise<{ locale: string }> }) {

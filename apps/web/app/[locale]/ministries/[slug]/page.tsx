@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { describe, seoFields } from "@/lib/page-metadata";
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -12,7 +13,9 @@ import type { AppLocale } from "@/lib/i18n";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const ministry = await getMinistry(slug);
-  return { title: ministry ? ministry.name : (locale === "en" ? "Ministry not found" : "Minister negăsit") };
+  if (!ministry) return { title: locale === "en" ? "Ministry not found" : "Minister negăsit" };
+  const lang: AppLocale = locale === "en" ? "en" : "ro";
+  return { title: ministry.name, ...seoFields(lang, `/ministries/${ministry.slug}`, { description: describe(lang === "ro" ? `${ministry.name}: miniștrii de-a lungul guvernelor și proiectele de lege legate de acest minister.` : `${ministry.name}: its ministers across governments and the bills tied to this ministry.`) }) };
 }
 
 export default async function MinistryPage({ params }: { params: Promise<{ locale: AppLocale; slug: string }> }) {

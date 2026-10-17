@@ -6,13 +6,13 @@ import { getElectionMapData } from "@/lib/election-map-data";
 import { MAP_METRICS, leaderOf, shareOf, sumByCircumscription, turnoutOf, invalidShareOf, type MapMetric } from "@/lib/election-map";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { officialCase } from "@/lib/text";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import { PageIntro } from "../../_components/ui/PageIntro";
 import { Panel } from "../../_components/ui/Panel";
 import { ElectionMap } from "../../_components/ElectionMap";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Harta alegerilor", en: "Election map" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Harta alegerilor", en: "Election map" }, { ro: "Rezultatele alegerilor parlamentare pe hartă, cu datele oficiale ale Autorității Electorale Permanente.", en: "The results of the parliamentary elections on a map, from the Permanent Electoral Authority's official data." }, { path: "/elections/map", searchParams });
 }
 
 type Query = { election?: string; chamber?: string; metric?: string; list?: string; party?: string; level?: string; circ?: string };

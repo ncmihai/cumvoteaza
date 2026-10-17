@@ -5,12 +5,12 @@ import { DECREE_KINDS, DECREE_KIND_LABELS, formatDate, type DecreeKind } from "@
 import { DECREES_PAGE_SIZE, getPresidencyView, type PresidencyFilter } from "@/lib/presidency-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { normalizeRomanian } from "@/lib/text";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import { getPresidents } from "@/lib/president-data";
 import { PresidencyTabs } from "../_components/PresidencyTabs";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Președinția: decretele", en: "The Presidency: decrees" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Președinția: decretele", en: "The Presidency: decrees" }, { ro: "Decretele Președintelui României pe tipuri și ani: numiri, decorări, grațieri și altele, din Monitorul Oficial.", en: "The decrees of the President of Romania by type and year: appointments, decorations, pardons and more, from the Official Gazette." }, { path: "/presidency", searchParams });
 }
 
 type Query = { kind?: string; year?: string; page?: string; signer?: string };

@@ -16,7 +16,10 @@ import { figureFor } from "@/lib/figures";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const page = await getPresidentPage(slug);
-  return titled(params, { ro: page ? personName(page.name) : "Președinte", en: page ? personName(page.name) : "President" });
+  const name = page ? personName(page.name) : undefined;
+  return titled(params, { ro: name ?? "Președinte", en: name ?? "President" },
+    name ? { ro: `${name}: decretele semnate pe tipuri și ani, numirile făcute și alegerea câștigată, din Monitorul Oficial.`, en: `${name}: the decrees signed by type and year, the appointments made and the election won, from the Official Gazette.` } : undefined,
+    name ? { path: `/presidency/presidents/${slug}` } : undefined);
 }
 
 const APPOINTING = new Set(["appointment", "reappointment", "interim", "designation"]);

@@ -495,3 +495,37 @@ test("the support bar fits a 320 px phone without moving the page sideways", asy
   expect(link.x).toBeGreaterThanOrEqual(0);
   expect(link.x + link.width).toBeLessThanOrEqual(320);
 });
+
+test.describe("search engines (D-050)", () => {
+  test("robots.txt allows the pages, keeps the data API out and names the sitemaps", async ({ request }) => {
+    const response = await request.get("/robots.txt");
+    expect(response.ok()).toBe(true);
+    const text = await response.text();
+    expect(text).toMatch(/User-Agent: \*/i);
+    expect(text).toMatch(/Disallow: \/api\//);
+    expect(text).toMatch(/Sitemap: https?:\/\/[^\s]+\/sitemap\/[a-z0-9-]+\.xml/);
+  });
+
+  test("the sitemap lists the fixed pages in both languages, each naming the other", async ({ request }) => {
+    const response = await request.get("/sitemap/pages.xml");
+    expect(response.ok()).toBe(true);
+    const xml = await response.text();
+    expect(xml).toContain("/ro/votes</loc>");
+    expect(xml).toContain("/en/votes</loc>");
+    expect(xml).toMatch(/hreflang="en" href="[^"]+\/en\/votes"/);
+  });
+
+  test("a list page has a description, its own canonical address and the other language", async ({ page }) => {
+    await page.goto("/ro/votes");
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /.{40,}/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/ro\/votes$/);
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute("href", /\/en\/votes$/);
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  });
+
+  test("a searched list is not indexed but still points at the plain list", async ({ page }) => {
+    await page.goto("/ro/votes?q=buget");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/ro\/votes$/);
+  });
+});

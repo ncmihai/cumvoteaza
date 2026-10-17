@@ -2,7 +2,9 @@ import { getCurrentCompositionData } from "@/lib/composition-data";
 import { getCoveragePageData, getLastCatchUp } from "@/lib/coverage-data";
 import { getVoteExplorerData } from "@/lib/explorer-data";
 import { getCountyOptions, getRecentChanges } from "@/lib/home-data";
+import type { Metadata } from "next";
 import { isLocale, type AppLocale } from "@/lib/i18n";
+import { localeOf, seoFields } from "@/lib/page-metadata";
 import { ChangesFeed } from "./_components/home/ChangesFeed";
 import { Hero } from "./_components/home/Hero";
 import { LatestDecisions } from "./_components/home/LatestDecisions";
@@ -10,6 +12,10 @@ import { ParliamentNow } from "./_components/home/ParliamentNow";
 import { TrustStrip } from "./_components/home/TrustStrip";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  return seoFields(await localeOf(params), "/");
+}
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;

@@ -11,7 +11,7 @@ import { Panel } from "../_components/ui/Panel";
 const outcome = { ro: { adopted: "Adoptată", rejected: "Respinsă", unknown: "Fără vot" }, en: { adopted: "Adopted", rejected: "Rejected", unknown: "No vote" } } as const;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Moțiuni", en: "Motions" });
+  return titled(params, { ro: "Moțiuni", en: "Motions" }, { ro: "Moțiunile de cenzură și moțiunile simple: cine le-a semnat, cum s-a votat și ce s-a întâmplat cu fiecare.", en: "Motions of censure and simple motions: who signed them, how they were voted and what became of each." }, { path: "/motions" });
 }
 
 export default async function MotionsPage({ params }: { params: Promise<{ locale: string }> }) {

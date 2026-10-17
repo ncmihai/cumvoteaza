@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { describe, seoFields } from "@/lib/page-metadata";
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -10,7 +11,10 @@ import type { AppLocale } from "@/lib/i18n";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const government = await getGovernmentView(slug);
-  return { title: government ? (locale === "en" ? `${government.name} government` : `Guvernul ${government.name}`) : (locale === "en" ? "Government not found" : "Guvern negăsit") };
+  if (!government) return { title: locale === "en" ? "Government not found" : "Guvern negăsit" };
+  const lang: AppLocale = locale === "en" ? "en" : "ro";
+  const title = lang === "en" ? `${government.name} government` : `Guvernul ${government.name}`;
+  return { title, ...seoFields(lang, `/governments/${government.slug}`, { description: describe(lang === "ro" ? `${title}: miniștrii, ministerele, sprijinul din Parlament și moțiunile care l-au vizat.` : `${title}: its ministers, its ministries, its support in Parliament and the motions that targeted it.`) }) };
 }
 
 export default async function GovernmentPage({ params }: { params: Promise<{ locale: AppLocale; slug: string }> }) {

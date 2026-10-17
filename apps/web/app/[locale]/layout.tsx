@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { NextIntlClientProvider } from "next-intl";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { TITLE_TEMPLATE } from "@/lib/page-metadata";
+import { SITE } from "@/lib/site";
 import { FeedbackWidget } from "./_components/FeedbackWidget";
 import { SiteFooter } from "./_components/SiteFooter";
 import { SiteHeader } from "./_components/SiteHeader";
@@ -26,7 +27,7 @@ const DEFAULT_DESCRIPTION = {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   return {
-    metadataBase: new URL("https://cumvoteaza.vercel.app"),
+    metadataBase: new URL(SITE.url),
     title: { default: "cumsevoteaza", template: TITLE_TEMPLATE },
     description: DEFAULT_DESCRIPTION[isLocale(locale) ? locale : "ro"]
   };

@@ -26,7 +26,7 @@ function People({ people, locale, size = 40 }: { people: LeadershipPerson[]; loc
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Conducerea Parlamentului", en: "Parliament's leadership" });
+  return titled(params, { ro: "Conducerea Parlamentului", en: "Parliament's leadership" }, { ro: "Conducerea Parlamentului: președinții Camerelor, vicepreședinții și ceilalți membri ai birourilor permanente.", en: "The leadership of the Parliament: the presidents of the chambers, their deputies and the other members of the permanent bureaus." }, { path: "/leadership" });
 }
 
 export default async function LeadershipPage({ params }: { params: Promise<{ locale: string }> }) {

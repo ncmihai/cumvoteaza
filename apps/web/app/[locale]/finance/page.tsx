@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import { ExternalLink, Landmark } from "lucide-react";
 import { financeNote, getCampaigns, getFinance, type CampaignRow, type FinanceRow } from "@/lib/finance-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Finanțarea partidelor", en: "Party finance" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Finanțarea partidelor", en: "Party finance" }, { ro: "Finanțarea partidelor: veniturile și cheltuielile declarate, din rapoartele oficiale ale Autorității Electorale Permanente.", en: "Party finance: declared income and spending, from the Permanent Electoral Authority's official reports." }, { path: "/finance", searchParams });
 }
 
 type Query = { year?: string; campaign?: string };

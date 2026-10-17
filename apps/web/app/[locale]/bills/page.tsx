@@ -1,13 +1,13 @@
 import { getBillExplorerData, getDirectoryFilterOptions, parseExplorerFilters } from "@/lib/explorer-data";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { isLocale, messagesFor, type AppLocale } from "@/lib/i18n";
 import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { BillDirectoryExplorer, type DirectoryLabels } from "../_components/ExplorerDirectories";
 import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Proiecte legislative", en: "Bills" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Proiecte legislative", en: "Bills" }, { ro: "Proiectele de lege ale Parlamentului: în ce stadiu sunt, ce pași au parcurs, cine le-a inițiat și cum s-a votat, din dosarele oficiale.", en: "The bills of the Romanian Parliament: where each stands, the steps it has taken, who filed it and how it was voted, from the official dossiers." }, { path: "/bills", searchParams });
 }
 
 export default async function BillsPage({

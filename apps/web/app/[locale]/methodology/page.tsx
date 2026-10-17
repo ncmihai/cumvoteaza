@@ -27,7 +27,7 @@ const th = "px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-m
 const td = "px-2 py-2 align-top";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Metodologie și acoperire", en: "Methodology and coverage" }, { ro: "Ce acoperă site-ul, de unde vine fiecare număr și ce lipsește încă.", en: "What the site covers, where each number comes from and what is still missing." });
+  return titled(params, { ro: "Metodologie și acoperire", en: "Methodology and coverage" }, { ro: "Ce acoperă site-ul, de unde vine fiecare număr și ce lipsește încă.", en: "What the site covers, where each number comes from and what is still missing." }, { path: "/methodology" });
 }
 
 export default async function MethodologyPage({ params }: { params: Promise<{ locale: string }> }) {

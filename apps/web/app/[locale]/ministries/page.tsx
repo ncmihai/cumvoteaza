@@ -7,7 +7,7 @@ import { getMinistries } from "@/lib/ministry-data";
 import type { AppLocale } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Ministere și miniștri", en: "Ministries and ministers" });
+  return titled(params, { ro: "Ministere și miniștri", en: "Ministries and ministers" }, { ro: "Ministerele Guvernului României și miniștrii lor de-a lungul timpului, cu proiectele de lege legate de fiecare.", en: "The ministries of the Romanian Government and their ministers over time, with the bills tied to each." }, { path: "/ministries" });
 }
 
 export default async function MinistriesPage({ params }: { params: Promise<{ locale: AppLocale }> }) {

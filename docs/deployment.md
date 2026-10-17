@@ -40,6 +40,17 @@ is added, use the pooled connection string for serverless deployments.
 `DATABASE_MAX_CONNECTIONS` is optional; keep it low on Vercel/Neon unless
 traffic or Neon compute size justifies increasing it.
 
+For search engines (D-050): only the production deployment answers `robots.txt` with "allowed" and lists its sitemaps
+(`/sitemap/pages.xml`, `bills`, `members`, `parties` and one `votes-YEAR` per year, read from the database once a day);
+a preview or a local build disallows everything. Every canonical link, hreflang link and sitemap address is built from
+`https://cumvoteaza.vercel.app`; when the site moves to its own domain, set this and redeploy:
+
+```text
+NEXT_PUBLIC_SITE_URL=https://the-new-domain.example
+```
+
+Then submit `https://<domain>/sitemap/pages.xml` and the other sitemaps in Google Search Console.
+
 For the daily Vercel Cron importer:
 
 ```text

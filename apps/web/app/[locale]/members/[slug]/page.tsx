@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { describe, seoFields } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Building2, CalendarDays, ExternalLink, Landmark, MapPin } from "lucide-react";
@@ -37,7 +38,11 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const { locale: rawLocale, slug } = await params;
   const { legislature } = await searchParams;
   const data = await getMemberPageData(slug, { legislature });
-  return { title: data ? data.member.displayName : (rawLocale === "en" ? "Member not found" : "Parlamentar negăsit") };
+  if (!data) return { title: rawLocale === "en" ? "Member not found" : "Parlamentar negăsit" };
+  const locale: AppLocale = isLocale(rawLocale) ? rawLocale : "ro";
+  const bits = [data.mandate ? chamberLabels[locale][data.mandate.chamber] : undefined, data.party?.shortName].filter(Boolean).join(", ");
+  const description = locale === "ro" ? `${data.member.displayName}${bits ? ` (${bits})` : ""}: voturile, prezența, proiectele de lege inițiate și activitatea, cu sursa oficială la fiecare cifră.` : `${data.member.displayName}${bits ? ` (${bits})` : ""}: votes, attendance, bills filed and activity, with the official source behind every figure.`;
+  return { title: data.member.displayName, ...seoFields(locale, `/members/${data.member.slug}`, { description: describe(description) }) };
 }
 
 export default async function MemberPage({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ legislature?: string; fromVote?: string }> }) {

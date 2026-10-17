@@ -8,7 +8,7 @@ import { SITE } from "@/lib/site";
 
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Guverne", en: "Governments" });
+  return titled(params, { ro: "Guverne", en: "Governments" }, { ro: "Guvernele României: miniștrii, ministerele, sprijinul din Parlament și moțiunile de cenzură.", en: "The Governments of Romania: ministers, ministries, support in Parliament and motions of censure." }, { path: "/governments" });
 }
 
 export default async function GovernmentsPage({ params }: { params: Promise<{ locale: string }> }) {

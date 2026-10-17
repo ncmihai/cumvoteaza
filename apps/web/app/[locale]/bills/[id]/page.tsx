@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Flag } from "lucide-react";
-import { clip } from "@/lib/page-metadata";
+import { clip, describe, seoFields } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { chamberLabels, formatDate } from "@cumsevoteaza/parliament-model";
@@ -31,7 +31,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const data = await getBillPageData(id);
   if (!data) return { title: locale === "ro" ? "Proiect negăsit" : "Bill not found" };
   const presentation = presentBill(data.bill);
-  return { title: `${presentation.identifier}: ${clip(presentation.heading, 70)}` };
+  const description = locale === "ro" ? `${clip(presentation.heading, 100)} — parcursul proiectului ${presentation.identifier} în Parlament pas cu pas, voturile și inițiatorii, din dosarul oficial.` : `${clip(presentation.heading, 100)} — the path of ${presentation.identifier} through Parliament step by step, its votes and its initiators, from the official dossier.`;
+  return { title: `${presentation.identifier}: ${clip(presentation.heading, 70)}`, ...seoFields(locale, `/bills/${data.bill.slug}`, { description: describe(description) }) };
 }
 
 export default async function BillPage({ params }: { params: Promise<{ locale: string; id: string }> }) {

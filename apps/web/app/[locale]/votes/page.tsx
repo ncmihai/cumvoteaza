@@ -1,5 +1,5 @@
 import { formatDate, voteChamberLabels } from "@cumsevoteaza/parliament-model";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { getSittingSummaries } from "@/lib/sitting-summaries";
 import { getDirectoryFilterOptions, getVoteExplorerData, parseExplorerFilters } from "@/lib/explorer-data";
@@ -8,8 +8,8 @@ import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { VoteDirectoryExplorer, type DirectoryLabels } from "../_components/ExplorerDirectories";
 import { EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Voturi", en: "Votes" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Voturi", en: "Votes" }, { ro: "Voturile din Camera Deputaților, Senat și ședințele comune: cine a votat cum, cu rezultatul și sursa oficială.", en: "The votes of the Chamber of Deputies, the Senate and the joint sittings: who voted how, with the result and the official source." }, { path: "/votes", searchParams });
 }
 
 export default async function VotesPage({

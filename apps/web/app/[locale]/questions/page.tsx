@@ -5,10 +5,10 @@ import { formatDate } from "@cumsevoteaza/parliament-model";
 import { QuestionList } from "../_components/QuestionList";
 import { getQuestionsView, QUESTIONS_PAGE_SIZE, type QuestionFilter } from "@/lib/question-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
-import { titled } from "@/lib/page-metadata";
+import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Întrebări și interpelări", en: "Questions and interpellations" });
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
+  return titled(params, { ro: "Întrebări și interpelări", en: "Questions and interpellations" }, { ro: "Întrebările și interpelările deputaților către Guvern: cine le-a pus, cui, despre ce și dacă au primit răspuns.", en: "The questions and interpellations deputies put to the Government: who asked, whom, about what and whether they were answered." }, { path: "/questions", searchParams });
 }
 
 type Query = { member?: string; ministry?: string; kind?: string; answered?: string; page?: string };

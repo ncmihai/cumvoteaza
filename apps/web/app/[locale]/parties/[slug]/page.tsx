@@ -1,4 +1,5 @@
 import { getPartyElections } from "@/lib/election-data";
+import { describe, seoFields } from "@/lib/page-metadata";
 import { financeNote, getCampaigns, getFinance } from "@/lib/finance-data";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -23,7 +24,10 @@ import { VOTE_STYLE } from "../../_components/ui/vote-meaning";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const data = await getPartyPageData(slug);
-  return { title: data ? data.party.name : (locale === "en" ? "Party not found" : "Partid negăsit") };
+  if (!data) return { title: locale === "en" ? "Party not found" : "Partid negăsit" };
+  const lang: AppLocale = locale === "en" ? "en" : "ro";
+  const description = lang === "ro" ? `${data.party.name}: parlamentarii partidului, voturile și cum s-a schimbat reprezentarea lui în Parlament.` : `${data.party.name}: the party's members, its votes and how its representation in Parliament has changed.`;
+  return { title: data.party.name, ...seoFields(lang, `/parties/${data.party.slug}`, { description: describe(description) }) };
 }
 
 const KIND_LABEL = {

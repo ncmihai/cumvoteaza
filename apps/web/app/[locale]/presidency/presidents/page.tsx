@@ -12,7 +12,7 @@ import { PersonAvatar } from "../../_components/ui/PersonAvatar";
 import { figureFor } from "@/lib/figures";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Președinții și decretele lor", en: "The Presidents and their decrees" });
+  return titled(params, { ro: "Președinții și decretele lor", en: "The Presidents and their decrees" }, { ro: "Președinții României de la 1990 și decretele semnate de fiecare, pe tipuri și ani.", en: "The Presidents of Romania since 1990 and the decrees each signed, by type and year." }, { path: "/presidency/presidents" });
 }
 
 export default async function PresidentsPage({ params }: { params: Promise<{ locale: string }> }) {

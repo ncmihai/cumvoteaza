@@ -10,7 +10,7 @@ import { Panel } from "../../_components/ui/Panel";
 import { PresidencyTabs } from "../../_components/PresidencyTabs";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return titled(params, { ro: "Numirile Președintelui, pe funcții", en: "The President's appointments, by office" });
+  return titled(params, { ro: "Numirile Președintelui, pe funcții", en: "The President's appointments, by office" }, { ro: "Numirile făcute de Președintele României, funcție cu funcție, din decretele publicate în Monitorul Oficial.", en: "The appointments made by the President of Romania, office by office, from the decrees published in the Official Gazette." }, { path: "/presidency/appointments" });
 }
 
 export default async function AppointmentsPage({ params }: { params: Promise<{ locale: string }> }) {

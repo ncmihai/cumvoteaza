@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { clip } from "@/lib/page-metadata";
+import { clip, describe, seoFields } from "@/lib/page-metadata";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
@@ -13,7 +13,9 @@ const outcome = { ro: { adopted: "Adoptată", rejected: "Respinsă", unknown: "F
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
   const { locale, id } = await params;
   const data = await getMotionPage(id);
-  return { title: data ? clip(data.motion.title) : (locale === "en" ? "Motion not found" : "Moțiune negăsită") };
+  if (!data) return { title: locale === "en" ? "Motion not found" : "Moțiune negăsită" };
+  const lang: AppLocale = locale === "en" ? "en" : "ro";
+  return { title: clip(data.motion.title), ...seoFields(lang, `/motions/${id}`, { description: describe(lang === "ro" ? `${clip(data.motion.title, 100)} — cine a semnat moțiunea, cum s-a votat și ce a urmat.` : `${clip(data.motion.title, 100)} — who signed the motion, how it was voted and what followed.`) }) };
 }
 
 export default async function MotionPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
