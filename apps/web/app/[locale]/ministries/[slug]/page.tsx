@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Building2, ExternalLink, GitMerge, Landmark, Vote } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getMinistry } from "@/lib/ministry-data";
+import { endReasonLabel } from "@/lib/cabinet-members";
 import { getQuestionsView } from "@/lib/question-data";
 import { QuestionsSummary } from "../../_components/QuestionsSummary";
 import type { AppLocale } from "@/lib/i18n";
@@ -48,12 +49,10 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
         {leadership ? <LeadershipPanel locale={locale} leadership={leadership} /> : null}
         {ambassadors && ambassadorCounts ? <AmbassadorsPanel locale={locale} holdings={ambassadors} counts={ambassadorCounts} /> : null}
         {ministry.institutionalHistory.incarnations.length ? <InstitutionalHistory history={ministry.institutionalHistory} locale={locale}/> : null}
-        <section className="mt-6 border border-line bg-surface p-4 md:p-5 rounded-card"><div className="flex items-center gap-2"><Landmark className="text-brand"/><h2 className="font-display text-xl font-bold text-ink">{locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history"}</h2></div>
-          <div className="mt-4 divide-y divide-line">{ministry.terms.map((term, index) => <article key={term.id} className="grid min-w-0 gap-2 py-4 md:grid-cols-[150px_minmax(0,1fr)_auto] md:items-start">
-            <div className="text-xs font-semibold text-muted">{formatDate(term.startsOn, locale)}<span className="block">{term.endsOn ? `— ${formatDate(term.endsOn, locale)}` : `— ${locale === "ro" ? "prezent" : "present"}`}</span></div>
-            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><PersonAvatar name={term.person.displayName} photoUrl={term.member?.photoUrl} size={36}/>{term.member ? <Link href={`/${locale}/members/${term.member.slug}`} className="font-display text-lg font-bold text-ink hover:text-brand">{term.person.displayName}</Link> : <strong className="font-display text-lg text-ink">{term.person.displayName}</strong>}{term.interim ? <StatusPill tone="interim">{locale === "ro" ? "Interimar" : "Interim"}</StatusPill> : null}{index === 0 && !term.endsOn ? <StatusPill tone="current">{locale === "ro" ? "Actual" : "Current"}</StatusPill> : null}</div><p className="mt-1 text-xs text-muted">{term.title} · <Link href={`/${locale}/governments/${term.government.slug}`} className="font-semibold text-brand">{locale === "ro" ? "Guvernul" : "Government"} {term.government.name}</Link></p></div>
-            {term.sourceUrl ? <a href={term.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Sursă" : "Source"}<ExternalLink size={12}/></a> : null}
-          </article>)}</div>
+        <section className="mt-6 border border-line bg-surface p-4 md:p-5 rounded-card"><div className="flex flex-wrap items-end justify-between gap-2"><div className="flex items-center gap-2"><Landmark className="text-brand"/><h2 className="font-display text-xl font-bold text-ink">{locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history"}</h2></div><span className="text-xs text-muted">{ministry.terms.length} {locale === "ro" ? "perioade" : "periods"} · {new Set(ministry.terms.map((term) => term.person.id)).size} {locale === "ro" ? "persoane" : "people"}{ministry.terms.filter((term) => term.parliamentarian).length ? ` · ${new Set(ministry.terms.filter((term) => term.parliamentarian).map((term) => term.person.id)).size} ${locale === "ro" ? "au fost parlamentari în timpul funcției" : "sat in Parliament while in office"}` : ""}</span></div>
+          <p className="mt-2 text-xs leading-5 text-muted">{locale === "ro" ? "Perioadele vin din decretele Președintelui (numire, revocare, demisie, interimat), iar titlul este cel din decret: același minister a purtat nume diferite de-a lungul anilor. Un guvern fără decretul său de numire în catalog nu apare aici." : "The periods come from the President's decrees (appointment, dismissal, resignation, acting posts), and the title is the decree's: the same ministry has gone by different names over the years. A government whose naming decree is not in the catalog is not here."}</p>
+          <div className="mt-4 divide-y divide-line">{ministry.terms.slice(0, TERMS_SHOWN).map((term, index) => <TermRow key={term.id} term={term} first={index === 0} locale={locale}/>)}</div>
+          {ministry.terms.length > TERMS_SHOWN ? <details className="group mt-2 border-t border-line pt-3"><summary className="cursor-pointer list-none text-xs font-bold text-brand">{locale === "ro" ? `Mai vechi (${ministry.terms.length - TERMS_SHOWN})` : `Earlier (${ministry.terms.length - TERMS_SHOWN})`}</summary><div className="mt-2 divide-y divide-line">{ministry.terms.slice(TERMS_SHOWN).map((term) => <TermRow key={term.id} term={term} first={false} locale={locale}/>)}</div></details> : null}
         </section>
         <section className="mt-5 border border-line bg-surface p-4 md:p-5 rounded-card"><div className="flex flex-wrap items-end justify-between gap-2"><div className="flex items-center gap-2"><Vote className="text-brand"/><h2 className="font-display text-xl font-bold text-ink">{locale === "ro" ? "Voturi și proiecte asociate" : "Related votes and bills"}</h2></div><span className="text-xs text-muted">{verifiedLegislation.length} {locale === "ro" ? "legături confirmate" : "confirmed links"}</span></div>
           {verifiedLegislation.length ? <div className="mt-4 divide-y divide-line">{verifiedLegislation.map((item) => <LegislationRow key={`${item.bill.id}-${item.relation}`} locale={locale} item={item}/>)}</div> : <p className="mt-3 text-sm leading-6 text-muted">{locale === "ro" ? "Nu există încă proiecte atribuite oficial acestui minister. Nu transformăm simplele mențiuni în legături confirmate." : "No bills are officially attributed to this ministry yet. Simple mentions are not presented as confirmed relationships."}</p>}
@@ -128,6 +127,20 @@ const KIND_LABEL: Record<LeadershipPerson["kind"], { ro: string; en: string }> =
 };
 
 /** The ministry's leadership as its own site lists it, with the day we read it; a person on an earlier reading and not on the latest is listed apart. */
+const TERMS_SHOWN = 14;
+
+type Term = NonNullable<Awaited<ReturnType<typeof getMinistry>>>["terms"][number];
+
+function TermRow({ term, first, locale }: { term: Term; first: boolean; locale: AppLocale }) {
+  const ro = locale === "ro";
+  const reason = endReasonLabel(term.endReason, locale);
+  return <article className="grid min-w-0 gap-2 py-4 md:grid-cols-[150px_minmax(0,1fr)_auto] md:items-start">
+    <div className="text-xs font-semibold text-muted">{formatDate(term.startsOn, locale)}<span className="block">{term.endsOn ? `— ${formatDate(term.endsOn, locale)}` : `— ${ro ? "prezent" : "present"}`}</span>{reason && term.endsOn ? <span className="mt-0.5 block font-normal">{term.endSourceUrl ? <a href={term.endSourceUrl} target="_blank" rel="noreferrer" className="hover:text-brand">{reason}</a> : reason}</span> : null}</div>
+    <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><PersonAvatar name={term.person.displayName} photoUrl={term.member?.photoUrl} size={36}/>{term.member ? <Link href={`/${locale}/members/${term.member.slug}`} className="font-display text-lg font-bold text-ink hover:text-brand">{term.person.displayName}</Link> : <strong className="font-display text-lg text-ink">{term.person.displayName}</strong>}{term.interim ? <StatusPill tone="interim">{ro ? "Interimar" : "Interim"}</StatusPill> : null}{first && !term.endsOn ? <StatusPill tone="current">{ro ? "Actual" : "Current"}</StatusPill> : null}{term.parliamentarian ? <StatusPill tone="member">{term.parliamentarian === "senate" ? (ro ? "Senator" : "Senator") : (ro ? "Deputat" : "Deputy")}</StatusPill> : null}</div><p className="mt-1 text-xs text-muted">{term.title} · <Link href={`/${locale}/governments/${term.government.slug}`} className="font-semibold text-brand">{ro ? "Guvernul" : "Government"} {term.government.name}</Link></p></div>
+    {term.sourceUrl ? <a href={term.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-brand">{ro ? "Decretul" : "Decree"}<ExternalLink size={12}/></a> : null}
+  </article>;
+}
+
 function LeadershipPanel({ locale, leadership }: { locale: AppLocale; leadership: MinistryLeadership }) {
   const ro = locale === "ro";
   const groups = Object.keys(KIND_LABEL).map((kind) => ({ kind: kind as LeadershipPerson["kind"], people: leadership.listed.filter((item) => item.kind === kind) })).filter((group) => group.people.length > 0);

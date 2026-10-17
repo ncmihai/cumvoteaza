@@ -1,0 +1,3 @@
+ALTER TABLE "government_roles" ADD COLUMN "end_reason" text;--> statement-breakpoint
+ALTER TABLE "government_roles" ADD COLUMN "end_source_snapshot_id" text;--> statement-breakpoint
+ALTER TABLE "government_roles" ADD CONSTRAINT "government_roles_end_source_snapshot_id_source_snapshots_id_fk" FOREIGN KEY ("end_source_snapshot_id") REFERENCES "public"."source_snapshots"("id") ON DELETE no action ON UPDATE no action;

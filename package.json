@@ -79,6 +79,7 @@
     "ingest:presidency:decrees:texts": "npm --workspace @cumsevoteaza/ingest run presidency:decrees:texts --",
     "ingest:presidency:decrees:fetch": "npm --workspace @cumsevoteaza/ingest run presidency:decrees:fetch --",
     "ingest:presidency:decrees:import": "npm --workspace @cumsevoteaza/ingest run presidency:decrees:import --",
+    "ingest:presidency:cabinets:import": "npm --workspace @cumsevoteaza/ingest run presidency:cabinets:import --",
     "ingest:elections:fetch": "npm --workspace @cumsevoteaza/ingest run elections:fetch --",
     "ingest:elections:import": "npm --workspace @cumsevoteaza/ingest run elections:import --",
     "ingest:elections:rezultatevot:fetch": "npm --workspace @cumsevoteaza/ingest run elections:rezultatevot:fetch --",

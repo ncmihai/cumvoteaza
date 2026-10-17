@@ -64,6 +64,7 @@
     "presidency:decrees:texts": "tsx src/cli.ts presidency:decrees:texts",
     "presidency:decrees:fetch": "tsx src/cli.ts presidency:decrees:fetch",
     "presidency:decrees:import": "tsx src/cli.ts presidency:decrees:import",
+    "presidency:cabinets:import": "tsx src/cli.ts presidency:cabinets:import",
     "elections:fetch": "tsx src/cli.ts elections:fetch",
     "elections:import": "tsx src/cli.ts elections:import",
     "elections:rezultatevot:fetch": "tsx src/cli.ts elections:rezultatevot:fetch",

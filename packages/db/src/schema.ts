@@ -702,7 +702,11 @@ export const governmentRoles = pgTable("government_roles", {
   ministryIncarnationId: text("ministry_incarnation_id").references(() => ministryIncarnations.id),
   startsOn: date("starts_on").notNull(),
   endsOn: date("ends_on"),
-  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id)
+  /** The decree (or decision) that gave the post. */
+  sourceSnapshotId: text("source_snapshot_id").references(() => sourceSnapshots.id),
+  /** D-057: how a period read from the President's decrees ended (dismissed, resigned, replaced, interim_ended, government_ended) and the decree that ended it; empty where the end is not a decree's. */
+  endReason: text("end_reason"),
+  endSourceSnapshotId: text("end_source_snapshot_id").references(() => sourceSnapshots.id)
 }, (table) => ({
   governmentIdx: index("government_roles_government_idx").on(table.governmentId),
   personPeriodIdx: index("government_roles_person_period_idx").on(table.personId, table.startsOn, table.endsOn)

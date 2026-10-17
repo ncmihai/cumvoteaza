@@ -757,6 +757,20 @@ async function main() {
     return;
   }
 
+  if (command === "presidency:cabinets:import") {
+    // D-057 (Block 1a): the cabinet of every Government from the President's decrees (the saved portal pages), as government_roles periods with the decree that began and the one that ended each. Offline apart from the database. Dry run unless --persist.
+    const { importCabinets } = await import("./presidency/cabinet-import");
+    const session = createDbSession();
+    try {
+      const result = await importCabinets(session.db, { repoRoot, persist: hasFlag("persist") });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
+    return;
+  }
+
   if (command === "finance:aep:fetch") {
     // Sprint 15 follow-up: the AEP's annual control reports on parties' income and expenses (acts of the Official Gazette on the legislative portal), the lists and each report's page saved under data/coverage/raw.
     // One request every --delay-ms (default 3000), at most --limit per run, resumable; plan only (what is saved) without --live.

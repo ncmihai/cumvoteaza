@@ -4,6 +4,7 @@ import { eq, inArray, or } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
 import { dataUnavailable } from "./data-availability";
+import { mandatesByPerson, seatDuring, type SeatChamber } from "./cabinet-members";
 
 /** The English line under each ministry's name. The catalog stores the Romanian text in both languages until the English one is loaded; this answers for the sixteen ministries by their address. */
 const MINISTRY_DESCRIPTIONS_EN: Record<string, string> = {
@@ -35,6 +36,11 @@ export interface MinistryTermView {
   endsOn?: string;
   interim: boolean;
   sourceUrl?: string;
+  /** D-057: how the period ended, where a decree or the Government's end ended it, and the decree. */
+  endReason?: string;
+  endSourceUrl?: string;
+  /** The chamber the person sat in at some time while holding the post. */
+  parliamentarian?: SeatChamber;
   incarnation?: { id: string; slug: string; name: string };
 }
 
@@ -81,7 +87,7 @@ export interface MinistryView {
   }>;
 }
 
-const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v5"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
+const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v6"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
 
 export async function getMinistries(): Promise<MinistryView[]> {
   if (!process.env.DATABASE_URL) return [];
@@ -129,7 +135,7 @@ export async function getGovernmentRolesForPerson(personId?: string): Promise<Ar
       if (!government) return [];
       const ministry = role.ministryId ? ministryById.get(role.ministryId) : undefined;
       const incarnation = role.ministryIncarnationId ? incarnationById.get(role.ministryIncarnationId) : undefined;
-      return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: members[0] ? { slug: members[0].slug } : undefined, government: { id: government.id, slug: government.slug, name: government.name }, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined, ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined }];
+      return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: members[0] ? { slug: members[0].slug } : undefined, government: { id: government.id, slug: government.slug, name: government.name }, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined, ...(role.endReason ? { endReason: role.endReason } : {}), ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined }];
     }).sort((a, b) => b.startsOn.localeCompare(a.startsOn));
   } finally {
     await session.close();
@@ -156,6 +162,8 @@ export async function getGovernmentView(slug: string) {
     const peopleById = new Map(people.map((item) => [item.id, item]));
     const memberByPersonId = new Map(members.filter((item) => item.personId).map((item) => [item.personId!, item]));
     const photoUrls = await memberPhotoUrls(session.db, roles.flatMap((role) => memberByPersonId.get(role.personId)?.id ?? []));
+    const mandates = await mandatesByPerson(session.db, roles.map((role) => role.personId));
+    const today = new Date().toISOString().slice(0, 10);
     const ministryById = new Map(ministries.map((item) => [item.id, item]));
     const incarnationById = new Map(incarnations.map((item) => [item.id, item]));
     const sourceById = new Map(sources.map((item) => [item.id, item.sourceUrl]));
@@ -169,7 +177,7 @@ export async function getGovernmentView(slug: string) {
         const ministry = role.ministryId ? ministryById.get(role.ministryId) : undefined;
         const incarnation = role.ministryIncarnationId ? incarnationById.get(role.ministryIncarnationId) : undefined;
         const member = memberByPersonId.get(person.id);
-        return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: member ? { slug: member.slug, ...(photoUrls.has(member.id) ? { photoUrl: photoUrls.get(member.id)! } : {}) } : undefined, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined, sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined }];
+        return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: member ? { slug: member.slug, ...(photoUrls.has(member.id) ? { photoUrl: photoUrls.get(member.id)! } : {}) } : undefined, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined, sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined, endReason: role.endReason ?? undefined, endSourceUrl: role.endSourceSnapshotId ? sourceById.get(role.endSourceSnapshotId) : undefined, parliamentarian: seatDuring(mandates.get(person.id), role.startsOn, role.endsOn ?? undefined, today) }];
       }).sort((a, b) => b.startsOn.localeCompare(a.startsOn)),
       events: events.sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)),
       // How this government came to be, and the attempts to replace it while it served.
@@ -218,6 +226,7 @@ async function assembleMinistries(session: ReturnType<typeof createWebDbSession>
   const governmentById = new Map(governments.map((item) => [item.id, item]));
   const memberByPersonId = new Map(members.filter((item) => item.personId).map((item) => [item.personId!, item]));
   const photoUrls = await memberPhotoUrls(session.db, roleRows.flatMap((role) => memberByPersonId.get(role.personId)?.id ?? []));
+  const mandates = await mandatesByPerson(session.db, roleRows.filter((role) => role.ministryId).map((role) => role.personId));
   const sourceById = new Map(sources.map((item) => [item.id, item.sourceUrl]));
   const billById = new Map(bills.map((item) => [item.id, item]));
   const incarnationById = new Map(incarnations.map((item) => [item.id, item]));
@@ -241,6 +250,9 @@ async function assembleMinistries(session: ReturnType<typeof createWebDbSession>
         endsOn: role.endsOn ?? undefined,
         interim: /interimar/i.test(role.title),
         sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined,
+        endReason: role.endReason ?? undefined,
+        endSourceUrl: role.endSourceSnapshotId ? sourceById.get(role.endSourceSnapshotId) : undefined,
+        parliamentarian: seatDuring(mandates.get(person.id), role.startsOn, role.endsOn ?? undefined, today),
         incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined
       }];
     }).sort((a, b) => b.startsOn.localeCompare(a.startsOn));
