@@ -4,7 +4,7 @@
 Decisions and open questions live in [DECISIONS.md](DECISIONS.md). Everything in
 [archive/](archive/) is history: useful evidence, never instructions.
 
-Last updated: 2026-10-06 · `main` @ `6cd5f0c` + docs (the "Verified state" and "Defects" tables below date from 4 Oct and are rewritten when Sprint 9 closes)
+Last updated: 2026-10-17 · `main` @ `a7a65b5` + docs (the plan from 17 October is under "Plan from 17 October 2026" below; the "Verified state" and "Defects" tables further down date from 4 Oct and are history)
 
 ---
 
@@ -204,6 +204,30 @@ The owner asked for two sprints that finish what is already started. **19 makes 
 **Started and not finished, by owner:** the production run of the CV (above); the feedback token and the repository setting; the BC250 timer; a real-finger check of the seat card on an iPhone and an Android phone; the photos on the other lists (19f); the UI feedback you are about to give.
 
 Not in this track, in the Backlog: open downloads (F-1), law texts and diffs (F-6), the updater's trial, the BC250 worker and the admin (Sprints 9 and 10), the older legislatures, page history, stenograms, summaries.
+
+### Plan from 17 October 2026 (D-057)
+
+**Where we are (production, 17 Oct):** 10,167 votes (2024–2028: 2,604; 2020–2024: 7,562; none before), 6,584 bills, 5,290 members, 36,265 decrees from 1990, 8,399 questions, 3,923 CV entries, 67 ministry-leadership readings on 15 pages; the database is 769 MB of 1 GB. The updater has only run by hand (of the last six runs, four published and two failed with no reason recorded); **the BC250 timer is not installed**. Cabinets: ministers by name only for the two latest governments (33 and 18 roles); every earlier government has its prime minister alone.
+
+The owner's order: **Block 1** timelines, then **Block 2** run by itself, then **Block 3** summaries, then **Block 4** open data and API; the older crawls (Block 5) run in the background from the moment the timer is stable. "Needs from you" is only decisions and production commands.
+
+| # | Block and work | Needs from you | Exit check | Size |
+| --- | --- | --- | --- | --- |
+| 1a | **Ministers of every government, and who was a member of Parliament.** Step 1 (the easier one the owner named): the Parliament's decision granting confidence to each government (about 25, from the legislative portal, found by title like the decisions already read) gives the cabinet at investiture by ministry; with the mandates it gives, per government, the prime minister and the members of Parliament named to the cabinet. Step 2: the changes between investitures from the President's decrees (read from 2015; for 1990–2014 only the ones whose title concerns a minister, read from their texts), joined to the ministry lineage, so that each ministry's page has its whole history with who was a member of Parliament in the post | Run the two imports in production | Every government since 1990 has its cabinet at investiture, each row with its decision; each ministry page starts at the ministry's creation; a minister counts as a member only when a mandate overlaps the dates | L |
+| 1b | **Other posts from the decrees**: the chief of the Defence Staff, the service chiefs and the other offices the decrees fill that the classifier does not know yet, on the presidency pages with the same timeline | — | Each such office has a succession, every row with its decree | M |
+| 1c | **Ambassadors, completed**: read the saved mae.ro list of missions (the ambassador it names for each mission) and show it beside the decree-based "named now"; shrink the "could not place" list; embassies and consulates apart | — | Every mission on the list is matched to a post or listed with a reason | M |
+| 1d | **Ministry sites**: the Interior's and Agriculture's leadership (their pages hold no names in a form we read yet), the other ministries' state secretaries kept as readings so that a change shows; Justice stays a link (browser check) | — | Every ministry but Justice has a reading; a person who disappears from a page is listed | S |
+| 1e | **Investiture vote lists** where we hold the vote (2020–2024; earlier ones come with the older votes) shown on the government page: who voted for it | — | Each government with a held vote shows the list and the totals | S |
+| 2a | **The timer on the BC250**: install (`install-daily.mjs`, your command), three clean days; a run that fails records why and opens or updates the issue; a health page (last run, database size, last reading of each source) | The install command; read the first three days | Three consecutive automatic days with no manual step | M |
+| 2b | **Weekly crawl and import of the ministries' leadership pages** on the BC250, so the history builds; a changed page layout (no entries where there were) opens an issue | — | Four weekly readings, differences listed | S |
+| 2c | **Admin v1** (GitHub sign-in): jobs, held items, feedback, CV checks, the ambiguity list | A GitHub OAuth app | Each screen used once by the owner | M |
+| 2d | **Storage**: pay for Neon when a crawl would pass about 900 MB (D-057); the health page shows the size | The plan change when asked | The size is on the health page | S |
+| 3 | **Summaries pilot** (Q12): the model decision from the 100-bill trial, 100 more bills with a different mix, a review screen, nothing shown before approval | The model choice; a hosted key only if hosted | Summaries never visible before approval | M |
+| 4 | **Open data and the API**: downloads with stable ids and a licence; API v1 with GitHub sign-in, instant keys with low limits, per-key revocation, terms of use, a docs page; law texts and diffs | A GitHub OAuth app; the licence wording checked by someone who can give legal advice | A key issued and used by a test client; each row with its source link | L |
+| 5 | **The older record, in the background on the BC250** (6 s apart, stopping at the first check, never bypassed): questions and interpellations 2020–2024 (about 15,900 pages, about 27 hours), the motions of 2020–2024, then the votes and bills of 2016–2020, then the decree texts 2004–2013 not needed by 1a | Production imports; the database plan | Each crawl at 100% of the pages or a stated reason | L, mostly waiting |
+| 6 | **Leftovers and polish**: the 2024 parliamentary mandates (the decision in the Official Gazette), the 2019 first round by commune, the 2016 diaspora by country (a city-to-country list), the county map on the vote page; party money (2025 detailed reports, the large parties' 2021–2022 annual reports, donors by type); the presidents' person pages and photos; the UI sweep; a real-finger check of the seat card on an iPhone and an Android phone; accessibility and speed of the newest pages; an uptime check; plan for leaving Vercel (a plan only) | Looks and checks | Browser tests green; the plan for leaving written | M |
+
+**Yours, whatever the block:** make the repository private (Settings, or `gh repo edit ncmihai/cumvoteaza --visibility private --accept-visibility-change-consequences`); submit the sitemaps in Search Console; the two CV differences (`members:cv:review`: Tîlvăr, Jianu); PL-x 175/2022; the GitHub token for feedback; the licence wording.
 
 ### UI plan (D-029, 6 Oct 2026)
 
