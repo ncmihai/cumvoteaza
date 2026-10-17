@@ -23,6 +23,7 @@ import { importProfileFacts } from "./members/profile-facts";
 import { fetchSanctionPages } from "./members/sanctions-fetch";
 import { fetchSenateBiographies } from "./members/senate-bio-fetch";
 import { fetchMinistryPages } from "./ministries/sites-fetch";
+import { importMinistryLeadership } from "./ministries/leadership-import";
 import { importSanctions } from "./members/sanctions-import";
 import { fetchCvPages } from "./members/cv-fetch";
 import { importCvEntries } from "./members/cv-import";
@@ -646,6 +647,19 @@ async function main() {
     const result = await fetchMinistryPages({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 40, delayMs: numberFlag("delay-ms") ?? 6000, refresh: hasFlag("refresh"), log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "ministries:leadership:import") {
+    // D-056: the saved leadership pages of the ministries read into ministry_leadership (who a ministry's own site lists as leading it, with the first and last day a reading listed them). Offline apart
+    // from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      console.log(JSON.stringify(await importMinistryLeadership(session.db, { repoRoot, persist: hasFlag("persist"), log: (line) => console.log(line) }), null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

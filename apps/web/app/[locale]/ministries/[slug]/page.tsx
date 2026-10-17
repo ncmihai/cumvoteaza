@@ -14,6 +14,7 @@ import { StatusPill } from "../../_components/ui/StatusPill";
 import { PageIntro } from "../../_components/ui/PageIntro";
 import { MINISTRY_SITES } from "@/lib/ministry-sites";
 import { getOfficeCounts, getOfficeHoldings, type Holding, type OfficeCounts } from "@/lib/president-data";
+import { getMinistryLeadership, type LeadershipPerson, type MinistryLeadership } from "@/lib/ministry-leadership";
 import { ACTION_LABELS } from "@/lib/president-format";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
@@ -32,6 +33,7 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
   const current = ministry.current;
   const site = MINISTRY_SITES[ministry.slug];
   // The Ministry of Foreign Affairs runs the diplomatic missions; the ambassadors are named and recalled by the President's decrees, which we hold.
+  const leadership = await getMinistryLeadership(ministry.slug);
   const [ambassadors, ambassadorCounts] = ministry.slug === "externe" ? await Promise.all([getOfficeHoldings("ambassador"), getOfficeCounts("ambassador")]) : [undefined, undefined];
   const verifiedLegislation = ministry.legislation.filter((item) => item.confidence === "official" || item.confidence === "high");
   const suggestedLegislation = ministry.legislation.filter((item) => item.confidence === "suggested");
@@ -43,6 +45,7 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
           trailing={site ? <a href={site.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft px-3.5 py-1.5 text-sm font-bold text-brand-strong">{locale === "ro" ? "Site-ul oficial al ministerului" : "The ministry's official website"}<ExternalLink size={13} aria-hidden="true" /></a> : null}>
           {locale === "ro" ? ministry.descriptionRo : ministry.descriptionEn}
         </PageIntro>
+        {leadership ? <LeadershipPanel locale={locale} leadership={leadership} /> : null}
         {ambassadors && ambassadorCounts ? <AmbassadorsPanel locale={locale} holdings={ambassadors} counts={ambassadorCounts} /> : null}
         {ministry.institutionalHistory.incarnations.length ? <InstitutionalHistory history={ministry.institutionalHistory} locale={locale}/> : null}
         <section className="mt-6 border border-line bg-surface p-4 md:p-5 rounded-card"><div className="flex items-center gap-2"><Landmark className="text-brand"/><h2 className="font-display text-xl font-bold text-ink">{locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history"}</h2></div>
@@ -111,5 +114,51 @@ function AmbassadorsPanel({ locale, holdings, counts }: { locale: AppLocale; hol
         <span className="min-w-0"><strong className="text-ink">{item.name}</strong> <span className="text-ink-soft">· {ACTION_LABELS[item.action]?.[locale] ?? item.action}</span><span className="block text-xs leading-5 text-muted">{item.title ?? ""}</span></span>
         <a href={item.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-bold text-brand">{item.decreeNumber}/{item.decreeYear}<ExternalLink size={11} aria-hidden="true" /></a>
       </li>))}</ul></> : null}
+  </section>;
+}
+
+
+const KIND_LABEL: Record<LeadershipPerson["kind"], { ro: string; en: string }> = {
+  minister: { ro: "Ministrul", en: "The minister" },
+  chief_of_defence_staff: { ro: "Șeful Statului Major al Apărării", en: "Chief of the Defence Staff" },
+  state_secretary: { ro: "Secretari de stat", en: "State secretaries" },
+  undersecretary: { ro: "Subsecretari de stat", en: "Undersecretaries of state" },
+  secretary_general: { ro: "Secretarul general", en: "The secretary general" },
+  secretary_general_deputy: { ro: "Secretari generali adjuncți", en: "Deputy secretaries general" }
+};
+
+/** The ministry's leadership as its own site lists it, with the day we read it; a person on an earlier reading and not on the latest is listed apart. */
+function LeadershipPanel({ locale, leadership }: { locale: AppLocale; leadership: MinistryLeadership }) {
+  const ro = locale === "ro";
+  const groups = Object.keys(KIND_LABEL).map((kind) => ({ kind: kind as LeadershipPerson["kind"], people: leadership.listed.filter((item) => item.kind === kind) })).filter((group) => group.people.length > 0);
+  const person = (item: LeadershipPerson, gone = false) => (
+    <li key={`${item.name}-${item.kind}`} className="flex min-w-0 items-center gap-3">
+      <PersonAvatar name={item.name} photoUrl={item.photoUrl} size={40} />
+      <span className="min-w-0 text-sm">
+        {item.memberSlug ? <Link href={`/${locale}/members/${item.memberSlug}`} className="font-semibold text-ink hover:text-brand">{item.name}</Link> : <strong className="text-ink">{item.name}</strong>}
+        <span className="block text-xs leading-5 text-muted">{item.role}{item.sinceText ? ` · ${item.sinceText}` : ""}{gone ? ` · ${ro ? "văzut(ă) ultima dată la" : "last seen on"} ${formatDate(item.lastSeenOn, locale)}` : ""}</span>
+      </span>
+    </li>
+  );
+  return <section id="leadership" className="mt-6 rounded-card border border-line bg-surface p-4 md:p-5">
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div><p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Conducerea, după site-ul ministerului" : "Leadership, as the ministry's site lists it"}</p><h2 className="font-display text-xl font-bold text-ink">{ro ? "Cine conduce acum" : "Who leads it now"}</h2></div>
+      <a href={leadership.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-bold text-brand">{ro ? "Pagina oficială" : "The official page"}<ExternalLink size={13} aria-hidden="true" /></a>
+    </div>
+    <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">{ro ? `Citit de pe pagina de conducere a ministerului la ${formatDate(leadership.readOn, locale)}. Numele și funcțiile sunt cele tipărite acolo; o funcție fără nume pe pagină nu apare aici. Datele din dreptul numelor sunt ale paginii, nu ale noastre; noi doar vedem cine apare la fiecare citire, deci cine dispare de pe pagină este arătat mai jos.` : `Read from the ministry's leadership page on ${formatDate(leadership.readOn, locale)}. The names and posts are as printed there; a post with no name on the page is not here. The dates beside a name are the page's own; we only see who is listed at each reading, so whoever disappears from the page is shown below.`}</p>
+    <div className="mt-4 space-y-4">
+      {groups.map((group) => (
+        <div key={group.kind}>
+          <h3 className="text-xs font-bold uppercase tracking-wide text-muted">{KIND_LABEL[group.kind][locale]}</h3>
+          <ul className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2">{group.people.map((item) => person(item))}</ul>
+        </div>
+      ))}
+    </div>
+    {leadership.noLongerListed.length > 0 ? (
+      <details className="mt-4 border-t border-line pt-3">
+        <summary className="cursor-pointer text-sm font-bold text-brand">{ro ? `Nu mai apar pe pagină (${leadership.noLongerListed.length})` : `No longer on the page (${leadership.noLongerListed.length})`}</summary>
+        <ul className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">{leadership.noLongerListed.map((item) => person(item, true))}</ul>
+      </details>
+    ) : null}
   </section>;
 }

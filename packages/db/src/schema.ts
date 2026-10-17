@@ -531,6 +531,31 @@ export const ministries = pgTable("ministries", {
   slugIdx: uniqueIndex("ministries_slug_idx").on(table.slug)
 }));
 
+/**
+ * D-056: who a ministry's own site lists as leading it (the minister, state secretaries, the secretary general and deputies; at Defence the chief of the Defence Staff), read from the page the BC250 saved. A row says
+ * the ministry's page listed this person in this post on those days: `firstSeenOn` and `lastSeenOn` are the days of the first and the last reading that listed them, not the days they took or left the post
+ * (`sinceText` is a date or note the page itself prints, as printed). A person no longer on the latest reading of their ministry has an older `lastSeenOn` and is shown as no longer listed since then.
+ */
+export const ministryLeadership = pgTable("ministry_leadership", {
+  id: text("id").primaryKey(),
+  ministryId: text("ministry_id").notNull().references(() => ministries.id, { onDelete: "cascade" }),
+  /** The person as the page prints the name. */
+  nameText: text("name_text").notNull(),
+  personId: text("person_id").references(() => people.id, { onDelete: "set null" }),
+  /** The line that names the post, as printed. */
+  roleText: text("role_text").notNull(),
+  kind: text("kind").$type<"minister" | "state_secretary" | "undersecretary" | "secretary_general" | "secretary_general_deputy" | "chief_of_defence_staff">().notNull(),
+  sinceText: text("since_text"),
+  firstSeenOn: date("first_seen_on").notNull(),
+  lastSeenOn: date("last_seen_on").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  contentHash: text("content_hash").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  ministryIdx: index("ministry_leadership_ministry_idx").on(table.ministryId, table.lastSeenOn),
+  personIdx: index("ministry_leadership_person_idx").on(table.personId)
+}));
+
 export const policyPortfolios = pgTable("policy_portfolios", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull(),

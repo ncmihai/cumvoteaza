@@ -14,13 +14,13 @@ export interface MinistryPage {
   url: string;
 }
 
+// Not here: dezvoltare (mdlpa.ro serves an incomplete certificate chain, which a program rejects and a browser may not; the check is not switched off) and justitie (a browser check).
 export const MINISTRY_PAGES: MinistryPage[] = [
   { slug: "externe", page: "leadership", url: "https://mae.ro/node/1965" },
   { slug: "externe", page: "missions", url: "https://mae.ro/romanian-missions" },
   { slug: "interne", page: "leadership", url: "https://www.mai.gov.ro/category/conducere/" },
   { slug: "aparare", page: "leadership", url: "https://www.mapn.ro/conducere/index.php" },
   { slug: "cultura", page: "leadership", url: "https://www.cultura.ro/conducere/" },
-  { slug: "dezvoltare", page: "leadership", url: "https://www.mdlpa.ro/pages/conducere" },
   { slug: "economie", page: "leadership", url: "https://economie.gov.ro/conducere/" },
   { slug: "educatie", page: "leadership", url: "https://edu.ro/echipa_conducere" },
   { slug: "finante", page: "leadership", url: "https://mfinante.gov.ro/ro/despre-minister/conducere" },

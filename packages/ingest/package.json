@@ -119,7 +119,8 @@
     "repair:duplicate-bill-plan": "tsx src/cli.ts repair:duplicate-bill-plan",
     "refresh-read-models": "tsx src/cli.ts refresh-read-models",
     "presidency:decisions:fetch": "tsx src/cli.ts presidency:decisions:fetch",
-    "presidency:decisions:import": "tsx src/cli.ts presidency:decisions:import"
+    "presidency:decisions:import": "tsx src/cli.ts presidency:decisions:import",
+    "ministries:leadership:import": "tsx src/cli.ts ministries:leadership:import"
   },
   "dependencies": {
     "@cumsevoteaza/db": "0.1.0",
