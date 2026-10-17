@@ -28,6 +28,8 @@ import { QuestionsSummary } from "../../_components/QuestionsSummary";
 import { getQuestionsView } from "@/lib/question-data";
 import { getMemberCv } from "@/lib/cv-data";
 import { MemberCvPanel } from "../../_components/MemberCvPanel";
+import { MemberSanctionsPanel } from "../../_components/MemberSanctionsPanel";
+import { getMemberSanctions } from "@/lib/sanctions-data";
 import { getMandateElection } from "@/lib/election-data";
 import { officialCase } from "@/lib/text";
 
@@ -52,6 +54,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
   const { member, mandate, group, party, profilePhotoUrl, currentLogoUrl, careerSegments, source, legislatures, selectedLegislature, activity, votes, voteRecords, sponsoredBills, history, officialActivity, birth, cv, bodies } = data;
   const governmentRoles = await getGovernmentRolesForPerson(member.personId);
   const cvView = await getMemberCv(member.personId);
+  const sanctions = await getMemberSanctions(member.personId);
   const questionsView = await getQuestionsView({ memberSlug: slug });
   // The list the mandate was won on, where the AEP's open data covers that election (2016, 2020).
   const mandateElection = mandate && selectedLegislature && (mandate.chamber === "deputies" || mandate.chamber === "senate")
@@ -154,6 +157,7 @@ export default async function MemberPage({ params, searchParams }: { params: Pro
     <MemberCareerTimeline career={career} locale={locale} memberSlug={member.slug} legislatures={legislatures} selectedLegislatureId={selectedLegislature?.id}/>
     <PublicCareerTimeline events={publicCareerEvents} locale={locale}/>
     <MemberCvPanel cv={cvView} locale={locale}/>
+    <MemberSanctionsPanel sanctions={sanctions} locale={locale}/>
 
     <div className="mt-8 flex flex-wrap items-center gap-2" aria-label={ro ? "Legislatura" : "Legislature"}>
       <span className="mr-1 text-sm font-semibold text-ink-soft">{ro ? "Legislatura" : "Legislature"}</span>

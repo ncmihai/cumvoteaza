@@ -63,6 +63,8 @@
     "ingest:bills:priorities:fetch": "npm --workspace @cumsevoteaza/ingest run bills:priorities:fetch --",
     "ingest:bills:priorities:import": "npm --workspace @cumsevoteaza/ingest run bills:priorities:import --",
     "ingest:members:cv:fetch": "npm --workspace @cumsevoteaza/ingest run members:cv:fetch --",
+    "ingest:members:sanctions:fetch": "npm --workspace @cumsevoteaza/ingest run members:sanctions:fetch --",
+    "ingest:members:sanctions:import": "npm --workspace @cumsevoteaza/ingest run members:sanctions:import --",
     "ingest:members:cv:import": "npm --workspace @cumsevoteaza/ingest run members:cv:import --",
     "ingest:members:cv:check": "npm --workspace @cumsevoteaza/ingest run members:cv:check --",
     "ingest:members:cv:review": "npm --workspace @cumsevoteaza/ingest run members:cv:review --",

@@ -334,6 +334,45 @@ export const memberCvEntries = pgTable("member_cv_entries", {
 }));
 
 /**
+ * D-052: the Chamber's own list of disciplinary sanctions on deputies ("Sancțiuni aplicate deputaților"), one row per entry as the page prints it. The headline is kept as printed; the kind,
+ * percentage, months and article are read out of it only where the words say them plainly. An upheld contestation means the plenary annulled the sanction (shown as such). A row whose deputy
+ * cannot be told from the name alone has no member and is listed for the owner, never guessed. Never used to rank people (D-029).
+ */
+export const memberSanctions = pgTable("member_sanctions", {
+  id: text("id").primaryKey(),
+  legislature: text("legislature").notNull(),
+  memberId: text("member_id").references(() => members.id, { onDelete: "set null" }),
+  personId: text("person_id").references(() => people.id, { onDelete: "set null" }),
+  /** The deputy as the page prints the name. */
+  nameText: text("name_text"),
+  groupLabel: text("group_label"),
+  heldOn: date("held_on"),
+  headline: text("headline").notNull(),
+  kind: text("kind").$type<"warning" | "call_to_order" | "floor_withdrawn" | "written_warning" | "speaking_time_reduced" | "allowance_reduced" | "combined" | "bureau_decision" | "other">().notNull(),
+  /** What the words say: [{ kind, percent?, months?, seconds? }]. */
+  parts: jsonb("parts").$type<Array<{ kind: string; percent?: number; months?: number; seconds?: number }>>().notNull().default([]),
+  article: text("article"),
+  decisionLabel: text("decision_label"),
+  decisionNumber: text("decision_number"),
+  decisionDated: date("decision_dated"),
+  decisionUrl: text("decision_url"),
+  contestationFiledUrl: text("contestation_filed_url"),
+  /** rejected | upheld (the plenary's decision on the contestation). */
+  contestationOutcome: text("contestation_outcome").$type<"rejected" | "upheld">(),
+  contestationLabel: text("contestation_label"),
+  contestationUrl: text("contestation_url"),
+  stenogramUrl: text("stenogram_url"),
+  /** matched | unmatched | ambiguous | no_name: how the name was tied to a member. */
+  matchStatus: text("match_status").$type<"matched" | "unmatched" | "ambiguous" | "no_name">().notNull(),
+  sourceUrl: text("source_url").notNull(),
+  contentHash: text("content_hash").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  personIdx: index("member_sanctions_person_idx").on(table.personId, table.heldOn),
+  memberIdx: index("member_sanctions_member_idx").on(table.memberId)
+}));
+
+/**
  * Retired person/member IDs and the ID that replaced them. Every importer resolves IDs through this
  * table, so a merge is never undone by re-running an old import that still derives the old ID.
  */

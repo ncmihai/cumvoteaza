@@ -20,6 +20,8 @@ import { linkStepDocuments } from "./dossiers/import";
 import { fetchOrdinances, importOrdinances, loadApprovalBills, uniqueRefs } from "./dossiers/ordinances";
 import { fetchBulletins, importPriorities } from "./dossiers/priorities";
 import { importProfileFacts } from "./members/profile-facts";
+import { fetchSanctionPages } from "./members/sanctions-fetch";
+import { importSanctions } from "./members/sanctions-import";
 import { fetchCvPages } from "./members/cv-fetch";
 import { importCvEntries } from "./members/cv-import";
 import { checkCvEntries } from "./members/cv-check";
@@ -603,6 +605,27 @@ async function main() {
     const result = await fetchCvPages({ repoRoot, live: hasFlag("live"), limit: numberFlag("limit") ?? 300, delayMs: numberFlag("delay-ms") ?? 3000, log: (line) => console.log(line) });
     console.log(JSON.stringify(result, null, 2));
     if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "members:sanctions:fetch") {
+    // D-052: the Chamber's "Sancțiuni aplicate deputaților", one page per legislature (3 requests), saved byte for byte under data/coverage/raw/member-sanctions. Plan only without --live; --refresh requests saved pages again.
+    const result = await fetchSanctionPages({ repoRoot, live: hasFlag("live"), refresh: hasFlag("refresh"), delayMs: numberFlag("delay-ms") ?? 6000, log: (line) => console.log(line) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!hasFlag("live")) console.log("Plan only. Re-run with --live to fetch what is not saved yet.");
+    return;
+  }
+
+  if (command === "members:sanctions:import") {
+    // D-052: member_sanctions from the saved pages (members:sanctions:fetch). Offline apart from the database. Dry run unless --persist.
+    const session = createDbSession();
+    try {
+      const result = await importSanctions(session.db, { repoRoot, persist: hasFlag("persist"), log: (line) => console.log(line) });
+      console.log(JSON.stringify(result, null, 2));
+      if (!hasFlag("persist")) console.log("Dry run only. Re-run with --persist.");
+    } finally {
+      await session.close();
+    }
     return;
   }
 

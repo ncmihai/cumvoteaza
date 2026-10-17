@@ -49,6 +49,8 @@
     "bills:priorities:fetch": "tsx src/cli.ts bills:priorities:fetch",
     "bills:priorities:import": "tsx src/cli.ts bills:priorities:import",
     "members:cv:fetch": "tsx src/cli.ts members:cv:fetch",
+    "members:sanctions:fetch": "tsx src/cli.ts members:sanctions:fetch",
+    "members:sanctions:import": "tsx src/cli.ts members:sanctions:import",
     "members:cv:import": "tsx src/cli.ts members:cv:import",
     "members:cv:check": "tsx src/cli.ts members:cv:check",
     "members:cv:review": "tsx src/cli.ts members:cv:review",
