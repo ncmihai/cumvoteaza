@@ -29,8 +29,7 @@ function navigation(locale: AppLocale): NavItem[] {
         { label: ro ? "Toți parlamentarii" : "All members", href: at("/members"), hint: ro ? "Deputați și senatori, după județ sau partid" : "Deputies and senators, by county or party" },
         { label: ro ? "Compoziția Parlamentului" : "Composition of Parliament", href: at("/compozitii"), hint: ro ? "Locurile fiecărui partid, acum și în timp" : "Each party's seats, now and over time" },
         { label: ro ? "Conducerea" : "Leadership", href: at("/leadership"), hint: ro ? "Birouri permanente, lideri de grup, comisii" : "Permanent bureaus, group leaders, committees" },
-        { label: ro ? "Alegeri parlamentare" : "Parliamentary elections", href: at("/elections"), hint: ro ? "Voturi și mandate pe liste, 2012–2024" : "Votes and mandates by list, 2012 to 2024" },
-        { label: ro ? "Harta alegerilor" : "Election map", href: at("/elections/map"), hint: ro ? "Pe județe și pe comune" : "By county and by commune" }
+        { label: ro ? "Alegeri" : "Elections", href: at("/elections/map"), hint: ro ? "Harta, listele și mandatele, parlamentare și prezidențiale" : "The map, the lists and the mandates, parliamentary and presidential" }
       ]
     },
     {

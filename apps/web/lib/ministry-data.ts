@@ -81,7 +81,7 @@ export interface MinistryView {
   }>;
 }
 
-const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v4"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
+const getCachedMinistries = unstable_cache(loadMinistries, ["ministry-directory-v5"], { revalidate: 3600, tags: [CACHE_TAGS.ministries, CACHE_TAGS.governments, CACHE_TAGS.composition] });
 
 export async function getMinistries(): Promise<MinistryView[]> {
   if (!process.env.DATABASE_URL) return [];

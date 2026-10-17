@@ -1,3 +1,4 @@
+import { memberPhotoUrls } from "./member-photos";
 import { unstable_cache } from "next/cache";
 import { dataUnavailable, requireDatabase } from "./data-availability";
 import * as schema from "@cumsevoteaza/db";
@@ -54,8 +55,8 @@ export interface CompositionTimelineStop {
   primeMinister?: Person;
   primeMinisterRole?: GovernmentRole;
   primeMinisters: Array<{ person: Person; days: number }>;
-  cabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName">; evidenceUrl?: string }>;
-  investitureCabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName">; evidenceUrl?: string }>;
+  cabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName"> & { photoUrl?: string }; evidenceUrl?: string }>;
+  investitureCabinet: Array<{ role: GovernmentRole; person: Person; member?: Pick<Member, "id" | "slug" | "displayName"> & { photoUrl?: string }; evidenceUrl?: string }>;
   caretakerSince?: string;
   cabinetEvidenceUrl?: string;
   events: CompositionEvent[];
@@ -99,7 +100,7 @@ const getCachedCurrentCompositionData = unstable_cache(
 
 const getCachedCompositionTimelineData = unstable_cache(
   async (mode: CompositionMode) => timed(`composition.timeline.${mode}`, () => getCompositionTimelineDataUncached(mode)),
-  ["composition-timeline-data-integrity-v6"],
+  ["composition-timeline-data-integrity-v7"],
   { revalidate: 3600, tags: [CACHE_TAGS.composition, CACHE_TAGS.members, CACHE_TAGS.parties] }
 );
 
@@ -184,10 +185,13 @@ async function tryDatabaseCompositionTimeline(
     });
     const people = peopleRows.map(mapPerson);
     const peopleById = new Map(people.map((person) => [person.id, person]));
+    // The photo is looked up only for the people who held a government role.
+    const ministerPersonIds = new Set(roleRows.map((role) => role.personId));
+    const photoUrls = await memberPhotoUrls(session.db, memberRows.filter((member) => member.personId && ministerPersonIds.has(member.personId)).map((member) => member.id));
     const memberByPersonId = new Map(
       memberRows
         .filter((member) => member.personId)
-        .map((member) => [member.personId!, { id: member.id, slug: member.slug, displayName: member.displayName }])
+        .map((member) => [member.personId!, { id: member.id, slug: member.slug, displayName: member.displayName, ...(photoUrls.has(member.id) ? { photoUrl: photoUrls.get(member.id)! } : {}) }])
     );
     const sourceUrlById = new Map(sourceSnapshotRows.map((source) => [source.id, source.sourceUrl]));
     const roles = roleRows.map(mapGovernmentRole);

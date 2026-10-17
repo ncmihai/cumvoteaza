@@ -3,6 +3,7 @@ import { formatDate, type GovernanceAlignment } from "@cumsevoteaza/parliament-m
 import type { BillSponsorContext, GovernmentContextData, VoteGroupContext } from "@/lib/data";
 import type { AppLocale } from "@/lib/i18n";
 import { presentMemberIdentity } from "@/lib/public-presentation";
+import { StatusPill } from "./ui/StatusPill";
 
 interface GovernmentContextPanelProps {
   context?: GovernmentContextData;
@@ -22,7 +23,7 @@ export function GovernmentContextPanel({ context, voteGroups = [], billSponsors 
       <div className="grid gap-4 p-4 md:grid-cols-[1fr_2fr]">
         <div>
           <div className="text-xs font-semibold uppercase text-brand-strong">{labels.title}</div>
-          <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xl font-semibold text-ink">{context.government.name}</span>{context.caretakerSince ? <span className="border border-vote-abstain-fill bg-vote-abstain-bg px-2 py-1 text-xs font-semibold text-vote-abstain">{labels.caretaker}</span> : null}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xl font-semibold text-ink">{context.government.name}</span>{context.caretakerSince ? <StatusPill tone="interim">{labels.caretaker}</StatusPill> : null}</div>
           <div className="mt-1 text-sm text-muted">
             {formatDate(context.government.startsOn, locale)}
             {" - "}

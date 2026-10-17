@@ -256,6 +256,36 @@ export async function getOfficeHoldings(office: string): Promise<Holding[]> {
   }
 }
 
+/** How many decrees name or remove someone in this office, by what they did, over the whole catalog (the list above is the latest 600 only). */
+export interface OfficeCounts { byAction: Record<string, number>; firstYear?: number; lastOn?: string }
+
+async function queryOfficeCounts(office: string): Promise<OfficeCounts> {
+  if (!process.env.DATABASE_URL || !(office in OFFICES)) return { byAction: {} };
+  const session = createWebDbSession();
+  try {
+    const rows = [...(await session.db.execute<{ action: string; n: number; first_year: number; last_on: string }>(sql`
+      select p.action, count(*)::int as n, min(d.year)::int as first_year, max(d.issued_on)::text as last_on
+      from presidential_decree_persons p join presidential_decrees d on d.id = p.decree_id
+      where p.office = ${office} group by p.action`))];
+    return {
+      byAction: Object.fromEntries(rows.map((row) => [row.action, row.n])),
+      ...(rows.length ? { firstYear: Math.min(...rows.map((row) => row.first_year)), lastOn: rows.map((row) => row.last_on).sort().at(-1)! } : {})
+    };
+  } finally {
+    await session.close();
+  }
+}
+
+const cachedOfficeCounts = unstable_cache(async (office: string) => queryOfficeCounts(office), ["office-counts-v1"], { revalidate: 1800, tags: [CACHE_TAGS.governments] });
+
+export async function getOfficeCounts(office: string): Promise<OfficeCounts> {
+  try {
+    return await cachedOfficeCounts(office);
+  } catch {
+    return { byAction: {} };
+  }
+}
+
 export interface ParliamentHolding {
   office: OfficeKey;
   /** parliament (the chambers in joint sitting), chamber or senate. */

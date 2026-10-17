@@ -10,12 +10,13 @@ import { titled, type SearchParamsInput } from "@/lib/page-metadata";
 import { PageIntro } from "../../_components/ui/PageIntro";
 import { Panel } from "../../_components/ui/Panel";
 import { ElectionMap } from "../../_components/ElectionMap";
+import { ElectionsTabs } from "../../_components/ElectionsTabs";
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
   return titled(params, { ro: "Harta alegerilor", en: "Election map" }, { ro: "Rezultatele alegerilor parlamentare pe hartă, cu datele oficiale ale Autorității Electorale Permanente.", en: "The results of the parliamentary elections on a map, from the Permanent Electoral Authority's official data." }, { path: "/elections/map", searchParams });
 }
 
-type Query = { election?: string; chamber?: string; metric?: string; list?: string; party?: string; level?: string; circ?: string };
+type Query = { election?: string; chamber?: string; metric?: string; list?: string; party?: string; level?: string; circ?: string; scope?: string; view?: string };
 
 /** The elections the Constitutional Court annulled (the first round of 2024, 6 December 2024); a round with a note is not for that reason annulled. */
 const ANNULLED = new Set(["pres-2024-r1"]);
@@ -39,6 +40,8 @@ export default async function ElectionMapPage({ params, searchParams }: { params
   const metric: MapMetric = MAP_METRICS.includes(query.metric as MapMetric) ? (query.metric as MapMetric) : "winner";
   const circ = Number(query.circ) >= 1 && Number(query.circ) <= 42 ? Number(query.circ) : undefined;
   const level = query.level === "communes" || circ !== undefined ? "communes" as const : "counties" as const;
+  const scope = query.scope === "abroad" ? "abroad" as const : "romania" as const;
+  const view = query.view === "world" ? "world" as const : "europe" as const;
   // A party's page links here by the party's slug; the list it ran on has a code in this election.
   const partyList = query.party ? data?.lists.find((item) => item.partySlug === query.party)?.code : undefined;
   const list = partyList ?? (Number.isFinite(Number(query.list)) && query.list !== undefined ? Number(query.list) : undefined);
@@ -52,11 +55,11 @@ export default async function ElectionMapPage({ params, searchParams }: { params
 
   return (
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
-      <PageIntro eyebrow={ro ? "Alegeri" : "Elections"} title={ro ? "Harta alegerilor" : "Election map"}
-        trailing={<Link href={`/${locale}/elections`} className="text-sm font-bold text-brand">{ro ? "Rezultatele pe liste, în tabele" : "The results by list, in tables"}</Link>}>
+      <ElectionsTabs locale={locale} current="map" />
+      <PageIntro eyebrow={ro ? "Alegeri" : "Elections"} title={ro ? "Harta alegerilor" : "Election map"}>
         {ro
-          ? "Rezultatul alegerilor parlamentare și prezidențiale pe județe și pe comune: cine a câștigat, ponderea unei liste sau a unui candidat, prezența la vot și voturile nule. Cifrele sunt suma secțiilor de votare din procesele-verbale ale AEP; harta alege cum le colorează, tabelele de sub ea au aceleași numere."
-          : "The result of the parliamentary and presidential elections by county and by commune: who won, one list's or candidate's share, turnout and null votes. The figures are the sum of the polling stations in the AEP's minutes; the map chooses how to colour them, and the tables below it have the same numbers."}
+          ? "Rezultatul alegerilor parlamentare și prezidențiale pe județe, pe comune și în diaspora, pe țări: cine a câștigat, ponderea unei liste sau a unui candidat, prezența la vot și voturile nule. Cifrele sunt suma secțiilor de votare din procesele-verbale ale AEP; harta alege cum le colorează, tabelele de sub ea au aceleași numere."
+          : "The result of the parliamentary and presidential elections by county, by commune and, abroad, by country: who won, one list's or candidate's share, turnout and null votes. The figures are the sum of the polling stations in the AEP's minutes; the map chooses how to colour them, and the tables below it have the same numbers."}
       </PageIntro>
 
       {!data ? (
@@ -69,7 +72,7 @@ export default async function ElectionMapPage({ params, searchParams }: { params
             <ElectionMap
               locale={locale}
               elections={data.elections.map((item) => ({ id: item.id, kind: item.kind, label: electionTab(item.id, item.kind, item.heldOn, ro, ANNULLED.has(item.id)), ...(item.note ? { note: item.note[locale] } : {}) }))}
-              initial={{ election: data.election.id, chamber: data.chamber, metric, ...(list !== undefined ? { list } : {}), ...(circ !== undefined ? { circ } : {}), level }}
+              initial={{ election: data.election.id, chamber: data.chamber, metric, ...(list !== undefined ? { list } : {}), ...(circ !== undefined ? { circ } : {}), level, scope, view }}
             />
           </div>
 
@@ -114,7 +117,7 @@ export default async function ElectionMapPage({ params, searchParams }: { params
             <ul className="space-y-2 text-sm leading-6 text-muted">
               <li>{ro ? "Voturile sunt cele din secțiile de votare, adunate pe județ și pe comună (sau oraș; București pe sectoare). Voturile prin corespondență nu aparțin unui loc și nu sunt pe hartă; ele sunt în totalurile din tabelele pe liste, așa că acolo cifrele sunt puțin mai mari." : "The votes are those of the polling stations, added up by county and by commune (or city; Bucharest by sector). Votes by mail belong to no place and are not on the map; they are in the totals of the tables by list, which are therefore slightly higher."}</li>
               <li>{ro ? "Prezența este numărul celor care au votat (coloana b a AEP) împărțit la cei înscriși pe listele electorale permanente (a1), la fel în toate alegerile, ca să poată fi comparate. Ea poate depăși 100% într-o comună unde votează mulți oameni de pe listele suplimentare. Împărțit la toate listele (permanente și suplimentare), procentul iese mai mic: pentru 2016, 39,8% în loc de 40,9%." : "Turnout is the voters who came (the AEP's column b) divided by those on the permanent electoral lists (a1), the same in every election so that they can be compared. It can pass 100% in a commune where many people vote from the supplementary lists. Divided by all the lists (permanent and supplementary), the percentage comes out lower: for 2016, 39.8% instead of 40.9%."}</li>
-              <li>{ro ? "Străinătatea nu are hartă: este un rând în tabel. O listă este legată de un partid doar când numele ei este exact numele partidului; o alianță rămâne sub numele ei." : "Abroad has no map: it is a row in the table. A list is linked to a party only when its name is exactly the party's; an alliance stays under its own name."}</li>
+              <li>{ro ? "Diaspora are harta ei (butonul „Diaspora”): secțiile de votare din străinătate sunt adunate pe țări, după numele pe care le tipărește AEP (care se scrie altfel de la o alegere la alta, ca „FRANȚA” și „Franţa”). Un loc care nu e pe lista noastră de țări nu primește o țară din presupunere: e numărat și arătat sub tabelul pe țări. Fișierele din 2016 dau secțiile din străinătate pe orașe, nu pe țări, așa că pentru 2016 nu există hartă pe țări. Străinătatea nu are prezență pe liste permanente, deci acolo nu e o hartă a prezenței. În legendă, numărul de sub fiecare nume este al voturilor, nu al locurilor câștigate: într-o alegere se votează oameni, nu teren. O listă este legată de un partid doar când numele ei este exact numele partidului; o alianță rămâne sub numele ei." : "Abroad has a map of its own (the \"Abroad\" button): the polling stations abroad are added up by country, by the name the AEP prints (which is spelt differently from one election to the next, like \"FRANȚA\" and \"Franţa\"). A place that is not in our list of countries is not given one by guess: it is counted and shown under the table by country. The 2016 files give the polling stations abroad by city, not by country, so for 2016 there is no map by country. Abroad has no permanent lists, so there is no turnout map there. In the legend the number under each name is votes, not places won: in an election people vote, not land. A list is linked to a party only when its name is exactly the party's; an alliance stays under its own name."}</li>
               {data.election.kind === "presidential" ? <li>{ro ? "La alegerile prezidențiale listele sunt candidații, fiecare tur este o alegere aparte, iar prezența este numărul celor care au votat (coloana b) din cei înscriși pe listele permanente (coloana a). Alegerile din 2009 și 2014 vin din tabelele AEP de pe data.gov.ro (fără voturi prin corespondență, care nu existau); în fișierul din 2009 numele candidaților nu au diacritice și sunt scrise așa cum le tipărește fișierul." : "In the presidential elections the lists are the candidates, each round is an election of its own, and turnout is the voters who came (column b) of those on the permanent lists (column a). The 2009 and 2014 elections come from the AEP's tables on data.gov.ro (no votes by mail, which did not exist); in the 2009 file the candidates' names have no diacritics and are written as the file prints them."}</li> : null}
               <li>{ro ? "Pentru alegerile parlamentare din 2024 nu avem mandatele repartizate (fișierele dau doar voturile), deci harta arată voturi, nu mandate." : "For the 2024 parliamentary elections we do not have the mandates distributed (the files give only the votes), so the map shows votes, not mandates."}</li>
               <li>{ro ? "Granițele sunt cele din 2025, la același loc pentru toate alegerile; codul SIRUTA al unei comune se potrivește cu forma ei, iar două coduri din fișierul din 2020 au fost aduse la codul actual (București pe sectoare, Băneasa din Constanța)." : "The borders are those of 2025, the same for every election; a commune's SIRUTA code is matched to its shape, and two codes in the 2020 file were brought to the current code (Bucharest by sector, Băneasa in Constanța)."}</li>
@@ -122,7 +125,7 @@ export default async function ElectionMapPage({ params, searchParams }: { params
             <p className="mt-3 text-xs leading-5 text-muted">
               {ro ? "Sursa cifrelor: " : "Source of the figures: "}
               <a href={data.election.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-brand">{ro ? "Autoritatea Electorală Permanentă" : "The Permanent Electoral Authority"}<ExternalLink size={12} aria-hidden="true" /></a>
-              {ro ? ". Limite administrative: ANCPI (date publice), prelucrate de geo-spatial.org, licență CC BY 4.0; simplificate aici." : ". Administrative borders: ANCPI (public data), processed by geo-spatial.org, licence CC BY 4.0; simplified here."}
+              {ro ? ". Limite administrative: ANCPI (date publice), prelucrate de geo-spatial.org, licență CC BY 4.0; simplificate aici. Granițele țărilor: Natural Earth (domeniu public), simplificate aici." : ". Administrative borders: ANCPI (public data), processed by geo-spatial.org, licence CC BY 4.0; simplified here. Country borders: Natural Earth (public domain), simplified here."}
             </p>
           </Panel>
         </>

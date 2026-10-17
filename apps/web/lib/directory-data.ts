@@ -27,7 +27,13 @@ export interface PartyDirectory {
   legislatures: string[];
 }
 
-export interface GovernmentIndexEntry { slug: string; name: string; startsOn: string; endsOn?: string; primeMinister?: string; roles: number }
+export interface GovernmentIndexEntry {
+  slug: string; name: string; startsOn: string; endsOn?: string; primeMinister?: string; roles: number;
+  /** The prime minister's official photo where we hold one (as a member of Parliament). */
+  primeMinisterPhotoUrl?: string;
+  /** The people who held a role in the Government, and how many of them also held a seat in Parliament while they did. */
+  people: number; parliamentarians: number;
+}
 
 async function getPartyDirectoryUncached(): Promise<PartyDirectory | undefined> {
   if (!process.env.DATABASE_URL) return undefined;
@@ -80,18 +86,30 @@ async function getGovernmentIndexUncached(): Promise<GovernmentIndexEntry[] | un
   if (!process.env.DATABASE_URL) return undefined;
   const session = createWebDbSession();
   try {
-    const rows = [...(await session.db.execute<{ slug: string; name: string; starts_on: string; ends_on: string | null; pm: string | null; roles: number }>(sql`
+    const rows = [...(await session.db.execute<{ slug: string; name: string; starts_on: string; ends_on: string | null; pm: string | null; roles: number; people: number; mps: number; pm_photo: string | null }>(sql`
       select g.slug, g.name, g.starts_on::text as starts_on, g.ends_on::text as ends_on, p.display_name as pm,
-             (select count(*)::int from government_roles r where r.government_id = g.id) as roles
+             (select count(*)::int from government_roles r where r.government_id = g.id) as roles,
+             (select count(distinct r.person_id)::int from government_roles r where r.government_id = g.id) as people,
+             -- A seat held while the role was: the mandate and the role overlap in time.
+             (select count(distinct r.person_id)::int from government_roles r
+                join members m on m.person_id = r.person_id join member_mandates mm on mm.member_id = m.id
+               where r.government_id = g.id and mm.starts_on <= coalesce(r.ends_on, g.ends_on, current_date) and coalesce(mm.ends_on, date '9999-12-31') >= r.starts_on) as mps,
+             (select s.id from stored_assets s join members m2 on m2.id = s.entity_id
+               where m2.person_id = g.prime_minister_person_id and s.asset_type = 'photo' and s.fetch_status = 'stored'
+               order by coalesce(s.width, 0) asc, s.created_at desc limit 1) as pm_photo
       from governments g left join people p on p.id = g.prime_minister_person_id order by g.starts_on desc`))];
-    return rows.map((row) => ({ slug: row.slug, name: row.name, startsOn: row.starts_on, endsOn: row.ends_on ?? undefined, primeMinister: row.pm ?? undefined, roles: row.roles }));
+    return rows.map((row) => ({
+      slug: row.slug, name: row.name, startsOn: row.starts_on, endsOn: row.ends_on ?? undefined, primeMinister: row.pm ?? undefined, roles: row.roles,
+      ...(row.pm_photo ? { primeMinisterPhotoUrl: `/api/assets/${encodeURIComponent(row.pm_photo)}` } : {}),
+      people: row.people, parliamentarians: row.mps
+    }));
   } finally {
     await session.close();
   }
 }
 
 const getCachedPartyDirectory = unstable_cache(() => timed("data.party-directory", getPartyDirectoryUncached), ["party-directory-v1"], { revalidate: 900, tags: [CACHE_TAGS.parties, CACHE_TAGS.composition] });
-const getCachedGovernmentIndex = unstable_cache(() => timed("data.government-index", getGovernmentIndexUncached), ["government-index-v1"], { revalidate: 900, tags: [CACHE_TAGS.governments] });
+const getCachedGovernmentIndex = unstable_cache(() => timed("data.government-index", getGovernmentIndexUncached), ["government-index-v2"], { revalidate: 900, tags: [CACHE_TAGS.governments] });
 
 export const getPartyDirectory = () => getCachedPartyDirectory();
 export const getGovernmentIndex = () => getCachedGovernmentIndex();

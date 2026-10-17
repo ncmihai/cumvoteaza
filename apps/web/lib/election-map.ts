@@ -57,6 +57,39 @@ export function sumByCircumscription(areas: MapArea[]): MapArea[] {
   return [...sums.values()].sort((a, b) => a.c - b.c);
 }
 
+/**
+ * Areas added up under a key the caller chooses (a country abroad, say). `keyOf` gives the key and the name of the group an area belongs to, or nothing when it belongs to none; those areas are
+ * returned apart, never dropped silently. The sums keep the circumscription of the first area they hold.
+ */
+export function sumAreasBy(areas: MapArea[], keyOf: (area: MapArea) => { key: string; name: string } | undefined): { sums: MapArea[]; left: MapArea[] } {
+  const sums = new Map<string, MapArea>();
+  const votes = new Map<string, Map<number, number>>();
+  const left: MapArea[] = [];
+  for (const area of areas) {
+    const group = keyOf(area);
+    if (!group) { left.push(area); continue; }
+    let sum = sums.get(group.key);
+    if (!sum) {
+      sum = { k: group.key, c: area.c, n: group.name, s: 0, r: 0, p: 0, v: 0, i: 0, l: [], x: [] };
+      sums.set(group.key, sum);
+      votes.set(group.key, new Map());
+    }
+    sum.s += area.s;
+    sum.r += area.r;
+    sum.p += area.p;
+    sum.v += area.v;
+    sum.i += area.i;
+    const own = votes.get(group.key)!;
+    area.l.forEach((code, index) => own.set(code, (own.get(code) ?? 0) + (area.x[index] ?? 0)));
+  }
+  for (const [key, sum] of sums) {
+    const ordered = [...votes.get(key)!].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+    sum.l = ordered.map((entry) => entry[0]);
+    sum.x = ordered.map((entry) => entry[1]);
+  }
+  return { sums: [...sums.values()], left };
+}
+
 /** The list a commune gave most votes to, with its share of the valid votes and its lead over the second. */
 export function leaderOf(area: MapArea): { code: number; share: number; lead: number } | undefined {
   if (area.l.length === 0 || area.v <= 0) return undefined;

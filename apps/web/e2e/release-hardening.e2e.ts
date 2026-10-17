@@ -48,9 +48,9 @@ test("vote cards stay dense and the term facts stay compact on a tablet screen",
 test("member filters are structured and documented-vote ranking is truthful", async ({ page }) => {
   await page.setViewportSize({ width: 638, height: 863 });
   await page.goto("/ro/members?sort=votes");
-  await expect(page.getByRole("link", { name: "Cele mai multe voturi documentate" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("Cele mai multe absențe", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Cele mai multe absențe la vot", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Voturi documentate/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: /^Absențe la vot/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Absențe la vot/ })).not.toHaveAttribute("aria-current", "page");
 
   // Each card is a link to a member holding the count of documented votes in a <strong>.
   const documentedCounts = await page.locator('main a[href^="/ro/members/"] strong').allTextContents();

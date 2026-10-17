@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ExternalLink, Map as MapIcon, Vote } from "lucide-react";
+import { ExternalLink, Vote } from "lucide-react";
 import { formatDate } from "@cumsevoteaza/parliament-model";
 import { getElectionView } from "@/lib/election-data";
 import { isLocale, type AppLocale } from "@/lib/i18n";
 import { officialCase } from "@/lib/text";
 import { titled, type SearchParamsInput } from "@/lib/page-metadata";
+import { ElectionsTabs } from "../_components/ElectionsTabs";
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SearchParamsInput }): Promise<Metadata> {
   return titled(params, { ro: "Alegeri parlamentare", en: "Parliamentary elections" }, { ro: "Alegerile parlamentare: rezultatele pe liste și circumscripții și cine a câștigat fiecare mandat.", en: "The parliamentary elections: results by list and constituency and who won each seat." }, { path: "/elections", searchParams });
@@ -32,9 +33,9 @@ export default async function ElectionsPage({ params, searchParams }: { params: 
   const tab = (active: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-semibold ${active ? "border-brand bg-brand-soft text-brand-strong" : "border-line text-ink-soft hover:border-line-strong"}`;
   return (
     <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
+      <ElectionsTabs locale={locale} current="lists" />
       <p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Cum au ajuns în Parlament" : "How they got into Parliament"}</p>
       <h1 className="mt-1 font-display text-4xl font-bold text-ink">{ro ? "Alegeri parlamentare" : "Parliamentary elections"}</h1>
-      <p className="mt-2"><Link href={`/${locale}/elections/map`} className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft px-3.5 py-1.5 text-sm font-bold text-brand-strong"><MapIcon size={15} aria-hidden="true" />{ro ? "Vezi harta rezultatelor" : "See the results on a map"}</Link></p>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{ro
         ? "Voturile și mandatele fiecărei liste, pe circumscripții, din datele deschise ale Autorității Electorale Permanente (data.gov.ro): suma voturilor din secțiile de votare și a celor prin corespondență. O listă este legată de pagina unui partid doar când numele ei este exact numele partidului; o alianță rămâne sub numele ei."
         : "The votes and mandates of each list, by circumscription, from the open data of the Permanent Electoral Authority (data.gov.ro): the sum of the polling stations' votes and the votes by mail. A list is linked to a party page only when its name is exactly the party's; an alliance stays under its own name."}</p>

@@ -8,7 +8,7 @@ import { SearchEngagementTracker } from "../_components/EngagementTracker";
 import { EditorialGuide, EditorialPage, EditorialPageHeader } from "../_components/EditorialPage";
 import { PersonAvatar } from "../_components/ui/PersonAvatar";
 import { PartyMark } from "../_components/ui/PartyMark";
-import { ArrowRight, Building2, Filter, MapPin, Search } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Building2, Filter, MapPin, Search } from "lucide-react";
 import { DismissibleDetails } from "../_components/DismissibleDetails";
 import { presentMemberIdentity } from "@/lib/public-presentation";
 
@@ -21,7 +21,7 @@ export default async function MembersPage({
   searchParams
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ chamber?: string; group?: string | string[]; county?: string; q?: string; legislature?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ chamber?: string; group?: string | string[]; county?: string; q?: string; legislature?: string; sort?: string; dir?: string; page?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const rawFilters = await searchParams;
@@ -34,8 +34,10 @@ export default async function MembersPage({
     county: rawFilters.county,
     q: rawFilters.q,
     legislature: rawFilters.legislature === undefined ? (rawFilters.group ? "" : currentLegislatureId) : rawFilters.legislature,
-    sort: normalizeMemberSort(rawFilters.sort)
+    sort: normalizeMemberSort(rawFilters.sort),
+    dir: rawFilters.dir === "asc" ? "asc" : undefined
   };
+  if (!filters.sort) filters.dir = undefined;
   const data = await getMemberDirectoryData(filters);
   const groupChips = memberGroupChips(data.groups, data.parties, locale, filters.chamber);
   const validGroupValues = new Set(groupChips.map((group) => group.value));
@@ -58,6 +60,7 @@ export default async function MembersPage({
         {activeGroupFilters.length > 0 ? <input type="hidden" name="group" value={activeGroupFilters.join(",")} /> : null}
         {filters.legislature ? <input type="hidden" name="legislature" value={filters.legislature} /> : null}
         {filters.sort ? <input type="hidden" name="sort" value={filters.sort} /> : null}
+        {filters.sort && filters.dir ? <input type="hidden" name="dir" value={filters.dir} /> : null}
         <label className="flex min-w-0 flex-1 items-center gap-3 px-4">
           <Search size={22} className="shrink-0 text-ink" />
           <input
@@ -105,17 +108,24 @@ export default async function MembersPage({
         <div className="min-w-0 overflow-x-auto pb-1 2xl:justify-self-end">
           <nav aria-label={locale === "ro" ? "Sortarea parlamentarilor" : "Member sorting"} className="flex w-max min-w-full items-center 2xl:min-w-0">
             <span className="mr-3 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">{locale === "ro" ? "Sortează" : "Sort"}</span>
-            {memberSortOptions(locale).filter((option) => option.value !== "absent" || filters.legislature === currentLegislatureId).map((option) => <SortLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, county: filters.county, q: filters.q, legislature: filters.legislature, sort: option.value })} active={(filters.sort ?? "") === option.value}>{option.label}</SortLink>)}
+            {memberSortOptions(locale).filter((option) => option.value !== "absent" || filters.legislature === currentLegislatureId).map((option) => {
+              const active = (filters.sort ?? "") === option.value;
+              // A sort is a cycle: the first press runs from the highest number to the lowest, the second reverses it, the third goes back to names.
+              const next = !option.value ? { sort: "", dir: undefined } : !active ? { sort: option.value, dir: undefined } : filters.dir === "asc" ? { sort: "", dir: undefined } : { sort: option.value, dir: "asc" };
+              const direction = active && option.value ? (filters.dir === "asc" ? "asc" : "desc") as "asc" | "desc" : undefined;
+              return <SortLink key={option.value || "default"} href={memberDirectoryHref(locale, { chamber: filters.chamber, group: activeGroupFilters, county: filters.county, q: filters.q, legislature: filters.legislature, ...next })} active={active} direction={direction} locale={locale}>{option.label}</SortLink>;
+            })}
           </nav>
         </div>
       </div>
+      {filters.sort === "age" ? <p className="mt-3 rounded-card border border-line bg-wash px-4 py-3 text-sm leading-6 text-ink-soft">{locale === "ro" ? "Vârsta se calculează din data nașterii tipărită în profilul oficial al parlamentarului. Cine nu are dată în profil apare la sfârșit, indiferent de sens." : "Age is worked out from the date of birth printed in the member's official profile. Members whose profile prints none come last, whichever way the list runs."}</p> : null}
       {filters.sort === "absent" ? <p className="mt-3 rounded-card border border-line bg-wash px-4 py-3 text-sm leading-6 text-ink-soft">{locale === "ro" ? "O absență la vot înseamnă că lista nominală oficială nu are niciun vot pentru parlamentar. Sursa numără drept prezenți doar pe cei cu vot înregistrat și nu spune de ce lipsește cineva (absență, concediu, alt motiv). Se numără doar votele cu listă nominală, în camera parlamentarului și în ședințele comune, cât timp a avut mandatul; votul secret nu are listă și nu intră în număr. Parlamentarii care au avut și o funcție în Guvern sunt marcați: ei apar mult mai rar pe listele din plen." : "An absence at a vote means the official name list has no vote for the member. The source counts only people with a recorded vote as present and does not say why someone is missing (absence, leave, another reason). Only votes with a name list count, in the member's chamber and in joint sittings, while they held the mandate; a secret ballot has no list and is not counted. Members who also held a post in the Government are marked: they appear on the plenary lists far less often."}</p> : null}
 
       <section className="mt-3 space-y-2">
-        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, eligibleVotes, inGovernment, groupSwitchCount, serviceDays }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 rounded-card border border-line bg-surface px-3 py-3 transition hover:border-brand hover:bg-wash">
+        {visibleMembers.map(({ member, mandate, group, party, profilePhotoUrl, voteCount, absenceCount, eligibleVotes, inGovernment, groupSwitchCount, serviceDays, ageYears }) => <Link key={member.id} href={`/${locale}/members/${member.slug}`} className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 rounded-card border border-line bg-surface px-3 py-3 transition hover:border-brand hover:bg-wash">
           <PersonAvatar name={member.displayName} photoUrl={profilePhotoUrl} size={64} />
           <div className="min-w-0"><h2 className="truncate font-display text-lg font-bold text-ink">{presentMemberIdentity(member).name}</h2><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"><span className="flex items-center gap-1.5">{party || group ? <PartyMark party={{ shortName: party?.shortName ?? group?.shortName ?? "-", color: party?.color ?? group?.color ?? "#64748b", logoAssetId: party?.logoAssetId }} size={16} /> : null}{party?.shortName ?? group?.shortName ?? "-"}</span><span className="flex items-center gap-1"><Building2 size={14} />{mandate ? chamberLabels[locale][mandate.chamber] : "-"}</span><span className="flex items-center gap-1"><MapPin size={14} />{formatConstituency(mandate?.constituency)}</span>{filters.sort === "absent" && inGovernment ? <span className="rounded-full bg-brand-soft px-2 py-0.5 font-semibold text-brand-strong">{locale === "ro" ? "A avut o funcție în Guvern în acest mandat" : "Held a government post in this term"}</span> : null}</div><p className="mt-1 truncate text-xs text-muted">{locale === "ro" ? "Vezi activitatea, voturile și traseul parlamentar." : "See activity, votes and parliamentary history."}</p></div>
-          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} absenceCount={absenceCount} eligibleVotes={eligibleVotes} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays}/><span className="hidden border-l border-line pl-5 text-sm font-semibold text-brand md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-brand md:hidden" size={18} /></div>
+          <div className="flex items-center gap-5 pl-3"><RankingMetric locale={locale} sort={filters.sort} voteCount={voteCount} absenceCount={absenceCount} eligibleVotes={eligibleVotes} groupSwitchCount={groupSwitchCount} serviceDays={serviceDays} ageYears={ageYears}/><span className="hidden border-l border-line pl-5 text-sm font-semibold text-brand md:flex md:items-center md:gap-1">{locale === "ro" ? "Vezi profilul" : "View profile"}<ArrowRight size={16} /></span><ArrowRight className="text-brand md:hidden" size={18} /></div>
         </Link>)}
         {totalPages > 1 ? <nav aria-label={locale === "ro" ? "Paginarea parlamentarilor" : "Member pagination"} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pb-2 pt-4"><span className="text-sm text-muted">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, data.members.length)} {locale === "ro" ? "din" : "of"} {data.members.length}</span><div className="flex gap-2">{page > 1 ? <Link className="inline-flex min-h-11 items-center justify-center border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand rounded-control" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page - 1})}>← {locale === "ro" ? "Înapoi" : "Previous"}</Link> : null}{page < totalPages ? <Link className="inline-flex min-h-11 items-center justify-center rounded-control bg-brand px-4 py-2 text-sm font-semibold !text-white transition hover:bg-brand-strong" href={memberDirectoryHref(locale, {...filters, group: activeGroupFilters, page: page + 1})}>{locale === "ro" ? "Următorii" : "Next"} →</Link> : null}</div></nav> : null}
       </section>
@@ -183,28 +193,30 @@ function parseGroupParam(value?: string): string[] {
 }
 
 function normalizeMemberSort(value?: string): string | undefined {
-  return value === "votes" || value === "absent" || value === "seniority" || value === "switches" ? value : undefined;
+  return value === "votes" || value === "absent" || value === "seniority" || value === "switches" || value === "age" ? value : undefined;
 }
 
 function memberSortOptions(locale: AppLocale): Array<{ value: string; label: string }> {
   return locale === "ro"
     ? [
         { value: "", label: "Nume" },
-        { value: "votes", label: "Cele mai multe voturi documentate" },
-        { value: "absent", label: "Cele mai multe absențe la vot" },
-        { value: "seniority", label: "Cel mai mult timp în Parlament" },
-        { value: "switches", label: "Cele mai multe schimbări" }
+        { value: "votes", label: "Voturi documentate" },
+        { value: "absent", label: "Absențe la vot" },
+        { value: "seniority", label: "Timp în Parlament" },
+        { value: "switches", label: "Schimbări de grup" },
+        { value: "age", label: "Vârstă" }
       ]
     : [
         { value: "", label: "Name" },
-        { value: "votes", label: "Most documented votes" },
-        { value: "absent", label: "Most absences at votes" },
-        { value: "seniority", label: "Longest service" },
-        { value: "switches", label: "Most switches" }
+        { value: "votes", label: "Documented votes" },
+        { value: "absent", label: "Absences at votes" },
+        { value: "seniority", label: "Time in Parliament" },
+        { value: "switches", label: "Group switches" },
+        { value: "age", label: "Age" }
       ];
 }
 
-function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; group?: string | string[]; county?: string; q?: string; legislature?: string; sort?: string; page?: number }): string {
+function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; group?: string | string[]; county?: string; q?: string; legislature?: string; sort?: string; dir?: string; page?: number }): string {
   const params = new URLSearchParams();
   if (filters.chamber) params.set("chamber", filters.chamber);
   const groups = Array.isArray(filters.group) ? filters.group : parseGroupParam(filters.group);
@@ -213,6 +225,7 @@ function memberDirectoryHref(locale: AppLocale, filters: { chamber?: string; gro
   if (filters.q) params.set("q", filters.q);
   if (filters.legislature !== undefined) params.set("legislature", filters.legislature);
   if (filters.sort) params.set("sort", filters.sort);
+  if (filters.sort && filters.dir === "asc") params.set("dir", "asc");
   if (filters.page && filters.page > 1) params.set("page", String(filters.page));
   const query = params.toString();
   return `/${locale}/members${query ? `?${query}` : ""}`;
@@ -222,16 +235,20 @@ function FilterSelect({ label, name, defaultValue, children }: { label: string; 
   return <label className="block min-w-0"><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">{label}</span><select aria-label={label} name={name} defaultValue={defaultValue} className="min-h-10 w-full border border-line-strong bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand rounded-control">{children}</select></label>;
 }
 
-function SortLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return <Link href={href} aria-current={active ? "page" : undefined} className={`-ml-px inline-flex min-h-10 shrink-0 items-center border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-ink bg-ink !text-white" : "border-line-strong bg-surface text-ink-soft hover:z-10 hover:border-brand hover:bg-[#f4f8fd]"}`}>{children}</Link>;
+function SortLink({ href, active, direction, locale, children }: { href: string; active: boolean; direction?: "asc" | "desc"; locale: AppLocale; children: React.ReactNode }) {
+  // The arrow says which way the list runs now; pressing again reverses it, and a third press goes back to names.
+  const hint = direction ? (locale === "ro" ? (direction === "desc" ? "de la cel mai mare la cel mai mic; apasă pentru sensul invers" : "de la cel mai mic la cel mai mare; apasă pentru a reveni la nume") : (direction === "desc" ? "highest to lowest; press to reverse" : "lowest to highest; press to go back to names")) : undefined;
+  return <Link href={href} aria-current={active ? "page" : undefined} title={hint} className={`-ml-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border px-4 py-2 text-sm font-semibold transition first:ml-0 ${active ? "z-10 border-ink bg-ink !text-white" : "border-line-strong bg-surface text-ink-soft hover:z-10 hover:border-brand hover:bg-[#f4f8fd]"}`}>{children}{direction ? <>{direction === "desc" ? <ArrowDown size={14} aria-hidden="true" /> : <ArrowUp size={14} aria-hidden="true" />}<span className="sr-only">{hint}</span></> : null}</Link>;
 }
 
-function RankingMetric({ locale, sort, voteCount, absenceCount, eligibleVotes, groupSwitchCount, serviceDays }: { locale: AppLocale; sort?: string; voteCount?: number; absenceCount?: number; eligibleVotes?: number; groupSwitchCount?: number; serviceDays?: number }) {
-  const value = sort === "switches" ? groupSwitchCount ?? 0 : sort === "seniority" ? Math.floor((serviceDays ?? 0) / 365) : sort === "absent" ? absenceCount ?? 0 : voteCount ?? 0;
-  const label = sort === "switches"
-    ? (locale === "ro" ? "schimbări" : "switches")
+function RankingMetric({ locale, sort, voteCount, absenceCount, eligibleVotes, groupSwitchCount, serviceDays, ageYears }: { locale: AppLocale; sort?: string; voteCount?: number; absenceCount?: number; eligibleVotes?: number; groupSwitchCount?: number; serviceDays?: number; ageYears?: number }) {
+  const value = sort === "age" ? ageYears ?? "–" : sort === "switches" ? groupSwitchCount ?? 0 : sort === "seniority" ? Math.floor((serviceDays ?? 0) / 365) : sort === "absent" ? absenceCount ?? 0 : voteCount ?? 0;
+  const label = sort === "age"
+    ? (locale === "ro" ? "ani" : "years old")
+    : sort === "switches"
+    ? (locale === "ro" ? "schimbări de grup" : "group switches")
     : sort === "seniority"
-      ? (locale === "ro" ? "ani" : "years")
+      ? (locale === "ro" ? "ani în Parlament" : "years in Parliament")
       : sort === "absent"
         ? (locale === "ro" ? `absențe la vot${eligibleVotes ? ` din ${eligibleVotes}` : ""}` : `absences at votes${eligibleVotes ? ` of ${eligibleVotes}` : ""}`)
       : (locale === "ro" ? "voturi documentate" : "documented votes");

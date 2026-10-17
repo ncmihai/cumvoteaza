@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { foldKey, officialCase } from "@/lib/text";
+import { MIN_COVERED_SHARE, abroadByCountry, countryKey, countryName } from "@/lib/diaspora";
 import { BRAND_COLOUR, GAIN_COLOUR, LOSS_COLOUR, MAP_METRICS, leaderOf, listColours, metricValue, paintFor, pickableLists, rampRange, shareOf, sumByCircumscription, turnoutOf, invalidShareOf, type MapArea, type MapList, type MapMetric, type Previous } from "@/lib/election-map";
 
 /**
@@ -11,13 +12,17 @@ import { BRAND_COLOUR, GAIN_COLOUR, LOSS_COLOUR, MAP_METRICS, leaderOf, listColo
 interface CountyShape { n: number; name: string; d: string; x: number; y: number; b: [number, number, number, number] }
 interface CountiesFile { viewBox: [number, number, number, number]; attribution: string; counties: CountyShape[]; inset: { viewBox: [number, number, number, number]; sectors: Array<{ s: string; d: string }> } }
 interface CommunesFile { viewBox: [number, number, number, number]; communes: Array<{ s: string; c: number; d: string }> }
+/** The countries of the world (Natural Earth), one shape per country with its ISO numeric code, for the diaspora view; `europe` is the window that shows the small ones. */
+interface WorldFile { viewBox: [number, number, number, number]; europe: [number, number, number, number]; attribution: string; countries: Array<{ i: string; name: string; d: string }> }
+type Scope = "romania" | "abroad";
+type AbroadView = "europe" | "world";
 type Ballot = "deputies" | "senate" | "president";
 interface MapPayload { election: string; chamber: Ballot; lists: MapList[]; areas: MapArea[] }
 
 export interface ElectionMapProps {
   locale: "ro" | "en";
   elections: Array<{ id: string; label: string; kind: "parliamentary" | "presidential"; note?: string }>;
-  initial: { election: string; chamber: Ballot; metric: MapMetric; list?: number; circ?: number; level: "counties" | "communes" };
+  initial: { election: string; chamber: Ballot; metric: MapMetric; list?: number; circ?: number; level: "counties" | "communes"; scope: Scope; view: AbroadView };
 }
 
 const tab = (active: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-semibold ${active ? "border-brand bg-brand-soft text-brand-strong" : "border-line text-ink-soft hover:border-line-strong"}`;
@@ -44,6 +49,9 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
   const [listChoice, setListChoice] = useState<number | undefined>(initial.list);
   const [level, setLevel] = useState(initial.level);
   const [circ, setCirc] = useState<number | undefined>(initial.circ);
+  const [scope, setScope] = useState<Scope>(initial.scope);
+  const [view, setView] = useState<AbroadView>(initial.view);
+  const [world, setWorld] = useState<WorldFile | undefined>();
   const [selected, setSelected] = useState<string | undefined>();
   const [hover, setHover] = useState<{ key: string; x: number; y: number } | undefined>();
   const [payload, setPayload] = useState<MapPayload | undefined>();
@@ -68,6 +76,13 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
     fetch("/geo/ro-communes.json").then((response) => (response.ok ? response.json() : Promise.reject(new Error("geometry")))).then((file: CommunesFile) => { if (!cancelled) setCommunes(file); }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, [level, communes]);
+
+  useEffect(() => {
+    if (scope !== "abroad" || world) return;
+    let cancelled = false;
+    fetch("/geo/world-countries.json").then((response) => (response.ok ? response.json() : Promise.reject(new Error("geometry")))).then((file: WorldFile) => { if (!cancelled) setWorld(file); }).catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [scope, world]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -99,9 +114,10 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
   useEffect(() => {
     const params = new URLSearchParams({ election, chamber, metric, level });
     if ((metric === "share" || metric === "change") && listChoice !== undefined) params.set("list", String(listChoice));
-    if (circ !== undefined) params.set("circ", String(circ));
+    if (circ !== undefined && scope === "romania") params.set("circ", String(circ));
+    if (scope === "abroad") { params.set("scope", "abroad"); params.set("view", view); }
     try { window.history.replaceState(null, "", `?${params.toString()}`); } catch { /* the address stays as it was */ }
-  }, [election, chamber, metric, listChoice, level, circ]);
+  }, [election, chamber, metric, listChoice, level, circ, scope, view]);
 
   const lists = payload?.lists ?? [];
   const listByCode = useMemo(() => new Map(lists.map((list) => [list.code, list])), [lists]);
@@ -116,21 +132,36 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
   const choices = useMemo(() => pickableLists(lists, metric === "change" ? 40 : 14).filter((list) => { if (metric !== "change") return true; const key = identity(list); return key !== undefined && previousIdentities.has(key); }), [lists, metric, previousIdentities]);
   const listCode = listChoice !== undefined && choices.some((list) => list.code === listChoice) ? listChoice : (choices.find((list) => !list.independents)?.code ?? 0);
 
+  // Abroad the files give polling stations, not voters on lists, so there is no turnout to draw.
+  const metrics = scope === "abroad" ? MAP_METRICS.filter((item) => item !== "turnout") : MAP_METRICS;
+  useEffect(() => { if (scope === "abroad" && metric === "turnout") setMetric("winner"); }, [scope, metric]);
+
+  const abroad = useMemo(() => abroadByCountry(payload?.areas ?? []), [payload]);
+  // A year whose files give abroad by city (2016) has most of its votes outside the list of countries: it is not drawn on part of the votes.
+  const abroadMapped = abroad.coveredShare >= MIN_COVERED_SHARE;
+  const abroadByKey = useMemo(() => new Map(abroad.countries.map((area) => [area.k, area])), [abroad]);
+  const worldName = (key: string) => world?.countries.find((country) => countryKey(country.i) === key)?.name;
   const domestic = useMemo(() => (payload?.areas ?? []).filter((area) => area.c !== 43), [payload]);
   const countyAreas = useMemo(() => sumByCircumscription(domestic), [domestic]);
   const countyByNumber = useMemo(() => new Map(countyAreas.map((area) => [area.c, area])), [countyAreas]);
   const communeByKey = useMemo(() => new Map(domestic.map((area) => [area.k, area])), [domestic]);
   const countyName = (n: number) => counties?.counties.find((county) => county.n === n)?.name ?? String(n);
 
-  const drawn = level === "counties" ? countyAreas : domestic;
+  const drawn = scope === "abroad" ? (abroadMapped ? abroad.countries : []) : level === "counties" ? countyAreas : domestic;
   const previous: Previous | undefined = useMemo(() => {
     if (metric !== "change" || !previousPayload) return undefined;
     const own = listByCode.get(listCode);
     const key = own ? identity(own) : undefined;
-    const domesticBefore = previousPayload.areas.filter((area) => area.c !== 43);
-    const before = level === "counties" ? sumByCircumscription(domesticBefore) : domesticBefore;
+    let before: MapArea[];
+    if (scope === "abroad") {
+      const abroadBefore = abroadByCountry(previousPayload.areas);
+      before = abroadBefore.coveredShare >= MIN_COVERED_SHARE ? abroadBefore.countries : [];
+    } else {
+      const domesticBefore = previousPayload.areas.filter((area) => area.c !== 43);
+      before = level === "counties" ? sumByCircumscription(domesticBefore) : domesticBefore;
+    }
     return { areas: new Map(before.map((area) => [area.k, area])), listCode: key ? previousIdentities.get(key) : undefined };
-  }, [metric, previousPayload, level, listByCode, listCode, previousIdentities]);
+  }, [metric, previousPayload, scope, level, listByCode, listCode, previousIdentities]);
   const range = useMemo(() => {
     const values = drawn.map((area) => metricValue(area, metric, listCode, previous)).filter((value): value is number => value !== undefined);
     return metric === "change" ? { min: 0, max: Math.max(0.01, rampRange(values.map(Math.abs)).max) } : rampRange(values);
@@ -143,7 +174,17 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
     return [...counts].sort((a, b) => b[1] - a[1]);
   }, [drawn]);
 
-  const areaOf = (key: string | undefined) => (key ? (key.startsWith("c") ? countyByNumber.get(Number(key.slice(1))) : communeByKey.get(key)) : undefined);
+  // The legend counts votes, not places: a county is land and a vote is a person. The votes are those of the whole result (with abroad) when the country is in view, of the county when one is, of the countries abroad in the diaspora view.
+  const standing = useMemo(() => {
+    const basis = scope === "abroad" ? (payload?.areas ?? []).filter((area) => area.c === 43) : circ !== undefined && level === "communes" ? domestic.filter((area) => area.c === circ) : (payload?.areas ?? []);
+    const votes = new Map<number, number>();
+    let total = 0;
+    for (const area of basis) { total += area.v; area.l.forEach((code, index) => votes.set(code, (votes.get(code) ?? 0) + (area.x[index] ?? 0))); }
+    const won = new Map(wins);
+    return { total, rows: [...votes].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 7).map(([code, count]) => ({ code, votes: count, won: won.get(code) ?? 0 })) };
+  }, [scope, circ, level, domestic, payload, wins]);
+
+  const areaOf = (key: string | undefined) => (key ? (key.startsWith("iso:") ? abroadByKey.get(key) : key.startsWith("c") ? countyByNumber.get(Number(key.slice(1))) : communeByKey.get(key)) : undefined);
   const hoverArea = areaOf(hover?.key);
   const selectedArea = areaOf(selected);
 
@@ -163,7 +204,7 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
     const lines: string[] = [];
     const leader = leaderOf(area);
     if (leader) lines.push(`${listName(leader.code)} ${percent(leader.share)}${area.l.length > 1 ? ` · ${ro ? "față de" : "ahead of"} ${listName(area.l[1]!)} ${percent(shareOf(area, area.l[1]!))}` : ""}`);
-    lines.push(`${ro ? "Prezență" : "Turnout"} ${percent(turnoutOf(area))} · ${ro ? "nule" : "null"} ${percent(invalidShareOf(area))}`);
+    lines.push(area.c === 43 ? `${ro ? "nule" : "null"} ${percent(invalidShareOf(area))}` : `${ro ? "Prezență" : "Turnout"} ${percent(turnoutOf(area))} · ${ro ? "nule" : "null"} ${percent(invalidShareOf(area))}`);
     if (metric === "change") {
       const change = metricValue(area, "change", listCode, previous);
       lines.push(`${listName(listCode)}: ${change === undefined ? (ro ? "fără termen de comparație" : "nothing to compare with") : `${change >= 0 ? "+" : "−"}${(Math.abs(change) * 100).toLocaleString(ro ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 })} ${ro ? "puncte procentuale" : "percentage points"}`}`);
@@ -172,6 +213,7 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
   }
 
   function title(area: MapArea): string {
+    if (area.k.startsWith("iso:")) return countryName(area.n, locale, worldName(area.k));
     return area.k.startsWith("c") ? countyName(area.c) : officialCase(area.n);
   }
 
@@ -194,7 +236,10 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
 
   const previousItem = elections.find((item) => item.id === previousId);
   const previousLabel = previousItem ? `${previousItem.kind === "parliamentary" ? (ro ? "alegerile parlamentare din " : "the parliamentary election of ") : (ro ? "alegerile prezidențiale din " : "the presidential election of ")}${previousItem.label}` : (ro ? "alegerile precedente" : "the previous election");
-  const ready = Boolean(payload && counties && (level === "counties" || communes));
+  const ready = scope === "abroad" ? Boolean(payload && world) : Boolean(payload && counties && (level === "counties" || communes));
+  const abroadBox = world ? (view === "europe" ? [world.europe[0], world.europe[1], world.europe[2] - world.europe[0], world.europe[3] - world.europe[1]] : [...world.viewBox]) : [0, 0, 1000, 729];
+  const wonLabel = scope === "abroad" ? (ro ? "țări câștigate" : "countries won") : level === "counties" ? (ro ? "județe câștigate" : "counties won") : (ro ? "comune câștigate" : "communes won");
+  const basisLabel = scope === "abroad" ? (ro ? "Străinătate" : "Abroad") : circ !== undefined && level === "communes" ? countyName(circ) : (ro ? "Toată țara, cu străinătatea" : "The whole country, with abroad");
   const sectorAreas = counties?.inset.sectors.map((sector) => ({ ...sector, area: communeByKey.get(sector.s) })) ?? [];
   const countyList = [...(counties?.counties ?? [])].sort((a, b) => a.name.localeCompare(b.name, "ro"));
   const circCommunes = circ !== undefined ? domestic.filter((area) => area.c === circ).sort((a, b) => b.v - a.v) : [];
@@ -216,7 +261,7 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
         <ul className="flex flex-wrap gap-2" aria-label={ro ? "Ce arată harta" : "What the map shows"}>
-          {MAP_METRICS.map((item) => <li key={item}><button type="button" className={tab(item === metric)} aria-pressed={item === metric} onClick={() => setMetric(item)}>{metricLabel[item]}</button></li>)}
+          {metrics.map((item) => <li key={item}><button type="button" className={tab(item === metric)} aria-pressed={item === metric} onClick={() => setMetric(item)}>{metricLabel[item]}</button></li>)}
         </ul>
         {metric === "share" || metric === "change" ? (
           <label className="flex min-w-0 max-w-full items-center gap-2 text-sm text-ink-soft">{ro ? "Lista" : "List"}
@@ -227,11 +272,23 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
         ) : null}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <ul className="flex flex-wrap gap-2" aria-label={ro ? "Nivelul hărții" : "Map level"}>
-          <li><button type="button" className={tab(level === "counties")} aria-pressed={level === "counties"} onClick={() => { setLevel("counties"); setCirc(undefined); setSelected(undefined); }}>{ro ? "Pe județe" : "By county"}</button></li>
-          <li><button type="button" className={tab(level === "communes")} aria-pressed={level === "communes"} onClick={() => setLevel("communes")}>{ro ? "Pe comune" : "By commune"}</button></li>
+        <ul className="flex flex-wrap gap-2" aria-label={ro ? "Zona hărții" : "Map area"}>
+          <li><button type="button" className={tab(scope === "romania")} aria-pressed={scope === "romania"} onClick={() => { setScope("romania"); setSelected(undefined); }}>{ro ? "România" : "Romania"}</button></li>
+          <li><button type="button" className={tab(scope === "abroad")} aria-pressed={scope === "abroad"} onClick={() => { setScope("abroad"); setSelected(undefined); }}>{ro ? "Diaspora" : "Abroad"}</button></li>
         </ul>
-        {level === "communes" ? (
+        {scope === "abroad" && abroadMapped ? (
+          <ul className="flex flex-wrap gap-2" aria-label={ro ? "Cât din lume se vede" : "How much of the world is shown"}>
+            <li><button type="button" className={tab(view === "europe")} aria-pressed={view === "europe"} onClick={() => setView("europe")}>{ro ? "Europa" : "Europe"}</button></li>
+            <li><button type="button" className={tab(view === "world")} aria-pressed={view === "world"} onClick={() => setView("world")}>{ro ? "Lumea întreagă" : "The whole world"}</button></li>
+          </ul>
+        ) : null}
+        {scope === "romania" ? (
+          <ul className="flex flex-wrap gap-2" aria-label={ro ? "Nivelul hărții" : "Map level"}>
+            <li><button type="button" className={tab(level === "counties")} aria-pressed={level === "counties"} onClick={() => { setLevel("counties"); setCirc(undefined); setSelected(undefined); }}>{ro ? "Pe județe" : "By county"}</button></li>
+            <li><button type="button" className={tab(level === "communes")} aria-pressed={level === "communes"} onClick={() => setLevel("communes")}>{ro ? "Pe comune" : "By commune"}</button></li>
+          </ul>
+        ) : null}
+        {scope === "romania" && level === "communes" ? (
           <label className="flex items-center gap-2 text-sm text-ink-soft">{ro ? "Județ" : "County"}
             <select className="rounded-control border border-line bg-surface px-2 py-1.5 text-sm text-ink" value={circ ?? ""} onChange={(event) => { setCirc(event.target.value ? Number(event.target.value) : undefined); setSelected(undefined); }}>
               <option value="">{ro ? "Toată țara" : "Whole country"}</option>
@@ -247,7 +304,21 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
         <div ref={frame} className="relative min-w-0 rounded-card border border-line bg-surface p-2" onPointerMove={pointer} onPointerLeave={() => setHover(undefined)}>
           {failed ? <p className="p-6 text-sm text-muted">{ro ? "Harta nu s-a putut încărca; tabelul de mai jos are aceleași cifre." : "The map could not be loaded; the table below has the same figures."}</p> : null}
           {!ready && !failed ? <div className="grid aspect-[1000/711] place-items-center text-sm text-muted" role="status">{ro ? "Se încarcă harta…" : "Loading the map…"}</div> : null}
-          {ready && counties ? (
+          {scope === "abroad" && !abroadMapped && payload ? (
+            <p className="p-6 text-sm leading-6 text-muted">{ro ? `Pentru ${current?.label ?? "această alegere"} fișierele AEP dau secțiile din străinătate pe localități (orașe), nu pe țări; nu desenăm harta pe țări fără să ghicim țara fiecărui oraș. Totalul străinătății e rândul „Străinătate” din tabelul de sub hartă.` : `For ${current?.label ?? "this election"} the AEP's files give the polling stations abroad by place (cities), not by country; we do not draw a map by country without guessing each city's country. The total abroad is the "Abroad" row of the table under the map.`}</p>
+          ) : null}
+          {scope === "abroad" && abroadMapped && ready && world ? (
+            <svg viewBox={abroadBox.join(" ")} className="block h-auto w-full touch-manipulation" role="group" aria-label={`${metricLabel[metric]}, ${ro ? "harta votului din diaspora, pe țări" : "map of the vote abroad, by country"}`}>
+              <rect x={abroadBox[0]} y={abroadBox[1]} width={abroadBox[2]} height={abroadBox[3]} fill="#f1f5f9" />
+              {world.countries.map((country) => {
+                const key = countryKey(country.i);
+                const area = abroadByKey.get(key);
+                const colour = paint(area);
+                return <path key={`${country.i}:${country.name}`} d={country.d} data-k={area ? key : undefined} fill={colour?.fill ?? "#e2e8f0"} fillRule="evenodd" fillOpacity={colour?.opacity ?? 1} stroke="#ffffff" strokeWidth={0.5} vectorEffect="non-scaling-stroke" className={area ? "cursor-pointer transition-[fill-opacity] duration-300 motion-reduce:transition-none" : ""} onClick={() => area && select(key)} />;
+              })}
+            </svg>
+          ) : null}
+          {scope === "romania" && ready && counties ? (
             <svg viewBox={viewBox.join(" ")} className="block h-auto w-full touch-manipulation" role="group" aria-label={`${metricLabel[metric]}, ${ro ? "harta României" : "map of Romania"}`}>
               {level === "counties" ? (
                 <g>
@@ -283,10 +354,15 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
             <h3 className="font-display text-base font-bold text-ink">{metricLabel[metric]}</h3>
             {metric === "winner" ? (
               <>
-                <ul className="mt-2 space-y-1.5">
-                  {wins.slice(0, 7).map(([code, count]) => <li key={code} className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: colours.get(code) }} /><span className="min-w-0 flex-1 truncate text-ink-soft">{listName(code)}</span><span className="tabular-nums text-muted">{number(count)}</span></li>)}
+                <ul className="mt-2 space-y-2">
+                  {standing.rows.map((row) => (
+                    <li key={row.code}>
+                      <div className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: colours.get(row.code) }} /><span className="min-w-0 flex-1 truncate text-ink-soft">{listName(row.code)}</span><span className="font-semibold tabular-nums text-ink">{percent(standing.total > 0 ? row.votes / standing.total : undefined)}</span></div>
+                      <p className="ml-5 text-xs tabular-nums text-muted">{number(row.votes)} {ro ? "voturi" : "votes"}{scope === "abroad" && !abroadMapped ? "" : ` · ${number(row.won)} ${wonLabel}`}</p>
+                    </li>
+                  ))}
                 </ul>
-                <p className="mt-2 text-xs leading-5 text-muted">{level === "counties" ? (ro ? "județe câștigate" : "counties won") : (ro ? "comune câștigate" : "communes won")}. {ro ? "Culoarea e mai intensă cu cât diferența față de locul doi e mai mare." : "The colour is stronger the larger the lead over second place."}</p>
+                <p className="mt-2 text-xs leading-5 text-muted">{basisLabel}: {number(standing.total)} {ro ? "voturi valabile din secțiile de votare (fără votul prin corespondență)" : "valid votes at the polling stations (not the votes by mail)"}. {ro ? "Culoarea hărții e mai intensă cu cât diferența față de locul doi e mai mare." : "The colour on the map is stronger the larger the lead over second place."}</p>
               </>
             ) : metric === "change" ? (
               <>
@@ -309,7 +385,7 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
             )}
           </section>
 
-          {counties ? (
+          {scope === "romania" && counties ? (
             <section aria-label={ro ? "București pe sectoare" : "Bucharest by sector"} className="rounded-card border border-line bg-surface p-4">
               <h3 className="font-display text-base font-bold text-ink">{ro ? "București, pe sectoare" : "Bucharest, by sector"}</h3>
               <svg viewBox={counties.inset.viewBox.join(" ")} className="mx-auto mt-2 block h-auto w-full max-w-[12rem]" role="group" aria-label={ro ? "Sectoarele Bucureștiului" : "The sectors of Bucharest"}>
@@ -327,8 +403,8 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
       <div className="mt-4 rounded-card border border-line bg-surface p-4" aria-live="polite">
         {selectedArea ? (
           <>
-            <h3 className="font-display text-lg font-bold text-ink">{title(selectedArea)}{selectedArea.k.startsWith("c") ? "" : <span className="font-normal text-muted"> · {countyName(selectedArea.c)}</span>}</h3>
-            <p className="mt-1 text-sm text-muted">{number(selectedArea.v)} {ro ? "voturi valabile" : "valid votes"} · {number(selectedArea.s)} {ro ? "secții" : "polling stations"} · {ro ? "prezență" : "turnout"} {percent(turnoutOf(selectedArea))} · {ro ? "nule" : "null"} {percent(invalidShareOf(selectedArea))}</p>
+            <h3 className="font-display text-lg font-bold text-ink">{title(selectedArea)}{selectedArea.k.startsWith("c") || selectedArea.c === 43 ? "" : <span className="font-normal text-muted"> · {countyName(selectedArea.c)}</span>}</h3>
+            <p className="mt-1 text-sm text-muted">{number(selectedArea.v)} {ro ? "voturi valabile" : "valid votes"} · {number(selectedArea.s)} {ro ? "secții" : "polling stations"} · {selectedArea.c === 43 ? "" : `${ro ? "prezență" : "turnout"} ${percent(turnoutOf(selectedArea))} · `}{ro ? "nule" : "null"} {percent(invalidShareOf(selectedArea))}</p>
             <ul className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
               {selectedArea.l.slice(0, 6).map((code, index) => <li key={code} className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: colours.get(code) }} /><span className="min-w-0 flex-1 truncate text-ink-soft">{listName(code)}</span><span className="tabular-nums text-ink">{percent(selectedArea.x[index]! / selectedArea.v)}</span></li>)}
             </ul>
@@ -338,7 +414,34 @@ export function ElectionMap({ locale, elections, initial }: ElectionMapProps) {
         )}
       </div>
 
-      {level === "communes" && circ !== undefined && circCommunes.length > 0 ? (
+      {scope === "abroad" && abroadMapped && abroad.countries.length > 0 ? (
+        <div className="mt-4 rounded-card border border-line bg-surface">
+          <div className="max-h-[32rem] overflow-auto">
+            <table className="w-full min-w-[34rem] text-sm">
+              <caption className="px-4 pt-4 text-left font-display text-lg font-bold text-ink">{ro ? "Diaspora, pe țări" : "Abroad, by country"}</caption>
+              <thead className="sticky top-0 bg-surface text-left text-xs uppercase tracking-wide text-muted">
+                <tr><th scope="col" className="px-4 py-2 font-semibold">{ro ? "Țara" : "Country"}</th><th scope="col" className="px-2 py-2 text-right font-semibold">{ro ? "Voturi valabile" : "Valid votes"}</th><th scope="col" className="px-2 py-2 font-semibold">{ro ? "Primul loc" : "First place"}</th><th scope="col" className="px-2 py-2 text-right font-semibold">{ro ? "Nule" : "Null"}</th></tr>
+              </thead>
+              <tbody>
+                {abroad.countries.map((area) => {
+                  const leader = leaderOf(area);
+                  return (
+                    <tr key={area.k} className="border-t border-line">
+                      <th scope="row" className="px-4 py-2 text-left font-semibold text-ink"><button type="button" className="text-left hover:text-brand" onClick={() => setSelected(area.k)}>{title(area)}</button></th>
+                      <td className="px-2 py-2 text-right tabular-nums">{number(area.v)}</td>
+                      <td className="px-2 py-2">{leader ? <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm" style={{ background: colours.get(leader.code) }} />{listName(leader.code)} <span className="tabular-nums text-muted">{percent(leader.share)}</span></span> : "–"}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{percent(invalidShareOf(area))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {abroad.left.length > 0 ? <p className="border-t border-line px-4 py-3 text-xs leading-5 text-muted">{ro ? `${abroad.left.length} ${abroad.left.length === 1 ? "loc din fișiere nu e" : "locuri din fișiere nu sunt"} într-o țară din lista noastră și ${abroad.left.length === 1 ? "nu e" : "nu sunt"} pe hartă: ` : `${abroad.left.length} ${abroad.left.length === 1 ? "place in the files is" : "places in the files are"} in no country of our list and ${abroad.left.length === 1 ? "is" : "are"} not on the map: `}{abroad.left.map((area) => `${area.n} (${number(area.v)})`).join(", ")}.</p> : null}
+        </div>
+      ) : null}
+
+      {level === "communes" && circ !== undefined && scope === "romania" && circCommunes.length > 0 ? (
         <div className="mt-4 overflow-x-auto rounded-card border border-line bg-surface">
           <table className="w-full min-w-[34rem] text-sm">
             <caption className="px-4 pt-4 text-left font-display text-lg font-bold text-ink">{ro ? "Comunele județului" : "The communes of"} {countyName(circ)}</caption>

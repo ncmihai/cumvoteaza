@@ -173,6 +173,8 @@ export interface MemberDirectoryItem {
   inGovernment?: boolean;
   groupSwitchCount?: number;
   serviceDays?: number;
+  /** Age in whole years today, from the date of birth the member's official profile prints; only read when the list is sorted by age. */
+  ageYears?: number;
 }
 
 export interface MemberDirectoryData {
@@ -258,6 +260,8 @@ type MemberDirectoryFilters = {
   q?: string;
   legislature?: string;
   sort?: string;
+  /** "asc" turns the order of a sort round (the default is from the highest number to the lowest); the sort by name ignores it. */
+  dir?: string;
 };
 
 export interface VoteCoverageData {
@@ -354,7 +358,7 @@ const getCachedBillPageData = unstable_cache(
 const getCachedMemberDirectoryData = unstable_cache(
   async (filters?: MemberDirectoryFilters) =>
     timed("data.member-directory", () => getMemberDirectoryDataUncached(filters)),
-  ["member-directory-data-integrity-v6"],
+  ["member-directory-data-integrity-v7"],
   { revalidate: 600, tags: [CACHE_TAGS.members, CACHE_TAGS.search] }
 );
 
@@ -809,7 +813,7 @@ async function tryDatabaseMemberDirectory(filters?: MemberDirectoryFilters): Pro
   try {
     const conditions = memberDirectoryConditions(filters);
     const where = conditions.length ? sql`where ${sql.join(conditions, sql` and `)}` : sql``;
-    const orderBy = memberDirectoryOrderSql(filters?.sort);
+    const orderBy = memberDirectoryOrderSql(filters?.sort, filters?.dir);
     const stats = memberDirectoryStatsSql(filters?.sort);
     const [memberRows, groupRows, partyRows, legislatureRows] = await Promise.all([
       session.db.execute<MemberDirectoryRow>(sql`
@@ -1679,7 +1683,8 @@ function mapMemberDirectoryRow(row: MemberDirectoryRow): MemberDirectoryItem {
     eligibleVotes: row.eligible_votes === null || row.eligible_votes === undefined ? undefined : Number(row.eligible_votes),
     inGovernment: Boolean(row.in_government),
     groupSwitchCount: Number(row.stat_switches ?? 0),
-    serviceDays: Number(row.stat_seniority_days ?? 0)
+    serviceDays: Number(row.stat_seniority_days ?? 0),
+    ...(row.stat_age === null || row.stat_age === undefined ? {} : { ageYears: Number(row.stat_age) })
   };
 }
 
@@ -2393,8 +2398,9 @@ function filterDirectoryItems(
         .some((value) => value.includes(query));
     })
     .sort((a, b) => {
-      if (filters?.sort === "votes") return (b.voteCount ?? 0) - (a.voteCount ?? 0) || a.member.displayName.localeCompare(b.member.displayName, "ro");
-      if (filters?.sort === "absent") return (b.absenceCount ?? 0) - (a.absenceCount ?? 0) || a.member.displayName.localeCompare(b.member.displayName, "ro");
+      const turn = filters?.dir === "asc" ? -1 : 1;
+      if (filters?.sort === "votes") return turn * ((b.voteCount ?? 0) - (a.voteCount ?? 0)) || a.member.displayName.localeCompare(b.member.displayName, "ro");
+      if (filters?.sort === "absent") return turn * ((b.absenceCount ?? 0) - (a.absenceCount ?? 0)) || a.member.displayName.localeCompare(b.member.displayName, "ro");
       return a.member.displayName.localeCompare(b.member.displayName, "ro");
     });
 }
@@ -2430,19 +2436,16 @@ function memberDirectoryConditions(filters?: MemberDirectoryFilters) {
   return conditions;
 }
 
-function memberDirectoryOrderSql(sort?: string) {
-  if (sort === "votes") {
-    return sql`vote_count desc, member_display_name asc, member_id asc`;
-  }
-  if (sort === "absent") {
-    return sql`absence_count desc, member_display_name asc, member_id asc`;
-  }
-  if (sort === "seniority") {
-    return sql`stat_seniority_days desc, member_display_name asc, member_id asc`;
-  }
-  if (sort === "switches") {
-    return sql`stat_switches desc, member_display_name asc, member_id asc`;
-  }
+/** The order of the list: each sort runs from the highest number to the lowest, and `dir=asc` turns it round; names break ties, and a member with no value (no date of birth) goes last either way. */
+function memberDirectoryOrderSql(sort?: string, dir?: string) {
+  const direction = dir === "asc" ? sql`asc` : sql`desc`;
+  const names = sql`member_display_name asc, member_id asc`;
+  if (sort === "votes") return sql`vote_count ${direction}, ${names}`;
+  if (sort === "absent") return sql`absence_count ${direction}, ${names}`;
+  if (sort === "seniority") return sql`stat_seniority_days ${direction}, ${names}`;
+  if (sort === "switches") return sql`stat_switches ${direction}, ${names}`;
+  // The oldest first is the highest age: an earlier date of birth sorts first.
+  if (sort === "age") return sql`stat_birth_date ${dir === "asc" ? sql`desc` : sql`asc`} nulls last, ${names}`;
   return sql`member_display_name asc, member_id asc`;
 }
 
@@ -2463,6 +2466,8 @@ function memberDirectoryStatsSql(sort?: string) {
       select: sql`
         coalesce(sst.stat_switches, 0) as stat_switches,
         0 as stat_seniority_days,
+        null::int as stat_age,
+        null::date as stat_birth_date,
       `
     };
   }
@@ -2492,6 +2497,21 @@ function memberDirectoryStatsSql(sort?: string) {
       select: sql`
         0 as stat_switches,
         coalesce(snt.stat_seniority_days, 0) as stat_seniority_days,
+        null::int as stat_age,
+        null::date as stat_birth_date,
+      `
+    };
+  }
+  if (sort === "age") {
+    // The date of birth is the one the Chamber's profile header prints (D-036, `person_biographies`); a person without one has no age and goes last.
+    return {
+      ctes: sql``,
+      joins: sql`left join person_biographies pbio on pbio.person_id = m.person_id`,
+      select: sql`
+        0 as stat_switches,
+        0 as stat_seniority_days,
+        case when pbio.birth_date is null then null else date_part('year', age(current_date, pbio.birth_date))::int end as stat_age,
+        pbio.birth_date as stat_birth_date,
       `
     };
   }
@@ -2501,6 +2521,8 @@ function memberDirectoryStatsSql(sort?: string) {
     select: sql`
       0 as stat_switches,
       0 as stat_seniority_days,
+      null::int as stat_age,
+      null::date as stat_birth_date,
     `
   };
 }
@@ -3187,6 +3209,7 @@ type MemberDirectoryRow = {
   in_government: boolean;
   stat_switches: number;
   stat_seniority_days: number;
+  stat_age?: number | null;
 };
 
 type PartyLegislatureSummaryRow = {

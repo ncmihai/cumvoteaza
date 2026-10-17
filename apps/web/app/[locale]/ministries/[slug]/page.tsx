@@ -10,6 +10,11 @@ import { getMinistry } from "@/lib/ministry-data";
 import { getQuestionsView } from "@/lib/question-data";
 import { QuestionsSummary } from "../../_components/QuestionsSummary";
 import type { AppLocale } from "@/lib/i18n";
+import { StatusPill } from "../../_components/ui/StatusPill";
+import { PageIntro } from "../../_components/ui/PageIntro";
+import { MINISTRY_SITES } from "@/lib/ministry-sites";
+import { getOfficeCounts, getOfficeHoldings, type Holding, type OfficeCounts } from "@/lib/president-data";
+import { ACTION_LABELS } from "@/lib/president-format";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -25,20 +30,25 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
   if (!ministry) notFound();
   const questionsView = await getQuestionsView({ ministrySlug: ministry.slug });
   const current = ministry.current;
+  const site = MINISTRY_SITES[ministry.slug];
+  // The Ministry of Foreign Affairs runs the diplomatic missions; the ambassadors are named and recalled by the President's decrees, which we hold.
+  const [ambassadors, ambassadorCounts] = ministry.slug === "externe" ? await Promise.all([getOfficeHoldings("ambassador"), getOfficeCounts("ambassador")]) : [undefined, undefined];
   const verifiedLegislation = ministry.legislation.filter((item) => item.confidence === "official" || item.confidence === "high");
   const suggestedLegislation = ministry.legislation.filter((item) => item.confidence === "suggested");
   return <main className="mx-auto max-w-page px-4 py-6 lg:px-8">
     <Link href={`/${locale}/ministries`} className="inline-flex items-center gap-1 text-xs font-bold text-brand"><ArrowLeft size={14}/>{locale === "ro" ? "Toate ministerele" : "All ministries"}</Link>
     <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0">
-        <p className="text-xs font-bold uppercase tracking-wide text-brand">{locale === "ro" ? "Minister" : "Ministry"}</p>
-        <h1 className="mt-2 font-display text-4xl font-bold leading-[.98] tracking-[-.035em] text-ink [overflow-wrap:anywhere] lg:text-6xl">{ministry.name}</h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-muted">{locale === "ro" ? ministry.descriptionRo : ministry.descriptionEn}</p>
+        <PageIntro eyebrow={locale === "ro" ? "Minister" : "Ministry"} title={ministry.name}
+          trailing={site ? <a href={site.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft px-3.5 py-1.5 text-sm font-bold text-brand-strong">{locale === "ro" ? "Site-ul oficial al ministerului" : "The ministry's official website"}<ExternalLink size={13} aria-hidden="true" /></a> : null}>
+          {locale === "ro" ? ministry.descriptionRo : ministry.descriptionEn}
+        </PageIntro>
+        {ambassadors && ambassadorCounts ? <AmbassadorsPanel locale={locale} holdings={ambassadors} counts={ambassadorCounts} /> : null}
         {ministry.institutionalHistory.incarnations.length ? <InstitutionalHistory history={ministry.institutionalHistory} locale={locale}/> : null}
         <section className="mt-6 border border-line bg-surface p-4 md:p-5 rounded-card"><div className="flex items-center gap-2"><Landmark className="text-brand"/><h2 className="font-display text-xl font-bold text-ink">{locale === "ro" ? "Istoricul miniștrilor" : "Ministerial history"}</h2></div>
           <div className="mt-4 divide-y divide-line">{ministry.terms.map((term, index) => <article key={term.id} className="grid min-w-0 gap-2 py-4 md:grid-cols-[150px_minmax(0,1fr)_auto] md:items-start">
             <div className="text-xs font-semibold text-muted">{formatDate(term.startsOn, locale)}<span className="block">{term.endsOn ? `— ${formatDate(term.endsOn, locale)}` : `— ${locale === "ro" ? "prezent" : "present"}`}</span></div>
-            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><PersonAvatar name={term.person.displayName} photoUrl={term.member?.photoUrl} size={36}/>{term.member ? <Link href={`/${locale}/members/${term.member.slug}`} className="font-display text-lg font-bold text-ink hover:text-brand">{term.person.displayName}</Link> : <strong className="font-display text-lg text-ink">{term.person.displayName}</strong>}{term.interim ? <span className="border border-vote-abstain-fill bg-vote-abstain-bg px-1.5 py-0.5 text-xs font-bold uppercase text-vote-abstain">{locale === "ro" ? "Interimar" : "Interim"}</span> : null}{index === 0 && !term.endsOn ? <span className="border border-vote-for-fill bg-vote-for-bg px-1.5 py-0.5 text-xs font-bold uppercase text-vote-for">{locale === "ro" ? "Actual" : "Current"}</span> : null}</div><p className="mt-1 text-xs text-muted">{term.title} · <Link href={`/${locale}/governments/${term.government.slug}`} className="font-semibold text-brand">{locale === "ro" ? "Guvernul" : "Government"} {term.government.name}</Link></p></div>
+            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><PersonAvatar name={term.person.displayName} photoUrl={term.member?.photoUrl} size={36}/>{term.member ? <Link href={`/${locale}/members/${term.member.slug}`} className="font-display text-lg font-bold text-ink hover:text-brand">{term.person.displayName}</Link> : <strong className="font-display text-lg text-ink">{term.person.displayName}</strong>}{term.interim ? <StatusPill tone="interim">{locale === "ro" ? "Interimar" : "Interim"}</StatusPill> : null}{index === 0 && !term.endsOn ? <StatusPill tone="current">{locale === "ro" ? "Actual" : "Current"}</StatusPill> : null}</div><p className="mt-1 text-xs text-muted">{term.title} · <Link href={`/${locale}/governments/${term.government.slug}`} className="font-semibold text-brand">{locale === "ro" ? "Guvernul" : "Government"} {term.government.name}</Link></p></div>
             {term.sourceUrl ? <a href={term.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Sursă" : "Source"}<ExternalLink size={12}/></a> : null}
           </article>)}</div>
         </section>
@@ -48,7 +58,7 @@ export default async function MinistryPage({ params }: { params: Promise<{ local
         </section>
         <div className="mt-5"><QuestionsSummary view={questionsView} locale={locale} filter={`ministry=${encodeURIComponent(ministry.slug)}`} as="addressee" /></div>
       </div>
-      <aside className="self-start border border-line bg-wash p-5 lg:sticky lg:top-24 rounded-card"><Building2 className="text-brand"/><h2 className="mt-3 font-display text-xl font-bold text-ink">{locale === "ro" ? "Conducerea actuală" : "Current leadership"}</h2>{current ? <><div className="mt-4 flex flex-wrap items-center gap-2"><strong className="font-display text-xl text-ink">{current.person.displayName}</strong>{current.interim ? <span className="border border-vote-abstain-fill bg-vote-abstain-bg px-1.5 py-0.5 text-xs font-bold uppercase text-vote-abstain">{locale === "ro" ? "Interimar" : "Interim"}</span> : null}</div><p className="mt-2 text-xs leading-5 text-muted">{locale === "ro" ? "În funcție din" : "In office since"} {formatDate(current.startsOn, locale)}<br/>{locale === "ro" ? "Guvernul" : "Government"} {current.government.name}</p>{current.member ? <Link href={`/${locale}/members/${current.member.slug}`} className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Vezi profilul parlamentar" : "View parliamentary profile"}<ArrowRight size={13}/></Link> : null}</> : <p className="mt-3 text-sm text-muted">{locale === "ro" ? "Titularul curent este în curs de verificare." : "The current holder is under verification."}</p>}</aside>
+      <aside className="self-start border border-line bg-wash p-5 lg:sticky lg:top-24 rounded-card"><Building2 className="text-brand"/><h2 className="mt-3 font-display text-xl font-bold text-ink">{locale === "ro" ? "Conducerea actuală" : "Current leadership"}</h2>{current ? <><div className="mt-4 flex flex-wrap items-center gap-2"><strong className="font-display text-xl text-ink">{current.person.displayName}</strong>{current.interim ? <StatusPill tone="interim">{locale === "ro" ? "Interimar" : "Interim"}</StatusPill> : null}</div><p className="mt-2 text-xs leading-5 text-muted">{locale === "ro" ? "În funcție din" : "In office since"} {formatDate(current.startsOn, locale)}<br/>{locale === "ro" ? "Guvernul" : "Government"} {current.government.name}</p>{current.member ? <Link href={`/${locale}/members/${current.member.slug}`} className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Vezi profilul parlamentar" : "View parliamentary profile"}<ArrowRight size={13}/></Link> : null}</> : <p className="mt-3 text-sm text-muted">{locale === "ro" ? "Titularul curent este în curs de verificare." : "The current holder is under verification."}</p>}</aside>
     </div>
   </main>;
 }
@@ -80,4 +90,26 @@ function lineageLabel(relationship: string, locale: AppLocale) {
 
 function LegislationRow({ locale, item }: { locale: AppLocale; item: NonNullable<Awaited<ReturnType<typeof getMinistry>>>["legislation"][number] }) {
   return <article className="min-w-0 py-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><Link href={`/${locale}/bills/${item.bill.slug}`} className="font-display text-lg font-bold text-ink hover:text-brand">{item.bill.identifier}</Link><p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{item.bill.title}</p></div><span className={`shrink-0 border px-2 py-1 text-xs font-bold uppercase ${item.confidence === "official" ? "border-vote-for-fill bg-vote-for-bg text-vote-for" : "border-line bg-wash text-muted"}`}>{item.confidence === "official" ? (locale === "ro" ? "Oficial" : "Official") : (locale === "ro" ? "De verificat" : "To review")}</span></div><p className="mt-2 text-xs leading-5 text-muted">{item.reason}</p>{item.votes.length ? <div className="mt-2 flex flex-wrap gap-2">{item.votes.slice(0, 3).map((vote) => <Link key={vote.id} href={`/${locale}/votes/${vote.id}`} className="border border-line bg-surface px-2 py-1 text-xs font-bold text-brand rounded-control">{formatDate(vote.heldOn, locale)} · {locale === "ro" ? "Vezi votul" : "View vote"}</Link>)}</div> : null}{item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand">{locale === "ro" ? "Documentul în care apare" : "Document containing the mention"}<ExternalLink size={10}/></a> : null}</article>;
+}
+
+
+/** The ambassadors, from the President's decrees: the latest ones, and the way to the whole register. Who holds a post now is not worked out here: a decree names or recalls, it does not say who sits in the embassy today. */
+function AmbassadorsPanel({ locale, holdings, counts }: { locale: AppLocale; holdings: Holding[]; counts: OfficeCounts }) {
+  const ro = locale === "ro";
+  const appointed = (counts.byAction.appointment ?? 0) + (counts.byAction.reappointment ?? 0);
+  const recalled = counts.byAction.recall ?? 0;
+  const latest = [...holdings].sort((a, b) => b.issuedOn.localeCompare(a.issuedOn) || b.decreeNumber - a.decreeNumber).slice(0, 6);
+  return <section id="ambassadors" className="mt-6 rounded-card border border-line bg-surface p-4 md:p-5">
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div><p className="text-xs font-bold uppercase tracking-wide text-brand">{ro ? "Misiunile diplomatice" : "Diplomatic missions"}</p><h2 className="font-display text-xl font-bold text-ink">{ro ? "Ambasadorii României" : "Romania's ambassadors"}</h2></div>
+      <Link href={`/${locale}/presidency/appointments/ambassador`} className="inline-flex items-center gap-1 text-sm font-bold text-brand">{ro ? "Toate numirile și rechemările" : "All appointments and recalls"}<ArrowRight size={14} aria-hidden="true" /></Link>
+    </div>
+    <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{ro ? `Ambasadorii se numesc și se recheamă prin decrete ale Președintelui. În decretele noastre sunt ${appointed} numiri și ${recalled} rechemări${counts.firstYear ? `, de la ${counts.firstYear} încoace` : ""}. Un decret numește sau recheamă, dar nu spune cine ocupă azi un post, așa că nu afișăm „ambasadorul actual” al unei țări din presupunere.` : `Ambassadors are appointed and recalled by decrees of the President. Our decrees hold ${appointed} appointments and ${recalled} recalls${counts.firstYear ? `, from ${counts.firstYear} on` : ""}. A decree appoints or recalls but does not say who sits in a post today, so we do not show a country's "current ambassador" by guess.`}</p>
+    {latest.length ? <ul className="mt-3 divide-y divide-line">{latest.map((item) => (
+      <li key={`${item.decreeId}-${item.name}`} className="grid gap-1 py-2.5 text-sm sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-baseline">
+        <span className="text-xs font-semibold text-muted">{formatDate(item.issuedOn, locale)}</span>
+        <span className="min-w-0"><strong className="text-ink">{item.name}</strong> <span className="text-ink-soft">· {ACTION_LABELS[item.action]?.[locale] ?? item.action}</span><span className="block text-xs leading-5 text-muted">{item.title ?? ""}</span></span>
+        <a href={item.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-bold text-brand">{item.decreeNumber}/{item.decreeYear}<ExternalLink size={11} aria-hidden="true" /></a>
+      </li>))}</ul> : null}
+  </section>;
 }
