@@ -17,7 +17,7 @@ import { appendNameListExceptions, exceptionKey, readNameListExceptions } from "
 import { loadStoredVotes } from "./run-report";
 import { mergeUnsupportedRegistry, readUnsupportedRegistry, unsupportedKeys } from "./unsupported-registry";
 import { COVERAGE_RAW_DIR } from "./run-fetch";
-import { checkVoteGate, officialVoteUrl, planVoteBackfill } from "./vote-backfill";
+import { acceptRecordedShortfall, checkVoteGate, officialVoteUrl, planVoteBackfill } from "./vote-backfill";
 import type { OfficialVoteRecord } from "./vote-coverage";
 
 export interface VoteBackfillOptions {
@@ -201,7 +201,7 @@ export async function runVoteBackfill(options: VoteBackfillOptions): Promise<Vot
 /** Parses one saved page and says what is wrong with it, or how to write it. */
 function prepare(record: OfficialVoteRecord, html: string, url: string, nameListShortBy?: { for?: number; against?: number; abstention?: number }): { reasons: string[]; write?: () => Promise<unknown>; unsupported?: string; totalsOnly?: boolean; autoException?: { voteId: string; present: number; nameRows: number; choice: "for" | "against" | "abstention" } } {
   if (record.source === "cdep") {
-    const parsed = parseChamberNominalVote(html, canonicalizeOfficialUrl(url));
+    const parsed = acceptRecordedShortfall(parseChamberNominalVote(html, canonicalizeOfficialUrl(url)), nameListShortBy);
     if (parsed.individualVotes.length === 0 && parsed.warnings.some((warning) => /^Attendance check lists names without votes/.test(warning))) {
       return { reasons: [], unsupported: "attendance check: the page lists who was present, with no vote choices" };
     }

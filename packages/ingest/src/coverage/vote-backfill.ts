@@ -127,3 +127,20 @@ export function checkVoteGate({ official, parsedStatus, parsed, nameListShortBy,
   }
   return reasons;
 }
+
+/**
+ * A Chamber page that announces one more vote than it lists by name (the source's own quirk, checked by hand and recorded in the curated exceptions file): its totals are the ones the page
+ * announces, its rows stay as listed, and the vote page states the gap. Only when the single warning is that gap and the shortfall recorded is exactly the gap.
+ */
+export function acceptRecordedShortfall<T extends { warnings: string[]; sourceSnapshot: { status: string }; vote: { totals: { present: number; for: number; against: number; abstention: number; presentNotVoting: number } }; announcedTotals?: { present: number; for: number; against: number; abstention: number; presentNotVoting: number } }>(
+  parsed: T,
+  shortBy: { for?: number; against?: number; abstention?: number } | undefined
+): T {
+  const announced = parsed.announcedTotals;
+  if (!shortBy || !announced || parsed.warnings.length === 0 || !parsed.warnings.every((warning) => warning.startsWith("Parsed nominal rows do not match official totals"))) return parsed;
+  const rows = parsed.vote.totals;
+  const gap = (shortBy.for ?? 0) + (shortBy.against ?? 0) + (shortBy.abstention ?? 0);
+  const exact = rows.for + (shortBy.for ?? 0) === announced.for && rows.against + (shortBy.against ?? 0) === announced.against && rows.abstention + (shortBy.abstention ?? 0) === announced.abstention
+    && rows.presentNotVoting === announced.presentNotVoting && rows.present + gap === announced.present;
+  return exact ? { ...parsed, warnings: [], sourceSnapshot: { ...parsed.sourceSnapshot, status: "parsed" }, vote: { ...parsed.vote, totals: announced } } : parsed;
+}

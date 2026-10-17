@@ -10,6 +10,8 @@ export interface ParsedChamberVote {
   members: Member[];
   individualVotes: IndividualVote[];
   warnings: string[];
+  /** The totals the page itself announces in its header (present, for, against, abstention, did not vote), when it prints them: a name list short of them is a source quirk, never filled in. */
+  announcedTotals?: { present: number; for: number; against: number; abstention: number; presentNotVoting: number };
 }
 
 export function parseChamberNominalVote(html: string, sourceUrl: string): ParsedChamberVote {
@@ -107,8 +109,11 @@ export function parseChamberNominalVote(html: string, sourceUrl: string): Parsed
   }
 
   const totals = totalsFromVotes(individualVotes);
+  const announcedPresent = numberAfter(text, /Prezen[tţț]i:/i);
+  const announcedTotals = officialTotals && announcedPresent !== undefined ? { present: announcedPresent, ...officialTotals } : undefined;
 
   return {
+    ...(announcedTotals ? { announcedTotals } : {}),
     sourceSnapshot: {
       ...sourceSnapshot,
       status: individualVotes.length > 0 && warnings.length === 0 ? "parsed" : individualVotes.length > 0 ? "partial" : "failed",

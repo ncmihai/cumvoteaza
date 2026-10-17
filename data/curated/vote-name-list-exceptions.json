@@ -332,6 +332,39 @@
       "evidence": "https://www.senat.ro/VoturiPlenDetaliu.aspx?AppID=faff8db3-c053-430a-b266-6d78f804f59c (automatic: 113 name rows counted on the raw page, 114 present)"
     },
     {
+      "source": "cdep",
+      "officialId": "30808",
+      "voteId": "vote-joint-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-30808",
+      "date": "2022-12-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-17",
+      "evidence": "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=30808 (joint sitting of 5 December 2022; counted on the saved raw page, independent of our parser: the header announces 259 present, the name table lists 258; the official day list agrees with the header)"
+    },
+    {
+      "source": "cdep",
+      "officialId": "30809",
+      "voteId": "vote-joint-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-30809",
+      "date": "2022-12-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-17",
+      "evidence": "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=30809 (joint sitting of 5 December 2022; counted on the saved raw page, independent of our parser: the header announces 277 present, the name table lists 276; the official day list agrees with the header)"
+    },
+    {
+      "source": "cdep",
+      "officialId": "30810",
+      "voteId": "vote-joint-https-www-cdep-ro-ords-pls-steno-evot2015-nominal-idv-30810",
+      "date": "2022-12-05",
+      "shortBy": {
+        "for": 1
+      },
+      "verifiedOn": "2026-10-17",
+      "evidence": "https://www.cdep.ro/ords/pls/steno/evot2015.Nominal?idv=30810 (joint sitting of 5 December 2022; counted on the saved raw page, independent of our parser: the header announces 310 present, the name table lists 309; the official day list agrees with the header)"
+    },
+    {
       "source": "senate",
       "officialId": "03d96eae-4320-40c9-85bd-cc02ab77707d",
       "voteId": "vote-senate-l705-2022-12-12-proiect-de-lege-de-aprobare",

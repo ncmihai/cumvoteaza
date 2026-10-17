@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exceptionKey, readNameListExceptions } from "../vote-name-list-exceptions";
 import { isJointAmendmentVote, summariseJointSittings } from "../coverage/joint-amendments";
-import { checkVoteGate, officialVoteUrl, planVoteBackfill, type GateInput } from "../coverage/vote-backfill";
+import { acceptRecordedShortfall, checkVoteGate, officialVoteUrl, planVoteBackfill, type GateInput } from "../coverage/vote-backfill";
 import { officialFromCdep, type OfficialVoteRecord, type StoredVoteRow } from "../coverage/vote-coverage";
 
 const cdep = (id: string, date: string, description: string, chamber: "deputies" | "joint" = "deputies", extra: Partial<OfficialVoteRecord> = {}): OfficialVoteRecord => ({
@@ -151,7 +151,36 @@ describe("curated name-list exceptions", () => {
   it("lists the hand-checked Senate votes with their evidence", () => {
     const exceptions = readNameListExceptions();
     expect(exceptions.length).toBeGreaterThanOrEqual(12);
-    expect(exceptions.every((item) => item.source === "senate" && Object.values(item.shortBy).length === 1 && Object.values(item.shortBy)[0] === 1 && item.verifiedOn && item.evidence.toLowerCase().includes(item.officialId.toLowerCase()))).toBe(true);
+    expect(exceptions.every((item) => (item.source === "senate" || item.source === "cdep") && Object.values(item.shortBy).length === 1 && Object.values(item.shortBy)[0] === 1 && item.verifiedOn && item.evidence.toLowerCase().includes(item.officialId.toLowerCase()))).toBe(true);
+    // The three joint votes of 5 December 2022 (the Chamber's pages announce one "for" more than they list).
+    expect(exceptions.filter((item) => item.source === "cdep").map((item) => item.officialId).sort()).toEqual(["30808", "30809", "30810"]);
     expect(exceptionKey("senate", "A9525454-81B6-43FF-9BD5-9851D7307F68")).toBe("senate:a9525454-81b6-43ff-9bd5-9851d7307f68");
+  });
+});
+
+describe("a Chamber page that announces one more vote than it lists (joint sitting of 5 December 2022)", () => {
+  const parsed = {
+    warnings: ["Parsed nominal rows do not match official totals: parsed 307/0/1/1, official 308/0/1/1."],
+    sourceSnapshot: { status: "partial" },
+    vote: { totals: { present: 309, for: 307, against: 0, abstention: 1, presentNotVoting: 1 } },
+    announcedTotals: { present: 310, for: 308, against: 0, abstention: 1, presentNotVoting: 1 }
+  };
+
+  it("takes the announced totals when the recorded shortfall is exactly the gap", () => {
+    const accepted = acceptRecordedShortfall(parsed, { for: 1 });
+    expect(accepted.warnings).toEqual([]);
+    expect(accepted.sourceSnapshot.status).toBe("parsed");
+    expect(accepted.vote.totals).toEqual({ present: 310, for: 308, against: 0, abstention: 1, presentNotVoting: 1 });
+  });
+
+  it("changes nothing without a recorded shortfall, or when the shortfall is not the gap", () => {
+    expect(acceptRecordedShortfall(parsed, undefined)).toBe(parsed);
+    expect(acceptRecordedShortfall(parsed, { against: 1 })).toBe(parsed);
+    expect(acceptRecordedShortfall(parsed, { for: 2 })).toBe(parsed);
+  });
+
+  it("leaves a page with another warning alone", () => {
+    const other = { ...parsed, warnings: [...parsed.warnings, "No Chamber vote subject metadata detected."] };
+    expect(acceptRecordedShortfall(other, { for: 1 })).toBe(other);
   });
 });
