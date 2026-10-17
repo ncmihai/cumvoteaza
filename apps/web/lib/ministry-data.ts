@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { memberPhotoUrls } from "./member-photos";
 import { eq, inArray, or } from "drizzle-orm";
 import * as schema from "@cumsevoteaza/db";
 import { CACHE_TAGS, createWebDbSession } from "./server-db";
@@ -27,7 +28,7 @@ const MINISTRY_DESCRIPTIONS_EN: Record<string, string> = {
 export interface MinistryTermView {
   id: string;
   person: { id: string; displayName: string };
-  member?: { slug: string };
+  member?: { slug: string; photoUrl?: string };
   government: { id: string; slug: string; name: string };
   title: string;
   startsOn: string;
@@ -154,6 +155,7 @@ export async function getGovernmentView(slug: string) {
     ]);
     const peopleById = new Map(people.map((item) => [item.id, item]));
     const memberByPersonId = new Map(members.filter((item) => item.personId).map((item) => [item.personId!, item]));
+    const photoUrls = await memberPhotoUrls(session.db, roles.flatMap((role) => memberByPersonId.get(role.personId)?.id ?? []));
     const ministryById = new Map(ministries.map((item) => [item.id, item]));
     const incarnationById = new Map(incarnations.map((item) => [item.id, item]));
     const sourceById = new Map(sources.map((item) => [item.id, item.sourceUrl]));
@@ -167,7 +169,7 @@ export async function getGovernmentView(slug: string) {
         const ministry = role.ministryId ? ministryById.get(role.ministryId) : undefined;
         const incarnation = role.ministryIncarnationId ? incarnationById.get(role.ministryIncarnationId) : undefined;
         const member = memberByPersonId.get(person.id);
-        return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: member ? { slug: member.slug } : undefined, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined, sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined }];
+        return [{ id: role.id, person: { id: person.id, displayName: person.displayName }, member: member ? { slug: member.slug, ...(photoUrls.has(member.id) ? { photoUrl: photoUrls.get(member.id)! } : {}) } : undefined, title: role.title, startsOn: role.startsOn, endsOn: role.endsOn ?? undefined, interim: /interimar/i.test(role.title), ministry: ministry ? { slug: ministry.slug, name: ministry.name } : undefined, incarnation: incarnation ? { id: incarnation.id, slug: incarnation.slug, name: incarnation.name } : undefined, sourceUrl: role.sourceSnapshotId ? sourceById.get(role.sourceSnapshotId) : undefined }];
       }).sort((a, b) => b.startsOn.localeCompare(a.startsOn)),
       events: events.sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)),
       // How this government came to be, and the attempts to replace it while it served.
@@ -215,6 +217,7 @@ async function assembleMinistries(session: ReturnType<typeof createWebDbSession>
   const peopleById = new Map(people.map((item) => [item.id, item]));
   const governmentById = new Map(governments.map((item) => [item.id, item]));
   const memberByPersonId = new Map(members.filter((item) => item.personId).map((item) => [item.personId!, item]));
+  const photoUrls = await memberPhotoUrls(session.db, roleRows.flatMap((role) => memberByPersonId.get(role.personId)?.id ?? []));
   const sourceById = new Map(sources.map((item) => [item.id, item.sourceUrl]));
   const billById = new Map(bills.map((item) => [item.id, item]));
   const incarnationById = new Map(incarnations.map((item) => [item.id, item]));
@@ -231,7 +234,7 @@ async function assembleMinistries(session: ReturnType<typeof createWebDbSession>
       return [{
         id: role.id,
         person: { id: person.id, displayName: person.displayName },
-        member: member ? { slug: member.slug } : undefined,
+        member: member ? { slug: member.slug, ...(photoUrls.has(member.id) ? { photoUrl: photoUrls.get(member.id)! } : {}) } : undefined,
         government: { id: government.id, slug: government.slug, name: government.name },
         title: role.title,
         startsOn: role.startsOn,

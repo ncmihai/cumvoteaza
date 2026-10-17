@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PartyMark, type PartyMarkParty } from "./PartyMark";
+import { PersonAvatar } from "./PersonAvatar";
 import { VoteDot } from "./VoteIcon";
 import { VOTE_LABEL, VOTE_KINDS, voteKindOfChoice } from "./vote-meaning";
 
@@ -16,6 +17,8 @@ export interface NominalRow {
   groupMark: PartyMarkParty;
   county?: string;
   choice: string;
+  /** The member's official photo where we hold one; otherwise the initials show. */
+  photoUrl?: string;
 }
 
 type SortKey = "name" | "group" | "county" | "vote";
@@ -62,7 +65,7 @@ export function NominalTable({ rows, locale, caption }: { rows: NominalRow[]; lo
               const kind = voteKindOfChoice(row.choice);
               return (
                 <tr key={row.id} className="hover:bg-wash/60">
-                  <td className="px-3 py-2 font-medium text-ink">{row.href ? <Link href={row.href} className="text-brand hover:underline">{row.name}</Link> : row.name}</td>
+                  <td className="px-3 py-2 font-medium text-ink"><span className="inline-flex items-center gap-2.5"><PersonAvatar name={row.name} photoUrl={row.photoUrl} size={28} />{row.href ? <Link href={row.href} className="text-brand hover:underline">{row.name}</Link> : row.name}</span></td>
                   <td className="px-3 py-2"><span className="inline-flex items-center gap-2"><PartyMark party={row.groupMark} size={16} />{row.groupLabel}</span></td>
                   <td className="px-3 py-2 text-ink-soft">{row.county ?? <span className="text-muted">—</span>}</td>
                   <td className="px-3 py-2"><span className="inline-flex items-center gap-2 font-medium"><VoteDot kind={kind} size={20} locale={locale} />{VOTE_LABEL[locale][kind]}</span></td>

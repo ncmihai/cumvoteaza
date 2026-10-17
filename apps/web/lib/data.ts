@@ -151,6 +151,8 @@ export interface VoteGroupContext {
 export interface BillSponsorContext {
   sponsor: BillSponsor;
   member?: Member;
+  /** The member's official photo where we hold one (a member of Parliament only; every other initiator shows initials). */
+  photoUrl?: string;
   group?: ParliamentaryGroup;
   party?: Party;
   alignment: GovernanceAlignment;
@@ -1552,6 +1554,13 @@ async function loadBillSponsorContexts(db: DbClient, sponsors: BillSponsor[], da
       : []
   ]);
   const membersById = new Map(memberRows.map((row) => [row.id, mapMember(row)]));
+  const photoRows = memberIds.length > 0
+    ? [...(await db.execute<{ entity_id: string; id: string }>(sql`
+        select distinct on (entity_id) entity_id, id from stored_assets
+        where entity_id in (${sql.join(memberIds.map((memberId) => sql`${memberId}`), sql`, `)}) and asset_type = 'photo' and fetch_status = 'stored'
+        order by entity_id, coalesce(width, 0) asc, created_at desc`))]
+    : [];
+  const photosByMemberId = new Map(photoRows.map((row) => [row.entity_id, `/api/assets/${encodeURIComponent(row.id)}`]));
   const groupsByMemberId = new Map(membershipRows.map((row) => [row.member_id, mapBillSponsorGroup(row)]));
   const partyIds = uniqueStrings(membershipRows.map((row) => row.group_party_id ?? ""));
   const partyRows = partyIds.length > 0 ? await db.select().from(schema.parties).where(inArray(schema.parties.id, partyIds)) : [];
@@ -1563,6 +1572,7 @@ async function loadBillSponsorContexts(db: DbClient, sponsors: BillSponsor[], da
     return {
       sponsor,
       member: sponsor.memberId ? membersById.get(sponsor.memberId) : undefined,
+      ...(sponsor.memberId && photosByMemberId.has(sponsor.memberId) ? { photoUrl: photosByMemberId.get(sponsor.memberId)! } : {}),
       group,
       party,
       alignment: "unknown",
